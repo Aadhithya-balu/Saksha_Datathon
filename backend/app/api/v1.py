@@ -1,0 +1,36 @@
+"""
+API v1 router aggregator.
+All module routers are mounted here under settings.API_V1_PREFIX,
+giving a clean path for future v2 versioning without touching main.py.
+"""
+from fastapi import APIRouter
+
+from app.routes import (
+    ai_support,
+    auth,
+    crimes,
+    criminals,
+    dashboard,
+    evidence,
+    firs,
+    locations,
+    officers,
+    reports,
+    users,
+    victims,
+)
+
+api_router = APIRouter()
+
+api_router.include_router(auth.router)
+api_router.include_router(users.router)
+api_router.include_router(dashboard.router)
+api_router.include_router(crimes.router)
+api_router.include_router(firs.router)
+api_router.include_router(criminals.router)
+api_router.include_router(victims.router)
+api_router.include_router(officers.router)
+api_router.include_router(evidence.router)
+api_router.include_router(locations.router)
+api_router.include_router(reports.router)
+api_router.include_router(ai_support.router)
