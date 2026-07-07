@@ -20,7 +20,7 @@ services:
     container_name: saksha_postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-saksha_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saksha_user}
       POSTGRES_DB: ${POSTGRES_DB:-saksha_db}
     ports:
       - "5432:5432"
@@ -37,7 +37,7 @@ services:
     image: neo4j:5.24-community
     container_name: saksha_neo4j
     environment:
-      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-change_me}
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-neo4j}
       NEO4J_PLUGINS: '["graph-data-science"]'
     ports:
       - "7474:7474"

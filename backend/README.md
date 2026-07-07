@@ -40,7 +40,7 @@ python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# edit .env: set DATABASE_URL, NEO4J_URI/USER/PASSWORD, JWT_SECRET_KEY
+# edit .env if needed; the local defaults assume PostgreSQL password `saksha_user` and Neo4j password `neo4j`
 
 # create tables
 python -m app.database.init_db
@@ -60,7 +60,7 @@ Visit:
 ## Quick start (Docker — recommended for the team)
 
 ```bash
-cp .env.example .env   # edit values
+cp .env.example .env   # edit values if your local credentials differ from the defaults
 docker compose up --build
 ```
 

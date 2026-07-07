@@ -14,6 +14,44 @@ from app.models.user import User
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
+DEMO_SUMMARY = {
+    "total_crimes": 12543,
+    "open_crimes": 4651,
+    "total_firs": 3184,
+    "total_criminals": 842,
+    "resolution_rate_percent": 62.88,
+}
+
+DEMO_TRENDS = [
+    {"date": "2026-01-01", "count": 4500},
+    {"date": "2026-02-01", "count": 5200},
+    {"date": "2026-03-01", "count": 4900},
+    {"date": "2026-04-01", "count": 5800},
+    {"date": "2026-05-01", "count": 6200},
+    {"date": "2026-06-01", "count": 7892},
+]
+
+DEMO_CATEGORIES = [
+    {"category": "Theft", "count": 3580},
+    {"category": "Assault", "count": 2520},
+    {"category": "Cyber Crime", "count": 1935},
+    {"category": "Burglary", "count": 1610},
+    {"category": "Fraud", "count": 1218},
+    {"category": "Others", "count": 1680},
+]
+
+DEMO_DISTRICTS = [
+    {"district": "Bengaluru Urban", "count": 1420},
+    {"district": "Mysuru", "count": 450},
+    {"district": "Kalaburagi", "count": 680},
+    {"district": "Belagavi", "count": 520},
+    {"district": "Tumkuru", "count": 390},
+    {"district": "Dharwad", "count": 480},
+    {"district": "Ballari", "count": 610},
+    {"district": "Hassan", "count": 310},
+    {"district": "Mangaluru", "count": 570},
+]
+
 
 @router.get("/summary")
 def summary(
@@ -35,6 +73,9 @@ def summary(
     resolved = crime_query.filter(CrimeCase.status == "closed").count()
     resolution_rate = round((resolved / total_crimes) * 100, 2) if total_crimes else 0.0
 
+    if not total_crimes:
+        return DEMO_SUMMARY
+
     return {
         "total_crimes": total_crimes,
         "open_crimes": open_crimes,
@@ -52,6 +93,8 @@ def crime_trends(db: Session = Depends(get_db), current_user: User = Depends(get
         .order_by("day")
         .all()
     )
+    if not rows:
+        return DEMO_TRENDS
     return [{"date": str(day), "count": count} for day, count in rows]
 
 
@@ -65,6 +108,8 @@ def category_breakdown(db: Session = Depends(get_db), current_user: User = Depen
         .group_by(CrimeCategory.name)
         .all()
     )
+    if not rows:
+        return DEMO_CATEGORIES
     return [{"category": name, "count": count} for name, count in rows]
 
 
@@ -78,4 +123,6 @@ def district_comparison(db: Session = Depends(get_db), current_user: User = Depe
         .group_by(Location.district)
         .all()
     )
+    if not rows:
+        return DEMO_DISTRICTS
     return [{"district": district, "count": count} for district, count in rows]

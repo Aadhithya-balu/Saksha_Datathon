@@ -1,5 +1,5 @@
 """
-Seeds the four canonical roles required by RBAC, plus one admin user,
+Seeds the canonical roles required by RBAC, plus demo operator accounts,
 so the API is usable immediately after init_db.py.
 Run: python -m app.database.seed_db
 """
@@ -9,6 +9,43 @@ from app.models.role import Role
 from app.models.user import User
 
 ROLES = ["admin", "crime_analyst", "investigator", "policymaker"]
+
+DEMO_USERS = [
+    {
+        "username": "admin",
+        "email": "admin@saksha.local",
+        "full_name": "Platform Administrator",
+        "password": "ChangeMe123!",
+        "role_name": "admin",
+    },
+    {
+        "username": "SCRB-7740",
+        "email": "scrb-7740@saksha.local",
+        "full_name": "DCP Rajesh Kumar",
+        "password": "123456",
+        "role_name": "crime_analyst",
+        "district": "Bengaluru Urban",
+        "station": "SCRB HQ",
+    },
+    {
+        "username": "IO-3921",
+        "email": "io-3921@saksha.local",
+        "full_name": "Inspector Meera Sen",
+        "password": "123456",
+        "role_name": "investigator",
+        "district": "Mysuru",
+        "station": "City Central",
+    },
+    {
+        "username": "SP-0088",
+        "email": "sp-0088@saksha.local",
+        "full_name": "SP Anil Kumble",
+        "password": "123456",
+        "role_name": "policymaker",
+        "district": "State HQ",
+        "station": "KSP HQ",
+    },
+]
 
 
 def seed() -> None:
@@ -23,20 +60,29 @@ def seed() -> None:
                 db.flush()
             role_objs[name] = role
 
-        if not db.query(User).filter(User.username == "admin").first():
-            admin = User(
-                username="admin",
-                email="admin@saksha.local",
-                full_name="Platform Administrator",
-                hashed_password=hash_password("ChangeMe123!"),
-                role_id=role_objs["admin"].id,
+        for payload in DEMO_USERS:
+            if db.query(User).filter(User.username == payload["username"]).first():
+                continue
+
+            user = User(
+                username=payload["username"],
+                email=payload["email"],
+                full_name=payload["full_name"],
+                hashed_password=hash_password(payload["password"]),
+                role_id=role_objs[payload["role_name"]].id,
+                district=payload.get("district"),
+                station=payload.get("station"),
                 is_active=True,
             )
-            db.add(admin)
+            db.add(user)
 
         db.commit()
-        print("Seed complete. Default admin login -> username: admin / password: ChangeMe123!")
-        print("CHANGE THIS PASSWORD IMMEDIATELY IN ANY REAL DEPLOYMENT.")
+        print("Seed complete. Demo logins:")
+        print("- admin / ChangeMe123!")
+        print("- SCRB-7740 / 123456")
+        print("- IO-3921 / 123456")
+        print("- SP-0088 / 123456")
+        print("CHANGE THESE PASSWORDS IMMEDIATELY IN ANY REAL DEPLOYMENT.")
     finally:
         db.close()
 

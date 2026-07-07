@@ -16,12 +16,12 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     # --- PostgreSQL ---
-    DATABASE_URL: str = "postgresql+psycopg2://saksha_user:change_me@localhost:5432/saksha_db"
+    DATABASE_URL: str = "postgresql+psycopg2://saksha_user:saksha_user@localhost:5432/saksha_db"
 
     # --- Neo4j ---
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"
-    NEO4J_PASSWORD: str = "change_me"
+    NEO4J_PASSWORD: str = "neo4j"
 
     # --- JWT ---
     JWT_SECRET_KEY: str = "super-secret-change-this-in-production"
