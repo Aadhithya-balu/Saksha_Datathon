@@ -1,0 +1,619 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-bg: #0B1426;
+  --secondary-bg: #111D35;
+  --card-bg: rgba(255, 255, 255, 0.04);
+  --border-color: rgba(255, 255, 255, 0.07);
+  --accent-blue: #1E6FD9;
+  --accent-teal: #0E9E78;
+  --accent-amber: #D4820A;
+  --accent-coral: #C94A2A;
+  --accent-purple: #6C43CC;
+  --primary-text: #E8EDF5;
+  --secondary-text: #A8B4CC;
+  --muted-text: #6A7A96;
+}
+
+body {
+  background-color: #0B1426;
+  color: #E8EDF5;
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+/* Custom background mesh */
+.gradient-mesh-bg {
+  background: radial-gradient(circle at 10% 20%, rgba(30, 111, 217, 0.12) 0%, transparent 40%),
+              radial-gradient(circle at 90% 80%, rgba(108, 67, 204, 0.12) 0%, transparent 40%),
+              radial-gradient(circle at 50% 50%, rgba(14, 158, 120, 0.04) 0%, transparent 60%),
+              #0B1426;
+  background-attachment: fixed;
+  background-size: 100% 100%;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0B1426;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(30, 111, 217, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 111, 217, 0.6);
+}
+
+/* Glassmorphism Styles */
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glassmorphism-glow-blue {
+  background: rgba(30, 111, 217, 0.02);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(30, 111, 217, 0.2);
+  box-shadow: 0 0 20px rgba(30, 111, 217, 0.1);
+}
+
+.glassmorphism-glow-teal {
+  background: rgba(14, 158, 120, 0.02);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(14, 158, 120, 0.2);
+  box-shadow: 0 0 20px rgba(14, 158, 120, 0.1);
+}
+
+.glassmorphism-glow-amber {
+  background: rgba(212, 130, 10, 0.02);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 130, 10, 0.2);
+  box-shadow: 0 0 20px rgba(212, 130, 10, 0.1);
+}
+
+.glassmorphism-glow-coral {
+  background: rgba(201, 74, 42, 0.02);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(201, 74, 42, 0.2);
+  box-shadow: 0 0 20px rgba(201, 74, 42, 0.1);
+}
+
+/* Scanline Overlay for Cyber UI */
+.scanline-overlay {
+  position: relative;
+  overflow: hidden;
+}
+.scanline-overlay::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.12) 50%), linear-gradient(90deg, rgba(30, 111, 217, 0.03), rgba(14, 158, 120, 0.01), rgba(108, 67, 204, 0.03));
+  z-index: 10;
+  background-size: 100% 4px, 4px 100%;
+  pointer-events: none;
+  animation: scanline 15s linear infinite !important;
+}
+
+/* Hexagonal webcam frame shape */
+.hex-clip {
+  clip-path: polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%);
+}
+
+.hex-border {
+  clip-path: polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%);
+  background: linear-gradient(135deg, #1E6FD9, #6C43CC);
+  padding: 4px;
+}
+
+/* Cyber Scanning Line Animation */
+.scan-line {
+  position: absolute;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(to bottom, transparent, #0E9E78, transparent);
+  animation: scan 3s linear infinite;
+  box-shadow: 0 0 10px #0E9E78;
+}
+
+@keyframes scan {
+  0% { top: -5%; }
+  50% { top: 105%; }
+  100% { top: -5%; }
+}
+
+/* Heartbeat/Pulse Keyframes */
+@keyframes borderPulseRed {
+  0%, 100% { border-color: rgba(255, 59, 59, 0.2); box-shadow: 0 0 5px rgba(255, 59, 59, 0.2); }
+  50% { border-color: rgba(255, 59, 59, 0.9); box-shadow: 0 0 15px rgba(255, 59, 59, 0.5), inset 0 0 5px rgba(255, 59, 59, 0.2); }
+}
+
+@keyframes borderPulseAmber {
+  0%, 100% { border-color: rgba(212, 130, 10, 0.2); box-shadow: 0 0 5px rgba(212, 130, 10, 0.2); }
+  50% { border-color: rgba(212, 130, 10, 0.9); box-shadow: 0 0 15px rgba(212, 130, 10, 0.5), inset 0 0 5px rgba(212, 130, 10, 0.2); }
+}
+
+.pulse-border-red {
+  animation: borderPulseRed 2.5s infinite;
+}
+
+.pulse-border-amber {
+  animation: borderPulseAmber 2.5s infinite;
+}
+
+/* Tilt effect custom styles */
+.tilt-card {
+  perspective: 1000px;
+  transition: transform 0.3s cubic-bezier(0.20, 0.8, 0.20, 1), box-shadow 0.3s, border-color 0.3s;
+  transform-style: preserve-3d;
+}
+
+.tilt-card:hover {
+  transform: perspective(1000px) rotateX(3deg) rotateY(3deg) translateY(-3px);
+  border-color: rgba(30, 111, 217, 0.3);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(30, 111, 217, 0.15);
+}
+
+.tilt-card > * {
+  transform: translateZ(20px);
+}
+
+/* Diagonal grids for charts */
+.chart-diagonal-grid {
+  background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.015) 0px, rgba(255, 255, 255, 0.015) 1px, transparent 1px, transparent 12px);
+}
+
+/* Custom shake anim */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.animate-shake {
+  animation: shake 0.6s ease-in-out;
+}
+
+/* ==========================================================================
+   GLOBAL CYBERPUNK HUD CUSTOM ANIMATIONS
+   ========================================================================== */
+
+/* Subtle text flicker like real CRT / OLED screen */
+@keyframes textFlicker {
+  0%, 98%, 100% { opacity: 1; }
+  99% { opacity: 0.85; }
+}
+
+/* Slow glow pulse */
+@keyframes glowPulse {
+  0%, 100% { text-shadow: 0 0 8px currentColor; }
+  50% { text-shadow: 0 0 16px currentColor, 0 0 32px currentColor; }
+}
+
+/* Danger blink for alerts */
+@keyframes dangerBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Scanning line sweep for status bar */
+@keyframes scanline {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 0% 100%; }
+}
+
+/* ==========================================================================
+   CYBER HUD TYPOGRAPHY & OVERRIDES
+   ========================================================================== */
+
+/* 1. SIDEBAR NAVIGATION LABELS */
+div.flex-1.py-6 button {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Active tab button */
+div.flex-1.py-6 button[class*="bg-[#1E6FD9]/10"] {
+  color: #00E5FF !important;
+  text-shadow: 
+    0 0 8px #00E5FF,
+    0 0 20px #00E5FF,
+    0 0 40px rgba(0,229,255,0.4) !important;
+  letter-spacing: 0.15em !important;
+  animation: textFlicker 0.2s infinite !important;
+  border-color: rgba(0, 229, 255, 0.3) !important;
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.1) !important;
+}
+div.flex-1.py-6 button[class*="bg-[#1E6FD9]/10"] svg {
+  color: #00E5FF !important;
+  filter: drop-shadow(0 0 6px #00E5FF) !important;
+}
+
+/* Inactive nav buttons */
+div.flex-1.py-6 button:not([class*="bg-[#1E6FD9]/10"]) {
+  color: #4A6080 !important;
+  letter-spacing: 0.1em !important;
+}
+div.flex-1.py-6 button:not([class*="bg-[#1E6FD9]/10"]) svg {
+  color: #4A6080 !important;
+}
+
+/* Inactive Hover */
+div.flex-1.py-6 button:not([class*="bg-[#1E6FD9]/10"]):hover {
+  color: #7ECFFF !important;
+  text-shadow: 0 0 10px rgba(126,207,255,0.6) !important;
+  transform: translateX(4px) !important;
+  background-color: rgba(126, 207, 255, 0.05) !important;
+}
+div.flex-1.py-6 button:not([class*="bg-[#1E6FD9]/10"]):hover svg {
+  color: #7ECFFF !important;
+  filter: drop-shadow(0 0 4px #7ECFFF) !important;
+}
+
+/* 2. TOP STATUS BAR TEXT */
+header span.text-slate-600 {
+  color: #3A5070 !important;
+}
+
+/* DB REPLICATION: 100% IN-SYNC */
+header span[class*="text-[#0E9E78]"].font-bold {
+  font-family: 'JetBrains Mono', monospace !important;
+  color: #00FF88 !important;
+  text-shadow: 0 0 6px #00FF88, 0 0 12px #00FF88 !important;
+  animation: glowPulse 3s infinite !important;
+}
+
+/* LATENCY: 12ms */
+header span.text-sky-400 {
+  font-family: 'JetBrains Mono', monospace !important;
+  color: #00E5FF !important;
+  text-shadow: 0 0 6px #00E5FF !important;
+}
+
+/* SESSION TIMER */
+header div[class*="font-mono"][class*="text-[11px]"] {
+  font-family: 'Share Tech Mono', monospace !important;
+  letter-spacing: 0.05em;
+}
+/* Active Timer */
+header div[class*="font-mono"][class*="text-[11px]"]:not([class*="text-[#C9"]) span {
+  color: #FFB800 !important;
+  text-shadow: 0 0 8px #FFB800, 0 0 16px rgba(255,184,0,0.4) !important;
+}
+/* Urgent Timer under 5 mins */
+header div[class*="font-mono"][class*="text-[11px]"][class*="text-[#C9"] {
+  border-color: #FF3B3B !important;
+  background-color: rgba(255, 59, 59, 0.1) !important;
+  box-shadow: 0 0 12px rgba(255, 59, 59, 0.25) !important;
+}
+header div[class*="font-mono"][class*="text-[11px]"][class*="text-[#C9"] span {
+  color: #FF3B3B !important;
+  text-shadow: 0 0 12px #FF3B3B, 0 0 24px rgba(255,59,59,0.7) !important;
+  animation: textFlicker 0.15s infinite !important;
+}
+
+/* CONFIDENTIAL Badge */
+header div[class*="text-[#1E6FD9]"] {
+  background-color: rgba(255, 59, 59, 0.08) !important;
+  border: 1px solid #FF3B3B !important;
+  color: #FF3B3B !important;
+  box-shadow: 0 0 10px rgba(255, 59, 59, 0.2) !important;
+  animation: textFlicker 0.2s infinite, borderPulseRed 2s infinite !important;
+}
+header div[class*="text-[#1E6FD9]"] span {
+  font-family: 'Share Tech Mono', monospace !important;
+  color: #FF3B3B !important;
+  text-shadow: 0 0 8px #FF3B3B, 0 0 20px rgba(255,59,59,0.5) !important;
+  font-weight: bold;
+}
+header div[class*="text-[#1E6FD9]"] svg {
+  color: #FF3B3B !important;
+  filter: drop-shadow(0 0 4px #FF3B3B) !important;
+}
+
+/* 3. SECTION PANEL HEADERS */
+h4[class*="text-[11.5px]"].font-bold.text-white {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 600 !important;
+  color: #E8EDF5 !important;
+  text-shadow: 0 0 10px rgba(255,255,255,0.3) !important;
+  border-left: 3px solid #1E6FD9 !important; /* Default blue accent */
+  padding-left: 8px !important;
+  box-shadow: -4px 0 8px -2px rgba(30,111,217,0.5) !important;
+}
+
+/* Color-specific left border overrides based on child SVGs */
+h4:has(svg[class*="text-[#C9"]) {
+  border-left-color: #FF4444 !important;
+  box-shadow: -4px 0 8px -2px rgba(255,68,68,0.5) !important;
+}
+h4:has(svg[class*="text-[#C9"]) svg {
+  filter: drop-shadow(0 0 6px #FF4444) !important;
+}
+h4:has(svg[class*="text-[#D4"]) {
+  border-left-color: #FFB800 !important;
+  box-shadow: -4px 0 8px -2px rgba(255,184,0,0.5) !important;
+}
+h4:has(svg[class*="text-[#D4"]) svg {
+  filter: drop-shadow(0 0 6px #FFB800) !important;
+}
+h4:has(svg[class*="text-[#1E6FD9]"]),
+h4:has(svg.text-indigo-400),
+h4:has(svg[class*="text-blue-"]) {
+  border-left-color: #00E5FF !important;
+  box-shadow: -4px 0 8px -2px rgba(0,229,255,0.5) !important;
+}
+h4:has(svg[class*="text-[#1E6FD9]"]) svg,
+h4:has(svg.text-indigo-400) svg {
+  filter: drop-shadow(0 0 6px #00E5FF) !important;
+}
+
+/* Metadata subtitles below H4 */
+h4[class*="text-[11.5px]"] + span,
+h4[class*="text-[11.5px]"] + div span {
+  font-family: 'Share Tech Mono', monospace !important;
+  color: #3A5070 !important;
+  letter-spacing: 0.12em !important;
+  text-shadow: none !important;
+}
+
+/* 4. METRIC VALUES */
+/* Red High Risk (> 80%) */
+*[class*="text-[#C9"] {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 700 !important;
+  color: #FF4444 !important;
+  text-shadow: 0 0 10px #FF4444, 0 0 24px rgba(255,68,68,0.5) !important;
+}
+
+/* Amber Warning (60-79%) */
+*[class*="text-[#D4"] {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 700 !important;
+  color: #FFB800 !important;
+  text-shadow: 0 0 10px #FFB800, 0 0 20px rgba(255,184,0,0.4) !important;
+}
+
+/* Cyan Normal (< 60%) */
+span.text-blue-400,
+span.text-sky-400,
+button span[class*="text-blue-"] {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 700 !important;
+  color: #00E5FF !important;
+  text-shadow: 0 0 8px #00E5FF, 0 0 16px rgba(0,229,255,0.3) !important;
+}
+
+/* Area Labels (Whitefield, KR Puram, etc.) */
+span[class*="text-[#A8B4CC]"],
+button span.block.truncate {
+  color: #7ECFFF !important;
+  letter-spacing: 0.06em !important;
+  font-size: 11px !important;
+  text-shadow: 0 0 6px rgba(126,207,255,0.5) !important;
+}
+
+/* 5. ALERT TEXT (HIGH THEFT RISK) */
+span.truncate.text-white.font-bold.uppercase,
+div[class*="bg-red-500/10"] span.text-white.font-semibold,
+div[class*="bg-red-"] span.text-white {
+  font-family: 'Orbitron', sans-serif !important;
+  color: #FF4444 !important;
+  font-weight: 500 !important;
+  text-shadow: 0 0 6px #FF4444, 0 0 16px rgba(255,68,68,0.6) !important;
+  animation: textFlash 1.5s infinite alternate !important;
+}
+
+@keyframes textFlash {
+  0% { opacity: 1; filter: drop-shadow(0 0 4px #FF4444); }
+  100% { opacity: 0.7; filter: drop-shadow(0 0 1px #FF4444); }
+}
+
+/* Warning Badges (2M • HIGH THEFT) */
+button[class*="bg-red-950"],
+div[class*="bg-red-500/10"] {
+  background-color: rgba(255,68,68,0.15) !important;
+  border: 1px solid #FF4444 !important;
+  color: #FF8888 !important;
+  box-shadow: 0 0 8px rgba(255,68,68,0.3) inset !important;
+  font-family: 'Share Tech Mono', monospace !important;
+}
+
+/* 6. LOGO & BRAND */
+aside div.flex.flex-col > span.text-xs.uppercase,
+div[class*="bg-secondary-bg"] div.flex.flex-col > span.text-xs.uppercase {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 800 !important;
+  font-size: 14px !important;
+  color: #FFFFFF !important;
+  text-shadow: 
+    0 0 8px rgba(255,255,255,0.8),
+    0 0 20px rgba(0,229,255,0.6),
+    0 0 40px rgba(0,229,255,0.3) !important;
+  letter-spacing: 0.2em !important;
+}
+
+aside div.flex.flex-col > span[class*="text-[8px]"],
+div[class*="bg-secondary-bg"] div.flex.flex-col > span[class*="text-[8px]"] {
+  font-family: 'Share Tech Mono', monospace !important;
+  color: #00FF88 !important;
+  text-shadow: 0 0 6px #00FF88 !important;
+  font-size: 9px !important;
+  letter-spacing: 0.25em !important;
+}
+
+/* 7. QUICK ACTIONS CONSOLE BUTTONS */
+/* Register FIR -> #FF6B35 */
+button[onClick*="Register FIR"] {
+  color: #FF6B35 !important;
+  border-color: rgba(255, 107, 53, 0.3) !important;
+  background-color: rgba(255, 107, 53, 0.05) !important;
+}
+button[onClick*="Register FIR"] span {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 8px rgba(255, 107, 53, 0.6) !important;
+}
+button[onClick*="Register FIR"]:hover {
+  box-shadow: 0 0 15px rgba(255, 107, 53, 0.3) !important;
+  transform: scale(1.03) !important;
+  border-color: rgba(255, 107, 53, 0.6) !important;
+}
+
+/* Add Missing -> #7C3AED */
+button[onClick*="Add Missing"] {
+  color: #7C3AED !important;
+  border-color: rgba(124, 58, 237, 0.3) !important;
+  background-color: rgba(124, 58, 237, 0.05) !important;
+}
+button[onClick*="Add Missing"] span {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 8px rgba(124, 58, 237, 0.6) !important;
+}
+button[onClick*="Add Missing"]:hover {
+  box-shadow: 0 0 15px rgba(124, 58, 237, 0.3) !important;
+  transform: scale(1.03) !important;
+  border-color: rgba(124, 58, 237, 0.6) !important;
+}
+
+/* Create Alert -> #FF4444 */
+button[onClick*="Create Alert"] {
+  color: #FF4444 !important;
+  border-color: rgba(255, 68, 68, 0.3) !important;
+  background-color: rgba(255, 68, 68, 0.05) !important;
+}
+button[onClick*="Create Alert"] span {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 8px rgba(255, 68, 68, 0.6) !important;
+}
+button[onClick*="Create Alert"]:hover {
+  box-shadow: 0 0 15px rgba(255, 68, 68, 0.3) !important;
+  transform: scale(1.03) !important;
+  border-color: rgba(255, 68, 68, 0.6) !important;
+}
+
+/* Assign Case -> #00E5FF */
+button[onClick*="Assign Case"] {
+  color: #00E5FF !important;
+  border-color: rgba(0, 229, 255, 0.3) !important;
+  background-color: rgba(0, 229, 255, 0.05) !important;
+}
+button[onClick*="Assign Case"] span {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.6) !important;
+}
+button[onClick*="Assign Case"]:hover {
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.3) !important;
+  transform: scale(1.03) !important;
+  border-color: rgba(0, 229, 255, 0.6) !important;
+}
+
+/* Generate Report -> #00FF88 */
+button[onClick*="Generate Report"] {
+  color: #00FF88 !important;
+  border-color: rgba(0, 255, 136, 0.3) !important;
+  background-color: rgba(0, 255, 136, 0.05) !important;
+}
+button[onClick*="Generate Report"] span {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.6) !important;
+}
+button[onClick*="Generate Report"]:hover {
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.3) !important;
+  transform: scale(1.03) !important;
+  border-color: rgba(0, 255, 136, 0.6) !important;
+}
+
+/* Resource Allocation -> #FFB800 */
+button[onClick*="Resource Allocation"] {
+  color: #FFB800 !important;
+  border-color: rgba(255, 184, 0, 0.3) !important;
+  background-color: rgba(255, 184, 0, 0.05) !important;
+}
+button[onClick*="Resource Allocation"] span {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 8px rgba(255, 184, 0, 0.6) !important;
+}
+button[onClick*="Resource Allocation"]:hover {
+  box-shadow: 0 0 15px rgba(255, 184, 0, 0.3) !important;
+  transform: scale(1.03) !important;
+  border-color: rgba(255, 184, 0, 0.6) !important;
+}
+
+/* 8. BOTTOM STATUS BAR */
+footer span:first-child {
+  font-family: 'Share Tech Mono', monospace !important;
+  color: #FF4444 !important;
+  text-shadow: 0 0 6px rgba(255,68,68,0.8) !important;
+  animation: dangerBlink 4s infinite !important;
+}
+footer span:last-child {
+  color: #3A5070 !important;
+  font-family: 'Share Tech Mono', monospace !important;
+  letter-spacing: 0.15em !important;
+}
+
+/* 9. NODE / DB STATUS TEXT */
+header span[class*="hidden"][class*="md:inline"] {
+  font-family: 'JetBrains Mono', monospace !important;
+  color: #00E5FF !important;
+  text-shadow: 0 0 6px #00E5FF !important;
+  letter-spacing: 0.1em !important;
+}
+
+/* 10. USER PROFILE & BADGE DETAILS */
+aside div.flex.flex-col.truncate > span[class*="text-[10px]"].font-bold {
+  color: #E8EDF5 !important;
+  font-weight: 600 !important;
+  font-family: 'Inter', sans-serif !important;
+}
+aside div.flex.flex-col.truncate > span[class*="text-[8px]"] {
+  font-family: 'Share Tech Mono', monospace !important;
+  color: #00FF88 !important;
+  text-shadow: 0 0 4px #00FF88 !important;
+}
+
+/* GENERAL SUB-LABELS & TABLE HEADERS */
+thead tr th,
+.text-slate-500,
+span[class*="text-[#6A7A96]"] {
+  font-family: 'Rajdhani', sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em;
+}
+
+/* Glowing text effects for all D3 & Recharts SVG elements */
+svg text,
+.recharts-text,
+.recharts-cartesian-axis-tick-value,
+.recharts-legend-item-text,
+.recharts-default-tooltip,
+.recharts-label {
+  fill: #ffffff !important;
+  font-weight: 700 !important;
+  text-shadow: 0 0 3px #00f0ff, 0 0 6px rgba(0, 240, 255, 0.5) !important;
+  filter: drop-shadow(0 0 1px #00f0ff) !important;
+  letter-spacing: 0.03em;
+}
