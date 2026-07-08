@@ -24,5 +24,11 @@ class User(Base, UUIDPKMixin, TimestampMixin):
     district: Mapped[str | None] = mapped_column(String(100), nullable=True)
     station: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
-    officer_profile: Mapped["Officer | None"] = relationship(back_populates="user", uselist=False)
+    officer_profile: Mapped["Officer | None"] = relationship(
+        "Officer",
+        primaryjoin="User.id == Officer.EmployeeID",
+        foreign_keys="User.id",
+        viewonly=True,
+        uselist=False,
+    )
     audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="user")

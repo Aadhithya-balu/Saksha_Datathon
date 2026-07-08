@@ -1,31 +1,79 @@
-"""Business logic for authentication: login, token refresh, password change."""
+"""Auth service — authenticates against real Employee table using KGID + PIN."""
+from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ConflictException, UnauthorizedException
-from app.core.security import (
-    create_access_token,
-    create_refresh_token,
-    decode_token,
-    hash_password,
-    verify_password,
-)
-from app.models.role import Role
-from app.models.user import User
-from app.schemas.user import UserCreate
+from app.core.exceptions import UnauthorizedException
+from app.core.security import create_access_token, create_refresh_token, decode_token
+from app.models.officer import Officer
 
 
-def authenticate_user(db: Session, username: str, password: str) -> User:
-    user = db.query(User).filter(User.username == username).first()
-    if not user or not verify_password(password, user.hashed_password):
-        raise UnauthorizedException("Incorrect username or password")
-    if not user.is_active:
-        raise UnauthorizedException("Account is deactivated")
-    return user
+# Map RankID → role string used in JWT and RBAC
+RANK_ROLE_MAP = {
+    1: "admin",           # Director General of Police
+    2: "admin",           # Additional Director General
+    3: "policymaker",     # Inspector General of Police
+    4: "policymaker",     # Deputy Inspector General
+    5: "policymaker",     # Superintendent of Police
+    6: "policymaker",     # Additional SP
+    7: "crime_analyst",   # Deputy SP
+    8: "crime_analyst",   # Inspector
+    9: "investigator",    # Sub-Inspector
+    10: "investigator",   # Assistant Sub-Inspector
+    11: "investigator",   # Head Constable
+    12: "investigator",   # Constable
+}
 
 
-def issue_tokens(user: User) -> dict:
-    access_token = create_access_token(subject=user.username, role=user.role.name)
-    refresh_token = create_refresh_token(subject=user.username)
+@dataclass
+class EmployeeSession:
+    """Lightweight session object that mimics the old User model interface."""
+    username: str       # KGID
+    full_name: str
+    role_name: str
+    district: str | None
+    station: str | None
+    is_active: bool = True
+
+    @property
+    def role(self):
+        class _Role:
+            def __init__(self, name): self.name = name
+        return _Role(self.role_name)
+
+
+def _get_pin(kgid: str) -> str:
+    """Derive 6-digit PIN from KGID — last 6 numeric characters."""
+    digits = ''.join(c for c in kgid if c.isdigit())
+    return digits[-6:] if len(digits) >= 6 else digits.zfill(6)
+
+
+def authenticate_user(db: Session, username: str, password: str) -> EmployeeSession:
+    kgid = username.strip().upper()
+    employee = db.query(Officer).filter(Officer.KGID == kgid).first()
+
+    if not employee:
+        raise UnauthorizedException("Incorrect KGID or PIN")
+
+    expected_pin = _get_pin(kgid)
+    if password.strip() != expected_pin:
+        raise UnauthorizedException("Incorrect KGID or PIN")
+
+    role_name = RANK_ROLE_MAP.get(employee.RankID, "investigator")
+    district = employee.district.DistrictName if employee.district else None
+    unit = employee.unit.UnitName if employee.unit else None
+
+    return EmployeeSession(
+        username=kgid,
+        full_name=employee.FirstName,
+        role_name=role_name,
+        district=district,
+        station=unit,
+    )
+
+
+def issue_tokens(session: EmployeeSession) -> dict:
+    access_token = create_access_token(subject=session.username, role=session.role_name)
+    refresh_token = create_refresh_token(subject=session.username)
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 
@@ -38,39 +86,17 @@ def refresh_access_token(db: Session, refresh_token: str) -> dict:
     if payload.get("type") != "refresh":
         raise UnauthorizedException("Provided token is not a refresh token")
 
-    user = db.query(User).filter(User.username == payload.get("sub")).first()
-    if not user or not user.is_active:
-        raise UnauthorizedException("User not found or inactive")
+    kgid = payload.get("sub")
+    employee = db.query(Officer).filter(Officer.KGID == kgid).first()
+    if not employee:
+        raise UnauthorizedException("Employee not found")
 
-    return issue_tokens(user)
-
-
-def register_user(db: Session, payload: UserCreate) -> User:
-    if db.query(User).filter(User.username == payload.username).first():
-        raise ConflictException("Username already exists")
-    if db.query(User).filter(User.email == payload.email).first():
-        raise ConflictException("Email already registered")
-
-    role = db.query(Role).filter(Role.name == payload.role_name).first()
-    if not role:
-        raise ConflictException(f"Role '{payload.role_name}' does not exist")
-
-    user = User(
-        username=payload.username,
-        email=payload.email,
-        full_name=payload.full_name,
-        hashed_password=hash_password(payload.password),
-        district=payload.district,
-        station=payload.station,
-        role_id=role.id,
+    role_name = RANK_ROLE_MAP.get(employee.RankID, "investigator")
+    session = EmployeeSession(
+        username=kgid,
+        full_name=employee.FirstName,
+        role_name=role_name,
+        district=None,
+        station=None,
     )
-    db.add(user)
-    db.flush()
-    return user
-
-
-def change_password(db: Session, user: User, old_password: str, new_password: str) -> None:
-    if not verify_password(old_password, user.hashed_password):
-        raise UnauthorizedException("Old password is incorrect")
-    user.hashed_password = hash_password(new_password)
-    db.add(user)
+    return issue_tokens(session)

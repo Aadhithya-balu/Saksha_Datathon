@@ -1,86 +1,43 @@
-"""Dashboard aggregation routes — powers the SCRB overview screen."""
-from datetime import datetime
-
-from fastapi import APIRouter, Depends, Query
+"""Dashboard routes — aggregates from real Supabase tables."""
+from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
 from app.database.postgres import get_db
-from app.models.crime import CrimeCase
-from app.models.criminal import Criminal
-from app.models.fir import FIR
+from app.models.crime import CaseMaster
+from app.models.criminal import Accused
+from app.models.victim import Victim
+from app.models.fir import ArrestSurrender, ChargesheetDetails
+from app.models.crime_category import CaseStatusMaster, CrimeHead
+from app.models.location import District as DistrictModel, Unit
 from app.models.user import User
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
-DEMO_SUMMARY = {
-    "total_crimes": 12543,
-    "open_crimes": 4651,
-    "total_firs": 3184,
-    "total_criminals": 842,
-    "resolution_rate_percent": 62.88,
-}
-
-DEMO_TRENDS = [
-    {"date": "2026-01-01", "count": 4500},
-    {"date": "2026-02-01", "count": 5200},
-    {"date": "2026-03-01", "count": 4900},
-    {"date": "2026-04-01", "count": 5800},
-    {"date": "2026-05-01", "count": 6200},
-    {"date": "2026-06-01", "count": 7892},
-]
-
-DEMO_CATEGORIES = [
-    {"category": "Theft", "count": 3580},
-    {"category": "Assault", "count": 2520},
-    {"category": "Cyber Crime", "count": 1935},
-    {"category": "Burglary", "count": 1610},
-    {"category": "Fraud", "count": 1218},
-    {"category": "Others", "count": 1680},
-]
-
-DEMO_DISTRICTS = [
-    {"district": "Bengaluru Urban", "count": 1420},
-    {"district": "Mysuru", "count": 450},
-    {"district": "Kalaburagi", "count": 680},
-    {"district": "Belagavi", "count": 520},
-    {"district": "Tumkuru", "count": 390},
-    {"district": "Dharwad", "count": 480},
-    {"district": "Ballari", "count": 610},
-    {"district": "Hassan", "count": 310},
-    {"district": "Mangaluru", "count": 570},
-]
-
 
 @router.get("/summary")
-def summary(
-    date_from: datetime | None = None,
-    date_to: datetime | None = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    crime_query = db.query(CrimeCase)
-    if date_from:
-        crime_query = crime_query.filter(CrimeCase.occurred_at >= date_from)
-    if date_to:
-        crime_query = crime_query.filter(CrimeCase.occurred_at <= date_to)
+def summary(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    total_cases = db.query(CaseMaster).count()
+    total_accused = db.query(Accused).count()
+    total_victims = db.query(Victim).count()
+    total_arrests = db.query(ArrestSurrender).count()
+    total_chargesheets = db.query(ChargesheetDetails).count()
 
-    total_crimes = crime_query.count()
-    open_crimes = crime_query.filter(CrimeCase.status == "open").count()
-    total_firs = db.query(FIR).count()
-    total_criminals = db.query(Criminal).count()
-    resolved = crime_query.filter(CrimeCase.status == "closed").count()
-    resolution_rate = round((resolved / total_crimes) * 100, 2) if total_crimes else 0.0
-
-    if not total_crimes:
-        return DEMO_SUMMARY
+    # closed = status where CaseStatusName contains 'Charge' or 'Court' or 'Closed'
+    closed = db.query(CaseMaster).join(CaseStatusMaster).filter(
+        CaseStatusMaster.CaseStatusName.in_(["Chargesheeted", "Court Trial", "Convicted", "Closed"])
+    ).count()
+    resolution_rate = round((closed / total_cases) * 100, 2) if total_cases else 0.0
 
     return {
-        "total_crimes": total_crimes,
-        "open_crimes": open_crimes,
-        "total_firs": total_firs,
-        "total_criminals": total_criminals,
+        "total_crimes": total_cases,
+        "open_crimes": total_cases - closed,
+        "total_firs": total_cases,
+        "total_criminals": total_accused,
+        "total_victims": total_victims,
+        "total_arrests": total_arrests,
+        "total_chargesheets": total_chargesheets,
         "resolution_rate_percent": resolution_rate,
     }
 
@@ -88,41 +45,50 @@ def summary(
 @router.get("/crime-trends")
 def crime_trends(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     rows = (
-        db.query(func.date_trunc("day", CrimeCase.occurred_at).label("day"), func.count(CrimeCase.id))
-        .group_by("day")
-        .order_by("day")
+        db.query(
+            func.date_trunc("month", CaseMaster.CrimeRegisteredDate).label("month"),
+            func.count(CaseMaster.CaseMasterID),
+        )
+        .group_by("month")
+        .order_by("month")
         .all()
     )
-    if not rows:
-        return DEMO_TRENDS
-    return [{"date": str(day), "count": count} for day, count in rows]
+    return [{"date": str(month)[:10], "count": count} for month, count in rows]
 
 
 @router.get("/category-breakdown")
 def category_breakdown(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    from app.models.crime_category import CrimeCategory
-
     rows = (
-        db.query(CrimeCategory.name, func.count(CrimeCase.id))
-        .join(CrimeCase, CrimeCase.category_id == CrimeCategory.id)
-        .group_by(CrimeCategory.name)
+        db.query(CrimeHead.CrimeGroupName, func.count(CaseMaster.CaseMasterID))
+        .join(CaseMaster, CaseMaster.CrimeMajorHeadID == CrimeHead.CrimeHeadID)
+        .group_by(CrimeHead.CrimeGroupName)
+        .order_by(func.count(CaseMaster.CaseMasterID).desc())
         .all()
     )
-    if not rows:
-        return DEMO_CATEGORIES
     return [{"category": name, "count": count} for name, count in rows]
 
 
 @router.get("/district-comparison")
 def district_comparison(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    from app.models.location import Location
-
+    from app.models.location import Unit
     rows = (
-        db.query(Location.district, func.count(CrimeCase.id))
-        .join(CrimeCase, CrimeCase.location_id == Location.id)
-        .group_by(Location.district)
+        db.query(DistrictModel.DistrictName, func.count(CaseMaster.CaseMasterID))
+        .join(Unit, Unit.DistrictID == DistrictModel.DistrictID)
+        .join(CaseMaster, CaseMaster.PoliceStationID == Unit.UnitID)
+        .group_by(DistrictModel.DistrictName)
+        .order_by(func.count(CaseMaster.CaseMasterID).desc())
         .all()
     )
-    if not rows:
-        return DEMO_DISTRICTS
-    return [{"district": district, "count": count} for district, count in rows]
+    return [{"district": name, "count": count} for name, count in rows]
+
+
+@router.get("/status-breakdown")
+def status_breakdown(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    rows = (
+        db.query(CaseStatusMaster.CaseStatusName, func.count(CaseMaster.CaseMasterID))
+        .join(CaseMaster, CaseMaster.CaseStatusID == CaseStatusMaster.CaseStatusID)
+        .group_by(CaseStatusMaster.CaseStatusName)
+        .order_by(func.count(CaseMaster.CaseMasterID).desc())
+        .all()
+    )
+    return [{"status": name, "count": count} for name, count in rows]

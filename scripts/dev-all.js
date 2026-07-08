@@ -1,9 +1,19 @@
 import { spawn } from 'node:child_process';
 import process from 'node:process';
 
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isWindows = process.platform === 'win32';
-const pythonCommand = isWindows ? 'py' : 'python';
-const pythonArgs = isWindows ? ['-3.12'] : [];
+
+// Use the .venv Python so all backend packages are available
+const venvPython = isWindows
+  ? path.resolve(__dirname, '..', '.venv', 'Scripts', 'python.exe')
+  : path.resolve(__dirname, '..', '.venv', 'bin', 'python');
+
+const pythonCommand = venvPython;
+const pythonArgs = [];
 const frontendCommand = isWindows ? 'cmd.exe' : 'npm';
 const frontendArgs = isWindows
   ? ['/c', 'npm', 'run', 'dev', '--prefix', 'datathon']
@@ -13,7 +23,8 @@ const commands = [
   {
     label: 'backend',
     command: pythonCommand,
-    args: [...pythonArgs, '-m', 'uvicorn', 'app.main:app', '--reload', '--app-dir', 'backend'],
+    args: [...pythonArgs, '-m', 'uvicorn', 'app.main:app', '--reload'],
+    cwd: 'backend',
   },
   {
     label: 'frontend',
@@ -22,10 +33,11 @@ const commands = [
   },
 ];
 
-const children = commands.map(({ label, command, args }) => {
+const children = commands.map(({ label, command, args, cwd }) => {
   const child = spawn(command, args, {
     stdio: 'inherit',
     shell: false,
+    cwd: cwd ?? undefined,
   });
 
   child.on('exit', (code, signal) => {

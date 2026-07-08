@@ -13,7 +13,7 @@ def configure_logging() -> None:
     logger.remove()
     logger.add(
         sys.stdout,
-        level="DEBUG" if settings.DEBUG else "INFO",
+        level="DEBUG" if settings.APP_DEBUG else "INFO",
         format=(
             "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
             "<level>{level: <8}</level> | "

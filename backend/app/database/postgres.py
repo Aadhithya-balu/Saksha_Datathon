@@ -10,12 +10,12 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from app.core.config import settings
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    settings.database_url,
     pool_size=10,
     max_overflow=20,
     pool_pre_ping=True,      # verifies connections before use (avoids stale-connection errors)
     pool_recycle=1800,       # recycle connections every 30 min
-    echo=settings.DEBUG,
+    echo=settings.APP_DEBUG,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

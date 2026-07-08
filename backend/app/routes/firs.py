@@ -1,63 +1,102 @@
-"""FIR search + CRUD routes."""
-import uuid
-
+"""FIR routes — queries real ComplainantDetails, ArrestSurrender, ChargesheetDetails tables."""
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
-from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
+from app.models.fir import ArrestSurrender, ChargesheetDetails, ComplainantDetails
 from app.models.user import User
-from app.schemas.common import PaginatedResponse
-from app.schemas.fir import FIRCreate, FIROut, FIRUpdate
-from app.services import audit_service
-from app.services.base_service import BaseCRUDService
 
 router = APIRouter(prefix="/firs", tags=["FIRs"])
-fir_crud = BaseCRUDService(FIR)
 
 
-@router.get("", response_model=PaginatedResponse[FIROut])
+@router.get("")
 def list_firs(
-    status: str | None = None,
-    section: str | None = None,
+    q: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return fir_crud.list(db, page=page, page_size=page_size, filters={"status": status, "sections": section})
+    query = db.query(ComplainantDetails)
+    if q:
+        query = query.filter(ComplainantDetails.ComplainantName.ilike(f"%{q}%"))
+    total = query.count()
+    results = query.offset((page - 1) * page_size).limit(page_size).all()
+    return {
+        "total": total, "page": page, "page_size": page_size,
+        "results": [_fir_out(r) for r in results],
+    }
 
 
-@router.get("/{fir_id}", response_model=FIROut)
-def get_fir(fir_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return fir_crud.get(db, fir_id)
+@router.get("/{fir_id}")
+def get_fir(fir_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    row = db.query(ComplainantDetails).filter(ComplainantDetails.ComplainantID == fir_id).first()
+    if not row:
+        from app.core.exceptions import NotFoundException
+        raise NotFoundException("FIR not found")
+    return _fir_out(row)
 
 
-@router.get("/{fir_id}/linked-crimes")
-def linked_crimes(fir_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    fir = fir_crud.get(db, fir_id)
-    return {"crime_case_id": fir.crime_case_id}
+@router.get("/arrests")
+def list_arrests(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    total = db.query(ArrestSurrender).count()
+    results = db.query(ArrestSurrender).offset((page - 1) * page_size).limit(page_size).all()
+    return {
+        "total": total, "page": page, "page_size": page_size,
+        "results": [_arrest_out(r) for r in results],
+    }
 
 
-@router.post("", response_model=FIROut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR))])
-def create_fir(payload: FIRCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    data = payload.model_dump(exclude={"criminal_ids", "victim_ids"})
-    fir = fir_crud.create(db, data)
+@router.get("/chargesheets")
+def list_chargesheets(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    total = db.query(ChargesheetDetails).count()
+    results = db.query(ChargesheetDetails).offset((page - 1) * page_size).limit(page_size).all()
+    return {
+        "total": total, "page": page, "page_size": page_size,
+        "results": [_cs_out(r) for r in results],
+    }
 
-    for criminal_id in payload.criminal_ids:
-        db.add(FIRCriminalLink(fir_id=fir.id, criminal_id=criminal_id))
-    for victim_id in payload.victim_ids:
-        db.add(FIRVictimLink(fir_id=fir.id, victim_id=victim_id))
-    db.flush()
 
-    audit_service.log_action(db, current_user, "CREATE", "FIR", str(fir.id))
-    return fir
+def _fir_out(r: ComplainantDetails) -> dict:
+    return {
+        "id": r.ComplainantID,
+        "case_id": r.CaseMasterID,
+        "complainant_name": r.ComplainantName,
+        "age": r.AgeYear,
+        "gender_id": r.GenderID,
+        "occupation_id": r.OccupationID,
+        "religion_id": r.ReligionID,
+        "caste_id": r.CasteID,
+    }
 
 
-@router.put("/{fir_id}", response_model=FIROut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR))])
-def update_fir(fir_id: uuid.UUID, payload: FIRUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    fir = fir_crud.update(db, fir_id, payload.model_dump(exclude_unset=True))
-    audit_service.log_action(db, current_user, "UPDATE", "FIR", str(fir_id))
-    return fir
+def _arrest_out(r: ArrestSurrender) -> dict:
+    return {
+        "id": r.ArrestSurrenderID,
+        "case_id": r.CaseMasterID,
+        "date": str(r.ArrestSurrenderDate) if r.ArrestSurrenderDate else None,
+        "accused_id": r.AccusedMasterID,
+        "court_id": r.CourtID,
+        "is_accused": bool(r.IsAccused),
+    }
+
+
+def _cs_out(r: ChargesheetDetails) -> dict:
+    return {
+        "id": r.CSID,
+        "case_id": r.CaseMasterID,
+        "date": str(r.csdate) if r.csdate else None,
+        "type": r.cstype,
+        "officer_id": r.PolicePersonID,
+    }

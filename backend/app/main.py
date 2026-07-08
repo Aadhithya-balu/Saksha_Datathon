@@ -10,7 +10,6 @@ from app.api.v1 import api_router
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging_config import configure_logging, logger
-from app.database.neo4j import close_neo4j_driver, verify_neo4j_connectivity
 from app.database.postgres import engine
 
 
@@ -25,14 +24,10 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.error(f"PostgreSQL connection failed: {exc}")
 
-    if verify_neo4j_connectivity():
-        logger.info("Neo4j connection OK")
-    else:
-        logger.warning("Neo4j connection could not be verified")
+    # Neo4j has been disabled in this deployment variant.
 
     yield
 
-    close_neo4j_driver()
     logger.info("Shutdown complete")
 
 
@@ -69,14 +64,8 @@ def health_check():
     except Exception:
         pg_ok = False
 
-    neo4j_ok = verify_neo4j_connectivity()
-
-    status_ok = pg_ok and neo4j_ok
-    return {
-        "status": "ok" if status_ok else "degraded",
-        "postgresql": "up" if pg_ok else "down",
-        "neo4j": "up" if neo4j_ok else "down",
-    }
+    status_ok = pg_ok
+    return {"status": "ok" if status_ok else "degraded", "postgresql": "up" if pg_ok else "down"}
 
 
 @app.get("/", tags=["System"])

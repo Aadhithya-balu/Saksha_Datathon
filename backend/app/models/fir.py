@@ -1,57 +1,78 @@
-"""FIR table + link tables (FIR<->Criminal, FIR<->Victim are many-to-many)."""
-import uuid
-from datetime import datetime
+"""ComplainantDetails, ActSectionAssociation, ArrestSurrender, ChargesheetDetails — real Supabase tables."""
+from datetime import date, datetime
+from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Date, DateTime, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
-from app.models.mixins import TimestampMixin, UUIDPKMixin
 
 
-class FIR(Base, UUIDPKMixin, TimestampMixin):
-    __tablename__ = "firs"
+class ComplainantDetails(Base):
+    __tablename__ = "ComplainantDetails"
 
-    fir_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    ComplainantID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    CaseMasterID: Mapped[int] = mapped_column(Integer, nullable=False)
+    ComplainantName: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    AgeYear: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    OccupationID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    ReligionID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    CasteID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    GenderID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
-    crime_case_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crime_cases.id"), nullable=False)
-    crime_case: Mapped["CrimeCase"] = relationship(back_populates="firs")
-
-    investigating_officer_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("officers.id"), nullable=True
+    case: Mapped["CaseMaster"] = relationship(
+        "CaseMaster", primaryjoin="ComplainantDetails.CaseMasterID == CaseMaster.CaseMasterID",
+        foreign_keys="ComplainantDetails.CaseMasterID"
     )
-    investigating_officer: Mapped["Officer | None"] = relationship(back_populates="firs")
-
-    complainant_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    complainant_contact: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    sections: Mapped[str | None] = mapped_column(String(255), nullable=True)  # comma-separated IPC/BNS sections
-    filed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    status: Mapped[str] = mapped_column(String(30), default="registered", index=True)
-    narrative: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    criminal_links: Mapped[list["FIRCriminalLink"]] = relationship(back_populates="fir")
-    victim_links: Mapped[list["FIRVictimLink"]] = relationship(back_populates="fir")
 
 
-class FIRCriminalLink(Base, UUIDPKMixin):
-    """Many-to-many join: which criminals/suspects are named in a given FIR."""
-    __tablename__ = "fir_criminal_links"
+class ActSectionAssociation(Base):
+    __tablename__ = "ActSectionAssociation"
 
-    fir_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("firs.id"), nullable=False)
-    criminal_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("criminals.id"), nullable=False)
-    role: Mapped[str | None] = mapped_column(String(50), nullable=True)  # accused/suspect/absconding
+    CaseMasterID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ActID: Mapped[str] = mapped_column(Text, primary_key=True)
+    SectionID: Mapped[str] = mapped_column(Text, primary_key=True)
+    ActOrderID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    SectionOrderID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
-    fir: Mapped["FIR"] = relationship(back_populates="criminal_links")
-    criminal: Mapped["Criminal"] = relationship(back_populates="fir_links")
+    case: Mapped["CaseMaster"] = relationship(
+        "CaseMaster", primaryjoin="ActSectionAssociation.CaseMasterID == CaseMaster.CaseMasterID",
+        foreign_keys="ActSectionAssociation.CaseMasterID"
+    )
 
 
-class FIRVictimLink(Base, UUIDPKMixin):
-    """Many-to-many join: which victims are named in a given FIR."""
-    __tablename__ = "fir_victim_links"
+class ArrestSurrender(Base):
+    __tablename__ = "ArrestSurrender"
 
-    fir_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("firs.id"), nullable=False)
-    victim_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("victims.id"), nullable=False)
+    ArrestSurrenderID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    CaseMasterID: Mapped[int] = mapped_column(Integer, nullable=False)
+    ArrestSurrenderTypeID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    ArrestSurrenderDate: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    ArrestSurrenderStateId: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    ArrestSurrenderDistrictId: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    PoliceStationID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    IOID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    CourtID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    AccusedMasterID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    IsAccused: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    IsComplainantAccused: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
-    fir: Mapped["FIR"] = relationship(back_populates="victim_links")
-    victim: Mapped["Victim"] = relationship(back_populates="fir_links")
+    case: Mapped["CaseMaster"] = relationship(
+        "CaseMaster", primaryjoin="ArrestSurrender.CaseMasterID == CaseMaster.CaseMasterID",
+        foreign_keys="ArrestSurrender.CaseMasterID"
+    )
+
+
+class ChargesheetDetails(Base):
+    __tablename__ = "ChargesheetDetails"
+
+    CSID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    CaseMasterID: Mapped[int] = mapped_column(Integer, nullable=False)
+    csdate: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    cstype: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    PolicePersonID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    case: Mapped["CaseMaster"] = relationship(
+        "CaseMaster", primaryjoin="ChargesheetDetails.CaseMasterID == CaseMaster.CaseMasterID",
+        foreign_keys="ChargesheetDetails.CaseMasterID"
+    )

@@ -1,19 +1,37 @@
-"""Locations table — districts, police station jurisdictions, and crime-site geo points."""
-from sqlalchemy import Float, String
+"""District & Unit — maps to real Supabase location tables."""
+from typing import Optional
+
+from sqlalchemy import Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
-from app.models.mixins import TimestampMixin, UUIDPKMixin
 
 
-class Location(Base, UUIDPKMixin, TimestampMixin):
-    __tablename__ = "locations"
+class District(Base):
+    __tablename__ = "District"
 
-    address: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    district: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    station: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
-    latitude: Mapped[float] = mapped_column(Float, nullable=False)
-    longitude: Mapped[float] = mapped_column(Float, nullable=False)
-    pincode: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    DistrictID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    DistrictName: Mapped[str] = mapped_column(Text, nullable=False)
+    StateID: Mapped[int] = mapped_column(Integer, nullable=False)
+    Active: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
-    crimes: Mapped[list["CrimeCase"]] = relationship(back_populates="location")
+    state: Mapped["State"] = relationship(
+        "State", primaryjoin="District.StateID == State.StateID", foreign_keys="District.StateID"
+    )
+
+
+class Unit(Base):
+    __tablename__ = "Unit"
+
+    UnitID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    UnitName: Mapped[str] = mapped_column(Text, nullable=False)
+    TypeID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    ParentUnit: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    NationalityID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    StateID: Mapped[int] = mapped_column(Integer, nullable=False)
+    DistrictID: Mapped[int] = mapped_column(Integer, nullable=False)
+    Active: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    district: Mapped["District"] = relationship(
+        "District", primaryjoin="Unit.DistrictID == District.DistrictID", foreign_keys="Unit.DistrictID"
+    )

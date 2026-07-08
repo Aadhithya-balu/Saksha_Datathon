@@ -1,49 +1,35 @@
-"""Location CRUD routes."""
-import uuid
-
+"""Locations routes — queries real District and Unit tables."""
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, require_roles
 from app.database.postgres import get_db
-from app.models.location import Location
+from app.models.location import District, Unit
 from app.models.user import User
-from app.schemas.common import PaginatedResponse
-from app.schemas.location import LocationCreate, LocationOut, LocationUpdate
-from app.services import audit_service
-from app.services.base_service import BaseCRUDService
 
 router = APIRouter(prefix="/locations", tags=["Locations"])
-location_crud = BaseCRUDService(Location)
 
 
-@router.get("", response_model=PaginatedResponse[LocationOut])
-def list_locations(
-    district: str | None = None,
-    station: str | None = None,
+@router.get("/districts")
+def list_districts(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    rows = db.query(District).filter(District.Active == 1).order_by(District.DistrictName).all()
+    return [{"id": r.DistrictID, "name": r.DistrictName, "state_id": r.StateID} for r in rows]
+
+
+@router.get("/units")
+def list_units(
+    district_id: int | None = None,
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return location_crud.list(db, page=page, page_size=page_size, filters={"district": district, "station": station})
-
-
-@router.get("/{location_id}", response_model=LocationOut)
-def get_location(location_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return location_crud.get(db, location_id)
-
-
-@router.post("", response_model=LocationOut, dependencies=[Depends(require_roles(ROLE_ADMIN))])
-def create_location(payload: LocationCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    location = location_crud.create(db, payload.model_dump())
-    audit_service.log_action(db, current_user, "CREATE", "Location", str(location.id))
-    return location
-
-
-@router.put("/{location_id}", response_model=LocationOut, dependencies=[Depends(require_roles(ROLE_ADMIN))])
-def update_location(location_id: uuid.UUID, payload: LocationUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    location = location_crud.update(db, location_id, payload.model_dump(exclude_unset=True))
-    audit_service.log_action(db, current_user, "UPDATE", "Location", str(location_id))
-    return location
+    query = db.query(Unit).filter(Unit.Active == 1)
+    if district_id:
+        query = query.filter(Unit.DistrictID == district_id)
+    total = query.count()
+    results = query.order_by(Unit.UnitName).offset((page - 1) * page_size).limit(page_size).all()
+    return {
+        "total": total, "page": page, "page_size": page_size,
+        "results": [{"id": r.UnitID, "name": r.UnitName, "district_id": r.DistrictID, "type_id": r.TypeID} for r in results],
+    }

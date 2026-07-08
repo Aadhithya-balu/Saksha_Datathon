@@ -1,87 +1,88 @@
-"""Crime search + CRUD routes."""
-import uuid
-from datetime import datetime
-
+"""Crime/Case routes — queries real CaseMaster table."""
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
-from app.models.crime import CrimeCase
+from app.models.crime import CaseMaster
 from app.models.user import User
-from app.schemas.common import PaginatedResponse
-from app.schemas.crime import CrimeCaseCreate, CrimeCaseOut, CrimeCaseUpdate, CrimeTimelineEvent
-from app.services import audit_service
-from app.services.crime_service import crime_crud, get_crime_timeline
 
 router = APIRouter(prefix="/crimes", tags=["Crimes"])
 
 
-@router.get("", response_model=PaginatedResponse[CrimeCaseOut])
+@router.get("")
 def list_crimes(
     q: str | None = None,
-    status: str | None = None,
-    category_id: uuid.UUID | None = None,
-    location_id: uuid.UUID | None = None,
-    date_from: datetime | None = None,
-    date_to: datetime | None = None,
+    status_id: int | None = None,
+    district_id: int | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    sort_by: str = "occurred_at",
-    sort_order: str = "desc",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = db.query(CrimeCase)
-    if status:
-        query = query.filter(CrimeCase.status == status)
-    if category_id:
-        query = query.filter(CrimeCase.category_id == category_id)
-    if location_id:
-        query = query.filter(CrimeCase.location_id == location_id)
-    if date_from:
-        query = query.filter(CrimeCase.occurred_at >= date_from)
-    if date_to:
-        query = query.filter(CrimeCase.occurred_at <= date_to)
+    query = db.query(CaseMaster)
+    if status_id:
+        query = query.filter(CaseMaster.CaseStatusID == status_id)
+    if district_id:
+        query = query.join(CaseMaster.station).filter_by(DistrictID=district_id)
     if q:
-        query = query.filter(CrimeCase.description.ilike(f"%{q}%"))
+        query = query.filter(CaseMaster.BriefFacts.ilike(f"%{q}%"))
 
     total = query.count()
-    from sqlalchemy import asc, desc as sa_desc
-    column = getattr(CrimeCase, sort_by, CrimeCase.occurred_at)
-    query = query.order_by(sa_desc(column) if sort_order == "desc" else asc(column))
+    cases = query.order_by(CaseMaster.CrimeRegisteredDate.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
-    results = query.offset((page - 1) * page_size).limit(page_size).all()
-    return PaginatedResponse(total=total, page=page, page_size=page_size, results=results)
-
-
-@router.get("/{crime_id}", response_model=CrimeCaseOut)
-def get_crime(crime_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return crime_crud.get(db, crime_id)
+    return {
+        "total": total, "page": page, "page_size": page_size,
+        "results": [_case_out(c) for c in cases],
+    }
 
 
-@router.get("/{crime_id}/timeline", response_model=list[CrimeTimelineEvent])
-def crime_timeline(crime_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return get_crime_timeline(db, crime_id)
+@router.get("/{case_id}")
+def get_crime(case_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    case = db.query(CaseMaster).filter(CaseMaster.CaseMasterID == case_id).first()
+    if not case:
+        from app.core.exceptions import NotFoundException
+        raise NotFoundException("Case not found")
+    return _case_out(case)
 
 
-@router.post("", response_model=CrimeCaseOut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR, ROLE_CRIME_ANALYST))])
-def create_crime(payload: CrimeCaseCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    crime = crime_crud.create(db, payload.model_dump())
-    audit_service.log_action(db, current_user, "CREATE", "CrimeCase", str(crime.id))
-    return crime
+@router.get("/{case_id}/accused")
+def case_accused(case_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.models.criminal import Accused
+    rows = db.query(Accused).filter(Accused.CaseMasterID == case_id).all()
+    return [{"id": r.AccusedMasterID, "name": r.AccusedName, "age": r.AgeYear, "person_id": r.PersonID} for r in rows]
 
 
-@router.put("/{crime_id}", response_model=CrimeCaseOut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR, ROLE_CRIME_ANALYST))])
-def update_crime(crime_id: uuid.UUID, payload: CrimeCaseUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    crime = crime_crud.update(db, crime_id, payload.model_dump(exclude_unset=True))
-    audit_service.log_action(db, current_user, "UPDATE", "CrimeCase", str(crime_id))
-    return crime
+@router.get("/{case_id}/victims")
+def case_victims(case_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.models.victim import Victim
+    rows = db.query(Victim).filter(Victim.CaseMasterID == case_id).all()
+    return [{"id": r.VictimMasterID, "name": r.VictimName, "age": r.AgeYear} for r in rows]
 
 
-@router.delete("/{crime_id}", dependencies=[Depends(require_roles(ROLE_ADMIN))])
-def delete_crime(crime_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    crime_crud.delete(db, crime_id)
-    audit_service.log_action(db, current_user, "DELETE", "CrimeCase", str(crime_id))
-    return {"message": "Crime case deleted"}
+@router.get("/{case_id}/sections")
+def case_sections(case_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.models.fir import ActSectionAssociation
+    rows = db.query(ActSectionAssociation).filter(ActSectionAssociation.CaseMasterID == case_id).all()
+    return [{"act": r.ActID, "section": r.SectionID} for r in rows]
+
+
+def _case_out(c: CaseMaster) -> dict:
+    return {
+        "id": c.CaseMasterID,
+        "crime_no": c.CrimeNo,
+        "case_no": c.CaseNo,
+        "registered_date": str(c.CrimeRegisteredDate),
+        "status_id": c.CaseStatusID,
+        "status": c.status.CaseStatusName if c.status else None,
+        "category": c.category.LookupValue if c.category else None,
+        "major_head": c.major_head.CrimeGroupName if c.major_head else None,
+        "minor_head": c.minor_head.CrimeHeadName if c.minor_head else None,
+        "station": c.station.UnitName if c.station else None,
+        "court": c.court.CourtName if c.court else None,
+        "incident_from": str(c.IncidentFromDate) if c.IncidentFromDate else None,
+        "incident_to": str(c.IncidentToDate) if c.IncidentToDate else None,
+        "latitude": c.latitude,
+        "longitude": c.longitude,
+        "brief_facts": c.BriefFacts,
+    }

@@ -1,0 +1,8 @@
+2026-07-08 20:35:24.765 | INFO     | app.main:lifespan:19 - Starting SAKSHA Backend in development mode
+2026-07-08 20:35:27.470 | INFO     | app.main:lifespan:23 - PostgreSQL connection OK
+2026-07-08 20:38:28.167 | INFO     | app.main:lifespan:19 - Starting SAKSHA Backend in development mode
+2026-07-08 20:38:38.609 | INFO     | app.main:lifespan:23 - PostgreSQL connection OK
+2026-07-08 20:45:47.379 | INFO     | app.main:lifespan:31 - Shutdown complete
+2026-07-08 22:00:05.044 | INFO     | app.main:lifespan:19 - Starting SAKSHA Backend in development mode
+2026-07-08 22:00:11.030 | INFO     | app.main:lifespan:23 - PostgreSQL connection OK
+2026-07-08 22:01:38.614 | INFO     | app.main:lifespan:31 - Shutdown complete

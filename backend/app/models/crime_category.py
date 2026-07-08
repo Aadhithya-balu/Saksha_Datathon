@@ -1,16 +1,89 @@
-"""Crime categories — IPC/BNS section-backed taxonomy of crime types."""
-from sqlalchemy import String
+"""Lookup/reference tables — CrimeHead, CrimeSubHead, CaseCategory, CaseStatusMaster, Act, Section, etc."""
+from typing import Optional
+
+from sqlalchemy import Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
-from app.models.mixins import TimestampMixin, UUIDPKMixin
 
 
-class CrimeCategory(Base, UUIDPKMixin, TimestampMixin):
-    __tablename__ = "crime_categories"
+class CrimeHead(Base):
+    __tablename__ = "CrimeHead"
+    CrimeHeadID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    CrimeGroupName: Mapped[str] = mapped_column(Text, nullable=False)
+    Active: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
-    name: Mapped[str] = mapped_column(String(150), unique=True, nullable=False, index=True)
-    section_code: Mapped[str | None] = mapped_column(String(50), nullable=True)  # e.g. IPC 379 / BNS 304
-    severity: Mapped[str | None] = mapped_column(String(20), nullable=True)  # low/medium/high
 
-    crimes: Mapped[list["CrimeCase"]] = relationship(back_populates="category")
+class CrimeSubHead(Base):
+    __tablename__ = "CrimeSubHead"
+    CrimeSubHeadID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    CrimeHeadID: Mapped[int] = mapped_column(Integer, nullable=False)
+    CrimeHeadName: Mapped[str] = mapped_column(Text, nullable=False)
+    SeqID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+
+class CaseCategory(Base):
+    __tablename__ = "CaseCategory"
+    CaseCategoryID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    LookupValue: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class CaseStatusMaster(Base):
+    __tablename__ = "CaseStatusMaster"
+    CaseStatusID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    CaseStatusName: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class GravityOffence(Base):
+    __tablename__ = "GravityOffence"
+    GravityOffenceID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    LookupValue: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class Act(Base):
+    __tablename__ = "Act"
+    ActCode: Mapped[str] = mapped_column(Text, primary_key=True)
+    ActDescription: Mapped[str] = mapped_column(Text, nullable=False)
+    ShortName: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    Active: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+
+class Section(Base):
+    __tablename__ = "Section"
+    ActCode: Mapped[str] = mapped_column(Text, primary_key=True)
+    SectionCode: Mapped[str] = mapped_column(Text, primary_key=True)
+    SectionDescription: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    Active: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+
+class Court(Base):
+    __tablename__ = "Court"
+    CourtID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    CourtName: Mapped[str] = mapped_column(Text, nullable=False)
+    DistrictID: Mapped[int] = mapped_column(Integer, nullable=False)
+    StateID: Mapped[int] = mapped_column(Integer, nullable=False)
+    Active: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+
+class State(Base):
+    __tablename__ = "State"
+    StateID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    StateName: Mapped[str] = mapped_column(Text, nullable=False)
+    NationalityID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    Active: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+
+class Rank(Base):
+    __tablename__ = "Rank"
+    RankID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    RankName: Mapped[str] = mapped_column(Text, nullable=False)
+    Hierarchy: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    Active: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+
+class Designation(Base):
+    __tablename__ = "Designation"
+    DesignationID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    DesignationName: Mapped[str] = mapped_column(Text, nullable=False)
+    Active: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    SortOrder: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)

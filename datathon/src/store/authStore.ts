@@ -35,7 +35,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   loginError: null,
-  sessionTimeRemaining: 1800, // 30 minutes
+  sessionTimeRemaining: 3600, // 60 minutes — matches ACCESS_TOKEN_EXPIRE_MINUTES
   isHydrating: true,
 
   initializeSession: async () => {
@@ -56,15 +56,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         },
         isAuthenticated: true,
         loginError: null,
-        sessionTimeRemaining: 1800,
+        sessionTimeRemaining: 3600,
       });
     } catch {
       clearStoredTokens();
-      set({
-        user: null,
-        isAuthenticated: false,
-        loginError: null,
-      });
     } finally {
       set({ isHydrating: false });
     }
@@ -87,7 +82,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         },
         isAuthenticated: true,
         loginError: null,
-        sessionTimeRemaining: tokens.expires_in || 1800,
+        sessionTimeRemaining: tokens.expires_in || 3600,
       });
       return true;
     } catch (error) {
@@ -103,7 +98,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   loginWithFace: async () => {
-    return get().login('SCRB-7740', '123456');
+    set({ loginError: 'Face authentication is not configured in this deployment.' });
+    return false;
   },
 
   logout: (expired = false) => {
@@ -114,7 +110,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     clearStoredTokens();
-    set({ user: null, isAuthenticated: false, sessionTimeRemaining: 1800, loginError: expired ? 'Session Expired: Please log in again.' : null });
+    set({ user: null, isAuthenticated: false, sessionTimeRemaining: 3600, loginError: expired ? 'Session Expired: Please log in again.' : null });
   },
 
   tickSession: () => {
@@ -128,7 +124,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   resetSessionTimer: () => {
     if (get().isAuthenticated) {
-      set({ sessionTimeRemaining: 1800 });
+      set({ sessionTimeRemaining: 3600 });
     }
   }
 }));

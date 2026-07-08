@@ -1,23 +1,38 @@
-"""Officers table — investigating/station officers, linked 1:1 to a User login."""
-import uuid
+"""Employee — maps to the real Supabase Employee table (police officers/staff)."""
+from datetime import date
+from typing import Optional
 
-from sqlalchemy import ForeignKey, String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Date, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
-from app.models.mixins import TimestampMixin, UUIDPKMixin
 
 
-class Officer(Base, UUIDPKMixin, TimestampMixin):
-    __tablename__ = "officers"
+class Officer(Base):
+    __tablename__ = "Employee"
 
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False)
-    user: Mapped["User"] = relationship(back_populates="officer_profile")
+    EmployeeID: Mapped[int] = mapped_column(Integer, primary_key=True)
+    DistrictID: Mapped[int] = mapped_column(Integer, nullable=False)
+    UnitID: Mapped[int] = mapped_column(Integer, nullable=False)
+    RankID: Mapped[int] = mapped_column(Integer, nullable=False)
+    DesignationID: Mapped[int] = mapped_column(Integer, nullable=False)
+    KGID: Mapped[str] = mapped_column(Text, nullable=False)
+    FirstName: Mapped[str] = mapped_column(Text, nullable=False)
+    EmployeeDOB: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    GenderID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    BloodGroupID: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    PhysicallyChallenged: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    AppointmentDate: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
-    badge_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
-    rank: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    district: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    station: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-
-    firs: Mapped[list["FIR"]] = relationship(back_populates="investigating_officer")
+    district: Mapped["District"] = relationship(
+        "District", primaryjoin="Officer.DistrictID == District.DistrictID", foreign_keys="Officer.DistrictID"
+    )
+    unit: Mapped["Unit"] = relationship(
+        "Unit", primaryjoin="Officer.UnitID == Unit.UnitID", foreign_keys="Officer.UnitID"
+    )
+    rank: Mapped["Rank"] = relationship(
+        "Rank", primaryjoin="Officer.RankID == Rank.RankID", foreign_keys="Officer.RankID"
+    )
+    designation: Mapped["Designation"] = relationship(
+        "Designation", primaryjoin="Officer.DesignationID == Designation.DesignationID", foreign_keys="Officer.DesignationID"
+    )

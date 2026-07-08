@@ -22,3 +22,37 @@
 (Background on this error at: https://sqlalche.me/e/20/e3q8)
 2026-07-07 22:21:14.502 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
 2026-07-07 22:23:13.016 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-08 18:30:59.069 | INFO     | app.main:lifespan:19 - Starting SAKSHA Backend in development mode
+2026-07-08 18:32:02.429 | ERROR    | app.main:lifespan:25 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (35.79.125.133), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (54.64.190.72), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (52.68.3.1), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-08 18:37:34.191 | INFO     | app.main:lifespan:19 - Starting SAKSHA Backend in development mode
+2026-07-08 18:37:38.563 | INFO     | app.main:lifespan:31 - Shutdown complete
+2026-07-08 18:38:29.390 | INFO     | app.main:lifespan:19 - Starting SAKSHA Backend in development mode
+2026-07-08 18:38:37.824 | ERROR    | app.main:lifespan:25 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (35.79.125.133), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (54.64.190.72), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (52.68.3.1), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-08 18:39:32.623 | ERROR    | app.main:lifespan:25 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (35.79.125.133), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (52.68.3.1), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (54.64.190.72), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-08 18:42:46.453 | INFO     | app.main:lifespan:31 - Shutdown complete
+2026-07-08 18:47:53.903 | INFO     | app.main:lifespan:19 - Starting SAKSHA Backend in development mode
+2026-07-08 18:47:54.103 | ERROR    | app.main:lifespan:25 - PostgreSQL connection failed: (psycopg2.ProgrammingError) invalid dsn: invalid connection option "pgbouncer"
+
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-07-08 19:50:36.013 | INFO     | app.main:lifespan:31 - Shutdown complete

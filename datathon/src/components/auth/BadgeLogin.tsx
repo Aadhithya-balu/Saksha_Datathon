@@ -21,12 +21,10 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
   // Auto-detect role as the user types their Badge ID prefix
   useEffect(() => {
     const uc = badgeId.toUpperCase().trim();
-    if (uc.startsWith('SCRB')) {
-      setDetectedRole('SCRB');
-    } else if (uc.startsWith('IO')) {
-      setDetectedRole('IO');
-    } else if (uc.startsWith('SP')) {
-      setDetectedRole('SP');
+    if (uc.startsWith('KG')) {
+      const digits = uc.replace(/\D/g, '');
+      const rankHint = digits.length >= 6 ? 'KSP OFFICER' : null;
+      setDetectedRole(rankHint ? 'SCRB' : null);
     } else {
       setDetectedRole(null);
     }
@@ -214,10 +212,9 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
 
       {/* Help message */}
       <div className="text-center text-[9px] font-mono text-[#6A7A96] leading-relaxed select-none">
-        MOCK CREDENTIALS SPECIFICATION:<br />
-        ROLE SP: SP-0088 / PIN 123456<br />
-        ROLE IO: IO-3921 / PIN 123456<br />
-        ROLE SCRB: SCRB-7740 / PIN 123456
+        LOGIN WITH YOUR KGID &amp; PIN:<br />
+        BADGE ID: Your KGID (e.g. KG735408)<br />
+        PIN: Last 6 digits of your KGID (e.g. 735408)
       </div>
     </div>
   );
