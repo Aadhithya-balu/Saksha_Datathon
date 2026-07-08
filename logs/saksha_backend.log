@@ -1,0 +1,24 @@
+2026-07-07 22:05:17.119 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-07 22:05:17.313 | ERROR    | app.main:lifespan:26 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "saksha_user"
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-07 22:05:21.363 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-07 22:06:40.210 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-07 22:06:40.403 | ERROR    | app.main:lifespan:26 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "saksha_user"
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-07 22:06:44.480 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-07 22:18:29.831 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-07 22:19:31.817 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-07 22:19:31.937 | ERROR    | app.main:lifespan:26 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "saksha_user"
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-07 22:19:36.005 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-07 22:19:53.400 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-07 22:20:28.049 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-07 22:21:10.286 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-07 22:21:10.382 | ERROR    | app.main:lifespan:26 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "saksha_user"
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-07 22:21:14.502 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-07 22:23:13.016 | INFO     | app.main:lifespan:36 - Shutdown complete
