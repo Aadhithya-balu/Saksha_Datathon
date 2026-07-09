@@ -2,12 +2,12 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
 
 
 class UserBase(BaseModel):
     username: str
-    email: EmailStr
+    email: str
     full_name: str
     district: str | None = None
     station: str | None = None

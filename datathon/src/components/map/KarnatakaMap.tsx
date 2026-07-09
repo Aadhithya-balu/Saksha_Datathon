@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useMapStore, DISTRICT_COORDS } from '../../store/mapStore';
+import type { HotspotPoint } from '../../services/api';
 import type { DistrictInfo } from '../../store/mapStore';
 import TimeSlider from './TimeSlider';
 import { Shield, MapPin, Eye, Info, X, TrendingUp, TrendingDown, Users, AlertTriangle } from 'lucide-react';
@@ -79,7 +80,12 @@ const getHotspotsForHour = (hour: number) => {
   });
 };
 
-export const KarnatakaMap: React.FC = () => {
+interface KarnatakaMapProps {
+  hotspots?: HotspotPoint[];
+  districtDataOverride?: Record<string, DistrictInfo>;
+}
+
+export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], districtDataOverride }) => {
   const {
     viewState,
     selectedDistrict,
@@ -107,8 +113,15 @@ export const KarnatakaMap: React.FC = () => {
     }
   }, [selectedDistrict]);
 
-  const activeHotspots = getHotspotsForHour(timeOfDay);
-  const activeDistrictInfo = selectedDistrict ? districtData[selectedDistrict] : null;
+  const activeHotspots = hotspots.map((hotspot) => ({
+    name: hotspot.name,
+    lat: hotspot.lat,
+    lng: hotspot.lng,
+    weight: hotspot.score,
+    type: hotspot.category,
+  }));
+  const resolvedDistrictData = districtDataOverride ?? districtData;
+  const activeDistrictInfo = selectedDistrict ? resolvedDistrictData[selectedDistrict] : null;
 
   // Handle zooming of vector view representation on selection
   useEffect(() => {
@@ -236,7 +249,7 @@ export const KarnatakaMap: React.FC = () => {
             {Object.entries(DISTRICT_BOUNDARIES).map(([name, points]) => {
               const projectedPoints = points.map(([lon, lat]) => `${projectLonX(lon)},${projectLatY(lat)}`).join(' ');
               const isSelected = selectedDistrict === name;
-              const info = districtData[name];
+              const info = resolvedDistrictData[name];
               
               // Color coding based on active layers
               let fill = 'rgba(30, 111, 217, 0.03)';
@@ -436,9 +449,7 @@ export const KarnatakaMap: React.FC = () => {
                     SCRB Analyst Notes
                   </span>
                   <p className="text-[10px] leading-relaxed text-[#A8B4CC]">
-                    {activeDistrictInfo.name === 'Bengaluru Urban' 
-                      ? 'Deploy additional late evening cyber cyber-cell beats. Coordinate forensic units to target card-reading clone operations.'
-                      : 'Patrol units suggest minor thefts under control. Proceed holding current shift deployment.'}
+                    Backend-derived from active FIRs, linked crime cases, risk scores, and dominant category for this district.
                   </p>
                 </div>
 
@@ -483,3 +494,4 @@ export const KarnatakaMap: React.FC = () => {
 
 export default KarnatakaMap;
 export { projectLonX, projectLatY };
+

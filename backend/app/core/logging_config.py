@@ -1,19 +1,24 @@
-"""
-Application-wide logging configuration using loguru.
-Import `logger` anywhere in the app for consistent, structured logs.
-"""
+﻿"""Application-wide logging configuration using loguru."""
 import sys
+from pathlib import Path
 
 from loguru import logger
 
 from app.core.config import settings
 
 
+_configured = False
+
+
 def configure_logging() -> None:
+    global _configured
+    if _configured:
+        return
+
     logger.remove()
     logger.add(
         sys.stdout,
-        level="DEBUG" if settings.DEBUG else "INFO",
+        level="DEBUG" if settings.debug_enabled else "INFO",
         format=(
             "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
             "<level>{level: <8}</level> | "
@@ -22,13 +27,17 @@ def configure_logging() -> None:
         ),
         colorize=True,
     )
+
+    log_path = Path("logs/saksha_backend.log")
+    log_path.parent.mkdir(parents=True, exist_ok=True)
     logger.add(
-        "logs/saksha_backend.log",
+        log_path,
         rotation="10 MB",
         retention="30 days",
         level="INFO",
-        enqueue=True,
+        enqueue=False,
     )
+    _configured = True
 
 
 __all__ = ["logger", "configure_logging"]

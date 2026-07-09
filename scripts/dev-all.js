@@ -1,31 +1,35 @@
 import { spawn } from 'node:child_process';
 import process from 'node:process';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const root = resolve(__dirname, '..');
 
 const isWindows = process.platform === 'win32';
-const pythonCommand = isWindows ? 'py' : 'python';
+const pythonCommand = isWindows ? 'py' : 'python3';
 const pythonArgs = isWindows ? ['-3.12'] : [];
-const frontendCommand = isWindows ? 'cmd.exe' : 'npm';
-const frontendArgs = isWindows
-  ? ['/c', 'npm', 'run', 'dev', '--prefix', 'datathon']
-  : ['run', 'dev', '--prefix', 'datathon'];
 
 const commands = [
   {
     label: 'backend',
     command: pythonCommand,
-    args: [...pythonArgs, '-m', 'uvicorn', 'app.main:app', '--reload', '--app-dir', 'backend'],
+    args: [...pythonArgs, '-m', 'uvicorn', 'app.main:app', '--reload', '--host', '0.0.0.0', '--port', '8000'],
+    cwd: resolve(root, 'backend'),
   },
   {
     label: 'frontend',
-    command: frontendCommand,
-    args: frontendArgs,
+    command: isWindows ? 'cmd.exe' : 'npm',
+    args: isWindows ? ['/c', 'npm', 'run', 'dev'] : ['run', 'dev'],
+    cwd: resolve(root, 'datathon'),
   },
 ];
 
-const children = commands.map(({ label, command, args }) => {
+const children = commands.map(({ label, command, args, cwd }) => {
   const child = spawn(command, args, {
     stdio: 'inherit',
     shell: false,
+    cwd,
   });
 
   child.on('exit', (code, signal) => {
@@ -34,7 +38,7 @@ const children = commands.map(({ label, command, args }) => {
     }
   });
 
-  console.log(`[dev:all] started ${label}`);
+  console.log(`[dev:all] started ${label} in ${cwd}`);
   return child;
 });
 

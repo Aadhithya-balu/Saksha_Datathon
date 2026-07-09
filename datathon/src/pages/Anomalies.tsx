@@ -1,18 +1,59 @@
-import React, { useState } from 'react';
-import { useAlertStore } from '../store/alertStore';
+﻿import React, { useEffect, useState } from 'react';
 import type { CrimeAlert } from '../store/alertStore';
+import { getAnomalies } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { Eye, ShieldAlert, CheckCircle, Search, Filter, Calendar, MapPin, HardDrive } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const Anomalies: React.FC = () => {
-  const { alerts, reviewAlert, escalateAlert } = useAlertStore();
+  const [alerts, setAlerts] = useState<CrimeAlert[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { user } = useAuthStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState<'ALL' | 'HIGH' | 'WATCH'>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<'ALL' | 'PENDING' | 'REVIEWED' | 'ESCALATED'>('ALL');
-  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(alerts[0]?.id || null);
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    void getAnomalies()
+      .then((response) => {
+        if (!isMounted) return;
+        const mappedAlerts = response.anomalies.map<CrimeAlert>((item, index) => ({
+          id: item.case_id,
+          firNumber: item.case_id,
+          district: 'Backend',
+          station: 'Saksha Analytics',
+          crimeType: item.label,
+          offenceDetails: item.reason,
+          anomalyScore: Math.round(item.score * 100),
+          deviationPercent: Math.round(item.score * 100),
+          severity: item.score >= 0.8 ? 'HIGH' : 'WATCH',
+          timestamp: new Date(Date.now() - index * 3600000).toISOString(),
+          status: 'PENDING',
+          featureBreakdown: {
+            'Anomaly Score': Math.round(item.score * 100),
+            'Backend Evidence': Math.max(40, Math.round(item.score * 90)),
+          },
+        }));
+        setAlerts(mappedAlerts);
+        setSelectedAlertId(mappedAlerts[0]?.id ?? null);
+        setLoadError(null);
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        setAlerts([]);
+        setSelectedAlertId(null);
+        setLoadError(error instanceof Error ? error.message : 'Failed to load anomalies');
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const reviewAlert = (id: string, reviewer: string) => setAlerts((current) => current.map((alert) => alert.id === id ? { ...alert, status: 'REVIEWED', assignedOfficer: reviewer } : alert));
+  const escalateAlert = (id: string, reviewer: string) => setAlerts((current) => current.map((alert) => alert.id === id ? { ...alert, status: 'ESCALATED', severity: 'HIGH', assignedOfficer: reviewer } : alert));
 
   // Filter logic
   const filteredAlerts = alerts.filter(alert => {
@@ -32,6 +73,7 @@ export const Anomalies: React.FC = () => {
     <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none">
       
       {/* Search Filter Top HUD */}
+      {loadError && <div className="text-[9px] font-mono text-amber-400 uppercase">{loadError}</div>}
       <div className="bg-secondary-bg/50 border border-border-color p-4 rounded-card flex flex-col md:flex-row items-center gap-4 text-xs font-mono justify-between">
         
         {/* Search input */}
@@ -253,3 +295,5 @@ export const Anomalies: React.FC = () => {
   );
 };
 export default Anomalies;
+
+

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import CriminalGraph3D from '../components/network/CriminalGraph3D';
 import type { GraphNode } from '../components/network/CriminalGraph3D';
 import NodeDetailPanel from '../components/network/NodeDetailPanel';
@@ -22,7 +22,7 @@ export const Network: React.FC = () => {
     void getNetworkPerson(personId)
       .then((response) => {
         if (isMounted) {
-          setGraphData(response);
+          setGraphData({ nodes: response.nodes, links: response.edges });
           setLoadError(null);
         }
       })
@@ -98,7 +98,13 @@ export const Network: React.FC = () => {
       <div className="flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">
         {/* Left Side: ThreeJS Scene (9 cols on lg) */}
         <div className="lg:col-span-8 h-full min-h-[400px]">
-          <CriminalGraph3D onNodeSelect={setSelectedNode} graphData={graphData ?? undefined} />
+          {graphData ? (
+            <CriminalGraph3D onNodeSelect={setSelectedNode} graphData={graphData} />
+          ) : (
+            <div className="h-full flex items-center justify-center bg-[#080E1B] rounded-card border border-border-color text-[10px] font-mono text-[#6A7A96] uppercase tracking-wider">
+              {loadError ? 'Backend network unavailable' : 'Loading backend network telemetry...'}
+            </div>
+          )}
         </div>
 
         {/* Right Side: Dossier Details card (4 cols on lg) */}
@@ -121,3 +127,5 @@ export const Network: React.FC = () => {
   );
 };
 export default Network;
+
+

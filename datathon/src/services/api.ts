@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = '/api/v1';
+﻿const DEFAULT_API_BASE_URL = '/api/v1';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL;
 
@@ -12,6 +12,57 @@ export interface LoginResponse {
   expires_in: number;
 }
 
+
+export interface PaginatedResponse<T> {
+  total: number;
+  page: number;
+  page_size: number;
+  results: T[];
+}
+
+export interface CrimeCaseRecord {
+  id: string;
+  case_number: string;
+  category_id: string;
+  location_id: string;
+  occurred_at: string;
+  reported_at: string;
+  description: string | null;
+  mo_tags: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface CriminalRecord {
+  id: string;
+  full_name: string;
+  aliases: string | null;
+  date_of_birth: string | null;
+  gender: string | null;
+  address: string | null;
+  identifying_marks: string | null;
+  mo_summary: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface OffenderDossier {
+  id: string;
+  name: string;
+  alias: string;
+  age: number;
+  gender: string;
+  classification: 'A-CATEGORY' | 'B-CATEGORY' | 'WATCHLIST';
+  activeDistricts: string[];
+  status: 'ACTIVE' | 'INCARCERATED' | 'UNDER_SURVEILLANCE';
+  riskScore: number;
+  gangAffiliation: string;
+  mugshotDesc: string;
+}
+
+export interface OffenderDossiersResponse {
+  offenders: OffenderDossier[];
+}
 export interface BackendUser {
   id: string;
   username: string;
@@ -265,4 +316,16 @@ export async function chatQuery(message: string, sessionId?: string) {
     method: 'POST',
     body: JSON.stringify({ message, session_id: sessionId ?? null }),
   });
+}
+
+export async function listCrimes(page = 1, pageSize = 100) {
+  return apiRequest<PaginatedResponse<CrimeCaseRecord>>(`/crimes${buildQueryString({ page, page_size: pageSize })}`);
+}
+
+export async function listCriminals(page = 1, pageSize = 100) {
+  return apiRequest<PaginatedResponse<CriminalRecord>>(`/criminals${buildQueryString({ page, page_size: pageSize })}`);
+}
+
+export async function getOffenderDossiers() {
+  return apiRequest<OffenderDossiersResponse>('/ai/offenders/dossiers');
 }

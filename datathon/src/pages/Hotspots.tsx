@@ -1,28 +1,32 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import KarnatakaMap from '../components/map/KarnatakaMap';
 import { Compass, Download, ShieldAlert } from 'lucide-react';
 import { downloadSecureDossier } from '../utils/downloader';
 import { useAuditStore } from '../store/auditStore';
 import { useAuthStore } from '../store/authStore';
-import { getHotspots, type HotspotPoint } from '../services/api';
+import { getDistrictComparison, getHotspots, getRiskScores, type DistrictComparisonPoint, type HotspotPoint, type RiskScoresResponse } from '../services/api';
+import type { DistrictInfo } from '../store/mapStore';
 
 export const Hotspots: React.FC = () => {
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
   const [hotspots, setHotspots] = useState<HotspotPoint[]>([]);
+  const [districtMetrics, setDistrictMetrics] = useState<Record<string, DistrictInfo>>({});
 
   useEffect(() => {
     let isMounted = true;
 
-    void getHotspots()
-      .then((response) => {
+    void Promise.all([getHotspots(), getDistrictComparison(), getRiskScores()])
+      .then(([hotspotResponse, districtResponse, riskResponse]) => {
         if (isMounted) {
-          setHotspots(response.hotspots);
+          setHotspots(hotspotResponse.hotspots);
+          setDistrictMetrics(buildDistrictMetrics(districtResponse, riskResponse, hotspotResponse.hotspots));
         }
       })
       .catch(() => {
         if (isMounted) {
           setHotspots([]);
+          setDistrictMetrics({});
         }
       });
 
@@ -32,11 +36,7 @@ export const Hotspots: React.FC = () => {
   }, []);
 
   const handleExportGeoJSON = () => {
-    const exportHotspots = hotspots.length ? hotspots : [
-      { district_id: 'Bengaluru Urban', name: 'Whitefield', lat: 12.9698, lng: 77.7500, score: 91, category: 'Cyber Fraud', trend: 'up' },
-      { district_id: 'Mysuru', name: 'Mysuru Palace Gate', lat: 12.3021, lng: 76.6531, score: 54, category: 'Pickpocketing', trend: 'stable' },
-      { district_id: 'Kalaburagi', name: 'Kalaburagi Outskirts', lat: 17.3350, lng: 76.8380, score: 72, category: 'Land Disputes', trend: 'up' },
-    ];
+    const exportHotspots = hotspots;
 
     const geojsonData = {
       type: 'FeatureCollection',
@@ -80,7 +80,7 @@ export const Hotspots: React.FC = () => {
             District Hotspot Analysis Map
           </h2>
           <p className="text-[9.5px] font-mono text-[#6A7A96] mt-0.5">
-            GEOSPATIAL INCIDENT GRID OVERLAY — MAPBOX DUST COORDS & DECK.GL SCATTER PLOTS
+            GEOSPATIAL INCIDENT GRID OVERLAY â€” MAPBOX DUST COORDS & DECK.GL SCATTER PLOTS
           </p>
         </div>
 
@@ -96,15 +96,11 @@ export const Hotspots: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 text-[9px] font-mono">
-        {(hotspots.length ? hotspots : [
-          { district_id: 'Bengaluru Urban', name: 'Whitefield', lat: 12.9698, lng: 77.7500, score: 91, category: 'Cyber Fraud', trend: 'up' },
-          { district_id: 'Bengaluru Urban', name: 'KR Puram', lat: 13.0056, lng: 77.6880, score: 78, category: 'Vehicle Theft', trend: 'up' },
-          { district_id: 'Mangaluru', name: 'Harbor Port', lat: 12.9050, lng: 74.8350, score: 72, category: 'Narcotics Transit', trend: 'up' },
-        ]).slice(0, 3).map((hotspot) => (
+        {hotspots.slice(0, 3).map((hotspot) => (
           <div key={`${hotspot.name}-${hotspot.district_id}`} className="bg-[#0a1220]/80 border border-white/5 rounded-lg p-3 flex items-start justify-between gap-3">
             <div>
               <p className="text-white font-semibold uppercase tracking-wide">{hotspot.name}</p>
-              <p className="text-[#6A7A96] mt-1">{hotspot.district_id} • {hotspot.category}</p>
+              <p className="text-[#6A7A96] mt-1">{hotspot.district_id} â€¢ {hotspot.category}</p>
             </div>
             <div className={`font-bold ${hotspot.score >= 80 ? 'text-[#C94A2A]' : hotspot.score >= 70 ? 'text-[#D4820A]' : 'text-[#0E9E78]'}`}>
               {hotspot.score}%
@@ -115,7 +111,7 @@ export const Hotspots: React.FC = () => {
 
       {/* Map viewport */}
       <div className="flex-grow w-full relative">
-        <KarnatakaMap />
+        <KarnatakaMap hotspots={hotspots} districtDataOverride={districtMetrics} />
       </div>
 
     </div>
@@ -123,3 +119,25 @@ export const Hotspots: React.FC = () => {
 };
 
 export default Hotspots;
+
+const buildDistrictMetrics = (
+  districtRows: DistrictComparisonPoint[],
+  riskScores: RiskScoresResponse,
+  hotspots: HotspotPoint[]
+): Record<string, DistrictInfo> => {
+  const risks = new Map(riskScores.grid_predictions.map((item) => [item.district, item.risk_score]));
+  return districtRows.reduce<Record<string, DistrictInfo>>((acc, row) => {
+    const districtHotspots = hotspots.filter((hotspot) => hotspot.district_id === row.district);
+    const topHotspot = districtHotspots[0];
+    const avgRisk = risks.get(row.district) ?? Math.round(districtHotspots.reduce((sum, hotspot) => sum + hotspot.score, 0) / Math.max(districtHotspots.length, 1));
+    acc[row.district] = {
+      name: row.district,
+      crimeCount: row.count,
+      riskScore: Number.isFinite(avgRisk) ? avgRisk : 0,
+      beatRatio: Math.max(35, 100 - (Number.isFinite(avgRisk) ? avgRisk : 0)),
+      topCrimeType: topHotspot?.category ?? 'No active category',
+      weeklyTrend: topHotspot?.trend === 'up' ? 'up' : topHotspot?.trend === 'down' ? 'down' : 'stable',
+    };
+    return acc;
+  }, {});
+};

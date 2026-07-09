@@ -1,4 +1,10 @@
-"""Pytest fixtures: a fresh in-memory SQLite DB per test function, for full isolation."""
+﻿"""Pytest fixtures: a fresh in-memory SQLite DB per test function, for full isolation."""
+import os
+
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("DEBUG", "false")
+os.environ.setdefault("APP_DEBUG", "false")
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import StatCard from '../components/dashboard/StatCard';
 import TrendChart from '../components/charts/TrendChart';
 import DonutChart from '../components/charts/DonutChart';
@@ -77,18 +77,18 @@ export const Overview: React.FC = () => {
     };
   }, []);
 
-  const totalCrimes = summary?.total_crimes ?? 12543;
-  const openCrimes = summary?.open_crimes ?? 4651;
+  const totalCrimes = summary?.total_crimes ?? 0;
+  const openCrimes = summary?.open_crimes ?? 0;
   const solvedCrimes = Math.max(totalCrimes - openCrimes, 0);
-  const crimeHotspotCount = hotspots.length || 32;
-  const highRiskCount = riskScores?.grid_predictions.filter((item) => item.risk_score >= 70).length ?? 17;
-  const missingPersonsCount = Math.max(Math.round(openCrimes * 0.06), 1);
-  const repeatOffenderCount = Math.max((riskScores?.grid_predictions.filter((item) => item.risk_score >= 80).length ?? 3) * 51, 1);
+  const crimeHotspotCount = hotspots.length;
+  const highRiskCount = riskScores?.grid_predictions.filter((item) => item.risk_score >= 70).length ?? 0;
+  const missingPersonsCount = Math.round(openCrimes * 0.06);
+  const repeatOffenderCount = riskScores?.grid_predictions.filter((item) => item.risk_score >= 80).length ?? 0;
 
   const trendChartData = trends.map((point) => ({
     month: new Date(point.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
     totalCrimes: point.count,
-    solvedCrimes: Math.max(Math.round(point.count * ((summary?.resolution_rate_percent ?? 62.88) / 100)), 0),
+    solvedCrimes: Math.max(Math.round(point.count * ((summary?.resolution_rate_percent ?? 0) / 100)), 0),
   }));
 
   const donutChartData = categories.map((point) => ({
@@ -153,9 +153,9 @@ export const Overview: React.FC = () => {
 
       case 'Generate Report':
         downloadSecureDossier('General Dashboard Telemetry', {
-          totalCrimes: '12,543 (▲ 8.6% vs Apr 2024)',
-          solvedCrimes: '7,892 (▲ 12.4% vs Apr 2024)',
-          activeCases: '4,651 (▼ 5.3% vs Apr 2024)',
+          totalCrimes: '12,543 (â–² 8.6% vs Apr 2024)',
+          solvedCrimes: '7,892 (â–² 12.4% vs Apr 2024)',
+          activeCases: '4,651 (â–¼ 5.3% vs Apr 2024)',
           crimeHotspots: '32 Active Nodes',
           highRiskAreas: '17 Monitored Districts',
           missingPersons: '287 Active Cases',
@@ -202,7 +202,7 @@ export const Overview: React.FC = () => {
             </div>
           </div>
           <p className="text-[9px] font-mono text-[#6A7A96] mt-1.5">
-            Crime Intelligence & Analytical Platform • Intelligence Driven Policing for a Safer Karnataka
+            Crime Intelligence & Analytical Platform â€¢ Intelligence Driven Policing for a Safer Karnataka
           </p>
           {error && (
             <p className="mt-2 text-[9px] font-mono text-amber-400 uppercase tracking-wider">
@@ -352,12 +352,7 @@ export const Overview: React.FC = () => {
           </h4>
           
           <div className="flex-1 flex flex-col gap-3.5 justify-center py-2">
-            {(predictiveRows.length ? predictiveRows : [
-              { district: 'Whitefield', risk_score: 91 },
-              { district: 'KR Puram', risk_score: 78 },
-              { district: 'Yeshwanthpur', risk_score: 72 },
-              { district: 'MG Road', risk_score: 65 },
-            ]).slice(0, 4).map((row, index) => {
+            {predictiveRows.slice(0, 4).map((row, index) => {
               const score = Math.max(0, Math.min(100, row.risk_score));
               const scoreLabel = score >= 85 ? 'Very High' : score >= 70 ? 'High' : score >= 50 ? 'Medium' : 'Low';
               const scoreColor = score >= 85 ? 'text-[#C94A2A]' : score >= 70 ? 'text-[#D4820A]' : score >= 50 ? 'text-blue-400' : 'text-[#0E9E78]';
@@ -394,28 +389,22 @@ export const Overview: React.FC = () => {
                 <span className="text-slate-500">{hotspot.score}%</span>
               </div>
             )) : (
-              <div className="p-2.5 bg-red-500/10 border border-red-500/20 rounded flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="w-3.5 h-3.5 text-[#C94A2A] shrink-0" />
-                  <span className="text-white font-semibold">High Theft Risk in Whitefield</span>
-                </div>
-                <span className="text-slate-500">2m</span>
-              </div>
+              <div className="p-2.5 border border-dashed border-slate-800 rounded text-[#6A7A96] uppercase">No backend hotspot alerts</div>
             )}
             <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-3.5 h-3.5 text-[#D4820A] shrink-0" />
-                <span className="text-white font-semibold">{anomalies[0]?.label ?? 'Cyber Fraud Spike Detected'}</span>
+                <span className="text-white font-semibold">{anomalies[0]?.label ?? 'No backend anomaly'}</span>
               </div>
-              <span className="text-slate-500">{Math.round((anomalies[0]?.score ?? 0.87) * 100)}%</span>
+              <span className="text-slate-500">{Math.round((anomalies[0]?.score ?? 0) * 100)}%</span>
             </div>
 
             <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Shield className="w-3.5 h-3.5 text-[#1e6fd9] shrink-0" />
-                <span className="text-white font-semibold">{anomalies[1]?.reason ?? 'Witness at Risk - Case #CR2456'}</span>
+                <span className="text-white font-semibold">{anomalies[1]?.reason ?? 'No secondary anomaly'}</span>
               </div>
-              <span className="text-slate-500">{Math.round((anomalies[1]?.score ?? 0.91) * 100)}%</span>
+              <span className="text-slate-500">{Math.round((anomalies[1]?.score ?? 0) * 100)}%</span>
             </div>
           </div>
         </div>
@@ -490,3 +479,4 @@ const UserCheckIcon = () => (
 );
 
 export default Overview;
+
