@@ -78,7 +78,7 @@ export const Login: React.FC = () => {
             </div>
 
             {/* Letter reveal title (Framer Motion) */}
-            <h1 className="text-xl md:text-3xl font-extrabold text-[#E8EDF5] tracking-tight leading-snug">
+            <h1 className="text-xl md:text-3xl font-extrabold text-[#E8EDF5] tracking-tight leading-snug text-glow-blue">
               {titleWords.map((word, wordIndex) => (
                 <span key={wordIndex} className="inline-block mr-2">
                   {word.split('').map((char, charIndex) => (

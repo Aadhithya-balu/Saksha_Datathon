@@ -103,23 +103,23 @@ export const CorrelationChart: React.FC = () => {
 
           {/* Axis Labels */}
           {xTicks.map((tick, i) => (
-            <text key={i} x={xScale(tick)} y={height - padding.bottom + 16} className="text-[8px] font-mono fill-[#6A7A96] text-center" textAnchor="middle">
+            <text key={i} x={xScale(tick)} y={height - padding.bottom + 16} className="text-[10px] font-mono font-bold fill-[#E8EDF5] text-center" textAnchor="middle">
               {tick}%
             </text>
           ))}
           {yTicks.map((tick, i) => (
-            <text key={i} x={padding.left - 10} y={yScale(tick) + 3} className="text-[8px] font-mono fill-[#6A7A96] text-right" textAnchor="end">
+            <text key={i} x={padding.left - 10} y={yScale(tick) + 3} className="text-[10px] font-mono font-bold fill-[#E8EDF5] text-right" textAnchor="end">
               {tick}
             </text>
           ))}
 
           {/* X Axis Name */}
-          <text x={width / 2} y={height - 10} className="text-[9px] font-mono fill-[#A8B4CC] uppercase text-center" textAnchor="middle">
+          <text x={width / 2} y={height - 10} className="text-[10.5px] font-mono font-bold fill-[#E8EDF5] uppercase text-center" textAnchor="middle">
             Socio-Economic Unemployment Index (%)
           </text>
           
           {/* Y Axis Name */}
-          <text x={15} y={height / 2} className="text-[9px] font-mono fill-[#A8B4CC] uppercase text-center" textAnchor="middle" transform={`rotate(-90 15 ${height / 2})`}>
+          <text x={15} y={height / 2} className="text-[10.5px] font-mono font-bold fill-[#E8EDF5] uppercase text-center" textAnchor="middle" transform={`rotate(-90 15 ${height / 2})`}>
             Crime Risk Score (0-100)
           </text>
 

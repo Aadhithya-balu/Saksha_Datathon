@@ -175,7 +175,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
             key={num}
             type="button"
             onClick={() => handleKeypadPress(num)}
-            className="py-2.5 bg-[#111D35]/30 hover:bg-[#111D35] border border-border-color/20 text-[#A8B4CC] hover:text-white font-mono text-center hover:scale-105 active:scale-95 rounded transition-all cursor-pointer"
+            className="py-2.5 bg-[#111D35]/30 hover:bg-[#1E6FD9]/10 border border-border-color/30 hover:border-[#1E6FD9]/50 text-[#A8B4CC] hover:text-white font-mono text-center hover:scale-105 active:scale-95 rounded transition-all cursor-pointer shadow-sm hover:shadow-[0_0_10px_rgba(30,111,217,0.15)]"
           >
             {num}
           </button>
@@ -183,14 +183,14 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
         <button
           type="button"
           onClick={handleBackspace}
-          className="col-span-1 py-2.5 bg-[#C94A2A]/10 hover:bg-[#C94A2A]/20 border border-[#C94A2A]/20 text-[#C94A2A] font-mono text-center rounded transition-all cursor-pointer text-[10px] uppercase"
+          className="col-span-1 py-2.5 bg-[#C94A2A]/5 hover:bg-[#C94A2A]/20 border border-[#C94A2A]/20 hover:border-[#C94A2A]/50 text-[#C94A2A] hover:text-white font-mono text-center rounded transition-all cursor-pointer text-[10px] uppercase hover:scale-105 active:scale-95 hover:shadow-[0_0_10px_rgba(201,74,42,0.15)]"
         >
           Clear
         </button>
         <button
           type="button"
           onClick={() => handleKeypadPress(0)}
-          className="py-2.5 bg-[#111D35]/30 hover:bg-[#111D35] border border-border-color/20 text-[#A8B4CC] font-mono text-center rounded transition-all cursor-pointer"
+          className="py-2.5 bg-[#111D35]/30 hover:bg-[#1E6FD9]/10 border border-border-color/30 hover:border-[#1E6FD9]/50 text-[#A8B4CC] hover:text-white font-mono text-center hover:scale-105 active:scale-95 rounded transition-all cursor-pointer shadow-sm hover:shadow-[0_0_10px_rgba(30,111,217,0.15)]"
         >
           0
         </button>
@@ -198,7 +198,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
           type="button"
           onClick={handleFormSubmit}
           disabled={isSubmitting}
-          className="col-span-1 py-2.5 bg-[#0e9e78]/10 hover:bg-[#0e9e78]/20 border border-[#0e9e78]/20 text-[#0e9e78] font-mono text-center rounded transition-all cursor-pointer text-[10px] uppercase"
+          className="col-span-1 py-2.5 bg-[#0e9e78]/5 hover:bg-[#0e9e78]/20 border border-[#0e9e78]/20 hover:border-[#0e9e78]/50 text-[#0e9e78] hover:text-white font-mono text-center rounded transition-all cursor-pointer text-[10px] uppercase hover:scale-105 active:scale-95 hover:shadow-[0_0_10px_rgba(14,158,120,0.15)]"
         >
           Enter
         </button>

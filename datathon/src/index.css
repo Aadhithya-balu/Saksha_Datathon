@@ -5,23 +5,23 @@
 @tailwind utilities;
 
 :root {
-  --primary-bg: #0B1426;
-  --secondary-bg: #111D35;
-  --card-bg: rgba(255, 255, 255, 0.04);
-  --border-color: rgba(255, 255, 255, 0.07);
-  --accent-blue: #1E6FD9;
-  --accent-teal: #0E9E78;
-  --accent-amber: #D4820A;
-  --accent-coral: #C94A2A;
-  --accent-purple: #6C43CC;
-  --primary-text: #E8EDF5;
-  --secondary-text: #A8B4CC;
-  --muted-text: #6A7A96;
+  --primary-bg: #060b13;
+  --secondary-bg: #0a1220;
+  --card-bg: rgba(17, 29, 53, 0.45);
+  --border-color: rgba(30, 111, 217, 0.15);
+  --accent-blue: #1e6fd9;
+  --accent-teal: #0e9e78;
+  --accent-amber: #d4820a;
+  --accent-coral: #c94a2a;
+  --accent-purple: #6c43cc;
+  --primary-text: #e8edf5;
+  --secondary-text: #a8b4cc;
+  --muted-text: #6a7a96;
 }
 
 body {
-  background-color: #0B1426;
-  color: #E8EDF5;
+  background-color: #060b13;
+  color: #e8edf5;
   font-family: 'Inter', sans-serif;
   margin: 0;
   overflow-x: hidden;
@@ -188,4 +188,85 @@ body {
 
 .animate-shake {
   animation: shake 0.6s ease-in-out;
+}
+
+/* Glow helpers */
+.shadow-glow-blue {
+  box-shadow: 0 0 15px rgba(30, 111, 217, 0.25);
+}
+.shadow-glow-emerald {
+  box-shadow: 0 0 15px rgba(14, 158, 120, 0.25);
+}
+.shadow-glow-coral {
+  box-shadow: 0 0 15px rgba(201, 74, 42, 0.25);
+}
+
+.border-glow-blue {
+  border-color: rgba(30, 111, 217, 0.45);
+  box-shadow: 0 0 15px rgba(30, 111, 217, 0.2);
+}
+.border-glow-emerald {
+  border-color: rgba(14, 158, 120, 0.45);
+  box-shadow: 0 0 15px rgba(14, 158, 120, 0.2);
+}
+.border-glow-rose {
+  border-color: rgba(201, 74, 42, 0.45);
+  box-shadow: 0 0 15px rgba(201, 74, 42, 0.2);
+}
+
+/* Text glow effects */
+.text-glow-blue {
+  text-shadow: 0 0 8px rgba(30, 111, 217, 0.8), 0 0 20px rgba(30, 111, 217, 0.4);
+}
+.text-glow-teal {
+  text-shadow: 0 0 8px rgba(14, 158, 120, 0.8), 0 0 20px rgba(14, 158, 120, 0.4);
+}
+.text-glow-coral {
+  text-shadow: 0 0 8px rgba(201, 74, 42, 0.8), 0 0 20px rgba(201, 74, 42, 0.4);
+}
+.text-glow-purple {
+  text-shadow: 0 0 8px rgba(108, 67, 204, 0.8), 0 0 20px rgba(108, 67, 204, 0.4);
+}
+
+/* Accessibility & Legibility Enhancements */
+html {
+  font-size: 108%;
+}
+
+.text-slate-500 {
+  color: #9cb0d1 !important;
+}
+.text-slate-600 {
+  color: #a4b7d5 !important;
+}
+
+/* Scale up absolute pixel tailwind utilities */
+.text-\[7\.5px\] { font-size: 10px !important; }
+.text-\[8px\] { font-size: 11px !important; }
+.text-\[8\.5px\] { font-size: 11.5px !important; }
+.text-\[9px\] { font-size: 12.5px !important; }
+.text-\[9\.5px\] { font-size: 13px !important; }
+.text-\[10px\] { font-size: 13.5px !important; }
+.text-\[10\.5px\] { font-size: 14px !important; }
+.text-\[11px\] { font-size: 14px !important; }
+.text-\[11\.5px\] { font-size: 14.5px !important; }
+.text-\[12px\] { font-size: 15px !important; }
+.text-\[13px\] { font-size: 16px !important; }
+.text-\[14px\] { font-size: 17px !important; }
+
+/* Scale up default Tailwind size utilities */
+.text-xs { font-size: 0.85rem !important; }
+.text-sm { font-size: 0.95rem !important; }
+.text-base { font-size: 1.1rem !important; }
+.text-lg { font-size: 1.25rem !important; }
+.text-xl { font-size: 1.45rem !important; }
+.text-2xl { font-size: 1.75rem !important; }
+.text-3xl { font-size: 2.1rem !important; }
+
+/* Fix custom colors in text labels */
+.text-\[\#6A7A96\] {
+  color: #9cb0d1 !important;
+}
+.text-\[\#A8B4CC\] {
+  color: #d1dcff !important;
 }

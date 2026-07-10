@@ -75,7 +75,7 @@ export const StatCard: React.FC<StatCardProps> = ({
 
   return (
     <div 
-      className={`p-3.5 rounded-xl border border-white/5 bg-[#0a1220]/80 backdrop-blur-md flex flex-col items-start gap-3 select-none relative overflow-hidden transition-all duration-300 ease-out cursor-pointer transform hover:-translate-y-1.5 hover:scale-[1.02] hover:rotate-x-2 hover:rotate-y-2 ${colorSchemes[glowColor].glow}`}
+      className={`p-3.5 rounded-xl border border-white/5 bg-[#0a1220]/80 backdrop-blur-md flex flex-col items-start gap-3 select-none relative overflow-hidden transition-all duration-300 ease-out cursor-pointer transform hover:-translate-y-1.5 hover:scale-[1.02] group ${colorSchemes[glowColor].glow}`}
       style={{ transformStyle: 'preserve-3d', perspective: '800px' }}
     >
       
@@ -107,6 +107,19 @@ export const StatCard: React.FC<StatCardProps> = ({
           <span className="text-[#6A7A96]">{subtext}</span>
         </div>
       </div>
+
+      {/* Bottom neon glow strip */}
+      <div 
+        className={`absolute bottom-0 left-0 right-0 h-[2.5px] transition-all duration-300 ${
+          glowColor === 'blue' ? 'bg-[#1E6FD9]/30 group-hover:bg-[#1E6FD9] group-hover:shadow-[0_0_10px_#1E6FD9]' :
+          glowColor === 'teal' ? 'bg-[#0E9E78]/30 group-hover:bg-[#0E9E78] group-hover:shadow-[0_0_10px_#0E9E78]' :
+          glowColor === 'amber' ? 'bg-[#D4820A]/30 group-hover:bg-[#D4820A] group-hover:shadow-[0_0_10px_#D4820A]' :
+          glowColor === 'coral' ? 'bg-[#C94A2A]/30 group-hover:bg-[#C94A2A] group-hover:shadow-[0_0_10px_#C94A2A]' :
+          glowColor === 'purple' ? 'bg-[#6C43CC]/30 group-hover:bg-[#6C43CC] group-hover:shadow-[0_0_10px_#6C43CC]' :
+          glowColor === 'indigo' ? 'bg-indigo-500/30 group-hover:bg-indigo-500 group-hover:shadow-[0_0_10px_#6366f1]' :
+          'bg-emerald-500/30 group-hover:bg-emerald-500 group-hover:shadow-[0_0_10px_#10b981]'
+        }`}
+      />
 
       {/* Background visual diagnostics lines */}
       <div className="absolute inset-0 chart-diagonal-grid opacity-5 pointer-events-none -z-10" />

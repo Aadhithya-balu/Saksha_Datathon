@@ -2,10 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { SessionTimer } from '../auth/SessionTimer';
 import { ShieldCheck, HardDrive, Key, UserCheck, AlertTriangle } from 'lucide-react';
+import { isEmulatorActive } from '../../services/api';
 
 export const Header: React.FC = () => {
   const { user } = useAuthStore();
   const [systime, setSystime] = useState(new Date().toLocaleTimeString());
+  const [emulatorActive, setEmulatorActive] = useState(isEmulatorActive);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      setEmulatorActive((e as CustomEvent).detail);
+    };
+    window.addEventListener('emulator-status-changed', handler);
+    return () => window.removeEventListener('emulator-status-changed', handler);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -24,9 +34,18 @@ export const Header: React.FC = () => {
             KSP CORE SECURE SUITE
           </span>
         </div>
-        <span className="hidden md:inline text-[10px] font-mono text-[#6A7A96] border-l border-border-color pl-4">
-          NODE: BNG-INTEL-08
-        </span>
+        
+        {emulatorActive ? (
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 text-[8.5px] font-mono rounded tracking-widest uppercase font-bold shadow-[0_0_10px_rgba(6,182,212,0.15)] select-none">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            LOCAL HUD EMULATOR
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-[8.5px] font-mono rounded tracking-widest uppercase font-bold shadow-[0_0_10px_rgba(16,185,129,0.15)] select-none">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+            SYSTEM ONLINE
+          </div>
+        )}
       </div>
 
       {/* Center Title or Notification Info */}
