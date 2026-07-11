@@ -53,7 +53,7 @@ export const ActiveAlerts3D: React.FC<ActiveAlerts3DProps> = ({ alertRows = [], 
   useEffect(() => {
     if (!containerRef.current || !unifiedAlerts.length) return;
 
-    const width = containerRef.current.clientWidth;
+    const width = containerRef.current.clientWidth || 360;
     const height = 180;
 
     const scene = new THREE.Scene();
@@ -196,21 +196,24 @@ export const ActiveAlerts3D: React.FC<ActiveAlerts3DProps> = ({ alertRows = [], 
     const clock = new THREE.Clock();
     animate();
 
-    const handleResize = () => {
-      if (!containerRef.current) return;
-      const newWidth = containerRef.current.clientWidth;
-      camera.aspect = newWidth / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(newWidth, height);
-    };
-    window.addEventListener('resize', handleResize);
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const newWidth = entry.contentRect.width || containerRef.current?.clientWidth || 360;
+        camera.aspect = newWidth / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(newWidth, height);
+      }
+    });
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
 
     return () => {
       cancelAnimationFrame(animationFrameId);
       domElement.removeEventListener('mousedown', handleMouseDown);
       domElement.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();

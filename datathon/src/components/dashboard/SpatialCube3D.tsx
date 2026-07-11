@@ -16,7 +16,7 @@ export const SpatialCube3D: React.FC = () => {
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const width = containerRef.current.clientWidth;
+    const width = containerRef.current.clientWidth || 360;
     const height = 230;
 
     // Create scene and camera
@@ -173,14 +173,17 @@ export const SpatialCube3D: React.FC = () => {
     animate();
 
     // Handle container resize
-    const handleResize = () => {
-      if (!containerRef.current) return;
-      const newWidth = containerRef.current.clientWidth;
-      camera.aspect = newWidth / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(newWidth, height);
-    };
-    window.addEventListener('resize', handleResize);
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const newWidth = entry.contentRect.width || containerRef.current?.clientWidth || 360;
+        camera.aspect = newWidth / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(newWidth, height);
+      }
+    });
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
 
     // Cleanup WebGL resources
     return () => {
@@ -188,7 +191,7 @@ export const SpatialCube3D: React.FC = () => {
       domElement.removeEventListener('mousedown', handleMouseDown);
       domElement.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();

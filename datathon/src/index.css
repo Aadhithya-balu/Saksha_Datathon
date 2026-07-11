@@ -19,9 +19,24 @@
   --muted-text: #6a7a96;
 }
 
+[data-theme="light"] {
+  --primary-bg: #f8fafc;
+  --secondary-bg: #ffffff;
+  --card-bg: #ffffff;
+  --border-color: #e2e8f0;
+  --accent-blue: #0f52ba;
+  --accent-teal: #0d7a5b;
+  --accent-amber: #b56e07;
+  --accent-coral: #a7351c;
+  --accent-purple: #5630a6;
+  --primary-text: #0f172a;
+  --secondary-text: #475569;
+  --muted-text: #64748b;
+}
+
 body {
-  background-color: #060b13;
-  color: #e8edf5;
+  background-color: var(--primary-bg);
+  color: var(--primary-text);
   font-family: 'Inter', sans-serif;
   margin: 0;
   overflow-x: hidden;
@@ -32,7 +47,7 @@ body {
   background: radial-gradient(circle at 10% 20%, rgba(30, 111, 217, 0.12) 0%, transparent 40%),
               radial-gradient(circle at 90% 80%, rgba(108, 67, 204, 0.12) 0%, transparent 40%),
               radial-gradient(circle at 50% 50%, rgba(14, 158, 120, 0.04) 0%, transparent 60%),
-              #0B1426;
+              var(--primary-bg);
   background-attachment: fixed;
   background-size: 100% 100%;
 }
@@ -43,7 +58,7 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0B1426;
+  background: var(--primary-bg);
 }
 ::-webkit-scrollbar-thumb {
   background: rgba(30, 111, 217, 0.3);
@@ -263,10 +278,25 @@ html {
 .text-2xl { font-size: 1.75rem !important; }
 .text-3xl { font-size: 2.1rem !important; }
 
-/* Fix custom colors in text labels */
+/* Fix custom colors in text labels to use theme variables */
 .text-\[\#6A7A96\] {
-  color: #9cb0d1 !important;
+  color: var(--muted-text) !important;
 }
 .text-\[\#A8B4CC\] {
-  color: #d1dcff !important;
+  color: var(--secondary-text) !important;
+}
+.text-\[\#E8EDF5\] {
+  color: var(--primary-text) !important;
+}
+
+/* Dynamic shifting background mesh for Login Page */
+@keyframes meshShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.dynamic-login-mesh {
+  background: linear-gradient(135deg, #060b13, #091322, #0d0c1d, #060b13);
+  background-size: 400% 400%;
+  animation: meshShift 18s ease infinite;
 }

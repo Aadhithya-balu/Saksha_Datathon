@@ -12,6 +12,7 @@ import Anomalies from './pages/Anomalies';
 import Offenders from './pages/Offenders';
 import Reports from './pages/Reports';
 import SettingsHelp from './pages/SettingsHelp';
+import AIChat from './pages/AIChat';
 import RoleGuard from './components/layout/RoleGuard';
 
 function App() {
@@ -37,7 +38,8 @@ function App() {
       anomaly: 'Anomaly Alert Feed',
       offenders: 'Offender Dossiers Registry',
       reports: 'Reports & Downloads Center',
-      settings_help: 'Settings & Operator Help'
+      settings_help: 'Settings & Operator Help',
+      ai_chat: 'AI Chat Copilot Workspace'
     };
 
     const label = tabLabels[activeTab] || activeTab;
@@ -109,6 +111,12 @@ function App() {
         return (
           <RoleGuard path="/settings">
             <SettingsHelp />
+          </RoleGuard>
+        );
+      case 'ai_chat':
+        return (
+          <RoleGuard path="/ai-chat">
+            <AIChat />
           </RoleGuard>
         );
       default:

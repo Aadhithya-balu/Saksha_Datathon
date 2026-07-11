@@ -216,34 +216,34 @@ export const Overview: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3 text-[10px] font-mono select-none">
           <div className="flex flex-col">
             <span className="text-[8px] text-[#6A7A96] uppercase">State Jurisdiction</span>
-            <select className="bg-[#111D35] border border-border-color rounded px-2 py-1 text-white text-[9.5px] outline-none">
+            <select className="bg-secondary-bg border border-border-color rounded px-2 py-1 text-primary-text text-[9.5px] outline-none">
               <option>Karnataka</option>
             </select>
           </div>
           
           <div className="flex flex-col">
             <span className="text-[8px] text-[#6A7A96] uppercase">District Focus</span>
-            <select className="bg-[#111D35] border border-border-color rounded px-2 py-1 text-white text-[9.5px] outline-none">
+            <select className="bg-secondary-bg border border-border-color rounded px-2 py-1 text-primary-text text-[9.5px] outline-none">
               <option>Bengaluru Urban</option>
             </select>
           </div>
 
           <div className="flex flex-col">
             <span className="text-[8px] text-[#6A7A96] uppercase">Time Horizon</span>
-            <div className="bg-[#111D35] border border-border-color rounded px-2 py-1 text-white text-[9.5px] flex items-center gap-1.5">
+            <div className="bg-secondary-bg border border-border-color rounded px-2 py-1 text-primary-text text-[9.5px] flex items-center gap-1.5">
               <Calendar className="w-3 h-3 text-[#1e6fd9]" />
               <span>01 May, 2024 - 31 May, 2024</span>
             </div>
           </div>
 
           {user && (
-            <div className="flex items-center gap-2 pl-3 border-l border-white/10 select-none">
+            <div className="flex items-center gap-2 pl-3 border-l border-border-color select-none">
               <div className="text-right">
-                <span className="block text-[10px] font-bold text-[#E8EDF5]">{user.name}</span>
+                <span className="block text-[10px] font-bold text-primary-text">{user.name}</span>
                 <span className="text-[8px] text-[#6A7A96] uppercase">{user.role} Clear</span>
               </div>
               <div className="w-8 h-8 rounded-full bg-[#1E6FD9]/15 border border-[#1E6FD9]/30 flex items-center justify-center text-[#1E6FD9] font-bold font-mono text-[10px]">
-                SP
+                {user.role}
               </div>
             </div>
           )}

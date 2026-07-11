@@ -75,7 +75,7 @@ export const StatCard: React.FC<StatCardProps> = ({
 
   return (
     <div 
-      className={`p-3.5 rounded-xl border border-white/5 bg-[#0a1220]/80 backdrop-blur-md flex flex-col items-start gap-3 select-none relative overflow-hidden transition-all duration-300 ease-out cursor-pointer transform hover:-translate-y-1.5 hover:scale-[1.02] group ${colorSchemes[glowColor].glow}`}
+      className={`p-3.5 rounded-xl border border-border-color bg-secondary-bg/80 backdrop-blur-md flex flex-col items-start gap-3 select-none relative overflow-hidden transition-all duration-300 ease-out cursor-pointer transform hover:-translate-y-1.5 hover:scale-[1.02] group ${colorSchemes[glowColor].glow}`}
       style={{ transformStyle: 'preserve-3d', perspective: '800px' }}
     >
       
@@ -92,7 +92,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         <span className="block text-[9px] font-mono uppercase tracking-wider text-[#6A7A96] font-bold">
           {title}
         </span>
-        <h3 className="text-lg md:text-xl font-mono font-extrabold text-white mt-1 leading-none">
+        <h3 className="text-lg md:text-xl font-mono font-extrabold text-primary-text mt-1 leading-none">
           <KPICounter value={value} prefix={prefix} suffix={suffix} />
         </h3>
         

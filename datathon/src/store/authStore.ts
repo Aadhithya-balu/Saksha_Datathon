@@ -39,35 +39,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isHydrating: true,
 
   initializeSession: async () => {
-    const { accessToken } = getStoredTokens();
-
-    if (!accessToken) {
-      set({ isHydrating: false });
-      return;
-    }
-
-    try {
-      const currentUser = await getMe();
-      set({
-        user: {
-          name: currentUser.full_name,
-          badgeId: currentUser.username,
-          role: mapBackendRoleToUiRole(currentUser.role),
-        },
-        isAuthenticated: true,
-        loginError: null,
-        sessionTimeRemaining: 1800,
-      });
-    } catch {
-      clearStoredTokens();
-      set({
-        user: null,
-        isAuthenticated: false,
-        loginError: null,
-      });
-    } finally {
-      set({ isHydrating: false });
-    }
+    // Clear stored tokens on startup so we always force the login screen first
+    clearStoredTokens();
+    set({
+      user: null,
+      isAuthenticated: false,
+      loginError: null,
+      isHydrating: false
+    });
   },
 
   login: async (badgeId: string, pin: string) => {

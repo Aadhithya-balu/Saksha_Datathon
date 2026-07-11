@@ -399,12 +399,28 @@ const MOCK_CRIMINALS = {
 function getMockResponse(path: string, options: RequestInit = {}): any {
   if (path.startsWith('/auth/login')) {
     let username = 'SCRB-7740';
+    let password = '';
     try {
       if (options.body) {
         const body = JSON.parse(options.body as string);
         username = body.username || 'SCRB-7740';
+        password = body.password || '';
       }
     } catch {}
+    const cleanUser = username.toUpperCase().trim();
+    if (cleanUser === 'SP-0088') {
+      if (password !== '987654') {
+        throw new Error('Access Denied: Invalid Badge ID or PIN.');
+      }
+    } else if (cleanUser === 'IO-3921') {
+      if (password !== '456789') {
+        throw new Error('Access Denied: Invalid Badge ID or PIN.');
+      }
+    } else {
+      if (password !== '123456') {
+        throw new Error('Access Denied: Invalid Badge ID or PIN.');
+      }
+    }
     const badgeId = username.toUpperCase();
     return {
       access_token: 'mock-token-for-' + badgeId,

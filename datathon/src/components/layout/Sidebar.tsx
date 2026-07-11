@@ -179,6 +179,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )
     },
     {
+      id: 'ai_chat',
+      label: 'AI Chat Assistant',
+      path: '/ai-chat',
+      icon: (isActive: boolean) => (
+        <svg className="w-6 h-6 transition-all duration-300 pointer-events-none" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="chatGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={isActive ? "#0E9E78" : "#6A7A96"} />
+              <stop offset="100%" stopColor={isActive ? "#6C43CC" : "#A8B4CC"} />
+            </linearGradient>
+            <filter id="chatGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0E9E78" floodOpacity="0.5" />
+            </filter>
+          </defs>
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" fill="none" stroke="url(#chatGrad)" strokeWidth="1.5" filter={isActive ? "url(#chatGlow)" : undefined} />
+        </svg>
+      )
+    },
+    {
       id: 'settings_help',
       label: 'Settings & Help',
       path: '/settings',
