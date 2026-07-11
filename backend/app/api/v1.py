@@ -8,6 +8,7 @@ from fastapi import APIRouter
 from app.routes import (
     ai_support,
     ai_anomaly,
+    ai_hotspot,
     auth,
     crimes,
     criminals,
@@ -37,4 +38,5 @@ api_router.include_router(locations.router)
 api_router.include_router(reports.router)
 api_router.include_router(ai_support.router)
 api_router.include_router(ai_anomaly.router)
+api_router.include_router(ai_hotspot.router)
 
