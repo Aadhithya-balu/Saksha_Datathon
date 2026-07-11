@@ -137,14 +137,10 @@ def predict(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     _validate_records(records)
 
     df = pd.DataFrame(records)
-    monthly = build_features(df)
+    monthly = build_features(df, include_target=False)
 
-    # 2. Inference mode: TargetCrimeCount is not needed and must not gate results.
-    #    build_features() drops the last month (NaN target) during training;
-    #    for inference we restore those rows by working on the full monthly output
-    #    before the target shift is applied — but since we cannot change
-    #    feature_engineering.py here, we simply ignore TargetCrimeCount if present.
-    #    The feature matrix itself is complete for all rows returned.
+    # 2. Inference mode: keep engineered rows even when there is no next-month
+    #    target available, so single-record payloads can still be scored.
     feature_cols = _load_feature_columns()
     model = _load_model()
     rmse = _load_training_metrics().get("rmse") or 1.0

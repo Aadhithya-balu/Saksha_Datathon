@@ -278,13 +278,17 @@ def create_station_features(df: pd.DataFrame) -> pd.DataFrame:
 # 8. Master Pipeline
 # ---------------------------------------------------------------------------
 
-def build_features(df: pd.DataFrame) -> pd.DataFrame:
+def build_features(df: pd.DataFrame, include_target: bool = True) -> pd.DataFrame:
     """End-to-end feature engineering pipeline.
 
     Parameters
     ----------
     df : pd.DataFrame
         Raw crime records (see REQUIRED_INPUT_COLUMNS).
+    include_target : bool
+        When True (default), include the training target column and drop rows
+        that have no next-month target. When False, keep all engineered rows so
+        inference can score fresh input even with a single record.
 
     Returns
     -------
@@ -294,7 +298,7 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
         Feature columns are in the same order as FEATURE_COLUMNS /
         feature_columns.json.
     """
-    logger.info("build_features: starting pipeline.")
+    logger.info("build_features: starting pipeline (include_target=%s).", include_target)
 
     df = validate_dataframe(df)
     df = create_h3_cells(df)
@@ -308,12 +312,18 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     monthly["TargetCrimeCount"] = (
         monthly.groupby("H3Cell")["CrimeCount"].shift(-1)
     )
-    monthly = monthly.dropna(subset=["TargetCrimeCount"]).reset_index(drop=True)
+    if include_target:
+        monthly = monthly.dropna(subset=["TargetCrimeCount"]).reset_index(drop=True)
+    else:
+        monthly["TargetCrimeCount"] = monthly["TargetCrimeCount"].fillna(0)
 
     monthly.fillna(0, inplace=True)
 
     # Ensure feature column order matches training
-    output_cols = ["H3Cell", "YearMonth", "TargetCrimeCount"] + FEATURE_COLUMNS
+    output_cols = ["H3Cell", "YearMonth"] + FEATURE_COLUMNS
+    if include_target:
+        output_cols = ["H3Cell", "YearMonth", "TargetCrimeCount"] + FEATURE_COLUMNS
+
     missing_feat = [c for c in FEATURE_COLUMNS if c not in monthly.columns]
     if missing_feat:
         raise RuntimeError(f"Feature engineering produced missing columns: {missing_feat}")

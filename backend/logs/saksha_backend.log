@@ -134,3 +134,28 @@ connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (52.68.3.1), 
 2026-07-11 17:20:49.636 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
 2026-07-11 17:20:51.924 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
 2026-07-11 17:37:38.350 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-11 17:58:16.789 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-11 17:58:20.854 | ERROR    | app.main:lifespan:26 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-11 17:58:24.937 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-11 17:58:31.865 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-11 17:58:41.451 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-11 17:58:45.504 | ERROR    | app.main:lifespan:26 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-11 17:58:49.560 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-11 18:12:14.291 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-11 18:15:03.916 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-11 18:15:06.328 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-11 18:15:06.494 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-11 18:37:50.818 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-11 18:38:00.611 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-11 18:38:02.801 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-11 18:38:02.875 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
