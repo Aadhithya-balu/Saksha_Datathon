@@ -87,3 +87,50 @@
 2026-07-10 00:11:25.965 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
 2026-07-10 00:11:26.036 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
 2026-07-10 00:13:00.349 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-11 16:45:02.026 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-11 16:45:06.123 | ERROR    | app.main:lifespan:26 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-11 16:45:10.227 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-11 16:46:35.916 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-11 16:47:39.514 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-11 16:48:03.593 | ERROR    | app.main:lifespan:26 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (35.79.125.133), port 5432 failed: timeout expired
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (54.64.190.72), port 5432 failed: timeout expired
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (52.68.3.1), port 5432 failed: timeout expired
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-11 16:48:03.637 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-11 16:48:55.930 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-11 16:49:06.135 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-11 16:49:30.195 | ERROR    | app.main:lifespan:26 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (35.79.125.133), port 5432 failed: timeout expired
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (54.64.190.72), port 5432 failed: timeout expired
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (52.68.3.1), port 5432 failed: timeout expired
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-11 16:49:30.209 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-11 16:51:09.323 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-11 17:03:08.543 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-11 17:03:32.605 | ERROR    | app.main:lifespan:26 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (54.64.190.72), port 5432 failed: timeout expired
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (35.79.125.133), port 5432 failed: timeout expired
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (52.68.3.1), port 5432 failed: timeout expired
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-11 17:03:32.618 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-11 17:05:14.548 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-11 17:05:27.544 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-11 17:05:30.077 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-11 17:05:30.210 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-11 17:15:23.021 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-11 17:19:41.930 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-11 17:19:41.945 | ERROR    | app.main:lifespan:26 - PostgreSQL connection failed: (psycopg2.OperationalError) could not translate host name "aws-0-ap-northeast-1.pooler.supabase.com" to address: No such host is known. 
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-11 17:19:41.952 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-11 17:19:57.261 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-11 17:20:47.148 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-11 17:20:49.636 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-11 17:20:51.924 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-11 17:37:38.350 | INFO     | app.main:lifespan:36 - Shutdown complete
