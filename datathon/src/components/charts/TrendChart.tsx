@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 interface TrendDataPoint {
@@ -45,15 +45,15 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data = [] }) => {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-              <XAxis dataKey="month" stroke="#6A7A96" tickLine={false} axisLine={false} dy={6} style={{ fill: '#6A7A96' }} />
-              <YAxis stroke="#6A7A96" tickLine={false} axisLine={false} dx={-6} domain={[0, Math.ceil(maxY * 1.2)]} style={{ fill: '#6A7A96' }} />
+              <XAxis dataKey="month" stroke="#A8B4CC" tickLine={false} axisLine={false} dy={6} style={{ fill: '#E8EDF5', fontSize: '11px', fontWeight: 'bold' }} />
+              <YAxis stroke="#A8B4CC" tickLine={false} axisLine={false} dx={-6} domain={[0, Math.ceil(maxY * 1.2)]} style={{ fill: '#E8EDF5', fontSize: '11px', fontWeight: 'bold' }} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'rgba(11, 20, 38, 0.95)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
                   borderRadius: '6px',
                   fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: '9px',
+                  fontSize: '11px',
                   color: '#fff',
                 }}
                 cursor={{ stroke: 'rgba(255,255,255,0.08)' }}

@@ -16,6 +16,7 @@ export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
   '/reports': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'Reports Center' },
   '/settings': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'Settings & Operator Help' },
   '/admin': { allowedRoles: ['SCRB'], moduleName: 'System Security Control Center' },
+  '/ai-chat': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'AI Chat Assistant' },
 };
 
 export const useRBAC = () => {

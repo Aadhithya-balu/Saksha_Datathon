@@ -1,138 +1,177 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import GlobeScene from '../components/three/GlobeScene';
 import ParticleField from '../components/three/ParticleField';
 import FaceIDScanner from '../components/auth/FaceIDScanner';
 import BadgeLogin from '../components/auth/BadgeLogin';
-import { ShieldCheck, Fingerprint, Keyboard, AlertCircle } from 'lucide-react';
+import { ShieldCheck, UserCheck, Shield, Key, Lock, Eye } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 export const Login: React.FC = () => {
   const [loginMethod, setLoginMethod] = useState<'face' | 'badge'>('face');
   const loginWithFace = useAuthStore((state) => state.loginWithFace);
-  const user = useAuthStore((state) => state.user);
 
-  // Title Characters reveal parameters
-  const platformTitle = "KSP Crime Intelligence & Analytical Platform";
-  const titleWords = platformTitle.split(' ');
+  const [terminalLogs, setTerminalLogs] = useState<string[]>([
+    'ESTABLISHING TLS TUNNEL...',
+    'KSP CENTRAL NODE DETECTED...',
+    'SHIELD ENCRYPTOR: ACTIVE',
+  ]);
+
+  useEffect(() => {
+    const logTemplates = [
+      'TUNNEL ROUTING: PORT 5432 SECURED',
+      'LEDGER INTEGRITY CHECK: 100% IN-SYNC',
+      'BROADCASTING NODE SECURE WATERMARK',
+      'COMPLIANCE LEDGER ENGAGED',
+      'IP AUDITING MONITOR ACTIVE',
+      'ALERTS GATEWAY LISTENING...',
+      'INCOMING PACKET CRYPTO VERIFIED',
+    ];
+
+    const interval = setInterval(() => {
+      const randomLine = logTemplates[Math.floor(Math.random() * logTemplates.length)];
+      const timestamp = new Date().toLocaleTimeString();
+      setTerminalLogs((prev) => [...prev.slice(-2), `[${timestamp}] ${randomLine}`]);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleFaceSuccess = async () => {
-    // Face ID match triggers Zustand Login
     await loginWithFace();
   };
 
   const handleBadgeSuccess = () => {
-    // Zustand Login will trigger re-rendering of App layout
+    // Session state triggers layout swap in App.tsx
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center p-4 md:p-8 scanline-overlay overflow-hidden select-none bg-primary-bg">
-      {/* Floating particles connected nodes */}
+    <div className="relative min-h-screen w-full flex items-center justify-center p-4 md:p-8 overflow-hidden select-none dynamic-login-mesh font-sans">
+      {/* Dynamic abstract background particles */}
       <ParticleField />
 
-      {/* Main double-panel console structure */}
-      <div className="w-full max-w-6xl glassmorphism rounded-[14px] border border-border-color grid grid-cols-1 lg:grid-cols-12 overflow-hidden shadow-2xl relative z-20">
+      {/* Main split-panel container */}
+      <div className="w-full max-w-5xl bg-secondary-bg/25 border border-border-color rounded-2xl grid grid-cols-1 lg:grid-cols-12 overflow-hidden shadow-2xl relative z-20 backdrop-blur-lg">
         
-        {/* LEFT COLUMN: 3D Twin Globe representation (5 cols on lg) */}
-        <div className="lg:col-span-5 h-[340px] lg:h-[620px] bg-slate-950/50 border-r border-border-color flex flex-col justify-between p-6 relative">
-          {/* Header text watermark */}
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-red-600 animate-ping" />
-            <span className="text-[10px] font-mono text-red-500 uppercase font-bold tracking-widest">
-              STATE DIRECTORY TELEMETRY : REAL-TIME
-            </span>
+        {/* LEFT COLUMN: Clean Police Branding & abstract security icon (5 cols on lg) */}
+        <div className="lg:col-span-5 bg-slate-950/40 border-r border-border-color flex flex-col justify-between p-8 relative overflow-hidden">
+          
+          {/* Top Logo branding */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#1E6FD9]/15 border border-[#1E6FD9]/30 flex items-center justify-center text-[#1E6FD9] shadow-[0_0_12px_rgba(30,111,217,0.15)]">
+              <Shield className="w-5.5 h-5.5" />
+            </div>
+            <div className="flex flex-col">
+              <h2 className="text-[12px] font-mono font-bold tracking-widest text-[#E8EDF5] uppercase">
+                SAKSHA INTEL
+              </h2>
+              <span className="text-[8.5px] font-mono text-[#0E9E78] uppercase font-bold tracking-widest">
+                KSP Secure Portal
+              </span>
+            </div>
           </div>
 
-          <div className="flex-1 w-full max-h-[460px]">
-            <GlobeScene />
+          {/* Creative HUD Radar Visualization */}
+          <div className="my-8 flex flex-col items-center justify-center relative py-8">
+            <div className="relative w-48 h-48 flex items-center justify-center rounded-full border border-border-color/40 bg-slate-950/20 backdrop-blur-md">
+              {/* Rotating Radar Sweep Beam */}
+              <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,transparent_50%,rgba(30,111,217,0.15)_100%)] animate-[spin_4s_linear_infinite] pointer-events-none" />
+              
+              {/* Outer dashed scanner rings */}
+              <div className="absolute inset-1 rounded-full border border-dashed border-[#1E6FD9]/20 animate-[spin_60s_linear_infinite]" />
+              <div className="absolute inset-4 rounded-full border border-border-color/30" />
+              <div className="absolute inset-8 rounded-full border border-dashed border-[#0E9E78]/25 animate-[spin_20s_linear_infinite]" />
+              
+              {/* Corner brackets overlay */}
+              <div className="absolute top-2 left-2 w-3.5 h-3.5 border-t-2 border-l-2 border-[#1E6FD9]/40" />
+              <div className="absolute top-2 right-2 w-3.5 h-3.5 border-t-2 border-r-2 border-[#1E6FD9]/40" />
+              <div className="absolute bottom-2 left-2 w-3.5 h-3.5 border-b-2 border-l-2 border-[#1E6FD9]/40" />
+              <div className="absolute bottom-2 right-2 w-3.5 h-3.5 border-b-2 border-r-2 border-[#1E6FD9]/40" />
+              
+              {/* Core Lock badge */}
+              <div className="w-16 h-16 rounded-full bg-slate-950 flex items-center justify-center border border-[#1E6FD9]/40 shadow-[0_0_25px_rgba(30,111,217,0.2)] z-10">
+                <Lock className="w-6 h-6 text-[#1E6FD9] animate-pulse" />
+              </div>
+            </div>
+
+            {/* Diagnostic system info readout */}
+            <div className="mt-4 flex flex-col items-center gap-1 font-mono text-[8px] text-slate-500 tracking-wider">
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0E9E78] animate-ping" />
+                SYSTEM CLEARANCE: L10
+              </span>
+              <span>DB INTEGRITY: 100% IN-SYNC</span>
+              <span>TUNNEL ID: KSP-NODE-BNG</span>
+            </div>
+
+            {/* Terminal Live logs */}
+            <div className="w-full mt-4 bg-slate-950/80 border border-slate-900 rounded p-2.5 font-mono text-[7px] text-emerald-500 text-left space-y-1 select-none">
+              <span className="text-slate-600 block uppercase font-bold text-[6.5px] tracking-widest border-b border-slate-900 pb-1 mb-1">
+                Live Audit Logs stream
+              </span>
+              {terminalLogs.map((log, index) => (
+                <div key={index} className="truncate">{log}</div>
+              ))}
+            </div>
           </div>
 
-          {/* District counter stats */}
-          <div className="grid grid-cols-3 gap-2 border-t border-border-color/30 pt-4 text-center font-mono">
+          {/* Product description & compliance */}
+          <div className="space-y-4 text-left font-mono">
+            <div className="h-[1px] bg-slate-900 w-full" />
             <div>
-              <span className="block text-[14px] font-extrabold text-[#E8EDF5]">9</span>
-              <span className="text-[8px] text-[#6A7A96] uppercase">Active Nodes</span>
+              <h3 className="text-[11px] font-bold text-white uppercase tracking-wider">
+                Crime Intelligence Gateway
+              </h3>
+              <p className="text-[9.5px] text-[#A8B4CC] leading-relaxed mt-1.5">
+                Authorized law enforcement access only. Every session transaction is cryptographically signed and logged for compliance auditing.
+              </p>
             </div>
-            <div>
-              <span className="block text-[14px] font-extrabold text-[#0E9E78]">97.8%</span>
-              <span className="text-[8px] text-[#6A7A96] uppercase">Map Sync</span>
-            </div>
-            <div>
-              <span className="block text-[14px] font-extrabold text-[#1E6FD9]">4.0s</span>
-              <span className="text-[8px] text-[#6A7A96] uppercase">Interval</span>
+            <div className="flex items-center gap-1.5 text-[8.5px] text-[#0E9E78] font-bold">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>SECURE TUNNEL ENCRYPTED</span>
             </div>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Biometrics Verification and Forms (7 cols on lg) */}
-        <div className="lg:col-span-7 p-6 md:p-12 flex flex-col justify-center min-h-[500px] bg-[#111D35]/35 relative">
+        {/* RIGHT COLUMN: Authentication Card with tabs (7 cols on lg) */}
+        <div className="lg:col-span-7 p-8 md:p-12 flex flex-col justify-center min-h-[520px] bg-slate-950/20">
           
-          {/* Top Karnataka State insignia / Title Header */}
-          <div className="mb-8 text-center lg:text-left">
-            <div className="flex items-center justify-center lg:justify-start gap-2.5 mb-3">
-              {/* Karnataka Police Emblem replica or Shield icon */}
-              <div className="p-1 px-2.5 border border-[#1E6FD9]/35 bg-[#1E6FD9]/15 text-[#1E6FD9] rounded-btn flex items-center gap-1.5 font-mono text-[9px] uppercase font-bold tracking-widest shadow-glow-blue select-none">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                KARNATAKA STATE POLICE
-              </div>
-            </div>
-
-            {/* Letter reveal title (Framer Motion) */}
-            <h1 className="text-xl md:text-3xl font-extrabold text-[#E8EDF5] tracking-tight leading-snug">
-              {titleWords.map((word, wordIndex) => (
-                <span key={wordIndex} className="inline-block mr-2">
-                  {word.split('').map((char, charIndex) => (
-                    <motion.span
-                      key={charIndex}
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{
-                        type: 'spring',
-                        damping: 12,
-                        stiffness: 100,
-                        delay: (wordIndex * 3 + charIndex) * 0.035,
-                      }}
-                      className="inline-block hover:text-[#1E6FD9] transition-colors"
-                    >
-                      {char}
-                    </motion.span>
-                  ))}
-                </span>
-              ))}
+          {/* Header */}
+          <div className="mb-6 text-center lg:text-left">
+            <h1 className="text-xl md:text-2xl font-extrabold text-white tracking-tight leading-tight uppercase font-sans">
+              Gateway Access Verification
             </h1>
-            
-            <p className="text-[11px] font-mono text-[#6A7A96] mt-2 uppercase tracking-wide">
-              DATATHON 2026 CHALLENGE 2 — SYSTEM SECURITY COMPLIANCE GATEWAY
+            <p className="text-[9.5px] font-mono text-slate-500 mt-1 uppercase tracking-widest">
+              Karnataka State Police Intelligence Node
             </p>
           </div>
 
-          {/* Login tab buttons selector */}
-          <div className="flex w-full max-w-sm mb-6 bg-slate-950/60 p-1.5 border border-border-color rounded-btn mx-auto lg:mx-0">
+          {/* Clean, Microsoft Fluent styled tabs */}
+          <div className="flex w-full max-w-sm mb-6 bg-slate-950/50 p-1 border border-border-color rounded-btn mx-auto lg:mx-0">
             <button
               onClick={() => { setLoginMethod('face'); }}
-              className={`flex-1 py-2 text-[10px] font-mono uppercase tracking-wider flex items-center justify-center gap-2 rounded transition-all cursor-pointer ${
+              className={`flex-1 py-1.5 text-[9.5px] font-mono uppercase tracking-wider flex items-center justify-center gap-2 rounded transition-all cursor-pointer ${
                 loginMethod === 'face'
-                  ? 'bg-[#1E6FD9] text-white shadow-glow-blue font-semiboldScale'
+                  ? 'bg-[#1E6FD9] text-white shadow-glow-blue font-bold'
                   : 'text-[#A8B4CC] hover:text-white'
               }`}
             >
-              <Fingerprint className="w-3.5 h-3.5" />
-              Biometric Face ID
+              <Eye className="w-3.5 h-3.5" />
+              Face ID Verify
             </button>
             <button
               onClick={() => { setLoginMethod('badge'); }}
-              className={`flex-1 py-2 text-[10px] font-mono uppercase tracking-wider flex items-center justify-center gap-2 rounded transition-all cursor-pointer ${
+              className={`flex-1 py-1.5 text-[9.5px] font-mono uppercase tracking-wider flex items-center justify-center gap-2 rounded transition-all cursor-pointer ${
                 loginMethod === 'badge'
-                  ? 'bg-[#1E6FD9] text-white shadow-glow-blue font-semiboldScale'
+                  ? 'bg-[#1E6FD9] text-white shadow-glow-blue font-bold'
                   : 'text-[#A8B4CC] hover:text-white'
               }`}
             >
-              <Keyboard className="w-3.5 h-3.5" />
+              <Key className="w-3.5 h-3.5" />
               Badge Credentials
             </button>
           </div>
 
-          {/* Login Form Components Wrapper */}
+          {/* Form wrapper */}
           <div className="w-full flex justify-center lg:justify-start">
             <div className="w-full max-w-sm">
               {loginMethod === 'face' ? (
@@ -146,13 +185,13 @@ export const Login: React.FC = () => {
         </div>
       </div>
 
-      {/* Decorative footer details */}
-      <div className="absolute bottom-4 left-4 z-20 text-[9px] font-mono text-[#6A7A96] select-none text-left leading-relaxed">
+      {/* Footer telemetry details */}
+      <div className="absolute bottom-4 left-4 z-20 text-[8px] font-mono text-[#6A7A96] select-none text-left leading-relaxed">
         SECURE GATEWAY ENCRYPTION: 512-BLAKE3<br />
         STATE COMPLIANCE DEPT © 2026
       </div>
       
-      <div className="absolute bottom-4 right-4 z-20 text-[9px] font-mono text-[#6A7A96] select-none text-right">
+      <div className="absolute bottom-4 right-4 z-20 text-[8px] font-mono text-[#6A7A96] select-none text-right">
         AUTHORIZED LAW ENFORCEMENT SERVICES ONLY<br />
         UNAUTHORIZED ACCESS SENSING MONITOR ENGAGED
       </div>

@@ -54,26 +54,26 @@ export const WeatherCorrelationChart: React.FC = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
               <XAxis 
                 dataKey="factor" 
-                stroke="#6A7A96" 
+                stroke="#A8B4CC" 
                 tickLine={false} 
                 axisLine={false} 
-                style={{ fill: '#6A7A96' }}
+                style={{ fill: '#E8EDF5', fontSize: '11px', fontWeight: 'bold' }}
               />
               <YAxis 
-                stroke="#6A7A96" 
+                stroke="#A8B4CC" 
                 tickLine={false} 
                 axisLine={false} 
                 domain={[0, 100]}
                 unit="%"
-                style={{ fill: '#6A7A96' }}
+                style={{ fill: '#E8EDF5', fontSize: '11px', fontWeight: 'bold' }}
               />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'rgba(11, 20, 38, 0.95)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
                   borderRadius: '6px',
                   fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: '9px',
+                  fontSize: '11px',
                 }}
               />
               <Bar dataKey="probability" radius={[4, 4, 0, 0]}>

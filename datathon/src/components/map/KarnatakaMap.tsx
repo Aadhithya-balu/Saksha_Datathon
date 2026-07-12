@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMapStore, DISTRICT_COORDS } from '../../store/mapStore';
 import type { HotspotPoint } from '../../services/api';
 import type { DistrictInfo } from '../../store/mapStore';
@@ -103,6 +103,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
   const [panelOpen, setPanelOpen] = useState(false);
   const [mapZoom, setMapZoom] = useState(1);
   const [mapOffset, setMapOffset] = useState({ x: 0, y: 0 });
+  const [selectedHotspot, setSelectedHotspot] = useState<any | null>(null);
 
   // Open details panel when a district is selected
   useEffect(() => {
@@ -110,6 +111,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
       setPanelOpen(true);
     } else {
       setPanelOpen(false);
+      setSelectedHotspot(null);
     }
   }, [selectedDistrict]);
 
@@ -119,6 +121,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
     lng: hotspot.lng,
     weight: hotspot.score,
     type: hotspot.category,
+    district_id: hotspot.district_id,
   }));
   const resolvedDistrictData = districtDataOverride ?? districtData;
   const activeDistrictInfo = selectedDistrict ? resolvedDistrictData[selectedDistrict] : null;
@@ -331,9 +334,20 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
                 
                 // Color mapping
                 const color = isHigh ? '#C94A2A' : '#D4820A';
+                const isSelected = selectedHotspot && selectedHotspot.name === hs.name;
 
                 return (
-                  <g key={index} className="pointer-events-none">
+                  <g 
+                    key={index} 
+                    className="cursor-pointer pointer-events-auto" 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (hs.district_id) {
+                        setSelectedDistrict(hs.district_id);
+                      }
+                      setSelectedHotspot(hs); 
+                    }}
+                  >
                     {/* Concentric pulsing rings using basic anim emulation */}
                     <circle cx={x} cy={y} r={14} fill={color} opacity={0.12} className="animate-ping" style={{ transformOrigin: `${x}px ${y}px`, animationDuration: '2s' }} />
                     <circle cx={x} cy={y} r={28} stroke={color} strokeWidth="0.5" fill="none" opacity={0.06} className="animate-ping" style={{ transformOrigin: `${x}px ${y}px`, animationDuration: '3s' }} />
@@ -341,6 +355,29 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
                     {/* Center Core dot */}
                     <circle cx={x} cy={y} r={isHigh ? 6 : 4.5} fill={color} />
                     <circle cx={x} cy={y} r={isHigh ? 8 : 6.5} stroke={color} strokeWidth="1" fill="none" opacity={0.5} />
+
+                    {/* Popover Tooltip inside foreignObject so it scales with map view zoom & pan */}
+                    {isSelected && (
+                      <foreignObject x={x - 90} y={y - 120} width="180" height="110" className="z-50 pointer-events-auto">
+                        <div className="bg-[#111D35] border border-[#1E6FD9] p-2.5 rounded-card shadow-glow-blue text-left flex flex-col gap-1.5 font-mono text-[9px] leading-tight text-white relative">
+                          <div className="flex justify-between items-center border-b border-white/5 pb-1">
+                            <span className="font-bold text-[#0E9E78] uppercase text-[7.5px]">Hotspot Details</span>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setSelectedHotspot(null); }}
+                              className="text-slate-500 hover:text-white cursor-pointer font-bold text-xs"
+                            >
+                              ×
+                            </button>
+                          </div>
+                          <div>
+                            <p className="font-bold text-white uppercase truncate">{hs.name}</p>
+                            <p className="text-[#6A7A96] mt-0.5 truncate">Sector: {hs.district_id}</p>
+                            <p className="text-[#A8B4CC] mt-0.5 truncate">Category: {hs.type}</p>
+                            <p className="text-red-400 font-bold mt-0.5">Threat Level: {hs.weight}%</p>
+                          </div>
+                        </div>
+                      </foreignObject>
+                    )}
                   </g>
                 );
               })}

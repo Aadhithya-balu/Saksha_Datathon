@@ -1,9 +1,10 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import StatCard from '../components/dashboard/StatCard';
 import TrendChart from '../components/charts/TrendChart';
 import DonutChart from '../components/charts/DonutChart';
 import SpatiotemporalHeatmap from '../components/dashboard/SpatiotemporalHeatmap';
 import SpatialCube3D from '../components/dashboard/SpatialCube3D';
+import { ActiveAlerts3D } from '../components/dashboard/ActiveAlerts3D';
 import { useAuthStore } from '../store/authStore';
 import { useAuditStore } from '../store/auditStore';
 import { downloadSecureDossier } from '../utils/downloader';
@@ -193,10 +194,10 @@ export const Overview: React.FC = () => {
               KSP
             </div>
             <div>
-              <h2 className="text-[13px] font-mono font-extrabold text-white uppercase tracking-wider leading-none">
+              <h2 className="text-[13px] font-mono font-extrabold text-white uppercase tracking-wider leading-none text-glow-blue">
                 KARNATAKA STATE POLICE
               </h2>
-              <span className="text-[9.5px] font-mono text-[#0E9E78] font-bold uppercase tracking-widest block mt-0.5">
+              <span className="text-[9.5px] font-mono text-[#0E9E78] font-bold uppercase tracking-widest block mt-0.5 text-glow-teal">
                 SCRB INTELLIGENCE DIVISION
               </span>
             </div>
@@ -215,34 +216,34 @@ export const Overview: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3 text-[10px] font-mono select-none">
           <div className="flex flex-col">
             <span className="text-[8px] text-[#6A7A96] uppercase">State Jurisdiction</span>
-            <select className="bg-[#111D35] border border-border-color rounded px-2 py-1 text-white text-[9.5px] outline-none">
+            <select className="bg-secondary-bg border border-border-color rounded px-2 py-1 text-primary-text text-[9.5px] outline-none">
               <option>Karnataka</option>
             </select>
           </div>
           
           <div className="flex flex-col">
             <span className="text-[8px] text-[#6A7A96] uppercase">District Focus</span>
-            <select className="bg-[#111D35] border border-border-color rounded px-2 py-1 text-white text-[9.5px] outline-none">
+            <select className="bg-secondary-bg border border-border-color rounded px-2 py-1 text-primary-text text-[9.5px] outline-none">
               <option>Bengaluru Urban</option>
             </select>
           </div>
 
           <div className="flex flex-col">
             <span className="text-[8px] text-[#6A7A96] uppercase">Time Horizon</span>
-            <div className="bg-[#111D35] border border-border-color rounded px-2 py-1 text-white text-[9.5px] flex items-center gap-1.5">
+            <div className="bg-secondary-bg border border-border-color rounded px-2 py-1 text-primary-text text-[9.5px] flex items-center gap-1.5">
               <Calendar className="w-3 h-3 text-[#1e6fd9]" />
               <span>01 May, 2024 - 31 May, 2024</span>
             </div>
           </div>
 
           {user && (
-            <div className="flex items-center gap-2 pl-3 border-l border-white/10 select-none">
+            <div className="flex items-center gap-2 pl-3 border-l border-border-color select-none">
               <div className="text-right">
-                <span className="block text-[10px] font-bold text-[#E8EDF5]">{user.name}</span>
+                <span className="block text-[10px] font-bold text-primary-text">{user.name}</span>
                 <span className="text-[8px] text-[#6A7A96] uppercase">{user.role} Clear</span>
               </div>
               <div className="w-8 h-8 rounded-full bg-[#1E6FD9]/15 border border-[#1E6FD9]/30 flex items-center justify-center text-[#1E6FD9] font-bold font-mono text-[10px]">
-                SP
+                {user.role}
               </div>
             </div>
           )}
@@ -375,38 +376,11 @@ export const Overview: React.FC = () => {
 
         {/* Active Alerts - 4-cols */}
         <div className="lg:col-span-4 min-h-[260px] bg-[#0a1220]/80 border border-white/5 p-4 rounded-lg flex flex-col justify-between font-mono text-[9.5px]">
-          <h4 className="text-[11.5px] font-bold text-white uppercase tracking-wider mb-2">
+          <h4 className="text-[11.5px] font-bold text-white uppercase tracking-wider mb-2 text-glow-coral">
             Active Alerts & Notifications
           </h4>
 
-          <div className="flex-grow flex flex-col gap-2.5 justify-center py-1">
-            {alertRows.length ? alertRows.map((hotspot) => (
-              <div key={`${hotspot.name}-${hotspot.district_id}`} className="p-2.5 bg-red-500/10 border border-red-500/20 rounded flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="w-3.5 h-3.5 text-[#C94A2A] shrink-0" />
-                  <span className="text-white font-semibold">{hotspot.name} - {hotspot.category}</span>
-                </div>
-                <span className="text-slate-500">{hotspot.score}%</span>
-              </div>
-            )) : (
-              <div className="p-2.5 border border-dashed border-slate-800 rounded text-[#6A7A96] uppercase">No backend hotspot alerts</div>
-            )}
-            <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-3.5 h-3.5 text-[#D4820A] shrink-0" />
-                <span className="text-white font-semibold">{anomalies[0]?.label ?? 'No backend anomaly'}</span>
-              </div>
-              <span className="text-slate-500">{Math.round((anomalies[0]?.score ?? 0) * 100)}%</span>
-            </div>
-
-            <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Shield className="w-3.5 h-3.5 text-[#1e6fd9] shrink-0" />
-                <span className="text-white font-semibold">{anomalies[1]?.reason ?? 'No secondary anomaly'}</span>
-              </div>
-              <span className="text-slate-500">{Math.round((anomalies[1]?.score ?? 0) * 100)}%</span>
-            </div>
-          </div>
+          <ActiveAlerts3D alertRows={alertRows} anomalies={anomalies} />
         </div>
 
         {/* Quick Actions Console - 4-cols */}
