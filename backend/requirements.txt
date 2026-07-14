@@ -20,3 +20,4 @@ joblib
 pandas
 h3
 scikit-learn
+lightgbm

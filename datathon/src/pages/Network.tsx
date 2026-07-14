@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import CriminalGraph3D from '../components/network/CriminalGraph3D';
 import type { GraphNode } from '../components/network/CriminalGraph3D';
 import NodeDetailPanel from '../components/network/NodeDetailPanel';
@@ -41,13 +41,14 @@ export const Network: React.FC = () => {
   const handleExportMatrix = () => {
     const matrixData = {
       relationType: 'Criminal Link Association Matrix',
-      totalNodes: 10,
-      activeSuspects: ['Ramu Swamy', 'Vikram Yadav', 'Sayed Ibrahim'],
-      relationEdges: [
-        { from: 'Ramu Swamy', to: 'Bengaluru Commercial Hub', relation: 'Last active cell location' },
-        { from: 'Vikram Yadav', to: 'Bengaluru Commercial Hub', relation: 'Launders app funds' },
-        { from: 'Ramu Swamy', to: 'Karthik Gowda', relation: 'Known accomplice association' }
-      ]
+      totalNodes: graphData?.nodes.length ?? 0,
+      totalEdges: graphData?.links.length ?? 0,
+      activeSuspects: graphData?.nodes.filter((node) => node.category === 'suspect').map((node) => node.name) ?? [],
+      relationEdges: graphData?.links.map((link) => ({
+        from: link.source,
+        to: link.target,
+        relation: link.relationship,
+      })) ?? []
     };
 
     downloadSecureDossier(
@@ -61,11 +62,10 @@ export const Network: React.FC = () => {
         user.name,
         user.badgeId,
         'EXPORT',
-        'Exported suspect relationship linkage association matrix (JSON)'
+        'Exported backend suspect relationship linkage association matrix (JSON)'
       );
     }
   };
-
   return (
     <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none bg-[#060b13]">
       

@@ -1,10 +1,14 @@
-﻿"""Centralized application configuration."""
+"""Centralized application configuration."""
 from functools import lru_cache
+from pathlib import Path
 from typing import List
 from urllib.parse import quote_plus
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = BACKEND_DIR.parent
 
 
 class Settings(BaseSettings):
@@ -44,7 +48,7 @@ class Settings(BaseSettings):
     # --- CORS ---
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=(ROOT_DIR / ".env", BACKEND_DIR / ".env"), env_file_encoding="utf-8", extra="ignore")
 
     @field_validator("DEBUG", "APP_DEBUG", mode="before")
     @classmethod

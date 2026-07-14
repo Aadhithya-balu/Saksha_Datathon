@@ -1,142 +1,84 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useAuditStore } from '../store/auditStore';
 import { downloadSecureDossier } from '../utils/downloader';
-import { Search, Download, FileText, CheckCircle, Shield, AlertTriangle } from 'lucide-react';
+import { listReports, type ReportRecord } from '../services/api';
+import { Search, Download, FileText, Shield } from 'lucide-react';
 
-interface ReportItem {
-  id: string;
-  name: string;
-  category: 'TELEMETRY' | 'GEOSPATIAL' | 'NETWORK' | 'OFFENDER' | 'ANOMALY';
-  securityStamp: 'CONFIDENTIAL' | 'CLASSIFIED' | 'SECRET' | 'RESTRICTED';
-  fileSize: string;
-  generatedDate: string;
-  payload: any;
-}
-
-const REPORT_DATABASE: ReportItem[] = [
-  {
-    id: 'rep-101',
-    name: 'KSP General Dashboard Telemetry Briefing',
-    category: 'TELEMETRY',
-    securityStamp: 'CONFIDENTIAL',
-    fileSize: '4.8 KB',
-    generatedDate: '2026-07-06 18:30:12',
-    payload: {
-      reportType: 'General Dashboard Telemetry Summary',
-      totalCrimesTracked: '12,543',
-      solvedCrimesTracked: '7,892',
-      solvedRatio: '62.9%',
-      activeHotspots: '32 Active Beat Nodes',
-      highRiskDistricts: '17 Monitored Sectors',
-      repeatOffendersSurveillance: '153 Registered'
-    }
-  },
-  {
-    id: 'rep-102',
-    name: 'Statewide Incident Hotspots GeoJSON Overlay',
-    category: 'GEOSPATIAL',
-    securityStamp: 'CLASSIFIED',
-    fileSize: '12.4 KB',
-    generatedDate: '2026-07-06 17:15:44',
-    payload: {
-      type: 'FeatureCollection',
-      dataset: 'Statewide coordinate nodes',
-      features: [
-        { type: 'Feature', geometry: { type: 'Point', coordinates: [77.5946, 12.9716] }, properties: { name: 'Bengaluru Urban', threat: '91%' } },
-        { type: 'Feature', geometry: { type: 'Point', coordinates: [76.6394, 12.2958] }, properties: { name: 'Mysuru', threat: '54%' } },
-        { type: 'Feature', geometry: { type: 'Point', coordinates: [76.8343, 17.3297] }, properties: { name: 'Kalaburagi', threat: '72%' } }
-      ]
-    }
-  },
-  {
-    id: 'rep-103',
-    name: 'Suspect Relationship & Association Matrix',
-    category: 'NETWORK',
-    securityStamp: 'SECRET',
-    fileSize: '8.2 KB',
-    generatedDate: '2026-07-06 16:45:00',
-    payload: {
-      subject: 'Interstate Gang Alliance network mapping',
-      nodesCount: 10,
-      centerFocusNode: 'Gang Leader Ramu Swamy',
-      links: [
-        { accomplice: 'Vikram Yadav', channel: 'Virtual ledger money transfer' },
-        { accomplice: 'Sayed Ibrahim', channel: 'Port corridor logistics' },
-        { accomplice: 'Karthik Gowda', channel: 'Safehouse supply line' }
-      ]
-    }
-  },
-  {
-    id: 'rep-104',
-    name: 'Biometric Offender Profile - Ramu Swamy',
-    category: 'OFFENDER',
-    securityStamp: 'CONFIDENTIAL',
-    fileSize: '3.1 KB',
-    generatedDate: '2026-07-06 15:20:10',
-    payload: {
-      offenderId: 'off-501',
-      name: 'Ramu Swamy',
-      alias: 'Kodaikanal Ramu',
-      age: 44,
-      status: 'ACTIVE',
-      classification: 'A-CATEGORY',
-      districtsActive: ['Mysuru', 'Bengaluru Urban', 'Hassan'],
-      gangSyndicate: 'Interstate Decoit Gang B'
-    }
-  },
-  {
-    id: 'rep-105',
-    name: 'Cyber Fraud Financial Laundering Anomalies Log',
-    category: 'ANOMALY',
-    securityStamp: 'SECRET',
-    fileSize: '15.6 KB',
-    generatedDate: '2026-07-06 14:02:11',
-    payload: {
-      incidentsType: 'Multiple ATM spoofed transactions',
-      trackedLocations: ['Indiranagar Main St', 'Whitefield Sector C'],
-      totalDivergenceRatio: '+310% Standard Deviation',
-      riskEscalationLevel: 'CRITICAL CR1'
-    }
-  }
-];
+const getReportClassification = (report: ReportRecord) => {
+  if (report.status === 'failed') return 'RESTRICTED';
+  if (report.template.toLowerCase().includes('anomaly')) return 'SECRET';
+  if (report.template.toLowerCase().includes('network')) return 'CLASSIFIED';
+  return 'CONFIDENTIAL';
+};
 
 export const Reports: React.FC = () => {
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [reports, setReports] = useState<ReportRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const filteredReports = REPORT_DATABASE.filter(r => 
-    r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    let isMounted = true;
 
-  const handleDownload = (report: ReportItem) => {
+    void listReports()
+      .then((response) => {
+        if (!isMounted) return;
+        setReports(response.results);
+        setLoadError(null);
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        setReports([]);
+        setLoadError(error instanceof Error ? error.message : 'Failed to load reports');
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const filteredReports = reports.filter((report) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      report.template.toLowerCase().includes(query) ||
+      report.status.toLowerCase().includes(query) ||
+      report.format.toLowerCase().includes(query) ||
+      (report.district ?? '').toLowerCase().includes(query)
+    );
+  });
+
+  const handleDownload = (report: ReportRecord) => {
     setDownloadingId(report.id);
-    const badgeId = user?.badgeId || 'SCRB-7740';
-    const officerName = user?.name || 'Inspector System';
+    const badgeId = user?.badgeId || 'STATE POLICE';
+    const officerName = user?.name || 'Authenticated Officer';
 
-    // Log to secure audit trail hook
-    addLog(
-      officerName,
-      badgeId,
-      'EXPORT',
-      `Downloaded dossier report: ${report.name}`
+    addLog(officerName, badgeId, 'EXPORT', `Downloaded backend report: ${report.template}`);
+
+    downloadSecureDossier(
+      report.template,
+      {
+        reportId: report.id,
+        template: report.template,
+        district: report.district ?? 'Statewide',
+        status: report.status,
+        format: report.format,
+        fileUrl: report.file_url ?? 'Backend file URL not yet generated',
+        createdAt: report.created_at,
+      },
+      `${getReportClassification(report)} - ID: ${badgeId}`
     );
 
-    // Simulate 350ms cryptographic download lock before triggering browser download
-    setTimeout(() => {
-      downloadSecureDossier(
-        report.name,
-        report.payload,
-        `${report.securityStamp} - ID: ${badgeId}`
-      );
-      setDownloadingId(null);
-    }, 350);
+    setDownloadingId(null);
   };
 
-  const getStampColor = (stamp: ReportItem['securityStamp']) => {
+  const getStampColor = (stamp: string) => {
     switch (stamp) {
       case 'SECRET': return 'text-red-400 bg-red-950/20 border-red-900/30';
       case 'CLASSIFIED': return 'text-purple-400 bg-purple-950/20 border-purple-900/30';
@@ -148,8 +90,6 @@ export const Reports: React.FC = () => {
 
   return (
     <div className="h-[84vh] flex flex-col gap-5 p-1 md:p-3 select-none bg-[#060b13] font-mono">
-      
-      {/* Title Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-white/5 pb-4">
         <div>
           <h2 className="text-md font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -157,11 +97,11 @@ export const Reports: React.FC = () => {
             Reports & Intelligence Dossiers
           </h2>
           <p className="text-[9.5px] font-mono text-[#6A7A96] mt-0.5">
-            CLASSIFIED DOCUMENT EXPORT CONSOLE — SECURE CRYPTO-SIGNED POLICE RECORD FILES
+            CLASSIFIED DOCUMENT EXPORT CONSOLE - BACKEND REPORT RECORDS
           </p>
+          {loadError && <p className="mt-1 text-[9px] text-amber-400 uppercase tracking-wider">{loadError}</p>}
         </div>
 
-        {/* Search controls */}
         <div className="w-64 flex items-center relative text-xs">
           <input
             type="text"
@@ -174,80 +114,72 @@ export const Reports: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Reports Index Table */}
       <div className="flex-grow w-full bg-[#111D35]/25 border border-border-color rounded-xl overflow-hidden flex flex-col justify-between">
-        
         <div className="overflow-y-auto flex-grow custom-scrollbar">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-900 bg-[#0a1220]/75 text-[9px] uppercase tracking-wider text-[#6A7A96] font-bold">
                 <th className="py-3 px-4">Classification</th>
                 <th className="py-3 px-4">Document Title</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4 text-center">File Size</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-center">Format</th>
                 <th className="py-3 px-4">Generated Date</th>
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-[10px]">
-              {filteredReports.map((report) => (
-                <tr key={report.id} className="hover:bg-slate-900/20 text-[#A8B4CC] hover:text-white transition-colors">
-                  
-                  {/* Security stamp badge */}
-                  <td className="py-3.5 px-4 shrink-0">
-                    <span className={`px-2 py-0.5 border rounded text-[7.5px] font-bold uppercase tracking-wider ${getStampColor(report.securityStamp)}`}>
-                      {report.securityStamp}
-                    </span>
-                  </td>
-
-                  {/* Report Name */}
-                  <td className="py-3.5 px-4 font-bold text-white uppercase tracking-wide">
-                    {report.name}
-                  </td>
-
-                  {/* Category */}
-                  <td className="py-3.5 px-4 text-[#A8B4CC]">
-                    {report.category}
-                  </td>
-
-                  {/* Size */}
-                  <td className="py-3.5 px-4 text-center text-slate-400 font-bold">
-                    {report.fileSize}
-                  </td>
-
-                  {/* Date */}
-                  <td className="py-3.5 px-4 text-slate-500">
-                    {report.generatedDate}
-                  </td>
-
-                  {/* Download Action button */}
-                  <td className="py-3.5 px-4 text-right">
-                    <button
-                      onClick={() => handleDownload(report)}
-                      disabled={downloadingId !== null}
-                      className="py-1 px-3 bg-[#1E6FD9]/15 hover:bg-[#1E6FD9]/30 border border-[#1e6fd9]/25 hover:border-[#1E6FD9]/50 text-white font-bold uppercase rounded text-[8.5px] tracking-wider transition-all flex items-center justify-center gap-1.5 ml-auto cursor-pointer disabled:opacity-40"
-                    >
-                      {downloadingId === report.id ? (
-                        <>
-                          <div className="w-2.5 h-2.5 border-t-2 border-white rounded-full animate-spin" />
-                          <span>Decrypting</span>
-                        </>
-                      ) : (
-                        <>
-                          <Download className="w-3 h-3 text-[#1E6FD9]" />
-                          <span>Download</span>
-                        </>
-                      )}
-                    </button>
-                  </td>
-
-                </tr>
-              ))}
-
-              {filteredReports.length === 0 && (
+              {isLoading && (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-500 uppercase tracking-widest text-[9px]">
-                    No corresponding reports found in catalog
+                    Loading backend report catalog
+                  </td>
+                </tr>
+              )}
+
+              {!isLoading && filteredReports.map((report) => {
+                const stamp = getReportClassification(report);
+                return (
+                  <tr key={report.id} className="hover:bg-slate-900/20 text-[#A8B4CC] hover:text-white transition-colors">
+                    <td className="py-3.5 px-4 shrink-0">
+                      <span className={`px-2 py-0.5 border rounded text-[7.5px] font-bold uppercase tracking-wider ${getStampColor(stamp)}`}>
+                        {stamp}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-white uppercase tracking-wide">
+                      {report.template}{report.district ? ` - ${report.district}` : ''}
+                    </td>
+                    <td className="py-3.5 px-4 text-[#A8B4CC] uppercase">{report.status}</td>
+                    <td className="py-3.5 px-4 text-center text-slate-400 font-bold uppercase">{report.format}</td>
+                    <td className="py-3.5 px-4 text-slate-500">
+                      {new Date(report.created_at).toLocaleString()}
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={() => handleDownload(report)}
+                        disabled={downloadingId !== null}
+                        className="py-1 px-3 bg-[#1E6FD9]/15 hover:bg-[#1E6FD9]/30 border border-[#1e6fd9]/25 hover:border-[#1E6FD9]/50 text-white font-bold uppercase rounded text-[8.5px] tracking-wider transition-all flex items-center justify-center gap-1.5 ml-auto cursor-pointer disabled:opacity-40"
+                      >
+                        {downloadingId === report.id ? (
+                          <>
+                            <div className="w-2.5 h-2.5 border-t-2 border-white rounded-full animate-spin" />
+                            <span>Decrypting</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-3 h-3 text-[#1E6FD9]" />
+                            <span>Download</span>
+                          </>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {!isLoading && filteredReports.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-500 uppercase tracking-widest text-[9px]">
+                    No corresponding reports found in backend catalog
                   </td>
                 </tr>
               )}
@@ -255,17 +187,14 @@ export const Reports: React.FC = () => {
           </table>
         </div>
 
-        {/* Footer legal disclosure */}
         <div className="p-3 bg-slate-950/40 border-t border-border-color text-[8px] text-slate-500 flex items-center justify-between">
           <span className="flex items-center gap-1">
             <Shield className="w-3 h-3 text-[#0e9e78]" />
-            All telemetry documents are encrypted on disk and embedded with the requesting officer's badge watermarks.
+            Report records are loaded from the authenticated backend reports API.
           </span>
           <span>SYSTEM TIME HORIZON COMPLIANCE: 2026.01</span>
         </div>
-
       </div>
-
     </div>
   );
 };
