@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import inspect
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
@@ -59,14 +60,36 @@ def _run_trainer(model_name: str, db_session=None) -> dict[str, Any]:
         "risk": "app.ai.pipelines.risk.train",
         "hotspot": "app.ai.pipelines.hotspot.train",
     }
-    module = __import__(module_map[model_name], fromlist=["run_training"])
-    trainer = getattr(module, "run_training")
+    if model_name == "hotspot" and importlib.util.find_spec("lightgbm") is None:
+        return {
+            "status": "skipped",
+            "model_name": model_name,
+            "error": "lightgbm is not installed in this environment",
+        }
     try:
+        module = __import__(module_map[model_name], fromlist=["run_training"])
+        trainer = getattr(module, "run_training")
         signature = inspect.signature(trainer)
         if "db_session" in signature.parameters:
             return trainer(db_session=db_session)
         return trainer()
+    except ModuleNotFoundError as exc:
+        missing = str(exc)
+        if model_name == "hotspot" and "lightgbm" in missing.lower():
+            return {
+                "status": "skipped",
+                "model_name": model_name,
+                "error": "lightgbm is not installed in this environment",
+            }
+        return {
+            "status": "degraded",
+            "model_name": model_name,
+            "error": f"optional dependency missing: {exc}",
+        }
     except TypeError:
-        return trainer()
+        try:
+            return trainer()
+        except Exception as exc:
+            return {"status": "degraded", "model_name": model_name, "error": str(exc)}
     except Exception as exc:
         return {"status": "degraded", "model_name": model_name, "error": str(exc)}
