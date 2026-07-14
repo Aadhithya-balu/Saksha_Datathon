@@ -1,0 +1,10 @@
+{
+  "defaults": {
+    "threshold": 0.15
+  },
+  "features": {
+    "risk_score": 0.2,
+    "open_case_ratio": 0.18,
+    "crime_volume": 0.25
+  }
+}
