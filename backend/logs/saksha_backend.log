@@ -307,3 +307,195 @@ connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection re
 2026-07-13 22:55:09.534 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
 2026-07-13 22:55:09.610 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
 2026-07-13 22:57:37.861 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:00:07.764 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:00:07.765 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:00:07.836 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:00:08.523 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:00:08.564 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:00:08.565 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:00:08.566 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:00:09.166 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:00:09.182 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:00:09.182 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:00:09.184 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:00:09.791 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:00:09.817 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:00:09.818 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:00:09.819 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:00:10.488 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:00:10.511 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:00:10.512 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:00:10.513 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:00:11.254 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:00:11.277 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:00:11.278 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:00:11.279 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:00:11.865 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:00:11.880 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:00:11.881 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:00:11.882 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:00:12.460 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:00:12.482 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:00:12.482 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:00:12.483 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:00:13.040 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:00:13.056 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:00:13.056 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:00:13.712 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:00:14.309 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:00:14.335 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:00:14.336 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:00:14.338 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:00:14.343 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:00:14.371 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:00:14.373 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:00:14.374 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:00:14.388 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:00:14.411 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:00:14.412 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:00:14.414 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:00:14.423 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:03:26.419 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:03:26.420 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:03:26.598 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:03:27.321 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:03:27.338 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:03:27.339 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:03:27.340 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:03:27.938 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:03:27.956 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:03:27.957 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:03:27.958 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:03:28.654 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:03:28.676 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:03:28.677 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:03:28.678 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:03:29.410 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:03:29.435 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:03:29.436 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:03:29.438 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:03:30.056 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:03:30.071 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:03:30.071 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:03:30.076 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:03:30.751 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:03:30.766 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:03:30.767 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:03:30.798 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:03:31.437 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:03:48.026 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:03:48.026 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:03:48.107 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:03:48.696 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:03:48.715 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:03:48.716 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:03:48.716 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:03:49.384 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:03:49.401 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:03:49.401 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:03:49.402 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:03:49.407 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:03:49.421 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:03:49.423 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:03:49.423 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:03:49.428 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:03:49.445 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:03:49.445 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:03:49.446 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:03:49.451 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:04:42.699 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:04:42.700 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:04:42.788 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:04:43.394 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:04:43.408 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:04:43.408 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:04:43.409 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:04:44.000 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:04:44.013 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:04:44.014 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:04:44.015 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:04:44.610 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:04:44.624 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:04:44.625 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:04:44.626 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:04:45.198 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:04:45.212 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:04:45.213 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:04:45.213 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:04:45.811 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:04:45.825 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:04:45.825 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:04:45.826 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:04:46.444 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:04:46.459 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:04:46.460 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:04:46.464 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:04:47.081 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:04:49.715 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:04:49.715 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:04:49.739 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:04:50.387 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:04:50.401 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:04:50.402 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:04:50.403 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:04:51.045 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:04:51.061 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:04:51.061 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:04:51.063 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:04:51.065 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:04:51.080 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:04:51.080 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:04:51.081 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:04:51.085 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:04:51.101 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:04:51.102 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:04:51.103 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:04:51.108 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:07:28.069 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:07:28.070 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:07:28.179 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:07:28.891 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:07:28.911 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:07:28.912 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:07:28.913 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:07:29.540 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:07:29.555 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:07:29.556 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:07:29.556 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:07:30.185 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:07:30.200 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:07:30.200 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:07:30.202 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:07:30.844 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:07:30.860 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:07:30.860 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:07:30.861 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:07:31.490 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:07:31.504 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:07:31.504 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:07:31.505 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:07:32.125 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:07:32.139 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:07:32.140 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:07:32.141 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:07:32.732 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:07:35.337 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:07:35.337 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:07:35.360 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:07:35.946 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:07:35.959 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:07:35.960 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:07:35.960 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:07:36.522 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:07:36.535 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:07:36.536 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:07:36.537 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:07:36.540 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:07:36.553 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:07:36.554 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:07:36.555 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:07:36.558 | INFO     | app.main:lifespan:36 - Shutdown complete
+2026-07-14 12:07:36.570 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-14 12:07:36.571 | INFO     | app.main:lifespan:24 - PostgreSQL connection OK
+2026-07-14 12:07:36.571 | WARNING  | app.main:lifespan:31 - Neo4j connection could not be verified
+2026-07-14 12:07:36.575 | INFO     | app.main:lifespan:36 - Shutdown complete

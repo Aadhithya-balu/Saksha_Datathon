@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("lightgbm", reason="lightgbm not installed")
+
 from app.ai.inference.hotspot import predict
 
 

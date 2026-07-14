@@ -10,6 +10,7 @@ from app.routes import (
     ai_anomaly,
     ai_criminal,
     ai_hotspot,
+    ai_risk,
     auth,
     crimes,
     criminals,
@@ -41,4 +42,5 @@ api_router.include_router(ai_support.router)
 api_router.include_router(ai_anomaly.router)
 api_router.include_router(ai_criminal.router)
 api_router.include_router(ai_hotspot.router)
+api_router.include_router(ai_risk.router)
 
