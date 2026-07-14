@@ -19,3 +19,4 @@ numpy
 joblib
 pandas
 h3
+scikit-learn
