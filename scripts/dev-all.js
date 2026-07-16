@@ -7,8 +7,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 
 const isWindows = process.platform === 'win32';
-const pythonCommand = isWindows ? 'py' : 'python3';
-const pythonArgs = isWindows ? ['-3.12'] : [];
+const pythonCommand = 'python';
+const pythonArgs = [];
 
 const commands = [
   {

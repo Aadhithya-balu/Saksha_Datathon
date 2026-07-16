@@ -1,4 +1,4 @@
-﻿"""Seed roles, operators, and an ER-shaped prototype crime dataset."""
+"""Seed roles, operators, and an ER-shaped prototype crime dataset."""
 from datetime import date, datetime, timedelta
 
 from app.core.security import hash_password
@@ -265,6 +265,7 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
 
         fir = db.query(FIR).filter(FIR.fir_number == fir_number).first()
         if not fir:
+            import json
             fir = FIR(
                 fir_number=fir_number,
                 crime_case_id=crime.id,
@@ -274,6 +275,10 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
                 sections=sections,
                 status="registered" if status == "open" else "closed",
                 narrative=f"Backend-seeded FIR for {case_number}; derived from the Police FIR ER model.",
+                attachments=json.dumps([
+                    {"name": f"complaint_copy_{case_number}.pdf", "size": 154200},
+                    {"name": f"spot_mahazar_{case_number}.pdf", "size": 284100}
+                ])
             )
             db.add(fir)
             db.flush()

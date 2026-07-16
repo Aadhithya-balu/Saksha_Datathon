@@ -354,3 +354,121 @@ export async function getOffenderDossiers() {
 export async function listReports(page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<ReportRecord>>(`/reports${buildQueryString({ page, page_size: pageSize })}`);
 }
+
+// FIR Lifecycle Management additions
+export interface FIRRecord {
+  id: string;
+  fir_number: string;
+  crime_case_id: string;
+  investigating_officer_id: string | null;
+  complainant_name: string;
+  complainant_contact: string | null;
+  sections: string | null;
+  narrative: string | null;
+  status: 'registered' | 'in_progress' | 'closed';
+  filed_at: string;
+  created_at: string;
+  attachments?: Array<{ name: string; size: number }>;
+}
+
+export interface FIRDetailRecord extends FIRRecord {
+  crime_case: CrimeCaseRecord | null;
+  investigating_officer: OfficerRecord | null;
+  criminals: CriminalRecord[];
+  victims: VictimRecord[];
+  attachments: Array<{ name: string; size: number }>;
+  ai_risk_score: number;
+  ai_analysis_reasons: string[];
+}
+
+export interface OfficerRecord {
+  id: string;
+  user_id: string;
+  badge_number: string;
+  rank: string | null;
+  district: string;
+  station: string;
+  created_at: string;
+}
+
+export interface VictimRecord {
+  id: string;
+  full_name: string;
+  contact_number: string | null;
+  address: string | null;
+  gender: string | null;
+  age: number | null;
+  statement: string | null;
+  created_at: string;
+}
+
+export interface FIRListQueryParams {
+  status?: string;
+  section?: string;
+  search?: string;
+  district?: string;
+  officer_id?: string;
+  start_date?: string;
+  end_date?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export async function listFIRs(params?: FIRListQueryParams) {
+  return apiRequest<PaginatedResponse<FIRRecord>>(`/firs${buildQueryString(params as any)}`);
+}
+
+export async function getFIR(firId: string) {
+  return apiRequest<FIRDetailRecord>(`/firs/${firId}`);
+}
+
+export async function createFIR(data: {
+  fir_number: string;
+  crime_case_id: string;
+  investigating_officer_id?: string | null;
+  complainant_name: string;
+  complainant_contact?: string | null;
+  sections?: string | null;
+  narrative?: string | null;
+  status?: string;
+  criminal_ids?: string[];
+  victim_ids?: string[];
+  attachments?: Array<{ name: string; size: number }>;
+}) {
+  return apiRequest<FIRRecord>('/firs', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateFIR(firId: string, data: {
+  investigating_officer_id?: string | null;
+  status?: string | null;
+  narrative?: string | null;
+  sections?: string | null;
+  complainant_name?: string | null;
+  complainant_contact?: string | null;
+  criminal_ids?: string[] | null;
+  victim_ids?: string[] | null;
+  attachments?: Array<{ name: string; size: number }> | null;
+}) {
+  return apiRequest<FIRRecord>(`/firs/${firId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteFIR(firId: string) {
+  return apiRequest<{ message: string }>(`/firs/${firId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function listOfficers(page = 1, pageSize = 100) {
+  return apiRequest<PaginatedResponse<OfficerRecord>>(`/officers${buildQueryString({ page, page_size: pageSize })}`);
+}
+
+export async function listVictims(page = 1, pageSize = 100) {
+  return apiRequest<PaginatedResponse<VictimRecord>>(`/victims${buildQueryString({ page, page_size: pageSize })}`);
+}
+
