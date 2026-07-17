@@ -21,3 +21,7 @@ pandas
 h3
 scikit-learn
 lightgbm
+python-jose[cryptography]
+passlib[bcrypt]
+pydantic[email]
+loguru
