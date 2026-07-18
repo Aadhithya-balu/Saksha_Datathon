@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, require_roles
+from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
 from app.models.user import User
 
@@ -44,7 +44,7 @@ def _check_error(result: dict[str, Any], criminal_id: str) -> None:
         )
 
 
-@router.get("/{criminal_id}/risk")
+@router.get("/{criminal_id}/risk", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
 def criminal_risk(
     criminal_id: str,
     db: Session = Depends(get_db),
@@ -56,7 +56,7 @@ def criminal_risk(
     return result
 
 
-@router.get("/{criminal_id}/repeat-offender")
+@router.get("/{criminal_id}/repeat-offender", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
 def repeat_offender(
     criminal_id: str,
     db: Session = Depends(get_db),
@@ -68,7 +68,7 @@ def repeat_offender(
     return result
 
 
-@router.get("/{criminal_id}/similar")
+@router.get("/{criminal_id}/similar", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
 def similar_offenders(
     criminal_id: str,
     top_k: int = Query(default=5, ge=1, le=20),
@@ -81,7 +81,7 @@ def similar_offenders(
     return result
 
 
-@router.get("/{criminal_id}/cluster")
+@router.get("/{criminal_id}/cluster", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
 def criminal_cluster(
     criminal_id: str,
     db: Session = Depends(get_db),
@@ -93,7 +93,7 @@ def criminal_cluster(
     return result
 
 
-@router.get("/{criminal_id}/recommendations")
+@router.get("/{criminal_id}/recommendations", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
 def investigation_recommendations(
     criminal_id: str,
     db: Session = Depends(get_db),

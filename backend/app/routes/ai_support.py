@@ -6,15 +6,14 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
 from app.models.user import User
 from app.services.analytics_service import (
     anomalies as build_anomalies,
-    chat_answer,
     hotspots as build_hotspots,
     network_person as build_network_person,
     offender_dossiers,
-    risk_scores as build_risk_scores,
 )
 
 router = APIRouter(prefix="/ai", tags=["AI Integration Support"])
@@ -32,19 +31,12 @@ class ChatQueryResponse(BaseModel):
     chart_suggestion: str | None = None
 
 
-@router.post("/chat/query", response_model=ChatQueryResponse)
-def chat_query(payload: ChatQueryRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return ChatQueryResponse(**chat_answer(db, payload.message))
+# NOTE: /chat/query is intentionally omitted from this router — it is defined
+# in app/routes/ai_chat.py which has the full investigation-chat implementation.
+# Including it here would produce a duplicate-route crash at startup.
 
-
-@router.get("/predictions/risk-scores")
-def risk_scores(
-    district_id: str | None = None,
-    window: str = "next_7d",
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    return build_risk_scores(db, district_id=district_id, window=window)
+# NOTE: /predictions/risk-scores is intentionally omitted — it is defined in
+# app/routes/ai_risk.py which has the dedicated district-risk implementation.
 
 
 @router.get("/predictions/anomalies")
@@ -52,16 +44,26 @@ def anomalies(db: Session = Depends(get_db), current_user: User = Depends(get_cu
     return build_anomalies(db)
 
 
+# Note: GET /hotspots and GET /predictions/anomalies are intentionally auth-only (no role restriction)
+# because they serve dashboard pages accessible to all authenticated roles.
+# The role-gated AI endpoints (POST predict, etc.) are in their respective route modules.
+
 @router.get("/hotspots")
 def hotspots(district_id: str | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return build_hotspots(db, district_id=district_id)
 
 
-@router.get("/offenders/dossiers")
+@router.get(
+    "/offenders/dossiers",
+    dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))],
+)
 def offenders(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return {"offenders": offender_dossiers(db)}
 
 
-@router.get("/network/person/{person_id}")
+@router.get(
+    "/network/person/{person_id}",
+    dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))],
+)
 def network_person(person_id: str, depth: int = 1, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return build_network_person(db, person_id=person_id, depth=depth)

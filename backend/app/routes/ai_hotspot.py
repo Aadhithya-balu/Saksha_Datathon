@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from app.ai.inference.hotspot import get_model_info, predict
 from app.auth.dependencies import get_current_user
+from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.models.user import User
 
 router = APIRouter(prefix="/ai/hotspot", tags=["Crime Hotspot Prediction"])
@@ -52,7 +53,7 @@ class HotspotPredictResponse(BaseModel):
 # Routes
 # ---------------------------------------------------------------------------
 
-@router.post("/predict", response_model=HotspotPredictResponse)
+@router.post("/predict", response_model=HotspotPredictResponse, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
 def hotspot_predict(
     payload: HotspotPredictRequest,
     current_user: User = Depends(get_current_user),
@@ -64,7 +65,7 @@ def hotspot_predict(
     return HotspotPredictResponse(predictions=results, total=len(results))
 
 
-@router.post("/predict_batch", response_model=HotspotPredictResponse)
+@router.post("/predict_batch", response_model=HotspotPredictResponse, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
 def hotspot_predict_batch(
     payload: HotspotPredictRequest,
     current_user: User = Depends(get_current_user),
