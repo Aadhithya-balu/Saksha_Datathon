@@ -343,8 +343,12 @@ export async function listCrimes(page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<CrimeCaseRecord>>(`/crimes${buildQueryString({ page, page_size: pageSize })}`);
 }
 
-export async function listCriminals(page = 1, pageSize = 100) {
-  return apiRequest<PaginatedResponse<CriminalRecord>>(`/criminals${buildQueryString({ page, page_size: pageSize })}`);
+export async function listCriminals(q?: string, page = 1, pageSize = 100) {
+  return apiRequest<PaginatedResponse<CriminalRecord>>(`/criminals${buildQueryString({ q, page, page_size: pageSize })}`);
+}
+
+export async function getCriminal(criminalId: string) {
+  return apiRequest<any>(`/criminals/${criminalId}`);
 }
 
 export async function getOffenderDossiers() {
@@ -602,6 +606,10 @@ export async function listOfficers(page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<OfficerRecord>>(`/officers${buildQueryString({ page, page_size: pageSize })}`);
 }
 
-export async function listVictims(page = 1, pageSize = 100) {
-  return apiRequest<PaginatedResponse<VictimRecord>>(`/victims${buildQueryString({ page, page_size: pageSize })}`);
+export async function listVictims(q?: string, page = 1, pageSize = 100) {
+  return apiRequest<PaginatedResponse<VictimRecord>>(`/victims${buildQueryString({ q, page, page_size: pageSize })}`);
+}
+
+export async function getVictim(victimId: string) {
+  return apiRequest<any>(`/victims/${victimId}`);
 }

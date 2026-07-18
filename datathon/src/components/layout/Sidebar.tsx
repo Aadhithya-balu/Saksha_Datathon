@@ -202,6 +202,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )
     },
     {
+      id: 'criminals',
+      label: 'Criminal Dossiers',
+      path: '/offenders',
+      icon: (isActive: boolean) => (
+        <svg className="w-6 h-6 transition-all duration-300 pointer-events-none" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="crimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={isActive ? "#C94A2A" : "#6A7A96"} />
+              <stop offset="100%" stopColor={isActive ? "#6C43CC" : "#A8B4CC"} />
+            </linearGradient>
+            <filter id="crimGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#C94A2A" floodOpacity="0.5" />
+            </filter>
+          </defs>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="url(#crimGrad)" strokeWidth="1.5" filter={isActive ? "url(#crimGlow)" : undefined} />
+          <path d="M12 8v4M12 16h.01" stroke={isActive ? "#C94A2A" : "#6A7A96"} strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      )
+    },
+    {
+      id: 'victims',
+      label: 'Victims Registry',
+      path: '/offenders',
+      icon: (isActive: boolean) => (
+        <svg className="w-6 h-6 transition-all duration-300 pointer-events-none" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="vicGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={isActive ? "#0E9E78" : "#6A7A96"} />
+              <stop offset="100%" stopColor={isActive ? "#1E6FD9" : "#A8B4CC"} />
+            </linearGradient>
+            <filter id="vicGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0E9E78" floodOpacity="0.5" />
+            </filter>
+          </defs>
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="none" stroke="url(#vicGrad)" strokeWidth="1.5" filter={isActive ? "url(#vicGlow)" : undefined} />
+        </svg>
+      )
+    },
+    {
       id: 'reports',
       label: 'Reports Center',
       path: '/reports',
