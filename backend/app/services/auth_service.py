@@ -15,12 +15,30 @@ from app.schemas.user import UserCreate
 
 
 def authenticate_user(db: Session, username: str, password: str) -> User:
+    """
+    Authenticate a user by checking:
+      1. Local demo auth (username + hashed_password in users table).
+      2. Fallback to Supabase Auth REST API if local user not found.
+
+    The fallback path:
+      - Authenticates with Supabase Auth using email/username + password.
+      - Looks up the user profile in the local `users` table by email.
+      - Returns the User ORM object so existing JWT/RBAC code works unchanged.
+
+    Raises UnauthorizedException on all failure paths.
+    """
     user = db.query(User).filter(User.username == username).first()
-    if not user or not verify_password(password, user.hashed_password):
-        raise UnauthorizedException("Incorrect username or password")
-    if not user.is_active:
-        raise UnauthorizedException("Account is deactivated")
-    return user
+    if user:
+        # Local user exists — verify password locally (demo user path)
+        if not verify_password(password, user.hashed_password):
+            raise UnauthorizedException("Incorrect username or password")
+        if not user.is_active:
+            raise UnauthorizedException("Account is deactivated")
+        return user
+
+    # Local user not found — try Supabase Auth fallback
+    from app.services.supabase_auth import supabase_authenticate
+    return supabase_authenticate(db, username, password)
 
 
 def issue_tokens(user: User) -> dict:

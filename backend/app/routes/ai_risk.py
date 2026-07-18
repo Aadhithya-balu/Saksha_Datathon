@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 
 from app.ai.inference.risk import get_model_info, predict_forecast, predict_risk
 from app.auth.dependencies import get_current_user
+from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.models.user import User
 
 router = APIRouter(prefix="/ai/predictions", tags=["District Risk Prediction"])
@@ -48,6 +49,7 @@ class RiskScoreItem(BaseModel):
 
 
 class RiskScoresResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     district_id: str | None = None
     window: str
     model_version: str
@@ -95,7 +97,7 @@ def get_risk_scores(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
 
 
-@router.post("/risk-scores", response_model=RiskScoresResponse)
+@router.post("/risk-scores", response_model=RiskScoresResponse, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
 def predict_risk_scores(
     payload: RiskPredictRequest,
     window: str = Query(default="next_7d"),
@@ -116,7 +118,7 @@ def predict_risk_scores(
     )
 
 
-@router.post("/forecast", response_model=ForecastResponse)
+@router.post("/forecast", response_model=ForecastResponse, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
 def predict_crime_forecast(
     payload: RiskPredictRequest,
     current_user: User = Depends(get_current_user),
