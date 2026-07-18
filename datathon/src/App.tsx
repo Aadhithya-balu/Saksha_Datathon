@@ -13,6 +13,7 @@ import Offenders from './pages/Offenders';
 import Reports from './pages/Reports';
 import SettingsHelp from './pages/SettingsHelp';
 import AIChat from './pages/AIChat';
+import CrimeCases from './pages/CrimeCases';
 import RoleGuard from './components/layout/RoleGuard';
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
       network: 'Criminal Network Graph Workspace',
       predictive: 'AI Predictive Intelligence',
       anomaly: 'Anomaly Alert Feed',
+      crime_cases: 'Crime Case Management',
       offenders: 'Offender Dossiers Registry',
       reports: 'Reports & Downloads Center',
       settings_help: 'Settings & Operator Help',
@@ -111,6 +113,12 @@ function App() {
         return (
           <RoleGuard path="/settings">
             <SettingsHelp />
+          </RoleGuard>
+        );
+      case 'crime_cases':
+        return (
+          <RoleGuard path="/crime-cases">
+            <CrimeCases />
           </RoleGuard>
         );
       case 'ai_chat':

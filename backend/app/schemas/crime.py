@@ -12,6 +12,9 @@ class CrimeCaseBase(BaseModel):
     description: str | None = None
     mo_tags: str | None = None
     status: str = "open"
+    priority: str = "medium"
+    progress: int = 10
+    assigned_officer_id: uuid.UUID | None = None
 
 
 class CrimeCaseCreate(CrimeCaseBase):
@@ -22,6 +25,9 @@ class CrimeCaseUpdate(BaseModel):
     description: str | None = None
     mo_tags: str | None = None
     status: str | None = None
+    priority: str | None = None
+    progress: int | None = None
+    assigned_officer_id: uuid.UUID | None = None
 
 
 class CrimeCaseOut(CrimeCaseBase):

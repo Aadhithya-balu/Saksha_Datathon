@@ -205,6 +205,11 @@ export const SpatialCube3D: React.FC = () => {
       if (containerRef.current && domElement.parentNode === containerRef.current) {
         containerRef.current.removeChild(domElement);
       }
+      try {
+        renderer.forceContextLoss();
+      } catch (e) {
+        console.error(e);
+      }
       renderer.dispose();
     };
   }, []);
