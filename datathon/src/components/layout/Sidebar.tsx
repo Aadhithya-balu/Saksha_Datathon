@@ -137,6 +137,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )
     },
     {
+      id: 'crime_cases',
+      label: 'Crime Cases',
+      path: '/crime-cases',
+      icon: (isActive: boolean) => (
+        <svg className="w-6 h-6 transition-all duration-300 pointer-events-none" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="caseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={isActive ? "#1E6FD9" : "#6A7A96"} />
+              <stop offset="100%" stopColor={isActive ? "#0E9E78" : "#A8B4CC"} />
+            </linearGradient>
+            <filter id="caseGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#1E6FD9" floodOpacity="0.5" />
+            </filter>
+          </defs>
+          <rect x="3" y="6" width="18" height="13" rx="2" stroke="url(#caseGrad)" strokeWidth="1.5" filter={isActive ? "url(#caseGlow)" : undefined} />
+          <path d="M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2" stroke={isActive ? "#1E6FD9" : "#6A7A96"} strokeWidth="1.5" />
+          <circle cx="12" cy="12" r="2" stroke={isActive ? "#0E9E78" : "#6A7A96"} strokeWidth="1.5" />
+        </svg>
+      )
+    },
+    {
       id: 'anomaly',
       label: 'Anomaly Feed',
       path: '/anomalies',

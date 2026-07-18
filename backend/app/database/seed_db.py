@@ -39,7 +39,7 @@ DEMO_USERS = [
         "username": "IO-3921",
         "email": "io-3921@saksha.local",
         "full_name": "Inspector Meera Sen",
-        "password": "123456",
+        "password": "456789",
         "role_name": "investigator",
         "district": "Mysuru",
         "station": "Devaraja Police Station",
@@ -50,7 +50,7 @@ DEMO_USERS = [
         "username": "SP-0088",
         "email": "sp-0088@saksha.local",
         "full_name": "SP Anil Kumble",
-        "password": "123456",
+        "password": "987654",
         "role_name": "policymaker",
         "district": "State HQ",
         "station": "KSP HQ",
@@ -100,17 +100,17 @@ VICTIMS = [
 ]
 
 CASES = [
-    ("CR-2026-BNG-001", "Cyber Crime & Online Fraud", "Whitefield Police Station", -3, "open", "forged biometric login, micro-lending extortion", ["Vikram Yadav"], ["K. S. Narayanan"], "FIR-045/BNG/2026", "IPC 420, IT Act 66D"),
-    ("CR-2026-BNG-002", "Cyber Crime & Online Fraud", "KR Puram Police Station", -8, "open", "wallet mule routing, call spoofing", ["Vikram Yadav"], ["K. S. Narayanan"], "FIR-052/BNG/2026", "IPC 419, IT Act 66C"),
-    ("CR-2026-MYS-001", "Theft & Burglaries", "Devaraja Police Station", -6, "open", "late night lock break, scooter reconnaissance", ["Ramu Swamy", "Karthik Gowda"], ["Dr. Vinay Murthy"], "FIR-789/MYS/2026", "IPC 379, 457"),
-    ("CR-2026-MYS-002", "Theft & Burglaries", "Devaraja Police Station", -18, "closed", "repeat balcony entry, jewellery targeting", ["Ramu Swamy"], ["Dr. Vinay Murthy"], "FIR-790/MYS/2026", "IPC 380"),
-    ("CR-2026-MNG-001", "Narcotics Smuggling Services", "Pandeshwar Police Station", -4, "open", "synthetic MDMA harbor handoff", ["Sayed Ibrahim"], ["Asha Rao"], "FIR-331/MNG/2026", "NDPS 21, 22"),
-    ("CR-2026-BLG-001", "Smuggling & Excise Violations", "Khade Bazar Station", -10, "open", "forged inter-state clearance slips", ["Karthik Gowda"], ["Prakash Jain"], "FIR-204/BLG/2026", "Excise Act 32"),
-    ("CR-2026-BLR-001", "Illegal Mining Violations", "Rural Police Station", -13, "open", "night mineral transport convoy", ["Mohsin Pasha"], [], "FIR-611/BLR/2026", "MMDR Act 21"),
-    ("CR-2026-KLB-001", "Property Disputes", "Chowk Police Station", -15, "closed", "survey intimidation, prior offender density", ["Karthik Gowda"], [], "FIR-122/KLB/2026", "IPC 447, 506"),
-    ("CR-2026-HSN-001", "Domestic Violence", "City Police Station", -23, "open", "repeat household assault complaint", [], ["Latha Hegde"], "FIR-208/HSN/2026", "DV Act"),
-    ("CR-2026-TMK-001", "Assault", "Town Police Station", -31, "closed", "industrial road altercation", [], [], "FIR-144/TMK/2026", "IPC 323"),
-    ("CR-2026-DWD-001", "Theft & Burglaries", "Suburban Police Station", -35, "closed", "market yard attempted theft", ["Ramu Swamy"], [], "FIR-177/DWD/2026", "IPC 379"),
+    ("CR-2026-BNG-001", "Cyber Crime & Online Fraud", "Whitefield Police Station", -3, "open", "forged biometric login, micro-lending extortion", ["Vikram Yadav"], ["K. S. Narayanan"], "FIR-045/BNG/2026", "IPC 420, IT Act 66D", "high", 45),
+    ("CR-2026-BNG-002", "Cyber Crime & Online Fraud", "KR Puram Police Station", -8, "open", "wallet mule routing, call spoofing", ["Vikram Yadav"], ["K. S. Narayanan"], "FIR-052/BNG/2026", "IPC 419, IT Act 66C", "medium", 25),
+    ("CR-2026-MYS-001", "Theft & Burglaries", "Devaraja Police Station", -6, "open", "late night lock break, scooter reconnaissance", ["Ramu Swamy", "Karthik Gowda"], ["Dr. Vinay Murthy"], "FIR-789/MYS/2026", "IPC 379, 457", "high", 60),
+    ("CR-2026-MYS-002", "Theft & Burglaries", "Devaraja Police Station", -18, "closed", "repeat balcony entry, jewellery targeting", ["Ramu Swamy"], ["Dr. Vinay Murthy"], "FIR-790/MYS/2026", "IPC 380", "medium", 100),
+    ("CR-2026-MNG-001", "Narcotics Smuggling Services", "Pandeshwar Police Station", -4, "open", "synthetic MDMA harbor handoff", ["Sayed Ibrahim"], ["Asha Rao"], "FIR-331/MNG/2026", "NDPS 21, 22", "critical", 15),
+    ("CR-2026-BLG-001", "Smuggling & Excise Violations", "Khade Bazar Station", -10, "open", "forged inter-state clearance slips", ["Karthik Gowda"], ["Prakash Jain"], "FIR-204/BLG/2026", "Excise Act 32", "low", 40),
+    ("CR-2026-BLR-001", "Illegal Mining Violations", "Rural Police Station", -13, "open", "night mineral transport convoy", ["Mohsin Pasha"], [], "FIR-611/BLR/2026", "MMDR Act 21", "high", 80),
+    ("CR-2026-KLB-001", "Property Disputes", "Chowk Police Station", -15, "closed", "survey intimidation, prior offender density", ["Karthik Gowda"], [], "FIR-122/KLB/2026", "IPC 447, 506", "low", 100),
+    ("CR-2026-HSN-001", "Domestic Violence", "City Police Station", -23, "open", "repeat household assault complaint", [], ["Latha Hegde"], "FIR-208/HSN/2026", "DV Act", "medium", 30),
+    ("CR-2026-TMK-001", "Assault", "Town Police Station", -31, "closed", "industrial road altercation", [], [], "FIR-144/TMK/2026", "IPC 323", "medium", 100),
+    ("CR-2026-DWD-001", "Theft & Burglaries", "Suburban Police Station", -35, "closed", "market yard attempted theft", ["Ramu Swamy"], [], "FIR-177/DWD/2026", "IPC 379", "low", 100),
 ]
 
 
@@ -163,6 +163,9 @@ def _seed_users(db, role_objs):
                 is_active=True,
             )
             db.add(user)
+            db.flush()
+        else:
+            user.hashed_password = hash_password(payload["password"])
             db.flush()
         user_objs[payload["username"]] = user
     return user_objs
@@ -248,7 +251,8 @@ def _seed_victims(db):
 def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers):
     investigator = officers.get("IO-3921") or next(iter(officers.values()), None)
     now = datetime.now()
-    for case_number, category_name, station, days, status, mo_tags, criminal_names, victim_names, fir_number, sections in CASES:
+    for item in CASES:
+        case_number, category_name, station, days, status, mo_tags, criminal_names, victim_names, fir_number, sections, priority, progress = item
         crime = db.query(CrimeCase).filter(CrimeCase.case_number == case_number).first()
         if not crime:
             crime = CrimeCase(
@@ -259,8 +263,17 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
                 description=f"{category_name} reported at {locations[station].address}",
                 mo_tags=mo_tags,
                 status=status,
+                priority=priority,
+                progress=progress,
+                assigned_officer_id=investigator.id if investigator else None
             )
             db.add(crime)
+            db.flush()
+        else:
+            crime.priority = priority
+            crime.progress = progress
+            if not crime.assigned_officer_id and investigator:
+                crime.assigned_officer_id = investigator.id
             db.flush()
 
         fir = db.query(FIR).filter(FIR.fir_number == fir_number).first()

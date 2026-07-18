@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,6 +25,11 @@ class CrimeCase(Base, UUIDPKMixin, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     mo_tags: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="open", index=True)
+
+    priority: Mapped[str | None] = mapped_column(String(30), default="medium")
+    progress: Mapped[int | None] = mapped_column(Integer, default=10)
+    assigned_officer_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("officers.id"), nullable=True)
+    assigned_officer: Mapped["Officer"] = relationship()
 
     firs: Mapped[list["FIR"]] = relationship(back_populates="crime_case")
     evidence: Mapped[list["Evidence"]] = relationship(back_populates="crime_case")

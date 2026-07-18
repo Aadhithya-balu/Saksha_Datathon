@@ -17,6 +17,7 @@ export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
   '/settings': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'Settings & Operator Help' },
   '/admin': { allowedRoles: ['SCRB'], moduleName: 'System Security Control Center' },
   '/ai-chat': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'AI Chat Assistant' },
+  '/crime-cases': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'Crime Case Management' },
   '/firs': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'FIR Lifecycle Management' },
 };
 

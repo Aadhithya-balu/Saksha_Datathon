@@ -355,6 +355,62 @@ export async function listReports(page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<ReportRecord>>(`/reports${buildQueryString({ page, page_size: pageSize })}`);
 }
 
+// --- Crime Case Management Types & Routes ---
+
+export interface InvestigationNote {
+  id: string;
+  officer_name: string;
+  officer_badge: string;
+  created_at: string;
+  content: string;
+}
+
+export interface TimelineEvent {
+  timestamp: string;
+  event: string;
+  actor: string | null;
+}
+
+export interface AIRecommendation {
+  type: string;
+  title: string;
+  description: string;
+}
+
+export interface CrimeCaseDetailRecord extends CrimeCaseRecord {
+  priority: string;
+  progress: number;
+  assigned_officer_id: string | null;
+  assigned_officer?: {
+    id: string;
+    badge_number: string;
+    rank: string | null;
+    full_name: string;
+  } | null;
+  notes: InvestigationNote[];
+  timeline: TimelineEvent[];
+  firs: Array<{
+    id: string;
+    fir_number: string;
+    complainant_name: string;
+    sections: string | null;
+    status: string;
+    filed_at: string;
+  }>;
+  ai_recommendations: AIRecommendation[];
+}
+
+export interface OfficerWithUserRecord {
+  id: string;
+  user_id: string;
+  badge_number: string;
+  rank: string | null;
+  district: string;
+  station: string;
+  created_at: string;
+  full_name: string;
+}
+
 // FIR Lifecycle Management additions
 export interface FIRRecord {
   id: string;
@@ -402,6 +458,20 @@ export interface VictimRecord {
   created_at: string;
 }
 
+export interface CrimeCategoryRecord {
+  id: string;
+  name: string;
+  section_code: string | null;
+  severity: string | null;
+}
+
+export interface LocationSimpleRecord {
+  id: string;
+  district: string;
+  station: string;
+  pincode: string | null;
+}
+
 export interface FIRListQueryParams {
   status?: string;
   section?: string;
@@ -412,6 +482,34 @@ export interface FIRListQueryParams {
   end_date?: string;
   page?: number;
   page_size?: number;
+}
+
+export async function getCrimeCases(q?: string, status?: string, page = 1, pageSize = 20) {
+  return apiRequest<PaginatedResponse<CrimeCaseDetailRecord>>(`/crime-cases${buildQueryString({ q, status, page, page_size: pageSize })}`);
+}
+
+export async function getCrimeCase(caseId: string) {
+  return apiRequest<CrimeCaseDetailRecord>(`/crime-cases/${caseId}`);
+}
+
+export async function createCrimeCase(payload: Omit<CrimeCaseRecord, 'id' | 'reported_at' | 'created_at'>) {
+  return apiRequest<CrimeCaseRecord>('/crime-cases', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateCrimeCase(caseId: string, payload: Partial<CrimeCaseRecord> & { priority?: string; progress?: number; assigned_officer_id?: string | null }) {
+  return apiRequest<CrimeCaseRecord>(`/crime-cases/${caseId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteCrimeCase(caseId: string) {
+  return apiRequest<{ message: string }>(`/crime-cases/${caseId}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function listFIRs(params?: FIRListQueryParams) {
@@ -464,6 +562,42 @@ export async function deleteFIR(firId: string) {
   });
 }
 
+export async function addInvestigationNote(caseId: string, content: string) {
+  return apiRequest<{ message: string; content: string }>(`/crime-cases/${caseId}/notes`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function deleteInvestigationNote(caseId: string, noteId: string) {
+  return apiRequest<{ message: string }>(`/crime-cases/${caseId}/notes/${noteId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function linkFIRs(caseId: string, firIds: string[]) {
+  return apiRequest<{ message: string }>(`/crime-cases/${caseId}/link-firs`, {
+    method: 'POST',
+    body: JSON.stringify({ fir_ids: firIds }),
+  });
+}
+
+export async function getUnassignedOfficers() {
+  return apiRequest<OfficerWithUserRecord[]>('/crime-cases/unassigned-officers');
+}
+
+export async function getUnlinkedFIRs() {
+  return apiRequest<Array<{ id: string; fir_number: string; crime_case_id: string; complainant_name: string; sections: string | null; status: string; filed_at: string }>>('/crime-cases/unlinked-firs');
+}
+
+export async function getCrimeCategories() {
+  return apiRequest<CrimeCategoryRecord[]>('/crime-cases/categories');
+}
+
+export async function getLocationsList() {
+  return apiRequest<LocationSimpleRecord[]>('/crime-cases/locations');
+}
+
 export async function listOfficers(page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<OfficerRecord>>(`/officers${buildQueryString({ page, page_size: pageSize })}`);
 }
@@ -471,4 +605,3 @@ export async function listOfficers(page = 1, pageSize = 100) {
 export async function listVictims(page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<VictimRecord>>(`/victims${buildQueryString({ page, page_size: pageSize })}`);
 }
-

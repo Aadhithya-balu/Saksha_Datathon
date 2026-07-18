@@ -227,6 +227,11 @@ export const ActiveAlerts3D: React.FC<ActiveAlerts3DProps> = ({ alertRows = [], 
       if (containerRef.current && domElement.parentNode === containerRef.current) {
         containerRef.current.removeChild(domElement);
       }
+      try {
+        renderer.forceContextLoss();
+      } catch (e) {
+        console.error(e);
+      }
       renderer.dispose();
     };
   }, [unifiedAlerts]);
