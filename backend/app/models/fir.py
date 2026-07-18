@@ -29,6 +29,7 @@ class FIR(Base, UUIDPKMixin, TimestampMixin):
     filed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     status: Mapped[str] = mapped_column(String(30), default="registered", index=True)
     narrative: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attachments: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON-encoded array of attachments
 
     criminal_links: Mapped[list["FIRCriminalLink"]] = relationship(back_populates="fir")
     victim_links: Mapped[list["FIRVictimLink"]] = relationship(back_populates="fir")

@@ -1,0 +1,691 @@
+import React, { useState, useEffect } from 'react';
+import { useAuthStore } from '../../store/authStore';
+import { useAuditStore } from '../../store/auditStore';
+import { downloadSecureDossier } from '../../utils/downloader';
+import {
+  listFIRs,
+  getFIR,
+  createFIR,
+  updateFIR,
+  deleteFIR,
+  type FIRRecord,
+  type FIRDetailRecord
+} from '../../services/api';
+import { FIRForm } from '../../components/fir/FIRForm';
+import { FIRTimeline } from '../../components/fir/FIRTimeline';
+import { FIRAttachments } from '../../components/fir/FIRAttachments';
+import { FIRRiskScore } from '../../components/fir/FIRRiskScore';
+import {
+  FileText,
+  Plus,
+  Search,
+  Filter,
+  Trash2,
+  Edit3,
+  Download,
+  MapPin,
+  User,
+  ShieldCheck,
+  Calendar,
+  AlertTriangle,
+  FolderOpen,
+  UserCheck,
+  Activity,
+  ArrowRight
+} from 'lucide-react';
+
+const DISTRICTS = [
+  'Bengaluru Urban',
+  'Mysuru',
+  'Mangaluru',
+  'Belagavi',
+  'Ballari',
+  'Kalaburagi',
+  'Hassan',
+  'Tumkuru',
+  'Dharwad'
+];
+
+export const FIRPage: React.FC = () => {
+  const { user } = useAuthStore();
+  const { addLog } = useAuditStore();
+
+  // Page States
+  const [firs, setFirs] = useState<FIRRecord[]>([]);
+  const [selectedFirId, setSelectedFirId] = useState<string | null>(null);
+  const [selectedFir, setSelectedFir] = useState<FIRDetailRecord | null>(null);
+  const [isLoadingList, setIsLoadingList] = useState(true);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Search & Filters State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [districtFilter, setDistrictFilter] = useState('');
+  const [sectionFilter, setSectionFilter] = useState('');
+
+  // Fetch FIR List
+  const loadFIRList = async () => {
+    setIsLoadingList(true);
+    setError(null);
+    try {
+      const response = await listFIRs({
+        search: searchQuery || undefined,
+        status: statusFilter || undefined,
+        district: districtFilter || undefined,
+        section: sectionFilter || undefined,
+        page_size: 100
+      });
+      setFirs(response.results || []);
+      
+      // Auto-select first item if none selected and lists exist
+      if (response.results?.length > 0 && !selectedFirId && !showForm) {
+        setSelectedFirId(response.results[0].id);
+      }
+    } catch (err) {
+      setError('Failed to query the FIR database. Check server state.');
+    } finally {
+      setIsLoadingList(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadFIRList();
+  }, [searchQuery, statusFilter, districtFilter, sectionFilter]);
+
+  // Fetch Single FIR Detail
+  useEffect(() => {
+    if (!selectedFirId) {
+      setSelectedFir(null);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchDetail = async () => {
+      setIsLoadingDetail(true);
+      setError(null);
+      try {
+        const detail = await getFIR(selectedFirId);
+        if (isMounted) {
+          setSelectedFir(detail);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError('Failed to fetch detailed case summary.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingDetail(false);
+        }
+      }
+    };
+
+    void fetchDetail();
+    return () => { isMounted = false; };
+  }, [selectedFirId]);
+
+  // Form Handlers
+  const handleCreateNewClick = () => {
+    setIsEditing(false);
+    setShowForm(true);
+  };
+
+  const handleFormSubmit = async (payload: any) => {
+    try {
+      if (isEditing && selectedFirId) {
+        // Update FIR
+        const updated = await updateFIR(selectedFirId, payload);
+        setShowForm(false);
+        await loadFIRList();
+        // Force refresh details
+        const refreshed = await getFIR(selectedFirId);
+        setSelectedFir(refreshed);
+
+        if (user) {
+          addLog(
+            user.name,
+            user.badgeId,
+            'UPDATE',
+            `Updated FIR record details for case [${refreshed.fir_number}]`
+          );
+        }
+      } else {
+        // Create FIR
+        const created = await createFIR(payload);
+        setShowForm(false);
+        setSelectedFirId(created.id);
+        await loadFIRList();
+
+        if (user) {
+          addLog(
+            user.name,
+            user.badgeId,
+            'CREATE',
+            `Registered new FIR record in catalog [${created.fir_number}]`
+          );
+        }
+      }
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to persist FIR record.');
+    }
+  };
+
+  const handleDeleteClick = async () => {
+    if (!selectedFir || !user) return;
+    
+    const confirmText = `Are you sure you want to delete classified FIR: ${selectedFir.fir_number}?\nThis action will log system audit alerts.`;
+    if (!window.confirm(confirmText)) {
+      return;
+    }
+
+    try {
+      await deleteFIR(selectedFir.id);
+      addLog(
+        user.name,
+        user.badgeId,
+        'DELETE',
+        `Permanently purged FIR registry record: [${selectedFir.fir_number}]`
+      );
+      setSelectedFirId(null);
+      setSelectedFir(null);
+      await loadFIRList();
+    } catch (err) {
+      alert('Delete forbidden. Check credentials and role privileges.');
+    }
+  };
+
+  const handleExportPDF = () => {
+    if (!selectedFir || !user) return;
+
+    addLog(
+      user.name,
+      user.badgeId,
+      'EXPORT',
+      `Exported secure dossier printout for FIR case [${selectedFir.fir_number}]`
+    );
+
+    // Secure dossier document payload
+    const exportData = {
+      DOCUMENT_TYPE: 'CLASSIFIED FIRST INFORMATION REPORT (FIR)',
+      EXPORTED_BY: `${user.name} (Badge: ${user.badgeId})`,
+      SECURITY_CLEARANCE: 'LEVEL-3 CLASSIFIED',
+      TIMESTAMP: new Date().toISOString(),
+      FIR_DETAILS: {
+        fir_number: selectedFir.fir_number,
+        filed_at: selectedFir.filed_at,
+        complainant_name: selectedFir.complainant_name,
+        complainant_contact: selectedFir.complainant_contact || 'None',
+        sections: selectedFir.sections || 'Unspecified',
+        narrative: selectedFir.narrative || 'No statement details',
+        status: selectedFir.status.toUpperCase()
+      },
+      LINKED_CRIME_CASE: selectedFir.crime_case ? {
+        case_number: selectedFir.crime_case.case_number,
+        occurred_at: selectedFir.crime_case.occurred_at,
+        status: selectedFir.crime_case.status.toUpperCase(),
+        description: selectedFir.crime_case.description
+      } : 'No Linked Case',
+      INVESTIGATING_OFFICER: selectedFir.investigating_officer ? {
+        badge_number: selectedFir.investigating_officer.badge_number,
+        rank: selectedFir.investigating_officer.rank || 'Officer',
+        district: selectedFir.investigating_officer.district,
+        station: selectedFir.investigating_officer.station
+      } : 'Unassigned',
+      ACCUSED_ACCUSED: selectedFir.criminals.map(c => ({ name: c.full_name, alias: c.aliases || 'None' })),
+      VICTIMS_NAMED: selectedFir.victims.map(v => v.full_name)
+    };
+
+    downloadSecureDossier(
+      `FIR_DOSSIER_${selectedFir.fir_number.replace(/\//g, '_')}`,
+      exportData,
+      `CONFIDENTIAL - ${user.badgeId} - ${user.role}`
+    );
+  };
+
+  const handleAttachmentAdded = (updatedAttachments: any[]) => {
+    if (selectedFir) {
+      setSelectedFir({
+        ...selectedFir,
+        attachments: updatedAttachments
+      });
+    }
+  };
+
+  // UI Helpers
+  const getStatusBadge = (statusStr: string) => {
+    switch (statusStr) {
+      case 'closed':
+        return (
+          <span className="px-2.5 py-0.5 bg-emerald-950/40 text-emerald-400 border border-emerald-900/40 text-[9px] rounded font-bold uppercase select-none flex items-center gap-1 shrink-0">
+            <ShieldCheck className="w-3 h-3" />
+            RESOLVED
+          </span>
+        );
+      case 'in_progress':
+        return (
+          <span className="px-2.5 py-0.5 bg-amber-950/40 text-amber-400 border border-amber-900/40 text-[9px] rounded font-bold uppercase select-none flex items-center gap-1 shrink-0">
+            <Activity className="w-3 h-3 animate-pulse" />
+            UNDER INQUIRY
+          </span>
+        );
+      case 'registered':
+      default:
+        return (
+          <span className="px-2.5 py-0.5 bg-blue-950/40 text-blue-400 border border-blue-900/40 text-[9px] rounded font-bold uppercase select-none flex items-center gap-1 shrink-0">
+            <FolderOpen className="w-3 h-3" />
+            REGISTERED
+          </span>
+        );
+    }
+  };
+
+  return (
+    <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none">
+      {/* Top Header HUD */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/5 pb-3 shrink-0">
+        <div>
+          <h2 className="text-md font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#1E6FD9] animate-pulse" />
+            FIR Lifecycle Registry Center
+          </h2>
+          <p className="text-[9.5px] font-mono text-[#6A7A96] mt-0.5">
+            KARNATAKA POLICE DEPT â€” LAW ENFORCEMENT RECORDS, CRIMINAL LINKAGES & AI ANALYSIS TELEMETRY
+          </p>
+          {error && <p className="text-[9px] font-mono text-amber-400 uppercase mt-1">{error}</p>}
+        </div>
+
+        {/* Create FIR Button */}
+        {(user?.role === 'SCRB' || user?.role === 'IO') && !showForm && (
+          <button
+            onClick={handleCreateNewClick}
+            className="px-3 py-1.5 bg-[#1E6FD9] hover:bg-[#1E6FD9]/80 border border-[#1E6FD9]/20 text-white font-mono text-[10px] uppercase font-bold rounded-btn transition-colors cursor-pointer flex items-center gap-1.5 shadow-glow-blue select-none shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Register New FIR
+          </button>
+        )}
+      </div>
+
+      {/* Main split viewport layout */}
+      <div className="flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden min-h-0">
+        
+        {/* Left Side: Filter search list panel */}
+        <div className="lg:col-span-4 bg-[#111D35]/20 border border-border-color p-4 rounded-card flex flex-col justify-between overflow-hidden">
+          <div className="flex flex-col gap-3 overflow-hidden flex-1">
+            <span className="text-[10px] font-mono font-bold text-[#E8EDF5] uppercase tracking-wider border-b border-slate-900 pb-2 shrink-0">
+              FIR Document Directory
+            </span>
+
+            {/* Filters panel */}
+            <div className="space-y-2 shrink-0 text-[10px] font-mono">
+              {/* Search text input */}
+              <div className="flex items-center relative">
+                <input
+                  type="text"
+                  placeholder="Search FIR id, complainant, sections..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 bg-slate-950/70 border border-slate-900 rounded text-white outline-none focus:border-[#1E6FD9] text-[10.5px]"
+                />
+                <Search className="absolute left-2.5 w-3.5 h-3.5 text-[#6A7A96]" />
+              </div>
+
+              {/* Filtering selects */}
+              <div className="grid grid-cols-2 gap-2 text-[9px]">
+                {/* Status selector */}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full px-2 py-1.5 bg-slate-950 border border-slate-900 rounded text-[#A8B4CC] outline-none focus:border-[#1E6FD9] cursor-pointer"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="registered">Registered</option>
+                  <option value="in_progress">In Inquiry</option>
+                  <option value="closed">Resolved</option>
+                </select>
+
+                {/* District selector */}
+                <select
+                  value={districtFilter}
+                  onChange={(e) => setDistrictFilter(e.target.value)}
+                  className="w-full px-2 py-1.5 bg-slate-950 border border-slate-900 rounded text-[#A8B4CC] outline-none focus:border-[#1E6FD9] cursor-pointer"
+                >
+                  <option value="">All Districts</option>
+                  {DISTRICTS.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* List scroll view */}
+            <div className="flex-grow overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
+              {isLoadingList ? (
+                <div className="flex flex-col items-center justify-center p-12 space-y-3">
+                  <div className="w-6 h-6 rounded-full border border-slate-700 border-t-[#1E6FD9] animate-spin" />
+                  <span className="text-[9px] uppercase tracking-wider text-[#6A7A96]">Reading registry...</span>
+                </div>
+              ) : firs.length > 0 ? (
+                firs.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setSelectedFirId(item.id);
+                      setShowForm(false);
+                    }}
+                    className={`p-3 rounded-md text-left font-mono transition-all border cursor-pointer flex justify-between gap-3 ${
+                      selectedFirId === item.id && !showForm
+                        ? 'bg-[#1E6FD9]/10 border-[#1E6FD9]/30 text-white shadow-glow-blue'
+                        : 'bg-[#111D35]/40 border-slate-900 text-[#A8B4CC] hover:bg-slate-950/20 hover:border-slate-800'
+                    }`}
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <span className="text-[11.5px] font-bold block truncate text-white">{item.fir_number}</span>
+                      <span className="text-[9.5px] text-[#6A7A96] block truncate">Complainant: {item.complainant_name}</span>
+                      <span className="text-[8px] text-slate-500 block">FILED: {new Date(item.filed_at).toLocaleDateString('en-IN')}</span>
+                    </div>
+                    <div className="flex items-start shrink-0">
+                      {item.status === 'closed' ? (
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1" />
+                      ) : item.status === 'in_progress' ? (
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1 animate-pulse" />
+                      ) : (
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1" />
+                      )}
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="p-8 text-center text-[10px] text-[#6A7A96] uppercase border border-dashed border-slate-900 rounded-lg">
+                  No records matching filters
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: detail view / form panels */}
+        <div className="lg:col-span-8 flex flex-col overflow-hidden relative">
+          
+          {showForm ? (
+            /* Create / Edit Form */
+            <div className="flex-grow overflow-y-auto custom-scrollbar">
+              <FIRForm
+                fir={isEditing ? selectedFir : null}
+                onSubmit={handleFormSubmit}
+                onCancel={() => setShowForm(false)}
+              />
+            </div>
+          ) : isLoadingDetail ? (
+            /* Loading Detail */
+            <div className="flex-grow flex flex-col items-center justify-center space-y-4">
+              <div className="w-8 h-8 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin" />
+              <span className="text-[10px] font-mono text-[#6A7A96] uppercase">Syncing Case Telemetry...</span>
+            </div>
+          ) : selectedFir ? (
+            /* Detailed View */
+            <div className="flex-grow flex flex-col justify-between overflow-y-auto custom-scrollbar pr-1 gap-4">
+              
+              {/* Detail Header HUD */}
+              <div className="p-4 bg-[#111D35]/35 border border-border-color rounded-card shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-sm font-extrabold text-white font-mono select-all tracking-wide">{selectedFir.fir_number}</h3>
+                    {getStatusBadge(selectedFir.status)}
+                  </div>
+                  <p className="text-[8.5px] font-mono text-[#6A7A96] mt-1 uppercase">
+                    SAKSHA CASE COMMAND DOSSIER INDEXID: {selectedFir.id.slice(0, 8)}...
+                  </p>
+                </div>
+
+                {/* Actions Toolbar */}
+                <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase shrink-0">
+                  {(user?.role === 'SCRB' || user?.role === 'IO') && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setIsEditing(true);
+                          setShowForm(true);
+                        }}
+                        className="px-2.5 py-1.5 bg-[#111D35] hover:bg-[#1E6FD9]/15 border border-slate-900 hover:border-[#1E6FD9]/30 text-[#A8B4CC] hover:text-white rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        Edit FIR
+                      </button>
+                      <button
+                        onClick={handleDeleteClick}
+                        className="px-2.5 py-1.5 bg-[#C94A2A]/10 hover:bg-[#C94A2A]/20 border border-[#C94A2A]/20 hover:border-[#C94A2A]/40 text-[#C94A2A] rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Purge
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={handleExportPDF}
+                    className="px-2.5 py-1.5 bg-[#111D35] hover:bg-[#1E6FD9]/15 border border-slate-900 hover:border-[#1E6FD9]/30 text-[#A8B4CC] hover:text-white rounded-btn transition-colors cursor-pointer flex items-center gap-1.5 font-bold"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Secure Dossier
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Metadata Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 shrink-0 font-mono text-xs text-[#A8B4CC]">
+                {/* Complainant & Narrative panel */}
+                <div className="md:col-span-8 bg-[#111D35]/15 border border-slate-900 rounded-lg p-4 space-y-4">
+                  <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider">Statement Information</span>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-[10.5px]">
+                    <div>
+                      <span className="text-[8px] text-slate-500 uppercase block">Complainant name</span>
+                      <span className="text-white font-bold block mt-0.5">{selectedFir.complainant_name}</span>
+                    </div>
+                    <div>
+                      <span className="text-[8px] text-slate-500 uppercase block">Contact number</span>
+                      <span className="text-white font-semibold block mt-0.5">{selectedFir.complainant_contact || 'NOT LOGGED'}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[8px] text-slate-500 uppercase block mb-1">Penal Sections Charged</span>
+                    <span className="px-2 py-1 bg-slate-950/70 border border-slate-900 text-amber-400 font-bold rounded block text-[10px] w-fit">
+                      {selectedFir.sections || 'IPC GENERAL QUERY INQUIRY'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[8px] text-slate-500 uppercase block">Accused Statement Summary</span>
+                    <div className="p-3 bg-slate-950/70 border border-slate-900 text-[#E8EDF5] rounded text-[10px] leading-relaxed max-h-[120px] overflow-y-auto custom-scrollbar">
+                      {selectedFir.narrative || 'No statement summary logged in database.'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Investigating Team & Case Card */}
+                <div className="md:col-span-4 space-y-4 flex flex-col">
+                  {/* Case link card */}
+                  {selectedFir.crime_case ? (
+                    <div className="bg-[#111D35]/15 border border-slate-900 rounded-lg p-4 flex-1">
+                      <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-2.5 flex items-center justify-between">
+                        Incident Link
+                        <span className="px-1.5 py-0.5 bg-[#1E6FD9]/15 text-[#1E6FD9] border border-[#1E6FD9]/30 rounded text-[7.5px] font-bold">
+                          LINKED
+                        </span>
+                      </span>
+                      <p className="text-[11px] font-bold text-white uppercase truncate">{selectedFir.crime_case.case_number}</p>
+                      <p className="text-[9px] text-[#6A7A96] mt-1">
+                        Reported: {new Date(selectedFir.crime_case.reported_at).toLocaleDateString('en-IN')}
+                      </p>
+                      <p className="text-[9.5px] text-[#A8B4CC] mt-2 line-clamp-3 leading-relaxed">
+                        {selectedFir.crime_case.description}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-950/40 border border-dashed border-slate-900 rounded-lg p-4 flex-1 flex flex-col items-center justify-center text-center">
+                      <AlertTriangle className="w-5 h-5 text-amber-500/60 mb-2" />
+                      <span className="text-[9px] uppercase text-[#6A7A96]">No case file linkage</span>
+                    </div>
+                  )}
+
+                  {/* Officer assigned card */}
+                  <div className="bg-[#111D35]/15 border border-slate-900 rounded-lg p-4">
+                    <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-2.5">Command Officer</span>
+                    {selectedFir.investigating_officer ? (
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#1E6FD9]/15 border border-[#1E6FD9]/30 flex items-center justify-center text-[#1E6FD9]">
+                          <UserCheck className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold text-white truncate">
+                            Inspector {selectedFir.investigating_officer.badge_number}
+                          </p>
+                          <p className="text-[8px] text-[#6A7A96] truncate">
+                            {selectedFir.investigating_officer.rank || 'Officer'} â€¢ {selectedFir.investigating_officer.station}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[9px] text-amber-500 uppercase font-bold">Unassigned (Action Required)</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Linked Persons Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0 font-mono text-[10px]">
+                {/* Linked Suspects */}
+                <div className="bg-[#111D35]/10 border border-slate-900 rounded-lg p-4">
+                  <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-2.5">
+                    Accused / Named Suspects ({selectedFir.criminals.length})
+                  </span>
+                  <div className="space-y-2 max-h-[140px] overflow-y-auto custom-scrollbar">
+                    {selectedFir.criminals.map(c => (
+                      <div key={c.id} className="p-2 bg-slate-950/40 border border-slate-900 rounded flex justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-white">{c.full_name}</p>
+                          <p className="text-[#6A7A96] text-[8px] mt-0.5">ALIAS: {c.aliases || 'None'}</p>
+                        </div>
+                        <span className="text-[7.5px] uppercase font-bold text-red-400 bg-red-950/20 border border-red-900/30 px-1 py-0.5 rounded select-none h-fit">
+                          {c.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                    ))}
+                    {selectedFir.criminals.length === 0 && (
+                      <p className="text-[#6A7A96] text-center uppercase py-3">No suspects linked to FIR</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Linked Victims */}
+                <div className="bg-[#111D35]/10 border border-slate-900 rounded-lg p-4">
+                  <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-2.5">
+                    Victims Named ({selectedFir.victims.length})
+                  </span>
+                  <div className="space-y-2 max-h-[140px] overflow-y-auto custom-scrollbar">
+                    {selectedFir.victims.map(v => (
+                      <div key={v.id} className="p-2 bg-slate-950/40 border border-slate-900 rounded space-y-1">
+                        <div className="flex justify-between items-center">
+                          <p className="font-bold text-white">{v.full_name}</p>
+                          {v.gender && v.age && (
+                            <span className="text-[#6A7A96] text-[8px] uppercase">{v.gender} â€¢ AGE: {v.age}</span>
+                          )}
+                        </div>
+                        <p className="text-[#A8B4CC] text-[8.5px] line-clamp-2 italic leading-relaxed">
+                          "{v.statement || 'No victim statement logged.'}"
+                        </p>
+                      </div>
+                    ))}
+                    {selectedFir.victims.length === 0 && (
+                      <p className="text-[#6A7A96] text-center uppercase py-3">No victims linked to FIR</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Dynamic widgets grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
+                {/* AI Risk Meter */}
+                <FIRRiskScore
+                  score={selectedFir.ai_risk_score}
+                  reasons={selectedFir.ai_analysis_reasons}
+                />
+
+                {/* Hotspot prediction mini panel */}
+                <div className="bg-[#111D35]/30 border border-border-color p-5 rounded-card flex flex-col justify-between overflow-hidden relative">
+                  <div className="flex items-center justify-between border-b border-slate-900 pb-3 mb-4 font-mono">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-rose-500" />
+                      <span className="text-[10px] font-bold text-[#E8EDF5] uppercase tracking-wider">Linked Hotspot Metrics</span>
+                    </div>
+                    <span className="text-[8px] text-[#6A7A96] uppercase">GRID DECK.GL COORDS</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 font-mono text-xs items-center">
+                    {/* Location specs */}
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-[8px] text-slate-500 uppercase block">District Precinct</span>
+                        <span className="text-white font-bold block mt-0.5 uppercase tracking-wide">
+                          {selectedFir.crime_case?.location?.district || selectedFir.investigating_officer?.district || 'State HQ'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[8px] text-slate-500 uppercase block">Coordinates</span>
+                        <span className="text-white block mt-0.5 text-[10px] select-all">
+                          {selectedFir.crime_case?.location?.latitude?.toFixed(4) || '12.9716'}, {selectedFir.crime_case?.location?.longitude?.toFixed(4) || '77.5946'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Stats metrics */}
+                    <div className="p-3 bg-slate-950/50 border border-slate-900 rounded space-y-2 text-center">
+                      <span className="text-[7.5px] text-[#6A7A96] uppercase tracking-widest block font-bold">Predictive Risk Index</span>
+                      <span className="text-xl font-extrabold text-red-400 block leading-none">82%</span>
+                      <span className="text-[8px] text-emerald-400 font-semibold block uppercase">TRENDING UPWARD</span>
+                    </div>
+                  </div>
+
+                  <div className="border border-slate-900 p-2.5 rounded bg-slate-950/20 text-[9.5px] font-mono leading-relaxed text-[#A8B4CC] flex items-center justify-between gap-3 mt-3">
+                    <span>Target beat patrol recommendation generated. Dispatching auto-telemetry alerts.</span>
+                    <ArrowRight className="w-4 h-4 text-[#1E6FD9] shrink-0" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Uploads and timeline grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
+                {/* Visual Event Timeline */}
+                <FIRTimeline fir={selectedFir} />
+
+                {/* Attachments Section */}
+                <FIRAttachments
+                  fir={selectedFir}
+                  onAttachmentAdded={handleAttachmentAdded}
+                />
+              </div>
+
+            </div>
+          ) : (
+            /* Selected Placeholder */
+            <div className="flex-grow flex flex-col items-center justify-center p-12 border border-dashed border-slate-900 rounded-lg text-center space-y-4">
+              <FolderOpen className="w-10 h-10 text-[#6A7A96] animate-bounce" />
+              <div className="space-y-1 select-none">
+                <span className="text-xs uppercase tracking-wider text-white font-bold font-mono">No FIR Selected</span>
+                <p className="text-[9.5px] text-[#6A7A96] font-mono uppercase">
+                  Select a First Information Report file from the directory sidebar console
+                </p>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+      </div>
+    </div>
+  );
+};
+export default FIRPage;
