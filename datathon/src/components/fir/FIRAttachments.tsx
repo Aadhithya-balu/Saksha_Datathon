@@ -1,0 +1,247 @@
+import React, { useState, useRef } from 'react';
+import { type FIRDetailRecord, updateFIR } from '../../services/api';
+import { FileText, Download, UploadCloud, CheckCircle, Trash2, ShieldAlert } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
+import { useAuditStore } from '../../store/auditStore';
+
+interface FIRAttachmentsProps {
+  fir: FIRDetailRecord;
+  onAttachmentAdded: (updatedAttachments: any[]) => void;
+}
+
+export const FIRAttachments: React.FC<FIRAttachmentsProps> = ({ fir, onAttachmentAdded }) => {
+  const { user } = useAuthStore();
+  const { addLog } = useAuditStore();
+  const [attachments, setAttachments] = useState<any[]>(fir.attachments || []);
+  const [uploadingFile, setUploadingFile] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const formatSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      void simulateUpload(e.target.files[0]);
+    }
+  };
+
+  const simulateUpload = async (file: File) => {
+    setUploadingFile(file.name);
+    setUploadProgress(0);
+
+    // Simulate progress
+    const interval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 150);
+
+    // Wait for simulate progress to finish
+    await new Promise(resolve => setTimeout(resolve, 1800));
+
+    // Prepare updated attachments list
+    const newAttachment = {
+      name: file.name,
+      size: file.size,
+      uploadedAt: new Date().toISOString()
+    };
+
+    const updated = [...attachments, newAttachment];
+
+    try {
+      // Save to database
+      await updateFIR(fir.id, { attachments: updated });
+      setAttachments(updated);
+      onAttachmentAdded(updated);
+
+      if (user) {
+        addLog(
+          user.name,
+          user.badgeId,
+          'UPLOAD',
+          `Attached investigative document [${file.name}] to FIR registry [${fir.fir_number}]`
+        );
+      }
+    } catch (err) {
+      alert('Failed to save attachment metadata to backend database.');
+    } finally {
+      setUploadingFile(null);
+      setUploadProgress(0);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDelete = async (indexToDelete: number) => {
+    const fileToDelete = attachments[indexToDelete];
+    const updated = attachments.filter((_, idx) => idx !== indexToDelete);
+
+    if (!window.confirm(`Are you sure you want to remove ${fileToDelete.name}?`)) {
+      return;
+    }
+
+    try {
+      await updateFIR(fir.id, { attachments: updated });
+      setAttachments(updated);
+      onAttachmentAdded(updated);
+
+      if (user) {
+        addLog(
+          user.name,
+          user.badgeId,
+          'DELETE',
+          `Deleted document attachment [${fileToDelete.name}] from FIR registry [${fir.fir_number}]`
+        );
+      }
+    } catch (err) {
+      alert('Failed to remove attachment metadata from database.');
+    }
+  };
+
+  const handleDownload = (filename: string) => {
+    // Generate mock secure file download
+    const content = `SAKSHA CASE RECON DATA - CLASSIFIED SYSTEM\nSTAMP: ${new Date().toISOString()}\nFIR ID: ${fir.fir_number}\nFILE: ${filename}`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    if (user) {
+      addLog(
+        user.name,
+        user.badgeId,
+        'DOWNLOAD',
+        `Downloaded classified attachment [${filename}] for case [${fir.fir_number}]`
+      );
+    }
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const onDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      void simulateUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  return (
+    <div className="bg-[#111D35]/30 border border-border-color p-5 rounded-card flex flex-col justify-between overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-slate-900 pb-3 mb-4">
+        <UploadCloud className="w-4 h-4 text-[#0E9E78]" />
+        <span className="text-[10px] font-bold text-[#E8EDF5] uppercase tracking-wider">Classification & FIR Attachments</span>
+      </div>
+
+      <div className="space-y-4 text-xs font-mono">
+        {/* Drop zone */}
+        <div
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-lg p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200 ${
+            isDragOver 
+              ? 'border-[#0E9E78] bg-[#0E9E78]/10' 
+              : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/75'
+          }`}
+        >
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          
+          {uploadingFile ? (
+            <div className="w-full text-center space-y-2">
+              <p className="text-[9.5px] uppercase text-[#E8EDF5] truncate">Uploading: {uploadingFile}</p>
+              <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div 
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-150" 
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <span className="text-[8px] text-[#6A7A96]">{uploadProgress}% Telemetry Synced</span>
+            </div>
+          ) : (
+            <>
+              <UploadCloud className="w-8 h-8 text-[#6A7A96] group-hover:text-white" />
+              <span className="text-[9px] uppercase tracking-wider text-slate-400 text-center">
+                Drag investigative reports or click to browse
+              </span>
+              <span className="text-[7.5px] text-[#6A7A96] uppercase">PDF, JPG, PNG â€¢ SECURE CHANNEL ONLY</span>
+            </>
+          )}
+        </div>
+
+        {/* Attachments List */}
+        <div className="space-y-2 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
+          {attachments.map((file, idx) => (
+            <div 
+              key={idx} 
+              className="flex items-center justify-between p-2.5 bg-slate-950/60 border border-slate-900 rounded-md hover:border-slate-800 transition-colors"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FileText className="w-4 h-4 text-[#A8B4CC] shrink-0" />
+                <div className="truncate">
+                  <p className="text-[10px] text-white font-medium truncate select-all">{file.name}</p>
+                  <p className="text-[8px] text-[#6A7A96] mt-0.5">{formatSize(file.size || 0)}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => handleDownload(file.name)}
+                  className="p-1 text-slate-500 hover:text-white hover:bg-slate-900 rounded cursor-pointer transition-colors"
+                  title="Secure Download"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => handleDelete(idx)}
+                  className="p-1 text-slate-500 hover:text-red-400 hover:bg-slate-900 rounded cursor-pointer transition-colors"
+                  title="Remove Document"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {attachments.length === 0 && !uploadingFile && (
+            <div className="flex flex-col items-center justify-center p-6 border border-dashed border-slate-900 rounded-lg text-[#6A7A96] text-center gap-1">
+              <ShieldAlert className="w-4 h-4 text-amber-500/60" />
+              <span className="text-[9px] uppercase tracking-wide">No dossiers attached</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+export default FIRAttachments;

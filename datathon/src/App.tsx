@@ -15,6 +15,7 @@ import SettingsHelp from './pages/SettingsHelp';
 import AIChat from './pages/AIChat';
 import CrimeCases from './pages/CrimeCases';
 import RoleGuard from './components/layout/RoleGuard';
+import FIRPage from './pages/FIR';
 
 function App() {
   const { isAuthenticated, user, isHydrating, initializeSession } = useAuthStore();
@@ -33,6 +34,7 @@ function App() {
 
     const tabLabels: Record<string, string> = {
       dashboard: 'Overview Dashboard',
+      fir: 'FIR Lifecycle Management',
       hotspot: 'Hotspot Map Analysis',
       network: 'Criminal Network Graph Workspace',
       predictive: 'AI Predictive Intelligence',
@@ -73,6 +75,12 @@ function App() {
     switch (activeTab) {
       case 'dashboard':
         return <Overview />;
+      case 'fir':
+        return (
+          <RoleGuard path="/firs">
+            <FIRPage />
+          </RoleGuard>
+        );
       case 'hotspot':
         return (
           <RoleGuard path="/hotspots">

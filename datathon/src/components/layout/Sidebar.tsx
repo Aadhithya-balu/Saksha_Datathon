@@ -47,6 +47,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )
     },
     {
+      id: 'fir',
+      label: 'FIR Registry',
+      path: '/firs',
+      icon: (isActive: boolean) => (
+        <svg className="w-6 h-6 transition-all duration-300 pointer-events-none" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="firGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={isActive ? "#1E6FD9" : "#6A7A96"} />
+              <stop offset="100%" stopColor={isActive ? "#0E9E78" : "#A8B4CC"} />
+            </linearGradient>
+            <filter id="firGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#1E6FD9" floodOpacity="0.5" />
+            </filter>
+          </defs>
+          <path d="M4 4h7l2 2h7a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z" fill="none" stroke="url(#firGrad)" strokeWidth="1.5" filter={isActive ? "url(#firGlow)" : undefined} />
+          <path d="M2 10h20" stroke={isActive ? "#1E6FD9" : "#6A7A96"} strokeWidth="1" />
+          <line x1="6" y1="14" x2="18" y2="14" stroke={isActive ? "#0E9E78" : "#6A7A96"} strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="6" y1="17" x2="14" y2="17" stroke={isActive ? "#0E9E78" : "#6A7A96"} strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      )
+    },
+    {
       id: 'hotspot',
       label: 'Hotspot Map',
       path: '/hotspots',
