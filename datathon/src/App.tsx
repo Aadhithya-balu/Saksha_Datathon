@@ -16,6 +16,8 @@ import AIChat from './pages/AIChat';
 import CrimeCases from './pages/CrimeCases';
 import RoleGuard from './components/layout/RoleGuard';
 import FIRPage from './pages/FIR';
+import Criminals from './pages/Criminals';
+import Victims from './pages/Victims';
 
 function App() {
   const { isAuthenticated, user, isHydrating, initializeSession } = useAuthStore();
@@ -27,6 +29,21 @@ function App() {
   useEffect(() => {
     void initializeSession();
   }, [initializeSession]);
+
+  // Listen for navigation requests (cross-tab links)
+  useEffect(() => {
+    const handleNavigate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ tab: string, targetId?: string }>;
+      if (customEvent.detail?.tab) {
+        setActiveTab(customEvent.detail.tab);
+        if (customEvent.detail.targetId) {
+          sessionStorage.setItem('selected_entity_id', customEvent.detail.targetId);
+        }
+      }
+    };
+    window.addEventListener('navigate-tab', handleNavigate);
+    return () => window.removeEventListener('navigate-tab', handleNavigate);
+  }, []);
 
   // Automatically log PAGE_VIEW transitions
   useEffect(() => {
@@ -41,6 +58,8 @@ function App() {
       anomaly: 'Anomaly Alert Feed',
       crime_cases: 'Crime Case Management',
       offenders: 'Offender Dossiers Registry',
+      criminals: 'Criminal Dossier Registry',
+      victims: 'Victim & Witness Index',
       reports: 'Reports & Downloads Center',
       settings_help: 'Settings & Operator Help',
       ai_chat: 'AI Chat Copilot Workspace'
@@ -109,6 +128,18 @@ function App() {
         return (
           <RoleGuard path="/offenders">
             <Offenders />
+          </RoleGuard>
+        );
+      case 'criminals':
+        return (
+          <RoleGuard path="/offenders">
+            <Criminals />
+          </RoleGuard>
+        );
+      case 'victims':
+        return (
+          <RoleGuard path="/offenders">
+            <Victims />
           </RoleGuard>
         );
       case 'reports':
