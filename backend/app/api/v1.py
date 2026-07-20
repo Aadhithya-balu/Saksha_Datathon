@@ -18,6 +18,7 @@ from app.routes import (
     dashboard,
     evidence,
     firs,
+    investigation,
     locations,
     officers,
     reports,
@@ -41,6 +42,7 @@ api_router.include_router(evidence.router)
 api_router.include_router(locations.router)
 api_router.include_router(reports.router)
 api_router.include_router(crime_cases.router)
+api_router.include_router(investigation.router)
 api_router.include_router(ai_support.router)
 api_router.include_router(ai_chat.router)
 api_router.include_router(ai_anomaly.router)
