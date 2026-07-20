@@ -25,3 +25,6 @@ python-jose[cryptography]
 passlib[bcrypt]
 pydantic[email]
 loguru
+Pillow==10.4.0
+PyPDF2==3.0.1
+pymediainfo==6.1.0

@@ -14,8 +14,19 @@ ROLE_ADMIN = "admin"
 ROLE_CRIME_ANALYST = "crime_analyst"
 ROLE_INVESTIGATOR = "investigator"
 ROLE_POLICYMAKER = "policymaker"
+ROLE_INSPECTOR = "inspector"
+ROLE_FORENSIC = "forensic"
+ROLE_VIEWER = "viewer"
 
-ALL_ROLES = [ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, ROLE_POLICYMAKER]
+ALL_ROLES = [
+    ROLE_ADMIN,
+    ROLE_CRIME_ANALYST,
+    ROLE_INVESTIGATOR,
+    ROLE_POLICYMAKER,
+    ROLE_INSPECTOR,
+    ROLE_FORENSIC,
+    ROLE_VIEWER,
+]
 
 
 def require_roles(*allowed_roles: str):

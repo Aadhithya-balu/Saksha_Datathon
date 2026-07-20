@@ -1,0 +1,34 @@
+{
+  "trained_at": "2026-07-20T09:48:45.896688+00:00",
+  "n_criminals": 5,
+  "n_features": 10,
+  "feature_names": [
+    "fir_count",
+    "open_fir_count",
+    "distinct_districts",
+    "distinct_categories",
+    "high_severity_count",
+    "age_years",
+    "status_encoded",
+    "recency_days",
+    "avg_case_age_days",
+    "multi_district_flag"
+  ],
+  "risk_scorer": {
+    "mean_risk_score": 37.12077342562917,
+    "std_risk_score": 36.87176449220186,
+    "high_risk_fraction": 0.2
+  },
+  "repeat_offender": {
+    "mean_probability": 0.9152801517181214
+  },
+  "similarity": {
+    "index_size": 5.0,
+    "mean_max_similarity": 0.9950478482441569
+  },
+  "clustering": {
+    "inertia": 38.2222,
+    "n_clusters": 4.0,
+    "mean_cluster_size": 1.25
+  }
+}

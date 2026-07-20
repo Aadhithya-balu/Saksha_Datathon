@@ -1,4 +1,5 @@
 const DEFAULT_API_BASE_URL = '/api/v1';
+import type { UserRole } from '../store/authStore';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL;
 
@@ -215,12 +216,18 @@ export const clearStoredTokens = () => {
   window.localStorage.removeItem(REFRESH_TOKEN_KEY);
 };
 
-export const mapBackendRoleToUiRole = (role: string): 'SCRB' | 'IO' | 'SP' => {
+export const mapBackendRoleToUiRole = (role: string): UserRole => {
   switch (role) {
     case 'investigator':
       return 'IO';
     case 'policymaker':
       return 'SP';
+    case 'inspector':
+      return 'INSPECTOR';
+    case 'forensic':
+      return 'FORENSIC';
+    case 'viewer':
+      return 'VIEWER';
     case 'admin':
     case 'crime_analyst':
     default:

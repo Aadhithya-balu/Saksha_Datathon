@@ -18,6 +18,8 @@ import RoleGuard from './components/layout/RoleGuard';
 import FIRPage from './pages/FIR';
 import Criminals from './pages/Criminals';
 import Victims from './pages/Victims';
+import OfficersPage from './pages/Officers';
+import EvidencePage from './pages/Evidence';
 
 function App() {
   const { isAuthenticated, user, isHydrating, initializeSession } = useAuthStore();
@@ -164,6 +166,18 @@ function App() {
         return (
           <RoleGuard path="/ai-chat">
             <AIChat />
+          </RoleGuard>
+        );
+      case 'officers':
+        return (
+          <RoleGuard path="/officers">
+            <OfficersPage />
+          </RoleGuard>
+        );
+      case 'evidence':
+        return (
+          <RoleGuard path="/evidence">
+            <EvidencePage />
           </RoleGuard>
         );
       default:
