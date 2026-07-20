@@ -1,0 +1,220 @@
+"""
+Unified Investigation Interface — routes for investigation dashboard, timeline,
+case progress, linked FIRs/criminals/evidence, AI recommendations, chat, and history.
+"""
+from __future__ import annotations
+
+import uuid
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.auth.dependencies import get_current_user
+from app.database.postgres import get_db
+from app.models.user import User
+from app.services.investigation_service import get_investigation
+from app.routes.ai_chat import _assistant_response
+
+router = APIRouter(prefix="/investigation", tags=["Investigation"])
+
+
+# ── Response Schemas ──────────────────────────────────────────
+
+class OfficerOut(BaseModel):
+    id: str
+    badge_number: str
+    rank: str | None
+    full_name: str
+    district: str
+    station: str
+
+
+class CaseOut(BaseModel):
+    id: str
+    case_number: str
+    description: str | None
+    mo_tags: str | None
+    status: str
+    priority: str
+    progress: int
+    occurred_at: str
+    reported_at: str
+    created_at: str
+    assigned_officer: OfficerOut | None
+
+
+class FIRCriminalOut(BaseModel):
+    id: str
+    full_name: str
+    aliases: str | None
+    status: str
+
+
+class FIRVictimOut(BaseModel):
+    id: str
+    full_name: str
+    contact_number: str | None
+    gender: str | None
+    age: int | None
+    statement: str | None
+
+
+class FIRSummaryOut(BaseModel):
+    id: str
+    fir_number: str
+    complainant_name: str
+    complainant_contact: str | None
+    sections: str | None
+    status: str
+    filed_at: str
+    narrative: str | None
+    criminals: list[FIRVictimOut]
+    victims: list[FIRVictimOut]
+
+
+class CriminalOut(BaseModel):
+    id: str
+    full_name: str
+    aliases: str | None
+    gender: str | None
+    date_of_birth: str | None
+    identifying_marks: str | None
+    mo_summary: str | None
+    status: str
+    risk_score: int
+    linked_fir_count: int
+
+
+class EvidenceOut(BaseModel):
+    id: str
+    evidence_type: str
+    description: str | None
+    file_url: str | None
+    collected_by: str | None
+    chain_of_custody: str | None
+    created_at: str
+
+
+class TimelineEventOut(BaseModel):
+    timestamp: str
+    event: str
+    actor: str | None
+    category: str
+
+
+class AIRecommendationOut(BaseModel):
+    type: str
+    title: str
+    description: str
+    priority: str
+
+
+class HistoryEntryOut(BaseModel):
+    timestamp: str
+    action: str
+    resource_type: str
+    details: str | None
+    officer_name: str | None
+    officer_badge: str | None
+
+
+class InvestigationResponse(BaseModel):
+    case: CaseOut
+    firs: list[FIRSummaryOut]
+    criminals: list[CriminalOut]
+    evidence: list[EvidenceOut]
+    timeline: list[TimelineEventOut]
+    ai_recommendations: list[AIRecommendationOut]
+    history: list[HistoryEntryOut]
+
+
+class InvestigationChatRequest(BaseModel):
+    case_id: uuid.UUID
+    message: str
+    session_id: str | None = None
+
+
+# ── Endpoints ─────────────────────────────────────────────────
+
+@router.get("/{case_id}", response_model=InvestigationResponse)
+def get_investigation_dashboard(
+    case_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retrieve the full unified investigation interface for a crime case."""
+    try:
+        data = get_investigation(db, case_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    return InvestigationResponse(
+        case=CaseOut(**data.case.__dict__),
+        firs=[FIRSummaryOut(**f.__dict__) for f in data.firs],
+        criminals=[CriminalOut(**c.__dict__) for c in data.criminals],
+        evidence=[EvidenceOut(**e.__dict__) for e in data.evidence],
+        timeline=[TimelineEventOut(**t.__dict__) for t in data.timeline],
+        ai_recommendations=[AIRecommendationOut(**r.__dict__) for r in data.ai_recommendations],
+        history=[HistoryEntryOut(**h.__dict__) for h in data.history],
+    )
+
+
+@router.get("/{case_id}/timeline", response_model=list[TimelineEventOut])
+def get_investigation_timeline(
+    case_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retrieve the investigation timeline for a crime case."""
+    try:
+        data = get_investigation(db, case_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    return [TimelineEventOut(**t.__dict__) for t in data.timeline]
+
+
+@router.get("/{case_id}/history", response_model=list[HistoryEntryOut])
+def get_investigation_history(
+    case_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retrieve the audit history for a crime case investigation."""
+    try:
+        data = get_investigation(db, case_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    return [HistoryEntryOut(**h.__dict__) for h in data.history]
+
+
+@router.post("/chat")
+def investigation_chat(
+    payload: InvestigationChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Ask an AI question about a specific investigation case.
+    The response is contextualized with the investigation data.
+    """
+    try:
+        data = get_investigation(db, payload.case_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    # Build a contextual message including case details
+    case = data.case
+    context_message = (
+        f"Case {case.case_number} ({case.status}, priority: {case.priority}, "
+        f"progress: {case.progress}%). "
+        f"Description: {case.description or 'N/A'}. "
+        f"Involved: {len(data.firs)} FIRs, {len(data.criminals)} criminals, {len(data.evidence)} evidence items. "
+        f"User question: {payload.message}"
+    )
+
+    return _assistant_response(db, context_message)
+

@@ -613,3 +613,116 @@ export async function listVictims(q?: string, page = 1, pageSize = 100) {
 export async function getVictim(victimId: string) {
   return apiRequest<any>(`/victims/${victimId}`);
 }
+
+// ── Unified Investigation Interface ──
+
+export interface InvestigationOfficer {
+  id: string;
+  badge_number: string;
+  rank: string | null;
+  full_name: string;
+  district: string;
+  station: string;
+}
+
+export interface InvestigationCase {
+  id: string;
+  case_number: string;
+  description: string | null;
+  mo_tags: string | null;
+  status: string;
+  priority: string;
+  progress: number;
+  occurred_at: string;
+  reported_at: string;
+  created_at: string;
+  assigned_officer: InvestigationOfficer | null;
+}
+
+export interface InvestigationFIR {
+  id: string;
+  fir_number: string;
+  complainant_name: string;
+  complainant_contact: string | null;
+  sections: string | null;
+  status: string;
+  filed_at: string;
+  narrative: string | null;
+  criminals: Array<{ id: string; full_name: string; aliases: string | null; status: string }>;
+  victims: Array<{ id: string; full_name: string; contact_number: string | null; gender: string | null; age: number | null; statement: string | null }>;
+}
+
+export interface InvestigationCriminal {
+  id: string;
+  full_name: string;
+  aliases: string | null;
+  gender: string | null;
+  date_of_birth: string | null;
+  identifying_marks: string | null;
+  mo_summary: string | null;
+  status: string;
+  risk_score: number;
+  linked_fir_count: number;
+}
+
+export interface InvestigationEvidence {
+  id: string;
+  evidence_type: string;
+  description: string | null;
+  file_url: string | null;
+  collected_by: string | null;
+  chain_of_custody: string | null;
+  created_at: string;
+}
+
+export interface InvestigationTimelineEvent {
+  timestamp: string;
+  event: string;
+  actor: string | null;
+  category: string;
+}
+
+export interface InvestigationAIRecommendation {
+  type: string;
+  title: string;
+  description: string;
+  priority: string;
+}
+
+export interface InvestigationHistoryEntry {
+  timestamp: string;
+  action: string;
+  resource_type: string;
+  details: string | null;
+  officer_name: string | null;
+  officer_badge: string | null;
+}
+
+export interface InvestigationData {
+  case: InvestigationCase;
+  firs: InvestigationFIR[];
+  criminals: InvestigationCriminal[];
+  evidence: InvestigationEvidence[];
+  timeline: InvestigationTimelineEvent[];
+  ai_recommendations: InvestigationAIRecommendation[];
+  history: InvestigationHistoryEntry[];
+}
+
+export async function getInvestigation(caseId: string) {
+  return apiRequest<InvestigationData>(`/investigation/${caseId}`);
+}
+
+export async function getInvestigationTimeline(caseId: string) {
+  return apiRequest<InvestigationTimelineEvent[]>(`/investigation/${caseId}/timeline`);
+}
+
+export async function getInvestigationHistory(caseId: string) {
+  return apiRequest<InvestigationHistoryEntry[]>(`/investigation/${caseId}/history`);
+}
+
+export async function investigationChat(caseId: string, message: string, sessionId?: string) {
+  return apiRequest<any>(`/investigation/chat`, {
+    method: 'POST',
+    body: JSON.stringify({ case_id: caseId, message, session_id: sessionId ?? null }),
+  });
+}

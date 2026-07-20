@@ -18,6 +18,7 @@ import RoleGuard from './components/layout/RoleGuard';
 import FIRPage from './pages/FIR';
 import Criminals from './pages/Criminals';
 import Victims from './pages/Victims';
+import InvestigationPage from './pages/Investigation';
 
 function App() {
   const { isAuthenticated, user, isHydrating, initializeSession } = useAuthStore();
@@ -57,6 +58,7 @@ function App() {
       predictive: 'AI Predictive Intelligence',
       anomaly: 'Anomaly Alert Feed',
       crime_cases: 'Crime Case Management',
+      investigation: 'Unified Investigation Interface',
       offenders: 'Offender Dossiers Registry',
       criminals: 'Criminal Dossier Registry',
       victims: 'Victim & Witness Index',
@@ -158,6 +160,12 @@ function App() {
         return (
           <RoleGuard path="/crime-cases">
             <CrimeCases />
+          </RoleGuard>
+        );
+      case 'investigation':
+        return (
+          <RoleGuard path="/crime-cases">
+            <InvestigationPage />
           </RoleGuard>
         );
       case 'ai_chat':
