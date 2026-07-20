@@ -158,6 +158,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )
     },
     {
+      id: 'investigation',
+      label: 'Investigation',
+      path: '/crime-cases',
+      icon: (isActive: boolean) => (
+        <svg className="w-6 h-6 transition-all duration-300 pointer-events-none" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="invGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={isActive ? "#6C43CC" : "#6A7A96"} />
+              <stop offset="100%" stopColor={isActive ? "#C94A2A" : "#A8B4CC"} />
+            </linearGradient>
+            <filter id="invGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#6C43CC" floodOpacity="0.6" />
+            </filter>
+          </defs>
+          {/* Investigation magnifying glass + case layers */}
+          <circle cx="11" cy="11" r="6" fill="none" stroke="url(#invGrad)" strokeWidth="1.5" filter={isActive ? "url(#invGlow)" : undefined} />
+          <line x1="15.5" y1="15.5" x2="20" y2="20" stroke={isActive ? "#C94A2A" : "#6A7A96"} strokeWidth="1.5" strokeLinecap="round" />
+          <path d="M7 4l5-2 5 2" stroke={isActive ? "#6C43CC" : "#6A7A96"} strokeWidth="1" strokeLinecap="round" />
+          <path d="M7 20l5 2 5-2" stroke={isActive ? "#6C43CC" : "#6A7A96"} strokeWidth="1" strokeLinecap="round" />
+        </svg>
+      )
+    },
+    {
       id: 'anomaly',
       label: 'Anomaly Feed',
       path: '/anomalies',

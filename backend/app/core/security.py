@@ -1,23 +1,39 @@
 """
 Password hashing and JWT token creation / verification utilities.
+
+Uses SHA-256 (via Python's built-in hashlib) for password hashing —
+no external C dependencies, no 72-byte truncation limit (bcrypt issue).
 """
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    """
+    Hash a password using SHA-256 with a random salt.
+    Returns a string in the format: sha256$<salt>$<hex_digest>
+    """
+    salt = secrets.token_hex(16)
+    digest = hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
+    return f"sha256${salt}${digest}"
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    """
+    Verify a plain-text password against a stored hash (format: sha256$<salt>$<hex_digest>).
+    """
+    try:
+        _, salt, stored_digest = hashed_password.split("$", 2)
+    except ValueError:
+        return False
+    computed_digest = hashlib.sha256((salt + plain_password).encode("utf-8")).hexdigest()
+    return computed_digest == stored_digest
 
 
 def create_token(data: dict, expires_delta: timedelta, token_type: str = "access") -> str:

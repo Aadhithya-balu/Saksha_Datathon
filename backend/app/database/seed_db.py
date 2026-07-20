@@ -21,7 +21,7 @@ DEMO_USERS = [
         "username": "admin",
         "email": "admin@saksha.local",
         "full_name": "Platform Administrator",
-        "password": "ChangeMe123!",
+        "password": "564738",
         "role_name": "admin",
         "district": "State HQ",
         "station": "KSP HQ",
