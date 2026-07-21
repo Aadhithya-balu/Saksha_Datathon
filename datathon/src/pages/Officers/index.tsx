@@ -7,20 +7,21 @@ interface Officer {
   id: string;
   badge_number: string;
   name: string;
-  rank: string;
-  district: string;
+  rank: string | null;
+  district: string | null;
   station: string;
-  designation: string;
-  phone: string;
-  email: string;
+  designation: string | null;
+  phone: string | null;
+  email: string | null;
   status: string;
 }
 
 const OfficersPage: React.FC = () => {
-  const { isSCRB, isInspector, isIO } = useRBAC();
+  const { isSCRB } = useRBAC();
   const [officers, setOfficers] = useState<Officer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [error, setError] = useState<string | null>(null);
   
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -38,10 +39,14 @@ const OfficersPage: React.FC = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        setOfficers(data.items || []);
+        setOfficers(data.results || []);
+        setError(null);
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error?.message || data?.detail || 'Failed to fetch officers');
       }
     } catch (e) {
-      console.error("Failed to fetch officers", e);
+      setError(e instanceof Error ? e.message : 'Failed to fetch officers');
     } finally {
       setLoading(false);
     }
@@ -52,14 +57,18 @@ const OfficersPage: React.FC = () => {
   }, [search]);
 
   const handleSave = async () => {
+    if (!currentOfficer.name?.trim() || !currentOfficer.badge_number?.trim() || !currentOfficer.station?.trim()) {
+      setError('Name, badge number, and station are required.');
+      return;
+    }
+
     try {
       const { accessToken } = getStoredTokens();
       const method = isEditMode ? 'PUT' : 'POST';
       const url = isEditMode ? `${API_BASE_URL}/officers/${currentOfficer.id}` : `${API_BASE_URL}/officers`;
       
-      const payload = isEditMode 
-        ? { ...currentOfficer } 
-        : { ...currentOfficer, user_id: "00000000-0000-0000-0000-000000000000" }; // placeholder user_id
+      const payload = { ...currentOfficer };
+      delete payload.id;
 
       const res = await fetch(url, {
         method,
@@ -72,12 +81,14 @@ const OfficersPage: React.FC = () => {
       
       if (res.ok) {
         setIsFormOpen(false);
-        fetchOfficers();
+        setError(null);
+        void fetchOfficers();
       } else {
-        alert("Failed to save officer");
+        const data = await res.json().catch(() => null);
+        setError(data?.error?.message || data?.detail || 'Failed to save officer');
       }
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : 'Failed to save officer');
     }
   };
 
@@ -90,10 +101,13 @@ const OfficersPage: React.FC = () => {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       if (res.ok) {
-        fetchOfficers();
+        void fetchOfficers();
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error?.message || data?.detail || 'Failed to delete officer');
       }
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : 'Failed to delete officer');
     }
   };
 
@@ -148,6 +162,12 @@ const OfficersPage: React.FC = () => {
         </div>
       </div>
 
+      {error && (
+        <div className="px-4 py-3 bg-[#C94A2A]/10 border border-[#C94A2A]/30 rounded text-[#ffb199] text-xs font-mono">
+          {error}
+        </div>
+      )}
+
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto custom-scrollbar">
         {loading ? (
@@ -184,8 +204,8 @@ const OfficersPage: React.FC = () => {
                 
                 <div className="mt-auto pt-4 border-t border-border-color flex justify-between">
                   <div className="flex gap-3">
-                    <a href={`mailto:${officer.email}`} className="text-[#6A7A96] hover:text-[#1E6FD9] transition-colors" title={officer.email}><Mail className="w-4 h-4" /></a>
-                    <a href={`tel:${officer.phone}`} className="text-[#6A7A96] hover:text-[#1E6FD9] transition-colors" title={officer.phone}><Phone className="w-4 h-4" /></a>
+                    {officer.email && <a href={`mailto:${officer.email}`} className="text-[#6A7A96] hover:text-[#1E6FD9] transition-colors" title={officer.email}><Mail className="w-4 h-4" /></a>}
+                    {officer.phone && <a href={`tel:${officer.phone}`} className="text-[#6A7A96] hover:text-[#1E6FD9] transition-colors" title={officer.phone}><Phone className="w-4 h-4" /></a>}
                   </div>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${officer.status === 'active' ? 'bg-[#0E9E78]/20 text-[#0E9E78]' : 'bg-[#6A7A96]/20 text-[#6A7A96]'}`}>
                     {officer.status}

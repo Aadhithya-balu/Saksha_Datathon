@@ -19,7 +19,7 @@ export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
   '/ai-chat': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'AI Chat Assistant' },
   '/crime-cases': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'Crime Case Management' },
   '/firs': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'FIR Lifecycle Management' },
-  '/officers': { allowedRoles: ['SCRB', 'IO', 'SP', 'INSPECTOR', 'FORENSIC', 'VIEWER'], moduleName: 'Officer Management' },
+  '/officers': { allowedRoles: ['SCRB'], moduleName: 'Officer Management' },
   '/evidence': { allowedRoles: ['SCRB', 'IO', 'SP', 'INSPECTOR', 'FORENSIC', 'VIEWER'], moduleName: 'Evidence Handling' },
 };
 

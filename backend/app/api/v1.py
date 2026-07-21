@@ -12,6 +12,7 @@ from app.routes import (
     ai_criminal,
     ai_hotspot,
     ai_risk,
+    admin,
     auth,
     crimes,
     criminals,
@@ -31,6 +32,7 @@ from app.routes import (
 api_router = APIRouter()
 
 api_router.include_router(auth.router)
+api_router.include_router(admin.router)
 api_router.include_router(users.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(crimes.router)

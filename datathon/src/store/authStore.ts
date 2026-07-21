@@ -6,6 +6,7 @@ import {
   login as loginRequest,
   logout as logoutRequest,
   mapBackendRoleToUiRole,
+  refreshSession,
   setStoredTokens,
 } from '../services/api';
 
@@ -39,14 +40,52 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isHydrating: true,
 
   initializeSession: async () => {
-    // Clear stored tokens on startup so we always force the login screen first
-    clearStoredTokens();
-    set({
-      user: null,
-      isAuthenticated: false,
-      loginError: null,
-      isHydrating: false
-    });
+    const hydrateFromBackendUser = async () => {
+      const currentUser = await getMe();
+      set({
+        user: {
+          name: currentUser.full_name,
+          badgeId: currentUser.username,
+          role: mapBackendRoleToUiRole(currentUser.role),
+        },
+        isAuthenticated: true,
+        loginError: null,
+        sessionTimeRemaining: 1800,
+        isHydrating: false,
+      });
+    };
+
+    const { accessToken, refreshToken } = getStoredTokens();
+
+    if (!accessToken && !refreshToken) {
+      set({ user: null, isAuthenticated: false, loginError: null, isHydrating: false });
+      return;
+    }
+
+    try {
+      if (accessToken) {
+        await hydrateFromBackendUser();
+        return;
+      }
+
+      const tokens = await refreshSession(refreshToken);
+      setStoredTokens({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
+      await hydrateFromBackendUser();
+    } catch {
+      if (refreshToken) {
+        try {
+          const tokens = await refreshSession(refreshToken);
+          setStoredTokens({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
+          await hydrateFromBackendUser();
+          return;
+        } catch {
+          clearStoredTokens();
+        }
+      } else {
+        clearStoredTokens();
+      }
+      set({ user: null, isAuthenticated: false, loginError: null, isHydrating: false });
+    }
   },
 
   login: async (badgeId: string, pin: string) => {

@@ -1,7 +1,9 @@
 """Officer CRUD + performance routes."""
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -19,7 +21,7 @@ router = APIRouter(prefix="/officers", tags=["Officers"])
 officer_crud = BaseCRUDService(Officer)
 
 
-@router.get("", response_model=PaginatedResponse[OfficerOut])
+@router.get("", response_model=PaginatedResponse[OfficerOut], dependencies=[Depends(require_roles(ROLE_ADMIN))])
 def list_officers(
     search: str | None = None,
     district: str | None = None,
@@ -33,10 +35,12 @@ def list_officers(
     query = db.query(Officer)
     
     if search:
-        query = query.filter(
-            (Officer.name.ilike(f"%{search}%")) |
-            (Officer.badge_number.ilike(f"%{search}%"))
-        )
+        query = query.filter(or_(
+            Officer.name.ilike(f"%{search}%"),
+            Officer.badge_number.ilike(f"%{search}%"),
+            Officer.email.ilike(f"%{search}%"),
+            Officer.phone.ilike(f"%{search}%"),
+        ))
     if district:
         query = query.filter(Officer.district == district)
     if station:
@@ -54,12 +58,12 @@ def list_officers(
     )
 
 
-@router.get("/{officer_id}", response_model=OfficerOut)
+@router.get("/{officer_id}", response_model=OfficerOut, dependencies=[Depends(require_roles(ROLE_ADMIN))])
 def get_officer(officer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return officer_crud.get(db, officer_id)
 
 
-@router.get("/{officer_id}/performance", response_model=OfficerPerformance)
+@router.get("/{officer_id}/performance", response_model=OfficerPerformance, dependencies=[Depends(require_roles(ROLE_ADMIN))])
 def officer_performance(officer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     officer_crud.get(db, officer_id)
     firs = db.query(FIR).filter(FIR.investigating_officer_id == officer_id).all()
@@ -72,9 +76,6 @@ def officer_performance(officer_id: uuid.UUID, db: Session = Depends(get_db), cu
         avg_resolution_days=None,
     )
 
-
-from sqlalchemy.exc import IntegrityError
-from fastapi import HTTPException
 
 @router.post("", response_model=OfficerOut, dependencies=[Depends(require_roles(ROLE_ADMIN))])
 def create_officer(payload: OfficerCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -99,6 +100,8 @@ def update_officer(officer_id: uuid.UUID, payload: OfficerUpdate, db: Session = 
 
 @router.delete("/{officer_id}", dependencies=[Depends(require_roles(ROLE_ADMIN))])
 def delete_officer(officer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    officer_crud.delete(db, officer_id)
+    officer = officer_crud.get(db, officer_id)
+    officer.status = "inactive"
+    db.add(officer)
     audit_service.log_action(db, current_user, "DELETE", "Officer", str(officer_id))
-    return {"detail": "Officer deleted successfully"}
+    return {"detail": "Officer deactivated successfully"}
