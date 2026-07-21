@@ -12,11 +12,18 @@ from app.models.mixins import TimestampMixin, UUIDPKMixin
 class Evidence(Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "evidence"
 
-    crime_case_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crime_cases.id"), nullable=False)
+    case_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crime_cases.id"), nullable=False)
     crime_case: Mapped["CrimeCase"] = relationship(back_populates="evidence")
 
-    evidence_type: Mapped[str] = mapped_column(String(50), nullable=False)  # physical/digital/document/biological
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    file_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    collected_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    chain_of_custody: Mapped[str | None] = mapped_column(Text, nullable=True)
+    evidence_type: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g., image, video, audio, document
+    status: Mapped[str] = mapped_column(String(50), default="Pending")
+    
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    assigned_to: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    
+    storage_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    
+    # Relationships for backref or further linkage
+    assignee: Mapped["User"] = relationship("User", foreign_keys=[assigned_to])

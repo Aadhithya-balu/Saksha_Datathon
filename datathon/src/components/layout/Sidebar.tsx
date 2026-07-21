@@ -303,6 +303,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )
     },
     {
+      id: 'officers',
+      label: 'Officer Management',
+      path: '/officers',
+      icon: (isActive: boolean) => (
+        <svg className="w-6 h-6 transition-all duration-300 pointer-events-none" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="offGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={isActive ? "#1E6FD9" : "#6A7A96"} />
+              <stop offset="100%" stopColor={isActive ? "#0E9E78" : "#A8B4CC"} />
+            </linearGradient>
+          </defs>
+          <circle cx="12" cy="7" r="4" stroke="url(#offGrad)" strokeWidth="1.5" />
+          <path d="M5.5 21v-2a4 4 0 014-4h5a4 4 0 014 4v2" stroke="url(#offGrad)" strokeWidth="1.5" />
+        </svg>
+      )
+    },
+    {
+      id: 'evidence',
+      label: 'Evidence Handling',
+      path: '/evidence',
+      icon: (isActive: boolean) => (
+        <svg className="w-6 h-6 transition-all duration-300 pointer-events-none" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="evidGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={isActive ? "#C94A2A" : "#6A7A96"} />
+              <stop offset="100%" stopColor={isActive ? "#6C43CC" : "#A8B4CC"} />
+            </linearGradient>
+          </defs>
+          <rect x="4" y="4" width="16" height="16" rx="2" stroke="url(#evidGrad)" strokeWidth="1.5" />
+          <path d="M9 12h6M9 16h6M9 8h6" stroke="url(#evidGrad)" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      )
+    },
+    {
       id: 'settings_help',
       label: 'Settings & Help',
       path: '/settings',
