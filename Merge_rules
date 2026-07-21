@@ -1,0 +1,13 @@
+## Saksha Merge Safety Rules
+
+This repository is being developed in parallel by multiple contributors.
+
+To minimize merge conflicts:
+
+- Prefer creating new files over heavily modifying existing ones.
+- Keep changes localized to the feature/module of this issue.
+- Avoid unnecessary edits to shared files.
+- Do not move or rename files.
+- Preserve public APIs unless this issue explicitly requires changes.
+- If another module needs changes, expose a small extension point instead of rewriting it.
+- Make the smallest possible change that satisfies the issue.
