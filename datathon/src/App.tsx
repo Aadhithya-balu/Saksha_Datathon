@@ -8,6 +8,7 @@ import Overview from './pages/Overview';
 import Hotspots from './pages/Hotspots';
 import Network from './pages/Network';
 import Predictions from './pages/Predictions';
+import FutureDistrictPrediction from './pages/analytics/FutureDistrictPrediction';
 import Anomalies from './pages/Anomalies';
 import Offenders from './pages/Offenders';
 import Reports from './pages/Reports';
@@ -58,6 +59,7 @@ function App() {
       hotspot: 'Hotspot Map Analysis',
       network: 'Criminal Network Graph Workspace',
       predictive: 'AI Predictive Intelligence',
+      future_district_prediction: 'Future District Risk Prediction',
       anomaly: 'Anomaly Alert Feed',
       crime_cases: 'Crime Case Management',
       investigation: 'Unified Investigation Interface',
@@ -120,6 +122,12 @@ function App() {
         return (
           <RoleGuard path="/predictions">
             <Predictions />
+          </RoleGuard>
+        );
+      case 'future_district_prediction':
+        return (
+          <RoleGuard path="/predictions">
+            <FutureDistrictPrediction />
           </RoleGuard>
         );
       case 'anomaly':

@@ -5,6 +5,7 @@ giving a clean path for future v2 versioning without touching main.py.
 """
 from fastapi import APIRouter
 
+from app.api.endpoints import future_district_prediction
 from app.routes import (
     ai_support,
     ai_chat,
@@ -51,4 +52,5 @@ api_router.include_router(ai_anomaly.router)
 api_router.include_router(ai_criminal.router)
 api_router.include_router(ai_hotspot.router)
 api_router.include_router(ai_risk.router)
+api_router.include_router(future_district_prediction.router)
 

@@ -123,6 +123,28 @@ export interface RiskScoresResponse {
   model_version: string;
 }
 
+export interface FutureDistrictRiskRequest {
+  DISTRICT: string;
+  YEAR: number;
+  VIOLENT_CRIME: number;
+  PROPERTY_CRIME: number;
+  WOMEN_CRIME: number;
+  PREVIOUS_YEAR_CRIME: number;
+  CRIME_GROWTH: number;
+  ROLLING_AVG: number;
+}
+
+export interface FutureDistrictRiskResponse {
+  predicted_crime_count: number;
+  risk_level: 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH';
+  model: string;
+  metrics: {
+    r2: number;
+    mae: number;
+    rmse: number;
+  };
+}
+
 export interface HotspotPoint {
   district_id: string;
   name: string;
@@ -332,6 +354,17 @@ export async function getDistrictComparison() {
 
 export async function getRiskScores(window = 'next_7d', districtId?: string) {
   return apiRequest<RiskScoresResponse>(`/ai/predictions/risk-scores${buildQueryString({ window, district_id: districtId })}`);
+}
+
+export async function predictFutureDistrictRisk(payload: FutureDistrictRiskRequest) {
+  return apiRequest<FutureDistrictRiskResponse>('/analytics/future-district-risk', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getFutureDistrictRiskDistricts() {
+  return apiRequest<string[]>('/analytics/future-district-risk/districts');
 }
 
 export async function getHotspots(districtId?: string) {

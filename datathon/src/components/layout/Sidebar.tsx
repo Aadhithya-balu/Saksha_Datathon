@@ -137,6 +137,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )
     },
     {
+      id: 'future_district_prediction',
+      label: 'Future District Risk',
+      path: '/predictions',
+      icon: (isActive: boolean) => (
+        <svg className="w-6 h-6 transition-all duration-300 pointer-events-none" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="futureRiskGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={isActive ? "#0E9E78" : "#6A7A96"} />
+              <stop offset="100%" stopColor={isActive ? "#C94A2A" : "#A8B4CC"} />
+            </linearGradient>
+            <filter id="futureRiskGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0E9E78" floodOpacity="0.5" />
+            </filter>
+          </defs>
+          <path d="M4 19V5" stroke="url(#futureRiskGrad)" strokeWidth="1.5" strokeLinecap="round" filter={isActive ? "url(#futureRiskGlow)" : undefined} />
+          <path d="M4 19h16" stroke={isActive ? "#6A7A96" : "#6a7a96"} strokeWidth="1.5" strokeLinecap="round" />
+          <path d="M7 15l3-4 3 2 4-7" stroke="url(#futureRiskGrad)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="17" cy="6" r="2" fill={isActive ? "#C94A2A" : "#6A7A96"} />
+        </svg>
+      )
+    },
+    {
       id: 'crime_cases',
       label: 'Crime Cases',
       path: '/crime-cases',
