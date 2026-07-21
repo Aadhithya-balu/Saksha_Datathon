@@ -1,11 +1,12 @@
 import os
 from dotenv import load_dotenv
 import psycopg2
-from passlib.context import CryptContext
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from app.core.security import hash_password
 
 load_dotenv()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-new_hash = pwd_context.hash("123456")
+new_hash = hash_password("123456")
 
 conn = psycopg2.connect(
     host=os.getenv('SUPABASE_DB_HOST'),

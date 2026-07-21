@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRBAC } from '../../hooks/useRBAC';
-import { Search, Plus, Filter, HardDrive, FileText, UploadCloud, Cpu, Trash2 } from 'lucide-react';
+import { Search, Plus, Filter, HardDrive, FileText, UploadCloud, Cpu, Download } from 'lucide-react';
 import { API_BASE_URL, getStoredTokens } from '../../services/api';
 
 interface Evidence {
@@ -10,7 +10,7 @@ interface Evidence {
   description: string;
   evidence_type: string;
   status: string;
-  storage_path: string;
+  storage_path: string | null;
   created_at: string;
 }
 
@@ -18,6 +18,9 @@ const EvidencePage: React.FC = () => {
   const { isSCRB, isInspector, isIO, isForensic } = useRBAC();
   const [evidenceList, setEvidenceList] = useState<Evidence[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [error, setError] = useState<string | null>(null);
   
   // Modals
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -26,35 +29,47 @@ const EvidencePage: React.FC = () => {
     title: '', description: '', evidence_type: 'Digital', case_id: ''
   });
   const [evidenceDetail, setEvidenceDetail] = useState<any>(null);
+  const [assigneeId, setAssigneeId] = useState('');
 
   const fetchEvidence = async () => {
     try {
       setLoading(true);
       const { accessToken } = getStoredTokens();
-      const res = await fetch(`${API_BASE_URL}/evidence`, {
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      if (statusFilter) params.set('status', statusFilter);
+      const res = await fetch(`${API_BASE_URL}/evidence?${params.toString()}`, {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       if (res.ok) {
         const data = await res.json();
-        setEvidenceList(data.items || []);
+        setEvidenceList(data.results || []);
+        setError(null);
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error?.message || data?.detail || 'Failed to fetch evidence');
       }
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : 'Failed to fetch evidence');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchEvidence();
-  }, []);
+    void fetchEvidence();
+  }, [search, statusFilter]);
 
   const handleCreate = async () => {
+    if (!currentEvidence.case_id?.trim() || !currentEvidence.title?.trim() || !currentEvidence.evidence_type?.trim()) {
+      setError('Case ID, title, and evidence type are required.');
+      return;
+    }
+
     try {
       const { accessToken } = getStoredTokens();
       const payload = {
-        ...currentEvidence,
-        case_id: currentEvidence.case_id || "00000000-0000-0000-0000-000000000000" // Need a real case ID ideally, but using placeholder for demo if empty
+        ...currentEvidence
       };
       const res = await fetch(`${API_BASE_URL}/evidence`, {
         method: 'POST',
@@ -64,10 +79,14 @@ const EvidencePage: React.FC = () => {
       
       if (res.ok) {
         setIsFormOpen(false);
-        fetchEvidence();
+        setError(null);
+        void fetchEvidence();
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error?.message || data?.detail || 'Failed to create evidence');
       }
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : 'Failed to create evidence');
     }
   };
 
@@ -84,11 +103,39 @@ const EvidencePage: React.FC = () => {
       });
       
       if (res.ok) {
-        alert("File uploaded and metadata extracted.");
-        openDetail(id); // refresh detail
+        setError(null);
+        void openDetail(id);
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error?.message || data?.detail || 'Failed to upload file');
       }
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : 'Failed to upload file');
+    }
+  };
+
+  const downloadFile = async (id: string) => {
+    try {
+      const { accessToken } = getStoredTokens();
+      const res = await fetch(`${API_BASE_URL}/evidence/${id}/download`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error?.message || data?.detail || 'Failed to download file');
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition') ?? '';
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      const filename = match?.[1] ?? `evidence-${id}`;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to download file');
     }
   };
 
@@ -100,15 +147,44 @@ const EvidencePage: React.FC = () => {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       if (res.ok) {
-        alert("AI Summary Generated!");
-        openDetail(id); // refresh
+        setError(null);
+        void openDetail(id);
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error?.message || data?.detail || 'Failed to generate AI summary');
       }
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : 'Failed to generate AI summary');
     }
   };
 
-  const handleAssignmentAction = async (evidenceId: string, assignmentId: string, action: 'accept' | 'complete' | 'return') => {
+  const assignEvidence = async (evidenceId: string) => {
+    if (!assigneeId.trim()) {
+      setError('Enter the assignee user UUID.');
+      return;
+    }
+
+    try {
+      const { accessToken } = getStoredTokens();
+      const res = await fetch(`${API_BASE_URL}/evidence/${evidenceId}/assign?assigned_to=${encodeURIComponent(assigneeId.trim())}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (res.ok) {
+        setAssigneeId('');
+        setError(null);
+        void openDetail(evidenceId);
+        void fetchEvidence();
+      } else {
+        const err = await res.json().catch(() => null);
+        setError(err?.error?.message || err?.detail || 'Failed to assign evidence');
+      }
+    } catch(e) {
+      setError(e instanceof Error ? e.message : 'Failed to assign evidence');
+    }
+  };
+
+  const handleAssignmentAction = async (evidenceId: string, assignmentId: string, action: 'accept' | 'complete' | 'return' | 'reject') => {
     try {
       const { accessToken } = getStoredTokens();
       const res = await fetch(`${API_BASE_URL}/evidence/${evidenceId}/assignments/${assignmentId}/${action}`, {
@@ -116,13 +192,15 @@ const EvidencePage: React.FC = () => {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       if (res.ok) {
-        openDetail(evidenceId); // refresh
+        setError(null);
+        void openDetail(evidenceId);
+        void fetchEvidence();
       } else {
-        const err = await res.json();
-        alert(`Error: ${err.detail || 'Failed to update assignment'}`);
+        const err = await res.json().catch(() => null);
+        setError(err?.error?.message || err?.detail || 'Failed to update assignment');
       }
     } catch(e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : 'Failed to update assignment');
     }
   };
 
@@ -136,9 +214,13 @@ const EvidencePage: React.FC = () => {
         const data = await res.json();
         setEvidenceDetail(data);
         setIsDetailOpen(true);
+        setError(null);
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error?.message || data?.detail || 'Failed to open evidence');
       }
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : 'Failed to open evidence');
     }
   };
 
@@ -155,9 +237,28 @@ const EvidencePage: React.FC = () => {
           <p className="text-[#A8B4CC] text-sm mt-2 font-mono">Secure repository for case evidence, chain of custody, and AI analysis.</p>
         </div>
         <div className="z-10 flex gap-4">
-          <button className="flex items-center gap-2 px-4 py-2 bg-secondary-bg hover:bg-white/5 border border-border-color rounded-btn text-sm font-mono text-white transition-all">
-            <Filter className="w-4 h-4" /> Filter
-          </button>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search evidence..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-56 bg-secondary-bg border border-border-color rounded-btn px-4 py-2 pl-10 text-sm font-mono text-white focus:border-[#C94A2A] outline-none"
+            />
+            <Search className="w-4 h-4 text-[#6A7A96] absolute left-3 top-2.5" />
+          </div>
+          <div className="relative">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="appearance-none w-44 bg-secondary-bg border border-border-color rounded-btn px-4 py-2 pr-9 text-sm font-mono text-white focus:border-[#C94A2A] outline-none">
+              <option value="">All Statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="Assigned">Assigned</option>
+              <option value="Under Analysis">Under Analysis</option>
+              <option value="Analyzed">Analyzed</option>
+              <option value="Returned">Returned</option>
+              <option value="Assignment Rejected">Rejected</option>
+            </select>
+            <Filter className="w-4 h-4 text-[#6A7A96] absolute right-3 top-2.5 pointer-events-none" />
+          </div>
           {(isSCRB || isIO || isInspector) && (
             <button 
               onClick={() => {
@@ -171,6 +272,12 @@ const EvidencePage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {error && (
+        <div className="px-4 py-3 bg-[#C94A2A]/10 border border-[#C94A2A]/30 rounded text-[#ffb199] text-xs font-mono">
+          {error}
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto custom-scrollbar">
@@ -285,16 +392,23 @@ const EvidencePage: React.FC = () => {
                 <div className="bg-[#080E1B] p-4 rounded-lg border border-border-color">
                   <h3 className="text-[#1E6FD9] font-mono text-xs uppercase font-bold mb-3 border-b border-border-color pb-2 flex justify-between items-center">
                     Digital Asset & Metadata
-                    {(isForensic || isSCRB) && (
-                      <label className="cursor-pointer flex items-center gap-1 text-[10px] bg-[#C94A2A]/20 text-[#C94A2A] px-2 py-1 rounded hover:bg-[#C94A2A]/40 transition-colors">
-                        <UploadCloud className="w-3 h-3" /> Upload File
-                        <input type="file" className="hidden" onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            handleUpload(evidenceDetail.id, e.target.files[0]);
-                          }
-                        }} />
-                      </label>
-                    )}
+                    <div className="flex gap-2">
+                      {evidenceDetail.metadata && (
+                        <button onClick={() => void downloadFile(evidenceDetail.id)} className="flex items-center gap-1 text-[10px] bg-[#1E6FD9]/20 text-[#1E6FD9] px-2 py-1 rounded hover:bg-[#1E6FD9]/40 transition-colors">
+                          <Download className="w-3 h-3" /> Download
+                        </button>
+                      )}
+                      {(isForensic || isSCRB) && (
+                        <label className="cursor-pointer flex items-center gap-1 text-[10px] bg-[#C94A2A]/20 text-[#C94A2A] px-2 py-1 rounded hover:bg-[#C94A2A]/40 transition-colors">
+                          <UploadCloud className="w-3 h-3" /> Upload File
+                          <input type="file" className="hidden" onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              void handleUpload(evidenceDetail.id, e.target.files[0]);
+                            }
+                          }} />
+                        </label>
+                      )}
+                    </div>
                   </h3>
                   
                   {evidenceDetail.metadata ? (
@@ -325,9 +439,11 @@ const EvidencePage: React.FC = () => {
                 <div className="bg-[#080E1B] p-4 rounded-lg border border-border-color">
                   <h3 className="text-[#6C43CC] font-mono text-xs uppercase font-bold mb-3 border-b border-border-color pb-2 flex justify-between items-center">
                     AI Summary & Analysis
-                    <button onClick={() => generateAISummary(evidenceDetail.id)} className="flex items-center gap-1 text-[10px] bg-[#6C43CC]/20 text-[#6C43CC] px-2 py-1 rounded hover:bg-[#6C43CC]/40 transition-colors">
-                      <Cpu className="w-3 h-3" /> Generate Analysis
-                    </button>
+                    {(isSCRB || isInspector || isIO || isForensic) && (
+                      <button onClick={() => void generateAISummary(evidenceDetail.id)} className="flex items-center gap-1 text-[10px] bg-[#6C43CC]/20 text-[#6C43CC] px-2 py-1 rounded hover:bg-[#6C43CC]/40 transition-colors">
+                        <Cpu className="w-3 h-3" /> Generate Analysis
+                      </button>
+                    )}
                   </h3>
                   
                   {evidenceDetail.ai_summaries && evidenceDetail.ai_summaries.length > 0 ? (
@@ -353,6 +469,18 @@ const EvidencePage: React.FC = () => {
                 {/* Assignments */}
                 <div className="bg-[#080E1B] p-4 rounded-lg border border-border-color">
                   <h3 className="text-[#C94A2A] font-mono text-xs uppercase font-bold mb-4 border-b border-border-color pb-2">Assignments</h3>
+                  {(isSCRB || isInspector) && (
+                    <div className="mb-4 flex gap-2">
+                      <input
+                        type="text"
+                        value={assigneeId}
+                        onChange={(e) => setAssigneeId(e.target.value)}
+                        placeholder="Assignee user UUID"
+                        className="min-w-0 flex-1 bg-black/30 border border-border-color rounded px-2 py-1.5 text-[10px] text-white font-mono outline-none focus:border-[#C94A2A]"
+                      />
+                      <button onClick={() => void assignEvidence(evidenceDetail.id)} className="px-2 py-1.5 bg-[#C94A2A]/20 text-[#C94A2A] text-[10px] rounded hover:bg-[#C94A2A]/40 transition-colors uppercase font-bold">Assign</button>
+                    </div>
+                  )}
                   <div className="space-y-4">
                     {evidenceDetail.assignments && evidenceDetail.assignments.length > 0 ? (
                       evidenceDetail.assignments.map((a: any) => (
@@ -361,16 +489,19 @@ const EvidencePage: React.FC = () => {
                           <span className="text-white text-xs block mb-2 font-bold">{a.status}</span>
                           
                           {/* Assignment Actions */}
-                          {(isForensic || isInspector || isIO || isSCRB) && (
+                          {(isForensic || isIO || isSCRB) && (
                             <div className="flex gap-2 mt-2">
                               {a.status === 'Assigned' && (
-                                <button onClick={() => handleAssignmentAction(evidenceDetail.id, a.id, 'accept')} className="px-2 py-1 bg-[#0E9E78]/20 text-[#0E9E78] text-[10px] rounded hover:bg-[#0E9E78]/40 transition-colors uppercase font-bold">Accept</button>
+                                <>
+                                  <button onClick={() => void handleAssignmentAction(evidenceDetail.id, a.id, 'accept')} className="px-2 py-1 bg-[#0E9E78]/20 text-[#0E9E78] text-[10px] rounded hover:bg-[#0E9E78]/40 transition-colors uppercase font-bold">Accept</button>
+                                  <button onClick={() => void handleAssignmentAction(evidenceDetail.id, a.id, 'reject')} className="px-2 py-1 bg-[#D4820A]/20 text-[#D4820A] text-[10px] rounded hover:bg-[#D4820A]/40 transition-colors uppercase font-bold">Reject</button>
+                                </>
                               )}
                               {a.status === 'In Progress' && (
-                                <button onClick={() => handleAssignmentAction(evidenceDetail.id, a.id, 'complete')} className="px-2 py-1 bg-[#1E6FD9]/20 text-[#1E6FD9] text-[10px] rounded hover:bg-[#1E6FD9]/40 transition-colors uppercase font-bold">Complete</button>
+                                <button onClick={() => void handleAssignmentAction(evidenceDetail.id, a.id, 'complete')} className="px-2 py-1 bg-[#1E6FD9]/20 text-[#1E6FD9] text-[10px] rounded hover:bg-[#1E6FD9]/40 transition-colors uppercase font-bold">Complete</button>
                               )}
                               {(a.status === 'In Progress' || a.status === 'Completed') && (
-                                <button onClick={() => handleAssignmentAction(evidenceDetail.id, a.id, 'return')} className="px-2 py-1 bg-[#C94A2A]/20 text-[#C94A2A] text-[10px] rounded hover:bg-[#C94A2A]/40 transition-colors uppercase font-bold">Return</button>
+                                <button onClick={() => void handleAssignmentAction(evidenceDetail.id, a.id, 'return')} className="px-2 py-1 bg-[#C94A2A]/20 text-[#C94A2A] text-[10px] rounded hover:bg-[#C94A2A]/40 transition-colors uppercase font-bold">Return</button>
                               )}
                             </div>
                           )}

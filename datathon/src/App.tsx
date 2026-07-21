@@ -11,7 +11,7 @@ import Predictions from './pages/Predictions';
 import Anomalies from './pages/Anomalies';
 import Offenders from './pages/Offenders';
 import Reports from './pages/Reports';
-import SettingsHelp from './pages/SettingsHelp';
+import Admin from './pages/Admin';
 import AIChat from './pages/AIChat';
 import CrimeCases from './pages/CrimeCases';
 import RoleGuard from './components/layout/RoleGuard';
@@ -154,8 +154,8 @@ function App() {
         );
       case 'settings_help':
         return (
-          <RoleGuard path="/settings">
-            <SettingsHelp />
+          <RoleGuard path="/admin">
+            <Admin />
           </RoleGuard>
         );
       case 'crime_cases':

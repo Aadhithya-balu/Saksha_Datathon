@@ -219,6 +219,7 @@ export const clearStoredTokens = () => {
 export const mapBackendRoleToUiRole = (role: string): UserRole => {
   switch (role) {
     case 'investigator':
+    case 'crime_analyst':
       return 'IO';
     case 'policymaker':
       return 'SP';
@@ -229,7 +230,6 @@ export const mapBackendRoleToUiRole = (role: string): UserRole => {
     case 'viewer':
       return 'VIEWER';
     case 'admin':
-    case 'crime_analyst':
     default:
       return 'SCRB';
   }
@@ -301,6 +301,13 @@ export async function logout() {
   return apiRequest<{ message: string }>('/auth/logout', {
     method: 'POST',
   });
+}
+
+export async function refreshSession(refreshToken: string) {
+  return apiRequest<LoginResponse>('/auth/refresh', {
+    method: 'POST',
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  }, false);
 }
 
 export async function getMe() {

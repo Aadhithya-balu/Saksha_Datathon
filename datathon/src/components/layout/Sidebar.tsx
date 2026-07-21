@@ -392,33 +392,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
           const isActive = activeTab === item.id;
 
           // If not allowed, we don't render or show locked state
+          if (!isAllowed) return null;
+
           return (
             <button
               key={item.id}
-              onClick={() => isAllowed && setActiveTab(item.id)}
+              onClick={() => setActiveTab(item.id)}
               className={`relative flex items-center gap-3.5 p-3 rounded-btn text-xs font-mono font-medium transition-all duration-200 group cursor-pointer ${
-                !isAllowed 
-                  ? 'opacity-30 cursor-not-allowed text-[#6A7A96]' 
-                  : isActive
+                isActive
                   ? 'bg-[#1E6FD9]/10 text-white border border-[#1E6FD9]/20 shadow-glow-blue'
                   : 'text-[#A8B4CC] hover:text-white hover:bg-white/5 border border-transparent hover:translate-y-[-2px]'
               }`}
             >
               {/* Float-glow icon hook */}
               <div className="shrink-0 transition-transform duration-200 group-hover:scale-110">
-                {item.icon(isActive && isAllowed)}
+                {item.icon(isActive)}
               </div>
               
               {/* Collapsed label */}
               {!collapsed && (
                 <span className="truncate uppercase tracking-wider">{item.label}</span>
-              )}
-
-              {/* Locked overlay tag */}
-              {!isAllowed && !collapsed && (
-                <span className="absolute right-3 px-1.5 py-0.5 bg-[#C94A2A]/20 text-[#C94A2A] text-[7.5px] rounded font-bold uppercase select-none border border-[#C94A2A]/40">
-                  LOCKED
-                </span>
               )}
             </button>
           );
