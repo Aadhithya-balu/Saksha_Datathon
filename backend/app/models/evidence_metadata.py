@@ -1,7 +1,7 @@
 import uuid
 from typing import Any
 
-from sqlalchemy import ForeignKey, String, Integer
+from sqlalchemy import ForeignKey, String, Integer, JSON
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,4 +22,4 @@ class EvidenceMetadata(Base, UUIDPKMixin, TimestampMixin):
     
     uploaded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     
-    extracted_data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=True, default={})
+    extracted_data: Mapped[dict[str, Any]] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default={})
