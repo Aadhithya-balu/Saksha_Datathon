@@ -1,21 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useAuditStore } from '../store/auditStore';
-import { 
-  chatQuery, 
-  chatStream, 
-  type ChatQueryResponse, 
-  type ChatCitation, 
-  type ChatContextOptions 
-} from '../services/api';
+import { chatQuery, type ChatQueryResponse } from '../services/api';
 import { 
   Send, Trash2, Copy, Paperclip, Sparkles, 
   MessageSquare, Plus, FileText, Check, ShieldAlert,
-  ArrowRight, ShieldCheck, Edit2, User, Database, RefreshCw
+  ArrowRight, CornerDownLeft, ShieldCheck
 } from 'lucide-react';
-import MarkdownRenderer from '../components/chat/MarkdownRenderer';
-import CitationBadge from '../components/chat/CitationBadge';
-import ContextSelector from '../components/chat/ContextSelector';
 
 interface Message {
   id: string;
@@ -23,16 +14,12 @@ interface Message {
   text: string;
   timestamp: Date;
   sources?: string[];
-  citations?: ChatCitation[];
-  summary?: string;
-  isStreaming?: boolean;
 }
 
 interface ChatSession {
   id: string;
   title: string;
   messages: Message[];
-  context?: ChatContextOptions;
 }
 
 export const AIChat: React.FC = () => {
@@ -52,7 +39,7 @@ export const AIChat: React.FC = () => {
         console.error("Failed to parse chat sessions", e);
       }
     }
-    return [{ id: 'session-default', title: 'New Investigation Chat', messages: [], context: {} }];
+    return [{ id: 'session-default', title: 'New Investigation Chat', messages: [] }];
   });
 
   const [activeSessionId, setActiveSessionId] = useState<string>(() => {
@@ -63,15 +50,11 @@ export const AIChat: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [attachedFile, setAttachedFile] = useState<{ name: string; size: string } | null>(null);
-  const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
-  const [editingTitleText, setEditingTitleText] = useState('');
-  const [streamText, setStreamText] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0];
-  const activeContext = activeSession?.context || {};
 
   // Save sessions to localStorage
   useEffect(() => {
@@ -81,13 +64,7 @@ export const AIChat: React.FC = () => {
   // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeSession?.messages, isLoading, streamText]);
-
-  const handleUpdateContext = (newContext: ChatContextOptions) => {
-    setSessions(prev =>
-      prev.map(s => (s.id === activeSessionId ? { ...s, context: newContext } : s))
-    );
-  };
+  }, [activeSession?.messages, isLoading]);
 
   const handleSendMessage = async (textToSend?: string) => {
     const messageText = textToSend || inputMessage;
@@ -104,21 +81,11 @@ export const AIChat: React.FC = () => {
       timestamp: new Date()
     };
 
-    const aiMessageId = `msg-${Date.now()}-ai`;
-
-    // Create placeholder AI message for streaming
-    const placeholderAiMessage: Message = {
-      id: aiMessageId,
-      sender: 'ai',
-      text: '',
-      timestamp: new Date(),
-      isStreaming: true,
-    };
-
     // Update active session messages
     const updatedSessions = sessions.map(s => {
       if (s.id === activeSessionId) {
-        const newMsgs = [...s.messages, userMessage, placeholderAiMessage];
+        const newMsgs = [...s.messages, userMessage];
+        // Auto update title if it's the first message
         const newTitle = s.messages.length === 0 
           ? (messageText.slice(0, 26) + (messageText.length > 26 ? '...' : '')) 
           : s.title;
@@ -131,122 +98,45 @@ export const AIChat: React.FC = () => {
     setInputMessage('');
     setAttachedFile(null);
     setIsLoading(true);
-    setStreamText('');
 
-    // Log audit event
+    // Log the audit event
     if (user) {
       addLog(user.name, user.badgeId, 'REVIEW', `Queried AI Copilot: ${messageText.slice(0, 60)}`);
     }
 
     try {
-      let accumulatedText = '';
-      let collectedSummary = '';
-      let collectedCitations: ChatCitation[] = [];
-      let collectedSources: string[] = [];
+      // Call actual backend chatQuery API
+      const result: ChatQueryResponse = await chatQuery(messageText);
 
-      const response: ChatQueryResponse = await chatStream(
-        messageText,
-        (chunk) => {
-          if (chunk.type === 'summary') {
-            collectedSummary = chunk.content;
-          } else if (chunk.type === 'token') {
-            accumulatedText += chunk.content;
-            setStreamText(accumulatedText);
+      const aiMessage: Message = {
+        id: `msg-${Date.now()}-ai`,
+        sender: 'ai',
+        text: result.answer,
+        timestamp: new Date(),
+        sources: result.sources || []
+      };
 
-            setSessions(prev =>
-              prev.map(s => {
-                if (s.id === activeSessionId) {
-                  const msgs = s.messages.map(m => {
-                    if (m.id === aiMessageId) {
-                      return { ...m, text: accumulatedText, summary: collectedSummary };
-                    }
-                    return m;
-                  });
-                  return { ...s, messages: msgs };
-                }
-                return s;
-              })
-            );
-          } else if (chunk.type === 'citations') {
-            collectedCitations = chunk.content;
-          }
-        },
-        activeSessionId,
-        activeContext
-      );
-
-      // Final message commit
-      const finalAnswer = response.answer || accumulatedText || "No detailed output retrieved from SAKSHA AI Model.";
-      const finalCitations = response.citations || collectedCitations || [];
-      const finalSources = response.sources || finalCitations.map(c => c.source) || [];
-
-      setSessions(prev =>
-        prev.map(s => {
-          if (s.id === activeSessionId) {
-            const msgs = s.messages.map(m => {
-              if (m.id === aiMessageId) {
-                return {
-                  ...m,
-                  text: finalAnswer,
-                  summary: response.summary || collectedSummary,
-                  citations: finalCitations,
-                  sources: finalSources,
-                  isStreaming: false,
-                };
-              }
-              return m;
-            });
-            return { ...s, messages: msgs };
-          }
-          return s;
-        })
-      );
+      setSessions(prev => prev.map(s => {
+        if (s.id === activeSessionId) {
+          return { ...s, messages: [...s.messages, aiMessage] };
+        }
+        return s;
+      }));
     } catch (err) {
-      // Fallback non-streaming query retry
-      try {
-        const fallbackResult = await chatQuery(messageText, activeSessionId, activeContext);
-        setSessions(prev =>
-          prev.map(s => {
-            if (s.id === activeSessionId) {
-              const msgs = s.messages.map(m => {
-                if (m.id === aiMessageId) {
-                  return {
-                    ...m,
-                    text: fallbackResult.answer,
-                    summary: fallbackResult.summary,
-                    citations: fallbackResult.citations || [],
-                    sources: fallbackResult.sources || [],
-                    isStreaming: false,
-                  };
-                }
-                return m;
-              });
-              return { ...s, messages: msgs };
-            }
-            return s;
-          })
-        );
-      } catch (fallbackErr) {
-        const errorMessage: Message = {
-          id: aiMessageId,
-          sender: 'ai',
-          text: "Error: Failed to connect to SAKSHA AI Engine. Please check backend server status.",
-          timestamp: new Date(),
-          isStreaming: false,
-        };
-        setSessions(prev =>
-          prev.map(s => {
-            if (s.id === activeSessionId) {
-              const msgs = s.messages.map(m => (m.id === aiMessageId ? errorMessage : m));
-              return { ...s, messages: msgs };
-            }
-            return s;
-          })
-        );
-      }
+      const errorMessage: Message = {
+        id: `msg-${Date.now()}-ai`,
+        sender: 'ai',
+        text: "Error: Failed to obtain response from SAKSHA AI Engine. Please check backend service connectivity.",
+        timestamp: new Date()
+      };
+      setSessions(prev => prev.map(s => {
+        if (s.id === activeSessionId) {
+          return { ...s, messages: [...s.messages, errorMessage] };
+        }
+        return s;
+      }));
     } finally {
       setIsLoading(false);
-      setStreamText('');
     }
   };
 
@@ -262,8 +152,7 @@ export const AIChat: React.FC = () => {
     const newSession: ChatSession = {
       id: newSessionId,
       title: `Investigation Chat ${sessions.length + 1}`,
-      messages: [],
-      context: {}
+      messages: []
     };
     setSessions([newSession, ...sessions]);
     setActiveSessionId(newSessionId);
@@ -273,7 +162,7 @@ export const AIChat: React.FC = () => {
     e.stopPropagation();
     const filtered = sessions.filter(s => s.id !== sessionId);
     if (filtered.length === 0) {
-      const reset = [{ id: 'session-default', title: 'New Investigation Chat', messages: [], context: {} }];
+      const reset = [{ id: 'session-default', title: 'New Investigation Chat', messages: [] }];
       setSessions(reset);
       setActiveSessionId('session-default');
     } else {
@@ -284,23 +173,8 @@ export const AIChat: React.FC = () => {
     }
   };
 
-  const handleStartRename = (session: ChatSession, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingTitleId(session.id);
-    setEditingTitleText(session.title);
-  };
-
-  const handleSaveRename = (sessionId: string) => {
-    if (editingTitleText.trim()) {
-      setSessions(prev =>
-        prev.map(s => (s.id === sessionId ? { ...s, title: editingTitleText.trim() } : s))
-      );
-    }
-    setEditingTitleId(null);
-  };
-
   const handleClearAllChats = () => {
-    const reset = [{ id: 'session-default', title: 'New Investigation Chat', messages: [], context: {} }];
+    const reset = [{ id: 'session-default', title: 'New Investigation Chat', messages: [] }];
     setSessions(reset);
     setActiveSessionId('session-default');
     localStorage.removeItem('saksha_chat_sessions');
@@ -313,6 +187,7 @@ export const AIChat: React.FC = () => {
   };
 
   const handleAttachMockFile = () => {
+    // Simulate attaching evidence document
     setAttachedFile({
       name: 'EVIDENCE-RECORD-FIR-789.pdf',
       size: '2.4 MB'
@@ -320,43 +195,23 @@ export const AIChat: React.FC = () => {
   };
 
   const suggestedPrompts = [
-    { 
-      category: 'FIR Context',
-      icon: <FileText className="w-3.5 h-3.5 text-sky-400" />,
-      text: "Summarize top active FIR narratives and offenses", 
-      query: "Can you summarize key active FIR cases, listing their numbers, complainant names, and IPC/BNS sections?" 
-    },
-    { 
-      category: 'Criminal Context',
-      icon: <User className="w-3.5 h-3.5 text-amber-400" />,
-      text: "Analyze known offender modus operandi (MO)", 
-      query: "List registered criminals with active status, highlighting their known aliases and modus operandi details." 
-    },
-    { 
-      category: 'Evidence Context',
-      icon: <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />,
-      text: "Retrieve evidence items and custody status", 
-      query: "What evidence records are attached to open crime cases, and what is their collection status?" 
-    },
-    { 
-      category: 'Intelligence Trends',
-      icon: <Database className="w-3.5 h-3.5 text-emerald-400" />,
-      text: "Analyze district crime rates & resolution", 
-      query: "Provide a detailed intelligence breakdown of crime resolution rates and top crime categories across districts." 
-    }
+    { text: "Analyze cybercrime trends in Bengaluru Urban", query: "Can you analyze recent cybercrime trends in Bengaluru Urban and identify the key hotspot sectors?" },
+    { text: "Find open cases for Whitefield Station", query: "List all open crime cases currently registered under Whitefield Police Station." },
+    { text: "Identify key suspect network nodes", query: "Can you show me the primary suspect nodes and their connections for Devaraja Police Limit?" },
+    { text: "Summarize anomalies and alerts", query: "Explain the active security anomalies and threat scores detected in the last audit cycle." }
   ];
 
   return (
-    <div className="h-[82vh] flex border border-border-color rounded-card bg-[#0a1220]/45 overflow-hidden font-sans">
+    <div className="h-[80vh] flex border border-border-color rounded-card bg-[#0a1220]/45 overflow-hidden font-sans">
       
       {/* 1. CONVERSATION HISTORIES SIDEBAR */}
-      <div className="w-64 border-r border-border-color flex flex-col justify-between bg-slate-950/40 select-none shrink-0">
+      <div className="w-64 border-r border-border-color flex flex-col justify-between bg-slate-950/40 select-none">
         <div className="p-4 flex flex-col gap-3.5 overflow-hidden flex-grow">
           
           {/* New Chat Button */}
           <button 
             onClick={handleCreateNewChat}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#1E6FD9] hover:bg-[#1E6FD9]/85 text-white font-mono text-[10.5px] font-bold uppercase rounded-btn transition-colors cursor-pointer shadow-glow-blue"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#1E6FD9] hover:bg-[#1E6FD9]/85 text-white font-mono text-[10.5px] font-bold uppercase rounded-btn transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>New Investigation</span>
@@ -369,53 +224,27 @@ export const AIChat: React.FC = () => {
             </span>
             {sessions.map(s => {
               const isActive = s.id === activeSessionId;
-              const isEditing = editingTitleId === s.id;
-
               return (
                 <div 
                   key={s.id}
                   onClick={() => setActiveSessionId(s.id)}
-                  className={`flex items-center justify-between p-2.5 rounded border transition-all cursor-pointer font-mono text-[10px] group ${
+                  className={`flex items-center justify-between p-2.5 rounded border transition-all cursor-pointer font-mono text-[10px] ${
                     isActive 
                       ? 'bg-[#1E6FD9]/10 border-[#1E6FD9]/30 text-white font-bold'
                       : 'bg-transparent border-transparent text-[#A8B4CC] hover:bg-white/5'
                   }`}
                 >
-                  <div className="flex items-center gap-2 truncate flex-1 min-w-0">
-                    <MessageSquare className="w-3.5 h-3.5 shrink-0 text-[#1E6FD9]" />
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editingTitleText}
-                        onChange={(e) => setEditingTitleText(e.target.value)}
-                        onBlur={() => handleSaveRename(s.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleSaveRename(s.id);
-                        }}
-                        autoFocus
-                        className="bg-slate-900 border border-[#1E6FD9] text-white px-1 py-0.5 rounded text-[10px] w-full outline-none"
-                      />
-                    ) : (
-                      <span className="truncate">{s.title}</span>
-                    )}
+                  <div className="flex items-center gap-2 truncate">
+                    <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{s.title}</span>
                   </div>
-
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <button 
-                      onClick={(e) => handleStartRename(s, e)}
-                      className="p-1 text-slate-500 hover:text-white rounded transition-colors"
-                      title="Rename Chat"
-                    >
-                      <Edit2 className="w-3 h-3" />
-                    </button>
-                    <button 
-                      onClick={(e) => handleDeleteSession(s.id, e)}
-                      className="p-1 text-slate-500 hover:text-red-400 rounded transition-colors"
-                      title="Delete Chat"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
+                  <button 
+                    onClick={(e) => handleDeleteSession(s.id, e)}
+                    className="p-1 text-slate-600 hover:text-red-400 rounded transition-colors shrink-0"
+                    title="Delete Chat"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
                 </div>
               );
             })}
@@ -423,15 +252,12 @@ export const AIChat: React.FC = () => {
         </div>
 
         {/* Clear All Bottom bar */}
-        <div className="p-3 border-t border-border-color flex justify-between items-center bg-slate-950/20">
-          <span className="text-[8px] font-mono text-slate-500 uppercase">
-            {sessions.length} Saved {sessions.length === 1 ? 'Session' : 'Sessions'}
-          </span>
+        <div className="p-3 border-t border-border-color flex justify-center bg-slate-950/20">
           <button 
             onClick={handleClearAllChats}
             className="flex items-center gap-1 text-[9px] font-mono text-red-400 hover:text-red-500 transition-colors uppercase font-bold cursor-pointer"
           >
-            <Trash2 className="w-3 h-3" />
+            <Trash2 className="w-3.5 h-3.5" />
             <span>Clear Archive</span>
           </button>
         </div>
@@ -440,22 +266,22 @@ export const AIChat: React.FC = () => {
       {/* 2. MAIN CHAT WORKSPACE */}
       <div className="flex-1 flex flex-col justify-between bg-transparent overflow-hidden">
         
-        {/* Chat Feed Viewport */}
+        {/* Chat Feed viewport */}
         <div className="flex-grow overflow-y-auto p-5 space-y-5 custom-scrollbar">
           {activeSession.messages.length === 0 ? (
-            <div className="h-full flex flex-col justify-center items-center max-w-2xl mx-auto space-y-6 select-none pt-4">
+            <div className="h-full flex flex-col justify-center items-center max-w-2xl mx-auto space-y-6 select-none pt-8">
               
-              {/* Emblem */}
+              {/* Logo / Copilot Emblem */}
               <div className="w-16 h-16 rounded-2xl bg-[#1E6FD9]/15 border border-[#1E6FD9]/30 flex items-center justify-center text-[#1E6FD9] shadow-glow-blue animate-pulse">
                 <Sparkles className="w-9 h-9" />
               </div>
               
               <div className="text-center">
-                <h3 className="text-[17px] font-extrabold uppercase tracking-wider text-white font-mono">
+                <h3 className="text-[17px] font-extrabold uppercase tracking-wider text-white">
                   SAKSHA Copilot AI
                 </h3>
                 <p className="text-[11px] font-mono text-[#6A7A96] mt-1.5 uppercase tracking-widest">
-                  Context-Aware Crime & Intelligence Assistant
+                  Secure Law Enforcement Intelligence Assistant
                 </p>
               </div>
 
@@ -470,13 +296,9 @@ export const AIChat: React.FC = () => {
                     }}
                     className="p-3.5 bg-slate-950/40 border border-slate-900 rounded-card text-left text-[11px] text-[#A8B4CC] hover:text-white hover:border-[#1E6FD9]/45 hover:bg-slate-900/20 transition-all flex flex-col justify-between group cursor-pointer h-24"
                   >
-                    <div className="flex items-center gap-1.5 text-[9px] font-mono text-slate-400 uppercase font-bold mb-1">
-                      {p.icon}
-                      <span>{p.category}</span>
-                    </div>
-                    <span className="font-bold text-white text-[11.5px] leading-tight mb-1">{p.text}</span>
-                    <span className="flex items-center justify-between w-full text-[9px] text-slate-500 font-mono mt-auto">
-                      Query assistant
+                    <span className="font-bold text-white mb-2">{p.text}</span>
+                    <span className="flex items-center justify-between w-full text-[9.5px] text-slate-500 font-mono">
+                      Query template
                       <ArrowRight className="w-3.5 h-3.5 text-slate-600 group-hover:translate-x-1 transition-transform" />
                     </span>
                   </button>
@@ -484,7 +306,7 @@ export const AIChat: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="space-y-5 max-w-4xl mx-auto">
+            <div className="space-y-4 max-w-4xl mx-auto">
               {activeSession.messages.map((msg) => {
                 const isUser = msg.sender === 'user';
                 return (
@@ -496,34 +318,39 @@ export const AIChat: React.FC = () => {
                       <span>{isUser ? 'INVESTIGATOR' : 'SAKSHA CORE AI'}</span>
                       <span>•</span>
                       <span>{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      {msg.isStreaming && (
-                        <span className="text-[#1E6FD9] flex items-center gap-1 animate-pulse font-bold">
-                          <RefreshCw className="w-2.5 h-2.5 animate-spin" />
-                          Streaming response...
-                        </span>
-                      )}
                     </div>
 
-                    <div className={`p-4 rounded-card border text-[11.5px] leading-relaxed max-w-[90%] text-left font-mono ${
+                    <div className={`p-4 rounded-card border text-[11.5px] leading-relaxed max-w-[85%] text-left font-mono ${
                       isUser
                         ? 'bg-[#1E6FD9]/10 border-[#1E6FD9]/20 text-white'
                         : 'bg-[#111D35]/35 border-slate-900 text-[#A8B4CC] shadow-md relative group'
                     }`}>
                       
-                      {/* Markdown Response Text */}
-                      {isUser ? (
-                        <div className="whitespace-pre-wrap">{msg.text}</div>
-                      ) : (
-                        <MarkdownRenderer content={msg.text} />
+                      {/* Text details / Markdown-like layout */}
+                      <div className="whitespace-pre-wrap">{msg.text}</div>
+
+                      {/* AI Response References / Source Cards */}
+                      {msg.sources && msg.sources.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-slate-900 select-none">
+                          <span className="text-[8.5px] font-bold text-[#0E9E78] uppercase tracking-widest block mb-2">
+                            Intelligence References (Sources)
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {msg.sources.map((src, sIdx) => (
+                              <div 
+                                key={sIdx}
+                                className="px-2.5 py-1 bg-slate-950/60 border border-slate-900 rounded text-[8px] text-[#A8B4CC] flex items-center gap-1 font-mono hover:border-slate-800 transition-colors"
+                              >
+                                <FileText className="w-3 h-3 text-[#0E9E78]" />
+                                <span>{src}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
 
-                      {/* Citation Badges */}
-                      {msg.citations && msg.citations.length > 0 && (
-                        <CitationBadge citations={msg.citations} />
-                      )}
-
-                      {/* Copy Action button */}
-                      {!isUser && !msg.isStreaming && (
+                      {/* Action buttons (Only for AI bubble) */}
+                      {!isUser && (
                         <button
                           onClick={() => handleCopyText(msg.text, msg.id)}
                           className="absolute right-3 top-3 p-1 bg-slate-950/70 border border-slate-900 text-slate-400 hover:text-white rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
@@ -539,6 +366,25 @@ export const AIChat: React.FC = () => {
             </div>
           )}
 
+          {/* Streaming loader */}
+          {isLoading && (
+            <div className="flex flex-col gap-1.5 items-start max-w-4xl mx-auto">
+              <div className="font-mono text-[9px] text-slate-500 uppercase">
+                SAKSHA CORE AI • Querying Models
+              </div>
+              <div className="p-4 bg-[#111D35]/35 border border-slate-900 rounded-card flex items-center gap-3">
+                <div className="flex space-x-1.5">
+                  <div className="w-2 h-2 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
+                  Scanning crime records...
+                </span>
+              </div>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
 
@@ -546,25 +392,20 @@ export const AIChat: React.FC = () => {
         <div className="p-4 border-t border-border-color bg-slate-950/20">
           <div className="max-w-4xl mx-auto flex flex-col gap-2 relative">
             
-            {/* Context Selector Pill Bar */}
-            <div className="flex items-center justify-between">
-              <ContextSelector context={activeContext} onChange={handleUpdateContext} />
-              
-              {attachedFile && (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#0E9E78]/15 border border-[#0E9E78]/40 text-[#0E9E78] text-[9.5px] font-mono rounded">
-                  <Paperclip className="w-3 h-3" />
-                  <span>{attachedFile.name} ({attachedFile.size})</span>
-                  <button 
-                    onClick={() => setAttachedFile(null)} 
-                    className="text-red-400 font-bold ml-1 hover:text-red-500 transition-colors cursor-pointer"
-                  >
-                    ×
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Attachment Badge */}
+            {attachedFile && (
+              <div className="self-start flex items-center gap-1.5 px-2 py-0.5 bg-[#0E9E78]/15 border border-[#0E9E78]/40 text-[#0E9E78] text-[9.5px] font-mono rounded">
+                <Paperclip className="w-3 h-3" />
+                <span>{attachedFile.name} ({attachedFile.size})</span>
+                <button 
+                  onClick={() => setAttachedFile(null)} 
+                  className="text-red-400 font-bold ml-1 hover:text-red-500 transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+            )}
 
-            {/* Text Input area */}
             <div className="flex items-end gap-2.5 bg-slate-950/70 border border-slate-900 focus-within:border-[#1E6FD9]/45 rounded-card p-2">
               
               {/* Attach File Button */}
@@ -576,13 +417,13 @@ export const AIChat: React.FC = () => {
                 <Paperclip className="w-4 h-4" />
               </button>
 
-              {/* Text Area Input */}
+              {/* Text Input area */}
               <textarea
                 ref={inputRef}
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask SAKSHA AI to analyze FIR records, criminal profiles, evidence files..."
+                placeholder="Ask SAKSHA AI to analyze crime files, query offender connections..."
                 className="flex-grow bg-transparent outline-none border-none text-white text-[11px] font-mono resize-none max-h-24 py-1.5 placeholder-slate-600 custom-scrollbar"
                 rows={1}
               />
@@ -597,12 +438,11 @@ export const AIChat: React.FC = () => {
                 <Send className="w-4.5 h-4.5" />
               </button>
             </div>
-
-            <div className="flex justify-between items-center text-[7.5px] text-slate-600 uppercase select-none px-1 font-mono">
+            <div className="flex justify-between items-center text-[7.5px] text-slate-600 uppercase select-none px-1">
               <span>Press Enter to send, Shift+Enter for newline</span>
               <span className="flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3 text-[#0E9E78]" />
-                End-to-End Encrypted RAG Tunnel Active
+                End-to-End Cryptographic Tunnel Encrypted
               </span>
             </div>
           </div>

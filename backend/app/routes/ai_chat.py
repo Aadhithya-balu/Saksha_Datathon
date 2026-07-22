@@ -1,7 +1,8 @@
 """Conversational AI assistant endpoints for investigation queries."""
 from __future__ import annotations
 
-from typing import Any
+import json
+from typing import Any, AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -11,7 +12,9 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_user
 from app.database.postgres import get_db
 from app.models.user import User
-from app.services.chat.chat_service import InvestigationChatService
+from app.services.analytics_service import category_breakdown, dashboard_summary, district_comparison
+
+from app.ai.models.rag import InvestigationChatModel
 
 router = APIRouter(prefix="/ai/chat", tags=["AI Chat"])
 
@@ -20,10 +23,6 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1)
     session_id: str | None = None
     stream: bool = False
-    fir_id: str | None = None
-    criminal_id: str | None = None
-    evidence_id: str | None = None
-    case_id: str | None = None
 
 
 class ChatCitationOut(BaseModel):
@@ -43,24 +42,39 @@ class ChatResponse(BaseModel):
     data: list[dict[str, Any]] = Field(default_factory=list)
 
 
-def _assistant_response(
-    db: Session,
-    message: str,
-    *,
-    fir_id: str | None = None,
-    criminal_id: str | None = None,
-    evidence_id: str | None = None,
-    case_id: str | None = None,
-) -> ChatResponse:
-    """Internal assistant response builder for backwards compatibility."""
-    service = InvestigationChatService(db)
-    result = service.process_query(
-        message,
-        fir_id=fir_id,
-        criminal_id=criminal_id,
-        evidence_id=evidence_id,
-        case_id=case_id,
-    )
+def _build_documents(db: Session) -> list[dict[str, Any]]:
+    summary = dashboard_summary(db)
+    districts = district_comparison(db)
+    categories = category_breakdown(db)
+    return [
+        {
+            "id": "dashboard-summary",
+            "title": "Dashboard Summary",
+            "source": "dashboard",
+            "content": (
+                f"Total crimes: {summary['total_crimes']}. Open cases: {summary['open_crimes']}. "
+                f"FIRs: {summary['total_firs']}. Resolution rate: {summary['resolution_rate_percent']} percent."
+            ),
+        },
+        {
+            "id": "district-comparison",
+            "title": "District Comparison",
+            "source": "districts",
+            "content": ", ".join(f"{row['district']} has {row['count']} cases" for row in districts[:8]) or "No district data available.",
+        },
+        {
+            "id": "category-breakdown",
+            "title": "Crime Categories",
+            "source": "categories",
+            "content": ", ".join(f"{row['category']} has {row['count']} cases" for row in categories[:8]) or "No category data available.",
+        },
+    ]
+
+
+def _assistant_response(db: Session, message: str) -> ChatResponse:
+    model = InvestigationChatModel()
+    model.train(_build_documents(db))
+    result = model.predict(message)
     return ChatResponse(
         answer=result.answer,
         summary=result.summary,
@@ -68,10 +82,7 @@ def _assistant_response(
         classification=result.classification,
         sources=result.sources,
         chart_suggestion=result.chart_suggestion,
-        citations=[
-            ChatCitationOut(source=c.source, title=c.title, score=c.score)
-            for c in result.citations
-        ],
+        citations=[ChatCitationOut(**citation.__dict__) for citation in result.citations],
         data=[
             {
                 "query": message,
@@ -91,28 +102,22 @@ def chat(
     current_user: User = Depends(get_current_user),
 ):
     del current_user
-    service = InvestigationChatService(db)
     try:
-        if payload.stream:
-            stream_gen = service.stream_response(
-                payload.message,
-                fir_id=payload.fir_id,
-                criminal_id=payload.criminal_id,
-                evidence_id=payload.evidence_id,
-                case_id=payload.case_id,
-            )
-            return StreamingResponse(stream_gen, media_type="application/x-ndjson")
-
-        return _assistant_response(
-            db,
-            payload.message,
-            fir_id=payload.fir_id,
-            criminal_id=payload.criminal_id,
-            evidence_id=payload.evidence_id,
-            case_id=payload.case_id,
-        )
+        response = _assistant_response(db, payload.message)
     except Exception as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+    if payload.stream:
+        async def event_stream() -> AsyncIterator[bytes]:
+            chunks = [
+                {"type": "summary", "content": response.summary},
+                {"type": "answer", "content": response.answer},
+                {"type": "final", "content": response.model_dump()},
+            ]
+            for chunk in chunks:
+                yield (json.dumps(chunk) + "\n").encode("utf-8")
+
+        return StreamingResponse(event_stream(), media_type="application/x-ndjson")
+    return response
 
 
 @router.post("/query", response_model=ChatResponse)
@@ -122,14 +127,4 @@ def chat_query(
     current_user: User = Depends(get_current_user),
 ):
     del current_user
-    try:
-        return _assistant_response(
-            db,
-            payload.message,
-            fir_id=payload.fir_id,
-            criminal_id=payload.criminal_id,
-            evidence_id=payload.evidence_id,
-            case_id=payload.case_id,
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
+    return _assistant_response(db, payload.message)

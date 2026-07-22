@@ -71,10 +71,9 @@ def health_check():
 
     neo4j_ok = verify_neo4j_connectivity()
 
-    status_ok = pg_ok
+    status_ok = pg_ok and neo4j_ok
     return {
         "status": "ok" if status_ok else "degraded",
-        "database": "up" if pg_ok else "down",
         "postgresql": "up" if pg_ok else "down",
         "neo4j": "up" if neo4j_ok else "down",
     }

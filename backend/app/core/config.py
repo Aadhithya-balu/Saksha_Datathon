@@ -71,9 +71,6 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def derive_database_url(self):
         if self.DATABASE_URL:
-            if self.DATABASE_URL.startswith("sqlite:///./"):
-                db_name = self.DATABASE_URL[len("sqlite:///./"):]
-                self.DATABASE_URL = f"sqlite:///{ (BACKEND_DIR / db_name).resolve().as_posix() }"
             return self
 
         if self.SUPABASE_DB_HOST and self.SUPABASE_DB_USER and self.SUPABASE_DB_PASSWORD:

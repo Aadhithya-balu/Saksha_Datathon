@@ -10,18 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.ai.models.rag.chat_model import InvestigationChatModel
 from app.ai.vectorstore.memory import InMemoryVectorStore, VectorDocument
-from app.auth.dependencies import get_current_user
 from app.main import app
-
-
-class DummyUser:
-    id = "00000000-0000-0000-0000-000000000001"
-    username = "testuser"
-    email = "test@saksha.gov"
-
-
-def mock_user():
-    return DummyUser()
 
 
 def test_vector_store_search_ranks_relevant_docs():
@@ -58,13 +47,9 @@ def test_chat_model_returns_summary_and_entities():
 
 
 def test_chat_api_query_endpoint(client: TestClient):
-    app.dependency_overrides[get_current_user] = mock_user
-    try:
-        response = client.post("/api/v1/ai/chat/query", json={"message": "What are the top districts?"})
-        assert response.status_code == 200
-        body = response.json()
-        assert body["answer"]
-        assert "summary" in body
-        assert "citations" in body
-    finally:
-        app.dependency_overrides.pop(get_current_user, None)
+    response = client.post("/api/v1/ai/chat/query", json={"message": "What are the top districts?"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["answer"]
+    assert "summary" in body
+    assert "citations" in body

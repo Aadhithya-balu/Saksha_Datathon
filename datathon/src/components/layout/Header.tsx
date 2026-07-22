@@ -3,6 +3,7 @@ import { useAuthStore } from '../../store/authStore';
 import { SessionTimer } from '../auth/SessionTimer';
 import { ShieldCheck, HardDrive, Key, UserCheck, AlertTriangle } from 'lucide-react';
 import { isEmulatorActive } from '../../services/api';
+import NotificationBell from '../notifications/NotificationBell';
 
 export const Header: React.FC = () => {
   const { user } = useAuthStore();
@@ -66,6 +67,9 @@ export const Header: React.FC = () => {
 
       {/* Right User Telemetry Block */}
       <div className="flex items-center gap-4">
+        {/* Notification Bell */}
+        <NotificationBell />
+
         {/* Real-time Digital Clock */}
         <div className="hidden sm:flex flex-col text-right">
           <span className="text-xs font-mono font-bold text-[#E8EDF5]">{systime}</span>

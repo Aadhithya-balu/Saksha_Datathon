@@ -27,53 +27,53 @@ endpoints = {
     "AI Summary": {"method": "POST", "url": f"/evidence/{fake_uuid}/summary"}
 }
 
-if __name__ == "__main__":
-    results = {}
-    for user in TEST_USERS:
-        role = user['role']
-        print(f"\nTesting Role: {role}")
-        results[role] = {}
+results = {}
+
+for user in TEST_USERS:
+    role = user['role']
+    print(f"\nTesting Role: {role}")
+    results[role] = {}
+    
+    # Login
+    data = json.dumps({"username": user['username'], "password": "123456"}).encode()
+    req = urllib.request.Request(f"{API_URL}/auth/login", data=data, headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req) as resp:
+            token = json.loads(resp.read().decode()).get('access_token')
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        print(f"  Login Failed! {e.code} {body}")
+        continue
         
-        # Login
-        data = json.dumps({"username": user['username'], "password": "123456"}).encode()
-        req = urllib.request.Request(f"{API_URL}/auth/login", data=data, headers={"Content-Type": "application/json"})
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    
+    for name, ep in endpoints.items():
+        url = API_URL + ep['url']
+        method = ep['method']
+        
+        req = urllib.request.Request(url, method=method, headers=headers)
+        if method == "POST" and "json" in ep:
+            req.data = json.dumps(ep['json']).encode()
+            
+        if "upload" in url:
+            # Fake multipart for upload (API might just reject 403 before parsing)
+            boundary = 'wL36Yn8afVp8Ag7AmP8qZ0SA4n1v9T'
+            headers['Content-Type'] = f'multipart/form-data; boundary={boundary}'
+            body = (
+                f'--{boundary}\r\n'
+                f'Content-Disposition: form-data; name="file"; filename="test.txt"\r\n'
+                f'Content-Type: text/plain\r\n\r\n'
+                f'hello\r\n'
+                f'--{boundary}--\r\n'
+            ).encode('utf-8')
+            req = urllib.request.Request(url, data=body, headers=headers, method=method)
+            
         try:
             with urllib.request.urlopen(req) as resp:
-                token = json.loads(resp.read().decode()).get('access_token')
+                status = resp.status
         except urllib.error.HTTPError as e:
-            body = e.read().decode()
-            print(f"  Login Failed! {e.code} {body}")
-            continue
+            status = e.code
             
-        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-        
-        for name, ep in endpoints.items():
-            url = API_URL + ep['url']
-            method = ep['method']
-            
-            req = urllib.request.Request(url, method=method, headers=headers)
-            if method == "POST" and "json" in ep:
-                req.data = json.dumps(ep['json']).encode()
-                
-            if "upload" in url:
-                # Fake multipart for upload (API might just reject 403 before parsing)
-                boundary = 'wL36Yn8afVp8Ag7AmP8qZ0SA4n1v9T'
-                headers['Content-Type'] = f'multipart/form-data; boundary={boundary}'
-                body = (
-                    f'--{boundary}\r\n'
-                    f'Content-Disposition: form-data; name="file"; filename="test.txt"\r\n'
-                    f'Content-Type: text/plain\r\n\r\n'
-                    f'hello\r\n'
-                    f'--{boundary}--\r\n'
-                ).encode('utf-8')
-                req = urllib.request.Request(url, data=body, headers=headers, method=method)
-                
-            try:
-                with urllib.request.urlopen(req) as resp:
-                    status = resp.status
-            except urllib.error.HTTPError as e:
-                status = e.code
-                
-            allowed = status not in [401, 403]
-            results[role][name] = "PASS" if allowed else "BLOCKED"
-            print(f"  {name}: {status} -> {results[role][name]}")
+        allowed = status not in [401, 403]
+        results[role][name] = "PASS" if allowed else "BLOCKED"
+        print(f"  {name}: {status} -> {results[role][name]}")

@@ -21,6 +21,7 @@ from app.routes import (
     firs,
     investigation,
     locations,
+    notifications,
     officers,
     reports,
     users,
@@ -51,4 +52,5 @@ api_router.include_router(ai_anomaly.router)
 api_router.include_router(ai_criminal.router)
 api_router.include_router(ai_hotspot.router)
 api_router.include_router(ai_risk.router)
+api_router.include_router(notifications.router)
 

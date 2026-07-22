@@ -6,6 +6,6 @@
   "scripts": {
     "dev:all": "node scripts/dev-all.js",
     "dev:frontend": "npm run dev --prefix datathon",
-    "dev:backend": "py -3 -m uvicorn app.main:app --reload --app-dir backend"
+    "dev:backend": "py -3.12 -m uvicorn app.main:app --reload --app-dir backend"
   }
 }
