@@ -1,7 +1,9 @@
 """Officer CRUD + performance routes."""
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -19,23 +21,49 @@ router = APIRouter(prefix="/officers", tags=["Officers"])
 officer_crud = BaseCRUDService(Officer)
 
 
-@router.get("", response_model=PaginatedResponse[OfficerOut])
+@router.get("", response_model=PaginatedResponse[OfficerOut], dependencies=[Depends(require_roles(ROLE_ADMIN))])
 def list_officers(
+    search: str | None = None,
     district: str | None = None,
+    station: str | None = None,
+    status: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return officer_crud.list(db, page=page, page_size=page_size, filters={"district": district})
+    query = db.query(Officer)
+    
+    if search:
+        query = query.filter(or_(
+            Officer.name.ilike(f"%{search}%"),
+            Officer.badge_number.ilike(f"%{search}%"),
+            Officer.email.ilike(f"%{search}%"),
+            Officer.phone.ilike(f"%{search}%"),
+        ))
+    if district:
+        query = query.filter(Officer.district == district)
+    if station:
+        query = query.filter(Officer.station == station)
+    if status:
+        query = query.filter(Officer.status == status)
+        
+    total = query.count()
+    items = query.offset((page - 1) * page_size).limit(page_size).all()
+    return PaginatedResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        results=items
+    )
 
 
-@router.get("/{officer_id}", response_model=OfficerOut)
+@router.get("/{officer_id}", response_model=OfficerOut, dependencies=[Depends(require_roles(ROLE_ADMIN))])
 def get_officer(officer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return officer_crud.get(db, officer_id)
 
 
-@router.get("/{officer_id}/performance", response_model=OfficerPerformance)
+@router.get("/{officer_id}/performance", response_model=OfficerPerformance, dependencies=[Depends(require_roles(ROLE_ADMIN))])
 def officer_performance(officer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     officer_crud.get(db, officer_id)
     firs = db.query(FIR).filter(FIR.investigating_officer_id == officer_id).all()
@@ -51,13 +79,29 @@ def officer_performance(officer_id: uuid.UUID, db: Session = Depends(get_db), cu
 
 @router.post("", response_model=OfficerOut, dependencies=[Depends(require_roles(ROLE_ADMIN))])
 def create_officer(payload: OfficerCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    officer = officer_crud.create(db, payload.model_dump())
-    audit_service.log_action(db, current_user, "CREATE", "Officer", str(officer.id))
-    return officer
+    try:
+        officer = officer_crud.create(db, payload.model_dump())
+        audit_service.log_action(db, current_user, "CREATE", "Officer", str(officer.id))
+        return officer
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Badge number or email already exists.")
 
 
 @router.put("/{officer_id}", response_model=OfficerOut, dependencies=[Depends(require_roles(ROLE_ADMIN))])
 def update_officer(officer_id: uuid.UUID, payload: OfficerUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    officer = officer_crud.update(db, officer_id, payload.model_dump(exclude_unset=True))
-    audit_service.log_action(db, current_user, "UPDATE", "Officer", str(officer_id))
-    return officer
+    try:
+        officer = officer_crud.update(db, officer_id, payload.model_dump(exclude_unset=True))
+        audit_service.log_action(db, current_user, "UPDATE", "Officer", str(officer_id))
+        return officer
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Badge number or email already exists.")
+
+@router.delete("/{officer_id}", dependencies=[Depends(require_roles(ROLE_ADMIN))])
+def delete_officer(officer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    officer = officer_crud.get(db, officer_id)
+    officer.status = "inactive"
+    db.add(officer)
+    audit_service.log_action(db, current_user, "DELETE", "Officer", str(officer_id))
+    return {"detail": "Officer deactivated successfully"}

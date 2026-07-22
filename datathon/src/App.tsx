@@ -11,13 +11,15 @@ import Predictions from './pages/Predictions';
 import Anomalies from './pages/Anomalies';
 import Offenders from './pages/Offenders';
 import Reports from './pages/Reports';
-import SettingsHelp from './pages/SettingsHelp';
+import Admin from './pages/Admin';
 import AIChat from './pages/AIChat';
 import CrimeCases from './pages/CrimeCases';
 import RoleGuard from './components/layout/RoleGuard';
 import FIRPage from './pages/FIR';
 import Criminals from './pages/Criminals';
 import Victims from './pages/Victims';
+import OfficersPage from './pages/Officers';
+import EvidencePage from './pages/Evidence';
 import InvestigationPage from './pages/Investigation';
 
 function App() {
@@ -152,8 +154,8 @@ function App() {
         );
       case 'settings_help':
         return (
-          <RoleGuard path="/settings">
-            <SettingsHelp />
+          <RoleGuard path="/admin">
+            <Admin />
           </RoleGuard>
         );
       case 'crime_cases':
@@ -172,6 +174,18 @@ function App() {
         return (
           <RoleGuard path="/ai-chat">
             <AIChat />
+          </RoleGuard>
+        );
+      case 'officers':
+        return (
+          <RoleGuard path="/officers">
+            <OfficersPage />
+          </RoleGuard>
+        );
+      case 'evidence':
+        return (
+          <RoleGuard path="/evidence">
+            <EvidencePage />
           </RoleGuard>
         );
       default:

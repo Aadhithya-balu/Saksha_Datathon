@@ -1,4 +1,5 @@
 const DEFAULT_API_BASE_URL = '/api/v1';
+import type { UserRole } from '../store/authStore';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL;
 
@@ -215,14 +216,20 @@ export const clearStoredTokens = () => {
   window.localStorage.removeItem(REFRESH_TOKEN_KEY);
 };
 
-export const mapBackendRoleToUiRole = (role: string): 'SCRB' | 'IO' | 'SP' => {
+export const mapBackendRoleToUiRole = (role: string): UserRole => {
   switch (role) {
     case 'investigator':
+    case 'crime_analyst':
       return 'IO';
     case 'policymaker':
       return 'SP';
+    case 'inspector':
+      return 'INSPECTOR';
+    case 'forensic':
+      return 'FORENSIC';
+    case 'viewer':
+      return 'VIEWER';
     case 'admin':
-    case 'crime_analyst':
     default:
       return 'SCRB';
   }
@@ -296,24 +303,109 @@ export async function logout() {
   });
 }
 
+export async function refreshSession(refreshToken: string) {
+  return apiRequest<LoginResponse>('/auth/refresh', {
+    method: 'POST',
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  }, false);
+}
+
 export async function getMe() {
   return apiRequest<BackendUser>('/auth/me');
 }
 
-export async function getDashboardSummary() {
-  return apiRequest<DashboardSummary>('/dashboard/summary');
+export interface DashboardFilters {
+  date_from?: string;
+  date_to?: string;
+  district?: string;
+  category_id?: string;
+  officer_id?: string;
+  priority?: string;
+  status?: string;
 }
 
-export async function getCrimeTrends() {
-  return apiRequest<TrendPoint[]>('/dashboard/crime-trends');
+export interface OfficerStats {
+  total_officers: number;
+  active_officers: number;
+  on_duty: number;
+  off_duty: number;
+  investigating_officers: number;
 }
 
-export async function getCategoryBreakdown() {
-  return apiRequest<CategoryPoint[]>('/dashboard/category-breakdown');
+export interface EvidenceStats {
+  collected: number;
+  pending: number;
+  verified: number;
+  rejected: number;
 }
 
-export async function getDistrictComparison() {
-  return apiRequest<DistrictComparisonPoint[]>('/dashboard/district-comparison');
+export interface RecentIncident {
+  case_number: string;
+  crime_type: string;
+  location: string;
+  time: string | null;
+  status: string;
+  priority: string;
+}
+
+export interface ForecastPoint {
+  day: string;
+  value: number;
+  type: 'historical' | 'predicted' | 'today';
+  color: number;
+  hexColor: string;
+}
+
+export interface ForecastResponse {
+  next_day_forecast: number;
+  next_week_forecast: number;
+  expected_change_percent: number;
+  trend_direction: 'up' | 'down' | 'stable';
+  series: ForecastPoint[];
+}
+
+export interface RiskPredictionResponse {
+  crime_risk_percent: number;
+  threat_level: 'Low' | 'Medium' | 'High' | 'Critical';
+  trend: 'increasing' | 'decreasing' | 'stable';
+  confidence_score: number;
+  prediction_time: string;
+}
+
+export async function getDashboardSummary(filters?: DashboardFilters) {
+  return apiRequest<DashboardSummary>(`/dashboard/summary${buildQueryString(filters as any)}`);
+}
+
+export async function getCrimeTrends(filters?: DashboardFilters) {
+  return apiRequest<TrendPoint[]>(`/dashboard/crime-trends${buildQueryString(filters as any)}`);
+}
+
+export async function getCategoryBreakdown(filters?: DashboardFilters) {
+  return apiRequest<CategoryPoint[]>(`/dashboard/category-breakdown${buildQueryString(filters as any)}`);
+}
+
+export async function getDistrictComparison(filters?: DashboardFilters) {
+  return apiRequest<DistrictComparisonPoint[]>(`/dashboard/district-comparison${buildQueryString(filters as any)}`);
+}
+
+export async function getOfficerStats() {
+  return apiRequest<OfficerStats>('/dashboard/officer-stats');
+}
+
+export async function getEvidenceStats() {
+  return apiRequest<EvidenceStats>('/dashboard/evidence-stats');
+}
+
+export async function getRecentIncidents() {
+  return apiRequest<RecentIncident[]>('/dashboard/recent-incidents');
+}
+
+export async function getForecast() {
+  return apiRequest<ForecastResponse>('/dashboard/forecast');
+}
+
+export async function getRiskPrediction() {
+  return apiRequest<RiskPredictionResponse>('/dashboard/risk-prediction');
 }
 
 export async function getRiskScores(window = 'next_7d', districtId?: string) {

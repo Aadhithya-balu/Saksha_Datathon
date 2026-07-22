@@ -303,6 +303,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )
     },
     {
+      id: 'officers',
+      label: 'Officer Management',
+      path: '/officers',
+      icon: (isActive: boolean) => (
+        <svg className="w-6 h-6 transition-all duration-300 pointer-events-none" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="offGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={isActive ? "#1E6FD9" : "#6A7A96"} />
+              <stop offset="100%" stopColor={isActive ? "#0E9E78" : "#A8B4CC"} />
+            </linearGradient>
+          </defs>
+          <circle cx="12" cy="7" r="4" stroke="url(#offGrad)" strokeWidth="1.5" />
+          <path d="M5.5 21v-2a4 4 0 014-4h5a4 4 0 014 4v2" stroke="url(#offGrad)" strokeWidth="1.5" />
+        </svg>
+      )
+    },
+    {
+      id: 'evidence',
+      label: 'Evidence Handling',
+      path: '/evidence',
+      icon: (isActive: boolean) => (
+        <svg className="w-6 h-6 transition-all duration-300 pointer-events-none" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="evidGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={isActive ? "#C94A2A" : "#6A7A96"} />
+              <stop offset="100%" stopColor={isActive ? "#6C43CC" : "#A8B4CC"} />
+            </linearGradient>
+          </defs>
+          <rect x="4" y="4" width="16" height="16" rx="2" stroke="url(#evidGrad)" strokeWidth="1.5" />
+          <path d="M9 12h6M9 16h6M9 8h6" stroke="url(#evidGrad)" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      )
+    },
+    {
       id: 'settings_help',
       label: 'Settings & Help',
       path: '/settings',
@@ -358,33 +392,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
           const isActive = activeTab === item.id;
 
           // If not allowed, we don't render or show locked state
+          if (!isAllowed) return null;
+
           return (
             <button
               key={item.id}
-              onClick={() => isAllowed && setActiveTab(item.id)}
+              onClick={() => setActiveTab(item.id)}
               className={`relative flex items-center gap-3.5 p-3 rounded-btn text-xs font-mono font-medium transition-all duration-200 group cursor-pointer ${
-                !isAllowed 
-                  ? 'opacity-30 cursor-not-allowed text-[#6A7A96]' 
-                  : isActive
+                isActive
                   ? 'bg-[#1E6FD9]/10 text-white border border-[#1E6FD9]/20 shadow-glow-blue'
                   : 'text-[#A8B4CC] hover:text-white hover:bg-white/5 border border-transparent hover:translate-y-[-2px]'
               }`}
             >
               {/* Float-glow icon hook */}
               <div className="shrink-0 transition-transform duration-200 group-hover:scale-110">
-                {item.icon(isActive && isAllowed)}
+                {item.icon(isActive)}
               </div>
               
               {/* Collapsed label */}
               {!collapsed && (
                 <span className="truncate uppercase tracking-wider">{item.label}</span>
-              )}
-
-              {/* Locked overlay tag */}
-              {!isAllowed && !collapsed && (
-                <span className="absolute right-3 px-1.5 py-0.5 bg-[#C94A2A]/20 text-[#C94A2A] text-[7.5px] rounded font-bold uppercase select-none border border-[#C94A2A]/40">
-                  LOCKED
-                </span>
               )}
             </button>
           );
