@@ -21,6 +21,7 @@ import Victims from './pages/Victims';
 import OfficersPage from './pages/Officers';
 import EvidencePage from './pages/Evidence';
 import InvestigationPage from './pages/Investigation';
+import NotificationsPage from './pages/Notifications';
 
 function App() {
   const { isAuthenticated, user, isHydrating, initializeSession } = useAuthStore();
@@ -61,6 +62,7 @@ function App() {
       anomaly: 'Anomaly Alert Feed',
       crime_cases: 'Crime Case Management',
       investigation: 'Unified Investigation Interface',
+      notifications: 'Notification & Intelligence Center',
       offenders: 'Offender Dossiers Registry',
       criminals: 'Criminal Dossier Registry',
       victims: 'Victim & Witness Index',
@@ -186,6 +188,12 @@ function App() {
         return (
           <RoleGuard path="/evidence">
             <EvidencePage />
+          </RoleGuard>
+        );
+      case 'notifications':
+        return (
+          <RoleGuard path="/dashboard">
+            <NotificationsPage />
           </RoleGuard>
         );
       default:

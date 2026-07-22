@@ -19,10 +19,12 @@ from app.models.chain_of_custody import ChainOfCustody
 from app.models.evidence_ai_summary import EvidenceAISummary
 from app.models.report import Report
 from app.models.audit_log import AuditLog
+from app.models.notification import Notification
 
 __all__ = [
     "Role", "User", "Location", "CrimeCategory", "Officer", "Criminal",
     "Victim", "CrimeCase", "FIR", "FIRCriminalLink", "FIRVictimLink",
     "Evidence", "EvidenceMetadata", "EvidenceTimeline", "EvidenceAssignment",
     "ChainOfCustody", "EvidenceAISummary", "Report", "AuditLog",
+    "Notification",
 ]
