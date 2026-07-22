@@ -1,0 +1,10 @@
+services:
+  mlops:
+    build:
+      context: ..
+      dockerfile: docker/mlops.Dockerfile
+    environment:
+      - PYTHONPATH=/app/backend
+    volumes:
+      - ../mlflow:/app/mlflow
+      - ../monitoring:/app/monitoring
