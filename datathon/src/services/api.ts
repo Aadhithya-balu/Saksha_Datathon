@@ -818,3 +818,99 @@ export async function investigationChat(caseId: string, message: string, session
     body: JSON.stringify({ case_id: caseId, message, session_id: sessionId ?? null }),
   });
 }
+
+// ── Notification Types & Routes ──
+
+export interface NotificationRecord {
+  id: string;
+  user_id: string | null;
+  notification_type: string;
+  title: string;
+  message: string;
+  severity: string;
+  resource_type: string | null;
+  resource_id: string | null;
+  is_read: boolean;
+  is_dismissed: boolean;
+  created_at: string;
+  read_at: string | null;
+}
+
+export interface NotificationCount {
+  total: number;
+  unread: number;
+  critical: number;
+}
+
+export interface NotificationListResponse {
+  total: number;
+  page: number;
+  page_size: number;
+  unread_count: number;
+  results: NotificationRecord[];
+}
+
+export interface ActivityEvent {
+  id: string;
+  timestamp: string;
+  event_type: string;
+  title: string;
+  description: string;
+  actor: string | null;
+  actor_badge: string | null;
+  resource_type: string;
+  resource_id: string | null;
+  severity: string;
+}
+
+export interface ActivityFeedResponse {
+  total: number;
+  results: ActivityEvent[];
+}
+
+export interface ServiceStatus {
+  name: string;
+  status: string;
+  latency_ms: number;
+  last_check: string;
+  details: string | null;
+}
+
+export interface SystemHealthResponse {
+  overall: string;
+  services: ServiceStatus[];
+  uptime_hours: number;
+  last_updated: string;
+}
+
+export async function getNotifications(page = 1, pageSize = 20, unreadOnly = false, notificationType?: string, severity?: string) {
+  return apiRequest<NotificationListResponse>(`/notifications${buildQueryString({ page, page_size: pageSize, unread_only: unreadOnly, notification_type: notificationType, severity } as any)}`);
+}
+
+export async function getNotificationCount() {
+  return apiRequest<NotificationCount>('/notifications/count');
+}
+
+export async function getRecentNotifications(limit = 5) {
+  return apiRequest<NotificationRecord[]>(`/notifications/recent${buildQueryString({ limit })}`);
+}
+
+export async function markNotificationRead(notificationId: string) {
+  return apiRequest<{ success: boolean; message: string }>(`/notifications/${notificationId}/read`, { method: 'PUT' });
+}
+
+export async function markAllNotificationsRead() {
+  return apiRequest<{ success: boolean; message: string }>('/notifications/read-all', { method: 'PUT' });
+}
+
+export async function dismissNotification(notificationId: string) {
+  return apiRequest<{ success: boolean; message: string }>(`/notifications/${notificationId}`, { method: 'DELETE' });
+}
+
+export async function getActivityFeed(limit = 50, eventType?: string, resourceType?: string) {
+  return apiRequest<ActivityFeedResponse>(`/notifications/activity-feed${buildQueryString({ limit, event_type: eventType, resource_type: resourceType } as any)}`);
+}
+
+export async function getLiveTimeline(caseId?: string, limit = 30) {
+  return apiRequest<any[]>(`/notifications/live-timeline${buildQueryString({ case_id: caseId, limit })}`);
+}

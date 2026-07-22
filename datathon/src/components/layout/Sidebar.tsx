@@ -157,7 +157,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </svg>
       )
     },
-    {
+      {
       id: 'investigation',
       label: 'Investigation',
       path: '/crime-cases',
@@ -177,6 +177,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <line x1="15.5" y1="15.5" x2="20" y2="20" stroke={isActive ? "#C94A2A" : "#6A7A96"} strokeWidth="1.5" strokeLinecap="round" />
           <path d="M7 4l5-2 5 2" stroke={isActive ? "#6C43CC" : "#6A7A96"} strokeWidth="1" strokeLinecap="round" />
           <path d="M7 20l5 2 5-2" stroke={isActive ? "#6C43CC" : "#6A7A96"} strokeWidth="1" strokeLinecap="round" />
+        </svg>
+      )
+    },
+    {
+      id: 'notifications',
+      label: 'Intelligence Center',
+      path: '/dashboard',
+      icon: (isActive: boolean) => (
+        <svg className="w-6 h-6 transition-all duration-300 pointer-events-none" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="notifGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={isActive ? "#1E6FD9" : "#6A7A96"} />
+              <stop offset="100%" stopColor={isActive ? "#0E9E78" : "#A8B4CC"} />
+            </linearGradient>
+            <filter id="notifGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#1E6FD9" floodOpacity="0.5" />
+            </filter>
+          </defs>
+          {/* Notification bell with signal waves */}
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" fill="none" stroke="url(#notifGrad)" strokeWidth="1.5" filter={isActive ? "url(#notifGlow)" : undefined} />
+          <path d="M13.73 21a2 2 0 01-3.46 0" stroke={isActive ? "#0E9E78" : "#6A7A96"} strokeWidth="1.5" strokeLinecap="round" />
+          {isActive && <circle cx="18" cy="6" r="2.5" fill="#C94A2A" className="animate-pulse" />}
         </svg>
       )
     },
