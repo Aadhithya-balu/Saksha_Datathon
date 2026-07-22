@@ -230,8 +230,9 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
       {/* Mock credentials list */}
       <div className="text-center text-[8.5px] font-mono text-[#6A7A96] leading-relaxed select-none border-t border-border-color/30 pt-3">
         MOCK CREDENTIALS SPECIFICATION:<br />
-        Superintendent: <span className="text-slate-400 font-bold">SP-0088</span> / PIN <span className="text-slate-400 font-bold">123456</span><br />
-        Investigator: <span className="text-slate-400 font-bold">IO-3921</span> / PIN <span className="text-slate-400 font-bold">123456</span><br />
+        Admin: <span className="text-slate-400 font-bold">admin</span> / PIN <span className="text-slate-400 font-bold">564738</span><br />
+        Superintendent: <span className="text-slate-400 font-bold">SP-0088</span> / PIN <span className="text-slate-400 font-bold">987654</span><br />
+        Investigator: <span className="text-slate-400 font-bold">IO-3921</span> / PIN <span className="text-slate-400 font-bold">456789</span><br />
         Analyst: <span className="text-slate-400 font-bold">SCRB-7740</span> / PIN <span className="text-slate-400 font-bold">123456</span>
       </div>
     </div>

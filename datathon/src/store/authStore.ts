@@ -89,7 +89,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   login: async (badgeId: string, pin: string) => {
-    const cleanId = badgeId.trim().toUpperCase();
+    // Use the input as-is (case-sensitive DB lookup; seed data uses lowercase 'admin')
+    const cleanId = badgeId.trim();
     const cleanPin = pin.trim();
 
     try {
