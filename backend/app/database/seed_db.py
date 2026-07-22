@@ -127,10 +127,10 @@ def seed() -> None:
         _seed_cases_and_firs(db, category_objs, location_objs, criminal_objs, victim_objs, officer_objs)
         db.commit()
         print("Seed complete. Prototype logins:")
-        print("- admin / ChangeMe123!")
+        print("- admin / 564738")
         print("- SCRB-7740 / 123456")
-        print("- IO-3921 / 123456")
-        print("- SP-0088 / 123456")
+        print("- IO-3921 / 456789")
+        print("- SP-0088 / 987654")
     finally:
         db.close()
 
@@ -182,6 +182,7 @@ def _seed_officers(db, user_objs):
             officer = Officer(
                 user_id=user_objs[payload["username"]].id,
                 badge_number=badge,
+                name=payload["full_name"],
                 rank=payload.get("rank"),
                 district=payload.get("district") or "State HQ",
                 station=payload.get("station") or "KSP HQ",
@@ -308,15 +309,16 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
             if not exists:
                 db.add(FIRVictimLink(fir_id=fir.id, victim_id=victim.id))
 
-        evidence_exists = db.query(Evidence).filter(Evidence.crime_case_id == crime.id).first()
+        evidence_exists = db.query(Evidence).filter(Evidence.case_id == crime.id).first()
         if not evidence_exists:
             db.add(
                 Evidence(
-                    crime_case_id=crime.id,
+                    case_id=crime.id,
+                    title=f"Evidence for {case_number}",
                     evidence_type="digital" if "Cyber" in category_name else "document",
                     description=f"Primary evidence packet for {case_number}",
-                    collected_by=investigator.badge_number if investigator else "SCRB",
-                    chain_of_custody="Collected, sealed, and logged in Saksha prototype registry.",
+                    created_by=investigator.badge_number if investigator else "SCRB",
+                    status="Pending",
                 )
             )
 
