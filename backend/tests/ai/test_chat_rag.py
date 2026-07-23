@@ -10,7 +10,10 @@ from fastapi.testclient import TestClient
 
 from app.ai.models.rag.chat_model import InvestigationChatModel
 from app.ai.vectorstore.memory import InMemoryVectorStore, VectorDocument
+from app.core.security import hash_password
 from app.main import app
+from app.models.role import Role
+from app.models.user import User
 
 
 def test_vector_store_search_ranks_relevant_docs():
@@ -46,8 +49,30 @@ def test_chat_model_returns_summary_and_entities():
     assert result.citations
 
 
-def test_chat_api_query_endpoint(client: TestClient):
-    response = client.post("/api/v1/ai/chat/query", json={"message": "What are the top districts?"})
+def test_chat_api_query_endpoint(client: TestClient, db_session):
+    role = Role(name="crime_analyst", description="Crime Analyst")
+    db_session.add(role)
+    db_session.flush()
+    db_session.add(
+        User(
+            username="analyst",
+            email="analyst@example.com",
+            full_name="Test Analyst",
+            hashed_password=hash_password("Password123!"),
+            role_id=role.id,
+            is_active=True,
+        )
+    )
+    db_session.commit()
+
+    login_response = client.post("/api/v1/auth/login", json={"username": "analyst", "password": "Password123!"})
+    token = login_response.json()["access_token"]
+
+    response = client.post(
+        "/api/v1/ai/chat/query",
+        json={"message": "What are the top districts?"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["answer"]
