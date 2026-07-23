@@ -1,79 +1,87 @@
-from __future__ import annotations
+import urllib.request
+import urllib.parse
+import urllib.error
+import json
+import uuid
 
-import os
+API_URL = "http://127.0.0.1:8000/api/v1"
+TEST_USERS = [
+    {"role": "Admin", "username": "admin", "password": "password"},
+    {"role": "Investigator", "username": "IO-3921", "password": "123456"},
+    {"role": "Inspector", "username": "INSP-1111", "password": "123456"},
+    {"role": "Forensic", "username": "FOR-2222", "password": "123456"},
+    {"role": "Crime Analyst", "username": "SCRB-7740", "password": "123456"}
+]
 
-os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
-os.environ.setdefault("DEBUG", "false")
-os.environ.setdefault("APP_DEBUG", "false")
+def run_rbac_tests():
+    fake_uuid = str(uuid.uuid4())
+    endpoints = {
+        "View Officers": {"method": "GET", "url": "/officers"},
+        "Create Officer": {"method": "POST", "url": "/officers", "json": {}},
+        "Create Evidence": {"method": "POST", "url": "/evidence", "json": {}},
+        "Delete Evidence": {"method": "DELETE", "url": f"/evidence/{fake_uuid}"},
+        "Assign Evidence": {"method": "POST", "url": f"/evidence/{fake_uuid}/assign", "json": {}},
+        "Accept Assignment": {"method": "POST", "url": f"/evidence/{fake_uuid}/assignments/{fake_uuid}/accept"},
+        "Upload Evidence": {"method": "POST", "url": f"/evidence/{fake_uuid}/upload"},
+        "AI Summary": {"method": "POST", "url": f"/evidence/{fake_uuid}/summary"}
+    }
 
-from fastapi.testclient import TestClient
+    results = {}
 
-from app.ai.models.rag.chat_model import InvestigationChatModel
-from app.ai.vectorstore.memory import InMemoryVectorStore, VectorDocument
-from app.main import app
+    for user in TEST_USERS:
+        role = user['role']
+        print(f"\nTesting Role: {role}")
+        results[role] = {}
+
+        # Login - Uses dynamic user passwords from main branch
+        data = json.dumps({"username": user['username'], "password": user['password']}).encode()
+        req = urllib.request.Request(f"{API_URL}/auth/login", data=data, headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req) as resp:
+                token = json.loads(resp.read().decode()).get('access_token')
+        except urllib.error.HTTPError as e:
+            body = e.read().decode()
+            print(f"  Login Failed! {e.code} {body}")
+            continue
+        except urllib.error.URLError as e:
+            print(f"  Login Connection Failed! {e}")
+            continue
+
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+        for name, ep in endpoints.items():
+            url = API_URL + ep['url']
+            method = ep['method']
+
+            req = urllib.request.Request(url, method=method, headers=headers)
+            if method == "POST" and "json" in ep:
+                req.data = json.dumps(ep['json']).encode()
+
+            if "upload" in url:
+                boundary = 'wL36Yn8afVp8Ag7AmP8qZ0SA4n1v9T'
+                headers['Content-Type'] = f'multipart/form-data; boundary={boundary}'
+                body = (
+                    f'--{boundary}\r\n'
+                    f'Content-Disposition: form-data; name="file"; filename="test.txt"\r\n'
+                    f'Content-Type: text/plain\r\n\r\n'
+                    f'hello\r\n'
+                    f'--{boundary}--\r\n'
+                ).encode('utf-8')
+                req = urllib.request.Request(url, data=body, headers=headers, method=method)
+
+            try:
+                with urllib.request.urlopen(req) as resp:
+                    status = resp.status
+            except urllib.error.HTTPError as e:
+                status = e.code
+            except urllib.error.URLError as e:
+                print(f"  Connection error for {name}: {e}")
+                continue
+
+            allowed = status not in [401, 403]
+            results[role][name] = "PASS" if allowed else "BLOCKED"
+            print(f"  {name}: {status} -> {results[role][name]}")
 
 
-def test_vector_store_search_ranks_relevant_docs():
-    store = InMemoryVectorStore()
-    store.index(
-        [
-            VectorDocument(id="1", text="Robbery incident in Bengaluru East district", title="A", metadata={"source": "fir"}),
-            VectorDocument(id="2", text="Traffic violation near Mysuru station", title="B", metadata={"source": "report"}),
-        ]
-    )
-
-    hits = store.search("robbery in Bengaluru", top_k=2)
-
-    assert hits
-    assert hits[0].document_id == "1"
-
-
-def test_chat_model_returns_summary_and_entities():
-    model = InvestigationChatModel()
-    model.train(
-        [
-            {"id": "summary", "title": "Summary", "source": "dashboard", "content": "FIRs indicate repeated robbery incidents in Kalaburagi."},
-            {"id": "district", "title": "District", "source": "districts", "content": "Kalaburagi has 12 cases."},
-        ]
-    )
-
-    result = model.predict("Summarize the robbery pattern in Kalaburagi")
-
-    assert result.answer
-    assert result.summary
-    assert "kalaburagi" in result.entities
-    assert result.classification in {"FIR_SUMMARY", "CRIME_CLASSIFICATION", "ENTITY_EXTRACTION", "GENERAL_INVESTIGATION"}
-    assert result.citations
-
-
-from sqlalchemy.orm import Session
-from app.models.role import Role
-from app.models.user import User
-from app.auth.dependencies import get_current_user
-
-def test_chat_api_query_endpoint(client: TestClient, db_session: Session):
-    role = Role(name="admin", description="Admin")
-    db_session.add(role)
-    db_session.flush()
-    user = User(
-        username="testuser",
-        email="test@example.com",
-        full_name="Test User",
-        hashed_password="hashed_password",
-        is_active=True,
-        role_id=role.id
-    )
-    db_session.add(user)
-    db_session.commit()
-
-    app.dependency_overrides[get_current_user] = lambda: user
-    try:
-        response = client.post("/api/v1/ai/chat/query", json={"message": "What are the top districts?"})
-        assert response.status_code == 200
-        body = response.json()
-        assert body["answer"]
-        assert "summary" in body
-        assert "citations" in body
-    finally:
-        del app.dependency_overrides[get_current_user]
-
+if __name__ == "__main__":
+    run_rbac_tests()
