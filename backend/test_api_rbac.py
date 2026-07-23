@@ -32,27 +32,31 @@ def run_rbac_tests():
         role = user['role']
         print(f"\nTesting Role: {role}")
         results[role] = {}
-        
-        # Login
-        data = json.dumps({"username": user['username'], "password": "123456"}).encode()
+
+        # Login - Uses dynamic user passwords from main branch
+        data = json.dumps({"username": user['username'], "password": user['password']}).encode()
         req = urllib.request.Request(f"{API_URL}/auth/login", data=data, headers={"Content-Type": "application/json"})
         try:
             with urllib.request.urlopen(req) as resp:
                 token = json.loads(resp.read().decode()).get('access_token')
-        except (urllib.error.HTTPError, urllib.error.URLError) as e:
-            print(f"  Login Failed! {e}")
+        except urllib.error.HTTPError as e:
+            body = e.read().decode()
+            print(f"  Login Failed! {e.code} {body}")
             continue
-            
+        except urllib.error.URLError as e:
+            print(f"  Login Connection Failed! {e}")
+            continue
+
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-        
+
         for name, ep in endpoints.items():
             url = API_URL + ep['url']
             method = ep['method']
-            
+
             req = urllib.request.Request(url, method=method, headers=headers)
             if method == "POST" and "json" in ep:
                 req.data = json.dumps(ep['json']).encode()
-                
+
             if "upload" in url:
                 boundary = 'wL36Yn8afVp8Ag7AmP8qZ0SA4n1v9T'
                 headers['Content-Type'] = f'multipart/form-data; boundary={boundary}'
@@ -64,7 +68,7 @@ def run_rbac_tests():
                     f'--{boundary}--\r\n'
                 ).encode('utf-8')
                 req = urllib.request.Request(url, data=body, headers=headers, method=method)
-                
+
             try:
                 with urllib.request.urlopen(req) as resp:
                     status = resp.status
@@ -73,10 +77,11 @@ def run_rbac_tests():
             except urllib.error.URLError as e:
                 print(f"  Connection error for {name}: {e}")
                 continue
-                
+
             allowed = status not in [401, 403]
             results[role][name] = "PASS" if allowed else "BLOCKED"
             print(f"  {name}: {status} -> {results[role][name]}")
+
 
 if __name__ == "__main__":
     run_rbac_tests()
