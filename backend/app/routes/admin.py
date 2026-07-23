@@ -68,7 +68,7 @@ class RolePermission(Base):
 class AdminUserOut(BaseModel):
     id: uuid.UUID
     username: str
-    email: EmailStr
+    email: str
     full_name: str
     is_active: bool
     district: str | None
@@ -80,7 +80,7 @@ class AdminUserOut(BaseModel):
 
 class UserCreatePayload(BaseModel):
     username: str = Field(min_length=3, max_length=100)
-    email: EmailStr
+    email: str
     full_name: str = Field(min_length=2, max_length=255)
     password: str = Field(min_length=8, max_length=128)
     role_id: uuid.UUID | None = None
@@ -91,7 +91,7 @@ class UserCreatePayload(BaseModel):
 
 
 class UserUpdatePayload(BaseModel):
-    email: EmailStr | None = None
+    email: str | None = None
     full_name: str | None = Field(default=None, min_length=2, max_length=255)
     role_id: uuid.UUID | None = None
     role: str | None = None
