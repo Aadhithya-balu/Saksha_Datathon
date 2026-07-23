@@ -33,3 +33,5 @@ class CrimeCase(Base, UUIDPKMixin, TimestampMixin):
 
     firs: Mapped[list["FIR"]] = relationship(back_populates="crime_case")
     evidence: Mapped[list["Evidence"]] = relationship(back_populates="crime_case")
+    notes: Mapped[list["InvestigationNote"]] = relationship(back_populates="crime_case", cascade="all, delete-orphan")
+

@@ -46,10 +46,34 @@ def test_chat_model_returns_summary_and_entities():
     assert result.citations
 
 
-def test_chat_api_query_endpoint(client: TestClient):
-    response = client.post("/api/v1/ai/chat/query", json={"message": "What are the top districts?"})
-    assert response.status_code == 200
-    body = response.json()
-    assert body["answer"]
-    assert "summary" in body
-    assert "citations" in body
+from sqlalchemy.orm import Session
+from app.models.role import Role
+from app.models.user import User
+from app.auth.dependencies import get_current_user
+
+def test_chat_api_query_endpoint(client: TestClient, db_session: Session):
+    role = Role(name="admin", description="Admin")
+    db_session.add(role)
+    db_session.flush()
+    user = User(
+        username="testuser",
+        email="test@example.com",
+        full_name="Test User",
+        hashed_password="hashed_password",
+        is_active=True,
+        role_id=role.id
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    app.dependency_overrides[get_current_user] = lambda: user
+    try:
+        response = client.post("/api/v1/ai/chat/query", json={"message": "What are the top districts?"})
+        assert response.status_code == 200
+        body = response.json()
+        assert body["answer"]
+        assert "summary" in body
+        assert "citations" in body
+    finally:
+        del app.dependency_overrides[get_current_user]
+

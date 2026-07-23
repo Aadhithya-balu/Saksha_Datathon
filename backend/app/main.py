@@ -11,8 +11,8 @@ from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging_config import configure_logging, logger
 from app.database.neo4j import close_neo4j_driver, verify_neo4j_connectivity
-from app.database.postgres import engine
-
+from app.database.postgres import Base, engine
+import app.models  # ensure models are registered
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,10 +20,12 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.APP_NAME} in {settings.APP_ENV} mode")
 
     try:
+        Base.metadata.create_all(bind=engine)
         with engine.connect():
             logger.info("PostgreSQL connection OK")
     except Exception as exc:
         logger.error(f"PostgreSQL connection failed: {exc}")
+
 
     if verify_neo4j_connectivity():
         logger.info("Neo4j connection OK")

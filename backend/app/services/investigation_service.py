@@ -22,6 +22,8 @@ from app.models.location import Location
 from app.models.officer import Officer
 from app.models.user import User
 from app.models.victim import Victim
+from app.models.investigation_note import InvestigationNote
+
 
 
 # ── Data classes for structured output ─────────────────────────
@@ -224,7 +226,7 @@ def _generate_ai_recommendations(case: CrimeCase, firs: list[FIR], evidence: lis
     return recommendations
 
 
-def _build_timeline(case: CrimeCase, firs: list[FIR], evidence: list[Evidence], history: list[AuditLog]) -> list[InvestigationTimelineEvent]:
+def _build_timeline(case: CrimeCase, firs: list[FIR], evidence: list[Evidence], history: list[AuditLog], notes: list[InvestigationNote] = None) -> list[InvestigationTimelineEvent]:
     """Build a chronological timeline from all case events."""
     events: list[InvestigationTimelineEvent] = []
 
@@ -261,6 +263,16 @@ def _build_timeline(case: CrimeCase, firs: list[FIR], evidence: list[Evidence], 
             category="evidence",
         ))
 
+    # Investigation notes
+    if notes:
+        for note in notes:
+            events.append(InvestigationTimelineEvent(
+                timestamp=note.created_at.isoformat() if note.created_at else "",
+                event="Investigation Note Added",
+                actor=note.officer_name,
+                category="note",
+            ))
+
     # Status changes from audit log
     for log in history:
         if log.resource_type == "CrimeCase" and log.action in ("UPDATE",):
@@ -274,6 +286,7 @@ def _build_timeline(case: CrimeCase, firs: list[FIR], evidence: list[Evidence], 
     # Sort by timestamp
     events.sort(key=lambda e: e.timestamp)
     return events
+
 
 
 def get_investigation(db: Session, case_id: uuid.UUID) -> InvestigationData:
@@ -426,7 +439,8 @@ def get_investigation(db: Session, case_id: uuid.UUID) -> InvestigationData:
     ]
 
     # ── Timeline ──
-    timeline = _build_timeline(case, case.firs, all_evidence, audit_logs)
+    timeline = _build_timeline(case, case.firs, all_evidence, audit_logs, case.notes if hasattr(case, 'notes') else None)
+
 
     # ── AI Recommendations ──
     ai_recommendations = _generate_ai_recommendations(case, case.firs, all_evidence)
