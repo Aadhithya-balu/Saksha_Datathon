@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     # --- Neo4j ---
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"
+    NEO4J_USERNAME: str | None = None
     NEO4J_PASSWORD: str = "neo4j"
 
     # --- JWT ---
@@ -70,6 +71,9 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def derive_database_url(self):
+        if self.NEO4J_USERNAME and self.NEO4J_USER == "neo4j":
+            self.NEO4J_USER = self.NEO4J_USERNAME
+
         if self.DATABASE_URL:
             return self
 
