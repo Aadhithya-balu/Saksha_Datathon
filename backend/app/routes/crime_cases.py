@@ -15,7 +15,9 @@ from app.models.fir import FIR
 from app.models.officer import Officer
 from app.models.location import Location
 from app.models.crime_category import CrimeCategory
+from app.models.investigation_note import InvestigationNote
 from app.models.user import User
+
 from app.schemas.common import PaginatedResponse
 from app.schemas.crime import CrimeCaseCreate, CrimeCaseOut, CrimeCaseUpdate
 from app.schemas.fir import FIROut
@@ -98,11 +100,7 @@ def list_cases(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    List crime cases from PostgreSQL.
-    TODO: Fetch 'priority', 'progress', and 'assigned_officer_id' directly from PostgreSQL
-    once the database schema is updated in Supabase by your database teammate.
-    """
+    """List crime cases from PostgreSQL with complete detail attributes."""
     query = db.query(CrimeCase)
     if status:
         query = query.filter(CrimeCase.status == status)
@@ -125,8 +123,21 @@ def list_cases(
                 "rank": case.assigned_officer.rank,
                 "district": case.assigned_officer.district,
                 "station": case.assigned_officer.station,
-                "full_name": case.assigned_officer.user.full_name
+                "full_name": case.assigned_officer.user.full_name if case.assigned_officer.user else case.assigned_officer.name
             }
+
+        # Query investigation notes for case
+        notes_db = db.query(InvestigationNote).filter(InvestigationNote.case_id == case.id).order_by(InvestigationNote.created_at.desc()).all()
+        notes_out = [
+            InvestigationNoteOut(
+                id=n.id,
+                officer_name=n.officer_name,
+                officer_badge=n.officer_badge,
+                created_at=n.created_at,
+                content=n.content
+            )
+            for n in notes_db
+        ]
 
         extended_results.append(
             CrimeCaseDetailOut(
@@ -144,7 +155,7 @@ def list_cases(
                 progress=progress,
                 assigned_officer_id=assigned_officer_id,
                 assigned_officer=assigned_officer,
-                notes=[],
+                notes=notes_out,
                 timeline=[],
                 firs=[],
                 ai_recommendations=[]
@@ -161,9 +172,7 @@ def list_unassigned_officers(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Return all officer profiles with full names for assignment dropdowns.
-    """
+    """Return all officer profiles with full names for assignment dropdowns."""
     officers = db.query(Officer).join(User).all()
     results = []
     for off in officers:
@@ -176,7 +185,8 @@ def list_unassigned_officers(
                 district=off.district,
                 station=off.station,
                 created_at=off.created_at,
-                full_name=off.user.full_name
+                full_name=off.user.full_name,
+                name=off.name
             )
         )
     return results
@@ -187,9 +197,7 @@ def list_unlinked_firs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Return all FIRs so they can be selected for linking to cases.
-    """
+    """Return all FIRs so they can be selected for linking to cases."""
     firs = db.query(FIR).all()
     return [FIROut.model_validate(fir) for fir in firs]
 
@@ -222,18 +230,14 @@ def get_case(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Retrieve full details of a crime case, including linked FIRs, timeline and notes stubs.
-    TODO: Query notes and timeline events from Supabase tables once created.
-    TODO: Read 'priority', 'progress', and 'assigned_officer_id' from Supabase.
-    """
+    """Retrieve full details of a crime case, including linked FIRs, timeline and persisted investigation notes."""
     case = crime_crud.get(db, case_id)
 
     # 1. Fetch linked FIRs from existing table
     firs_list = db.query(FIR).filter(FIR.crime_case_id == case.id).all()
     firs_out = [FIROut.model_validate(fir) for fir in firs_list]
 
-    # 2. Build default timeline from report date + linked FIR registrations
+    # 2. Build timeline from report date + linked FIR registrations + investigation notes
     timeline = [
         TimelineEventOut(timestamp=case.reported_at, event="Case Created", actor=None)
     ]
@@ -245,9 +249,32 @@ def get_case(
                 actor=fir.complainant_name
             )
         )
+
+    # Query notes from PostgreSQL investigation_notes table
+    notes_db = db.query(InvestigationNote).filter(InvestigationNote.case_id == case.id).order_by(InvestigationNote.created_at.desc()).all()
+    for note in notes_db:
+        timeline.append(
+            TimelineEventOut(
+                timestamp=note.created_at,
+                event="Investigation Note Added",
+                actor=note.officer_name
+            )
+        )
+
     timeline = sorted(timeline, key=lambda e: e.timestamp)
 
-    # 3. AI Recommendations mock response
+    notes_out = [
+        InvestigationNoteOut(
+            id=n.id,
+            officer_name=n.officer_name,
+            officer_badge=n.officer_badge,
+            created_at=n.created_at,
+            content=n.content
+        )
+        for n in notes_db
+    ]
+
+    # 3. AI Recommendations
     ai_recommendations = [
         AIRecommendationOut(
             type="crime_pattern",
@@ -282,9 +309,8 @@ def get_case(
             "rank": case.assigned_officer.rank,
             "district": case.assigned_officer.district,
             "station": case.assigned_officer.station,
-            "full_name": case.assigned_officer.user.full_name
+            "full_name": case.assigned_officer.user.full_name if case.assigned_officer.user else case.assigned_officer.name
         }
-    notes = []
 
     return CrimeCaseDetailOut(
         id=case.id,
@@ -301,7 +327,7 @@ def get_case(
         progress=progress,
         assigned_officer_id=assigned_officer_id,
         assigned_officer=assigned_officer,
-        notes=notes,
+        notes=notes_out,
         timeline=timeline,
         firs=firs_out,
         ai_recommendations=ai_recommendations
@@ -314,10 +340,7 @@ def create_case(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Create a new crime case in PostgreSQL.
-    TODO: Insert priority, progress, and assigned_officer_id when schema fields exist.
-    """
+    """Create a new crime case in PostgreSQL."""
     case = crime_crud.create(db, payload.model_dump())
     audit_service.log_action(db, current_user, "CREATE", "CrimeCase", str(case.id))
     return case
@@ -330,10 +353,7 @@ def update_case(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Update a crime case.
-    TODO: Update priority, progress, and assigned_officer_id columns once available in Supabase.
-    """
+    """Update a crime case with priority, progress, status, and assigned officer."""
     case = crime_crud.update(db, case_id, payload.model_dump(exclude_unset=True))
     audit_service.log_action(db, current_user, "UPDATE", "CrimeCase", str(case_id))
     return case
@@ -358,14 +378,31 @@ def add_case_note(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Add an investigation note.
-    TODO: Insert note record into PostgreSQL 'investigation_notes' table when schema is ready.
-    """
+    """Add and persist an investigation note in PostgreSQL."""
+    # Verify case exists
+    crime_crud.get(db, case_id)
+
+    # Check if officer record exists for current_user
+    officer = db.query(Officer).filter(Officer.user_id == current_user.id).first()
+    officer_id = officer.id if officer else None
+    officer_name = current_user.full_name or current_user.username
+    officer_badge = officer.badge_number if officer else current_user.username
+
+    note = InvestigationNote(
+        case_id=case_id,
+        officer_id=officer_id,
+        officer_name=officer_name,
+        officer_badge=officer_badge,
+        content=payload.content
+    )
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+
     audit_service.log_action(
         db, current_user, "CREATE", "InvestigationNote", f"Note added to case {case_id}"
     )
-    return {"message": "Investigation note added successfully", "content": payload.content}
+    return {"message": "Investigation note added successfully", "id": str(note.id), "content": note.content}
 
 
 @router.delete("/{case_id}/notes/{note_id}", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR))])
@@ -375,14 +412,23 @@ def delete_case_note(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Delete an investigation note.
-    TODO: Remove note record from PostgreSQL 'investigation_notes' table when schema is ready.
-    """
+    """Delete an investigation note from PostgreSQL."""
+    note = db.query(InvestigationNote).filter(
+        InvestigationNote.id == note_id,
+        InvestigationNote.case_id == case_id
+    ).first()
+
+    if not note:
+        raise HTTPException(status_code=404, detail="Investigation note not found")
+
+    db.delete(note)
+    db.commit()
+
     audit_service.log_action(
         db, current_user, "DELETE", "InvestigationNote", f"Note {note_id} deleted"
     )
     return {"message": "Investigation note deleted successfully"}
+
 
 
 @router.post("/{case_id}/link-firs", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR))])

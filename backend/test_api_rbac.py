@@ -3,7 +3,6 @@ import urllib.parse
 import urllib.error
 import json
 import uuid
-import mimetypes
 
 API_URL = "http://127.0.0.1:8000/api/v1"
 TEST_USERS = [
@@ -14,28 +13,27 @@ TEST_USERS = [
     {"role": "Crime Analyst", "username": "SCRB-7740", "password": "123456"}
 ]
 
-fake_uuid = str(uuid.uuid4())
+def run_rbac_tests():
+    fake_uuid = str(uuid.uuid4())
+    endpoints = {
+        "View Officers": {"method": "GET", "url": "/officers"},
+        "Create Officer": {"method": "POST", "url": "/officers", "json": {}},
+        "Create Evidence": {"method": "POST", "url": "/evidence", "json": {}},
+        "Delete Evidence": {"method": "DELETE", "url": f"/evidence/{fake_uuid}"},
+        "Assign Evidence": {"method": "POST", "url": f"/evidence/{fake_uuid}/assign", "json": {}},
+        "Accept Assignment": {"method": "POST", "url": f"/evidence/{fake_uuid}/assignments/{fake_uuid}/accept"},
+        "Upload Evidence": {"method": "POST", "url": f"/evidence/{fake_uuid}/upload"},
+        "AI Summary": {"method": "POST", "url": f"/evidence/{fake_uuid}/summary"}
+    }
 
-endpoints = {
-    "View Officers": {"method": "GET", "url": "/officers"},
-    "Create Officer": {"method": "POST", "url": "/officers", "json": {}},
-    "Create Evidence": {"method": "POST", "url": "/evidence", "json": {}},
-    "Delete Evidence": {"method": "DELETE", "url": f"/evidence/{fake_uuid}"},
-    "Assign Evidence": {"method": "POST", "url": f"/evidence/{fake_uuid}/assign", "json": {}},
-    "Accept Assignment": {"method": "POST", "url": f"/evidence/{fake_uuid}/assignments/{fake_uuid}/accept"},
-    "Upload Evidence": {"method": "POST", "url": f"/evidence/{fake_uuid}/upload"},
-    "AI Summary": {"method": "POST", "url": f"/evidence/{fake_uuid}/summary"}
-}
+    results = {}
 
-results = {}
-
-def main():
     for user in TEST_USERS:
         role = user['role']
         print(f"\nTesting Role: {role}")
         results[role] = {}
 
-        # Login
+        # Login - Uses dynamic user passwords from main branch
         data = json.dumps({"username": user['username'], "password": user['password']}).encode()
         req = urllib.request.Request(f"{API_URL}/auth/login", data=data, headers={"Content-Type": "application/json"})
         try:
@@ -44,6 +42,9 @@ def main():
         except urllib.error.HTTPError as e:
             body = e.read().decode()
             print(f"  Login Failed! {e.code} {body}")
+            continue
+        except urllib.error.URLError as e:
+            print(f"  Login Connection Failed! {e}")
             continue
 
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
@@ -57,7 +58,6 @@ def main():
                 req.data = json.dumps(ep['json']).encode()
 
             if "upload" in url:
-                # Fake multipart for upload (API might just reject 403 before parsing)
                 boundary = 'wL36Yn8afVp8Ag7AmP8qZ0SA4n1v9T'
                 headers['Content-Type'] = f'multipart/form-data; boundary={boundary}'
                 body = (
@@ -74,6 +74,9 @@ def main():
                     status = resp.status
             except urllib.error.HTTPError as e:
                 status = e.code
+            except urllib.error.URLError as e:
+                print(f"  Connection error for {name}: {e}")
+                continue
 
             allowed = status not in [401, 403]
             results[role][name] = "PASS" if allowed else "BLOCKED"
@@ -81,4 +84,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run_rbac_tests()

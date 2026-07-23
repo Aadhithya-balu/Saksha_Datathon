@@ -217,7 +217,7 @@ def download_evidence_file(evidence_id: uuid.UUID, db: Session = Depends(get_db)
     audit_service.log_action(db, current_user, "DOWNLOAD", "Evidence", str(evidence_id))
     return FileResponse(path=str(file_path), filename=metadata.filename, media_type=metadata.mime_type)
 
-@router.post("/{evidence_id}/assign", response_model=EvidenceAssignmentOut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INSPECTOR))])
+@router.post("/{evidence_id}/assign", response_model=EvidenceAssignmentOut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR, ROLE_INSPECTOR, ROLE_CRIME_ANALYST))])
 def assign_evidence(
     evidence_id: uuid.UUID, 
     assigned_to: uuid.UUID = Query(...), 
