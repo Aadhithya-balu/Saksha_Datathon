@@ -82,7 +82,7 @@ function App() {
 
   if (isHydrating) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-primary-bg text-[#E8EDF5] font-mono">
+      <div className="min-h-screen w-full flex items-center justify-center bg-primary-bg text-primary-text font-mono">
         <div className="text-center space-y-3">
           <div className="w-10 h-10 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin mx-auto" />
           <p className="text-xs uppercase tracking-[0.3em] text-[#6A7A96]">Synchronizing secure session</p>
@@ -202,8 +202,16 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-primary-bg text-[#E8EDF5]">
+    <div className="flex h-screen w-screen overflow-hidden bg-primary-bg text-primary-text">
       
+      {/* Mobile Sidebar backdrop overlay */}
+      {!sidebarCollapsed && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/60 z-35 backdrop-blur-sm transition-opacity duration-300"
+          onClick={() => setSidebarCollapsed(true)}
+        />
+      )}
+
       {/* 3D-styled Collapsible Sidebar Drawer */}
       <Sidebar
         activeTab={activeTab}
@@ -214,13 +222,16 @@ function App() {
 
       {/* Main Console display workspace */}
       <div className="flex-grow flex flex-col min-w-0 h-full relative">
-        <Header />
+        <Header 
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+        />
         
         {/* Dynamic page container viewport scrollable */}
         <main className="flex-grow p-4 md:p-6 overflow-y-auto custom-scrollbar relative">
           
           {/* Cyber grid aesthetic background indicators */}
-          <div className="absolute inset-0 bg-[#080E1B] pointer-events-none -z-20 opacity-90" />
+          <div className="absolute inset-0 bg-primary-bg pointer-events-none -z-20 opacity-90" />
           
           {/* Main layout contents */}
           <div className="w-full max-w-[1600px] mx-auto animate-[fadeIn_0.5s_ease-out]">

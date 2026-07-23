@@ -502,14 +502,14 @@ export const Overview: React.FC = () => {
       </div>
 
       {/* ROW 2: CHARTS AND METRICS (LINE CHART & DONUT CHART 8-4 GRID) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-[340px]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-auto lg:h-[340px]">
         {/* Line Chart - Spacious 8-cols */}
-        <div className="lg:col-span-8 h-full">
+        <div className="lg:col-span-8 h-[300px] lg:h-full">
           <TrendChart data={trendChartData} />
         </div>
 
         {/* Donut Chart - 4-cols */}
-        <div className="lg:col-span-4 h-full">
+        <div className="lg:col-span-4 h-[300px] lg:h-full">
           <DonutChart data={donutChartData} />
         </div>
       </div>
@@ -517,12 +517,12 @@ export const Overview: React.FC = () => {
       {/* NEW ROW 3: SPATIOTEMPORAL HEATMAP & INTERACTIVE 3D SPATIAL CUBE (6-6 GRID) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[320px] mt-2">
         {/* Spatiotemporal Density Heatmap (6-cols) */}
-        <div className="lg:col-span-6 h-full">
+        <div className="lg:col-span-6 h-[300px] lg:h-full">
           <SpatiotemporalHeatmap />
         </div>
 
         {/* WebGL 3D Spatial Cube (6-cols) */}
-        <div className="lg:col-span-6 h-full">
+        <div className="lg:col-span-6 h-[300px] lg:h-full">
           <SpatialCube3D />
         </div>
       </div>
@@ -676,7 +676,7 @@ export const Overview: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex-1">
+          <div className="flex-1 h-[200px] lg:h-auto">
             <ForecastChart />
           </div>
         </div>
