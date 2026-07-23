@@ -18,10 +18,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session, joinedload
 
 from app.ai.inference.risk import get_model_info, predict_forecast, predict_risk
 from app.auth.dependencies import get_current_user
 from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
+from app.database.postgres import get_db
+from app.models.crime import CrimeCase
 from app.models.user import User
 
 router = APIRouter(prefix="/ai/predictions", tags=["District Risk Prediction"])
@@ -78,20 +81,41 @@ class ForecastResponse(BaseModel):
 def get_risk_scores(
     window: str = Query(default="next_7d", description="Forecast window label"),
     district_id: str | None = Query(default=None, description="Filter by district"),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Return cached/latest district risk scores.
-
-    When no trained model exists the endpoint returns an empty grid so the
-    frontend degrades gracefully instead of erroring.
-    """
+    """Return latest district risk scores based on crime records."""
+    del current_user
     try:
+        cases = db.query(CrimeCase).options(joinedload(CrimeCase.location), joinedload(CrimeCase.category)).all()
+        if not cases:
+            info = get_model_info()
+            return RiskScoresResponse(
+                district_id=district_id,
+                window=window,
+                model_version=info.get("version", "untrained"),
+                grid_predictions=[],
+            )
+        
+        records = [
+            {
+                "occurred_at": case.occurred_at.isoformat() if case.occurred_at else None,
+                "district": case.location.district if case.location else "Unknown",
+                "category": case.category.name if case.category else "Unknown",
+            }
+            for case in cases
+        ]
+        
+        results = predict_risk(records)
+        if district_id:
+            results = [r for r in results if r["district"] == district_id]
+            
         info = get_model_info()
         return RiskScoresResponse(
             district_id=district_id,
             window=window,
-            model_version=info.get("version", "untrained"),
-            grid_predictions=[],
+            model_version=info.get("version", "rule-based"),
+            grid_predictions=results,
         )
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))

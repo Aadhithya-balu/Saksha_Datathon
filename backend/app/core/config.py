@@ -99,7 +99,7 @@ class Settings(BaseSettings):
             )
             return self
 
-        self.DATABASE_URL = "postgresql+psycopg2://saksha_user:saksha_user@localhost:5432/saksha_db"
+        self.DATABASE_URL = "sqlite:///./saksha.db"
         return self
 
     @property
