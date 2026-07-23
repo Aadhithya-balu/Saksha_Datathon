@@ -1,18 +1,4 @@
-# Crime Intelligence & Analytical Platform for Karnataka State Police
-
-## One-command development
-
-From the workspace root, run:
-
-```bash
-npm run dev:all
-```
-
-This starts the backend API and the datathon frontend together.
-
-On Windows, the backend uses Python 3.12 via the `py` launcher because the pinned FastAPI stack does not build cleanly on the system Python 3.14 in this workspace.
-
-The frontend now calls the backend through the Vite dev proxy at `/api/v1`, so login requests stay same-origin during development.
+# SAKSHA - Crime Intelligence & Analytical Platform for Karnataka State Police
 
 ## Problem Statement
 
