@@ -70,7 +70,7 @@ export const NetworkPageWorkspace: React.FC = () => {
   };
 
   return (
-    <div className="h-[85vh] flex flex-col gap-3 p-1 md:p-3 select-none bg-[#060b13] font-mono">
+    <div className="min-h-[85vh] lg:h-[85vh] flex flex-col gap-3 p-1 md:p-3 select-none bg-[#060b13] font-mono">
       {/* Title & Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/5 pb-2">
         <div>
@@ -100,7 +100,7 @@ export const NetworkPageWorkspace: React.FC = () => {
       />
 
       {/* Workspace Display Area */}
-      <div className="flex-1 w-full overflow-hidden">
+      <div className="flex-1 w-full overflow-y-auto lg:overflow-hidden">
         {activeView === '3d_explorer' && (
           <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Left 8 cols: 3D Scene */}

@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { SessionTimer } from '../auth/SessionTimer';
-import { ShieldCheck, HardDrive, Key, UserCheck, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, HardDrive, Key, UserCheck, AlertTriangle, Menu } from 'lucide-react';
 import { isEmulatorActive } from '../../services/api';
 import NotificationBell from '../notifications/NotificationBell';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  sidebarCollapsed?: boolean;
+  setSidebarCollapsed?: (collapsed: boolean) => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarCollapsed }) => {
   const { user } = useAuthStore();
   const [systime, setSystime] = useState(new Date().toLocaleTimeString());
   const [emulatorActive, setEmulatorActive] = useState(isEmulatorActive);
@@ -36,11 +41,20 @@ export const Header: React.FC = () => {
   return (
     <header className="h-16 border-b border-border-color bg-secondary-bg/20 backdrop-blur-md px-6 flex items-center justify-between select-none z-30">
       {/* Platform Meta Info */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {setSidebarCollapsed && (
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="md:hidden p-1.5 hover:bg-white/5 border border-border-color rounded text-[#A8B4CC] hover:text-white cursor-pointer transition-all shrink-0 flex items-center justify-center"
+            title="Toggle Sidebar Menu"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+        )}
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#0E9E78] animate-ping" />
           <span className="text-[10px] font-mono text-[#0E9E78] uppercase font-bold tracking-widest">
-            KSP CORE SECURE SUITE
+            SAKSHA SECURE SUITE
           </span>
         </div>
         

@@ -21,6 +21,7 @@ const EvidencePage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [cases, setCases] = useState<any[]>([]);
   
   // Modals
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -30,6 +31,22 @@ const EvidencePage: React.FC = () => {
   });
   const [evidenceDetail, setEvidenceDetail] = useState<any>(null);
   const [assigneeId, setAssigneeId] = useState('');
+
+  const getErrorMessage = (data: any, fallback: string): string => {
+    if (!data) return fallback;
+    if (data?.error?.message) return String(data.error.message);
+    const detail = data?.detail;
+    if (!detail) return fallback;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+      return detail.map((err: any) => {
+        const field = err.loc && err.loc.length > 1 ? err.loc.slice(1).join('.') : '';
+        return `${field ? `Field '${field}': ` : ''}${err.msg || 'Invalid value'}`;
+      }).join('; ');
+    }
+    if (typeof detail === 'object') return JSON.stringify(detail);
+    return String(detail);
+  };
 
   const fetchEvidence = async () => {
     try {
@@ -47,7 +64,7 @@ const EvidencePage: React.FC = () => {
         setError(null);
       } else {
         const data = await res.json().catch(() => null);
-        setError(data?.error?.message || data?.detail || 'Failed to fetch evidence');
+        setError(getErrorMessage(data, 'Failed to fetch evidence'));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch evidence');
@@ -59,6 +76,24 @@ const EvidencePage: React.FC = () => {
   useEffect(() => {
     void fetchEvidence();
   }, [search, statusFilter]);
+
+  useEffect(() => {
+    const fetchCases = async () => {
+      try {
+        const { accessToken } = getStoredTokens();
+        const res = await fetch(`${API_BASE_URL}/crime-cases?page_size=100`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCases(data.results || []);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    void fetchCases();
+  }, []);
 
   const handleCreate = async () => {
     if (!currentEvidence.case_id?.trim() || !currentEvidence.title?.trim() || !currentEvidence.evidence_type?.trim()) {
@@ -83,7 +118,7 @@ const EvidencePage: React.FC = () => {
         void fetchEvidence();
       } else {
         const data = await res.json().catch(() => null);
-        setError(data?.error?.message || data?.detail || 'Failed to create evidence');
+        setError(getErrorMessage(data, 'Failed to create evidence'));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create evidence');
@@ -107,7 +142,7 @@ const EvidencePage: React.FC = () => {
         void openDetail(id);
       } else {
         const data = await res.json().catch(() => null);
-        setError(data?.error?.message || data?.detail || 'Failed to upload file');
+        setError(getErrorMessage(data, 'Failed to upload file'));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to upload file');
@@ -122,7 +157,7 @@ const EvidencePage: React.FC = () => {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.error?.message || data?.detail || 'Failed to download file');
+        throw new Error(getErrorMessage(data, 'Failed to download file'));
       }
       const blob = await res.blob();
       const disposition = res.headers.get('Content-Disposition') ?? '';
@@ -151,7 +186,7 @@ const EvidencePage: React.FC = () => {
         void openDetail(id);
       } else {
         const data = await res.json().catch(() => null);
-        setError(data?.error?.message || data?.detail || 'Failed to generate AI summary');
+        setError(getErrorMessage(data, 'Failed to generate AI summary'));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to generate AI summary');
@@ -177,7 +212,7 @@ const EvidencePage: React.FC = () => {
         void fetchEvidence();
       } else {
         const err = await res.json().catch(() => null);
-        setError(err?.error?.message || err?.detail || 'Failed to assign evidence');
+        setError(getErrorMessage(err, 'Failed to assign evidence'));
       }
     } catch(e) {
       setError(e instanceof Error ? e.message : 'Failed to assign evidence');
@@ -197,7 +232,7 @@ const EvidencePage: React.FC = () => {
         void fetchEvidence();
       } else {
         const err = await res.json().catch(() => null);
-        setError(err?.error?.message || err?.detail || 'Failed to update assignment');
+        setError(getErrorMessage(err, 'Failed to update assignment'));
       }
     } catch(e) {
       setError(e instanceof Error ? e.message : 'Failed to update assignment');
@@ -217,7 +252,7 @@ const EvidencePage: React.FC = () => {
         setError(null);
       } else {
         const data = await res.json().catch(() => null);
-        setError(data?.error?.message || data?.detail || 'Failed to open evidence');
+        setError(getErrorMessage(data, 'Failed to open evidence'));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to open evidence');
@@ -327,8 +362,23 @@ const EvidencePage: React.FC = () => {
             
             <div className="flex flex-col gap-4 mb-6">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-mono text-[#6A7A96] uppercase">Case ID (UUID)</label>
-                <input type="text" value={currentEvidence.case_id} onChange={e => setCurrentEvidence({...currentEvidence, case_id: e.target.value})} className="bg-[#080E1B] border border-border-color rounded px-3 py-2 text-sm text-white focus:border-[#C94A2A] outline-none" placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000" />
+                <label className="text-[10px] font-mono text-[#6A7A96] uppercase">Case</label>
+                {cases.length > 0 ? (
+                  <select 
+                    value={currentEvidence.case_id} 
+                    onChange={e => setCurrentEvidence({...currentEvidence, case_id: e.target.value})} 
+                    className="bg-[#080E1B] border border-border-color rounded px-3 py-2 text-sm text-white focus:border-[#C94A2A] outline-none"
+                  >
+                    <option value="">Select a Case...</option>
+                    {cases.map((c: any) => (
+                      <option key={c.id} value={c.id}>
+                        {c.case_number} - {c.description ? (c.description.length > 40 ? `${c.description.slice(0, 40)}...` : c.description) : 'No description'}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input type="text" value={currentEvidence.case_id} onChange={e => setCurrentEvidence({...currentEvidence, case_id: e.target.value})} className="bg-[#080E1B] border border-border-color rounded px-3 py-2 text-sm text-white focus:border-[#C94A2A] outline-none" placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000" />
+                )}
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-mono text-[#6A7A96] uppercase">Title</label>
