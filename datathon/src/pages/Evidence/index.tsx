@@ -349,7 +349,7 @@ const EvidencePage: React.FC = () => {
                 <FileText className="w-5 h-5 text-[#1E6FD9]" />
                 Evidence Dossier: {evidenceDetail.title}
               </h2>
-              <button onClick={() => setIsDetailOpen(false)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-mono text-sm px-3 py-1 bg-white/5 rounded">Close [X]</button>
+              <button onClick={() => setIsDetailOpen(false)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-mono text-sm px-3 py-1 bg-[var(--bg-tertiary)]/60 rounded">Close [X]</button>
             </div>
             
             <div className="flex-1 overflow-auto p-6 grid grid-cols-3 gap-6 custom-scrollbar">

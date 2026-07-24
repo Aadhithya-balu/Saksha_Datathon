@@ -122,7 +122,7 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
             className={`p-1 rounded cursor-pointer transition-colors ${
-              autoRefresh ? 'bg-[#0E9E78]/10 text-[#0E9E78]' : 'bg-white/5 text-[var(--text-muted)]'
+              autoRefresh ? 'bg-[#0E9E78]/10 text-[#0E9E78]' : 'bg-[var(--bg-tertiary)]/60 text-[var(--text-muted)]'
             }`}
             title={autoRefresh ? 'Pause auto-refresh' : 'Resume auto-refresh'}
           >

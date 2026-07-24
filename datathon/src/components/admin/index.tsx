@@ -46,7 +46,7 @@ export const UserTable: React.FC<{
       <thead className="bg-[var(--bg-primary)] text-[var(--text-muted)] uppercase tracking-wider">
         <tr><th className="p-3">User</th><th className="p-3">Role</th><th className="p-3">Station</th><th className="p-3">Status</th><th className="p-3 text-right">Actions</th></tr>
       </thead>
-      <tbody className="divide-y divide-white/5 text-[var(--text-secondary)]">
+      <tbody className="divide-y divide-[var(--border-primary)] text-[var(--text-secondary)]">
         {users.map((user) => (
           <tr key={user.id}>
             <td className="p-3"><p className="font-bold text-[var(--text-primary)]">{user.full_name}</p><p>{user.username} / {user.email}</p></td>
@@ -122,7 +122,7 @@ export const AuditTable: React.FC<{ rows: AuditRow[] }> = ({ rows }) => (
   <div className="overflow-auto rounded-lg border border-border-color bg-[var(--bg-tertiary)]/25 custom-scrollbar">
     <table className="w-full text-left text-[10px]">
       <thead className="bg-[var(--bg-primary)] text-[var(--text-muted)] uppercase tracking-wider"><tr><th className="p-3">Time</th><th className="p-3">User</th><th className="p-3">Action</th><th className="p-3">Module</th><th className="p-3">IP</th></tr></thead>
-      <tbody className="divide-y divide-white/5 text-[var(--text-secondary)]">{rows.map((row) => <tr key={row.id}><td className="p-3">{new Date(row.timestamp).toLocaleString()}</td><td className="p-3">{row.user}<br />{row.role}</td><td className="p-3">{row.action}</td><td className="p-3">{row.module}</td><td className="p-3">{row.ip ?? '-'}</td></tr>)}</tbody>
+      <tbody className="divide-y divide-[var(--border-primary)] text-[var(--text-secondary)]">{rows.map((row) => <tr key={row.id}><td className="p-3">{new Date(row.timestamp).toLocaleString()}</td><td className="p-3">{row.user}<br />{row.role}</td><td className="p-3">{row.action}</td><td className="p-3">{row.module}</td><td className="p-3">{row.ip ?? '-'}</td></tr>)}</tbody>
     </table>
   </div>
 );

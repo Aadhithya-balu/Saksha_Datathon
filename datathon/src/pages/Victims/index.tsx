@@ -248,11 +248,11 @@ export const Victims: React.FC = () => {
 
                 <text
                   y={isCenter ? '24' : '18'}
-                  fill="#E8EDF5"
+                  className="font-bold select-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                  fill="var(--text-primary)"
                   fontSize="7.5"
                   fontFamily="monospace"
                   textAnchor="middle"
-                  className="font-bold select-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
                 >
                   {node.name.split(' ')[0]}
                 </text>
