@@ -378,7 +378,7 @@ export const GlobalAIAssistant: React.FC = () => {
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask about cases, criminals..."
-                  className="flex-grow bg-transparent outline-none border-none text-[var(--text-primary)] text-[11px] font-mono resize-none max-h-20 py-1 placeholder-slate-600"
+                  className="flex-grow bg-transparent outline-none border-none text-[var(--text-primary)] text-[11px] font-mono resize-none max-h-20 py-1 placeholder:text-[var(--text-muted)]"
                   rows={1}
                 />
                 <button

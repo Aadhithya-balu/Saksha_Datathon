@@ -204,7 +204,11 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
         </div>
       )}
       
-      <span className="text-[8.5px] font-mono text-[var(--text-muted)] mt-4 uppercase select-none">
+      <span className="text-[9px] font-mono text-[var(--text-muted)] mt-3 uppercase select-none text-center leading-relaxed">
+        This is a prototype so it accepts every face and directs to DSP
+      </span>
+
+      <span className="text-[8.5px] font-mono text-[var(--text-muted)] mt-1 uppercase select-none">
         Cryptographic Face Authentication Protocol (V2)
       </span>
     </div>

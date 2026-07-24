@@ -1,10 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../../store/authStore';
-import { Shield, AlertCircle, UserCheck } from 'lucide-react';
+import { Shield, AlertCircle, UserCheck, Copy, Check } from 'lucide-react';
 
 interface BadgeLoginProps {
   onSuccess: () => void;
 }
+
+const DEMO_CREDENTIALS = [
+  { role: 'Admin', badge: 'admin', pin: '564738', color: '#1E6FD9' },
+  { role: 'Superintendent', badge: 'SP-0088', pin: '987654', color: '#D4820A' },
+  { role: 'Investigator', badge: 'IO-3921', pin: '456789', color: '#0E9E78' },
+  { role: 'Analyst', badge: 'SCRB-7740', pin: '123456', color: '#8B5CF6' },
+];
 
 export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
   const login = useAuthStore((state) => state.login);
@@ -15,10 +22,10 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
   const [detectedRole, setDetectedRole] = useState<'SCRB' | 'IO' | 'SP' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localErrors, setLocalErrors] = useState<string | null>(null);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   const pinInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-detect role as the user types their Badge ID prefix
   useEffect(() => {
     const uc = badgeId.toUpperCase().trim();
     if (uc.startsWith('SCRB')) {
@@ -32,14 +39,12 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
     }
   }, [badgeId]);
 
-  // Auto-submit form when PIN is fully entered
   useEffect(() => {
     if (pin.length === 6) {
       void handleFormSubmit();
     }
   }, [pin]);
 
-  // Focus PIN input on mount
   useEffect(() => {
     if (pinInputRef.current) {
       pinInputRef.current.focus();
@@ -95,10 +100,20 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
     }
   };
 
+  const handleQuickFill = (badge: string, pinValue: string, index: number) => {
+    setBadgeId(badge);
+    setPin('');
+    setTimeout(() => {
+      setPin(pinValue);
+    }, 100);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
   return (
-    <div className="w-full max-w-sm flex flex-col gap-4 font-sans text-left">
+    <div className="w-full flex flex-col gap-4 font-sans text-left">
       
-      {/* Insignia / Notice */}
+      {/* Officer Database Check Header */}
       <div className="flex items-center gap-3 bg-secondary-bg/25 border border-border-color p-3 rounded-card">
         <div className="p-2 bg-[#1E6FD9]/10 rounded-full text-[#1E6FD9]">
           <Shield className="w-5 h-5 animate-pulse" />
@@ -130,7 +145,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
               placeholder="e.g. SCRB-7740, IO-3921"
               value={badgeId}
               onChange={(e) => setBadgeId(e.target.value)}
-              className="w-full pl-8 pr-16 py-2 bg-[var(--bg-secondary)]/60 text-[var(--text-primary)] font-mono text-xs border border-border-color focus:border-[#1E6FD9]/45 rounded-btn outline-none transition-colors"
+              className="w-full pl-8 pr-16 py-2.5 bg-[var(--bg-secondary)]/60 text-[var(--text-primary)] font-mono text-sm border border-border-color focus:border-[#1E6FD9]/45 rounded-btn outline-none transition-colors"
             />
             {detectedRole && (
               <span className="absolute right-2 top-1.5 px-2 py-0.5 bg-[#1E6FD9]/20 text-[#1E6FD9] text-[8px] font-mono rounded-full border border-[#1E6FD9]/30 flex items-center gap-1 select-none font-bold">
@@ -156,14 +171,12 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
           )}
         </div>
 
-        {/* 6-Digit PIN input (Masked & Keyboard-Typable) */}
+        {/* 6-Digit PIN input */}
         <div>
           <label className="block text-[9px] font-mono uppercase text-[var(--text-muted)] mb-1 tracking-wider">
             6-Digit Authentication PIN
           </label>
-          
           <div className="relative flex items-center justify-center">
-            {/* Real hidden PIN input for native typing */}
             <input
               ref={pinInputRef}
               type="password"
@@ -173,14 +186,14 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
               value={pin}
               onChange={handlePinChange}
               onKeyDown={handleKeyDown}
-              className="w-full py-2 bg-[var(--bg-secondary)]/60 text-[var(--text-primary)] font-mono text-center tracking-[1.5em] text-xs border border-border-color focus:border-[#1E6FD9]/45 rounded-btn outline-none transition-colors"
+              className="w-full py-2.5 bg-[var(--bg-secondary)]/60 text-[var(--text-primary)] font-mono text-center tracking-[1.5em] text-sm border border-border-color focus:border-[#1E6FD9]/45 rounded-btn outline-none transition-colors"
               placeholder="••••••"
             />
           </div>
         </div>
       </div>
 
-      {/* Screen Pad (Numeric Keypad Grid) */}
+      {/* Numeric Keypad */}
       <div className="grid grid-cols-3 gap-1.5 bg-[var(--bg-secondary)]/40 p-2 border border-border-color/30 rounded-card">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
           <button
@@ -193,7 +206,6 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
           </button>
         ))}
         
-        {/* Keypad actions */}
         <button
           type="button"
           onClick={handleClear}
@@ -227,13 +239,38 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
         </div>
       )}
 
-      {/* Mock credentials list */}
-      <div className="text-center text-[8.5px] font-mono text-[var(--text-muted)] leading-relaxed select-none border-t border-border-color/30 pt-3">
-        MOCK CREDENTIALS SPECIFICATION:<br />
-        Admin: <span className="text-[var(--text-muted)] font-bold">admin</span> / PIN <span className="text-[var(--text-muted)] font-bold">564738</span><br />
-        Superintendent: <span className="text-[var(--text-muted)] font-bold">SP-0088</span> / PIN <span className="text-[var(--text-muted)] font-bold">987654</span><br />
-        Investigator: <span className="text-[var(--text-muted)] font-bold">IO-3921</span> / PIN <span className="text-[var(--text-muted)] font-bold">456789</span><br />
-        Analyst: <span className="text-[var(--text-muted)] font-bold">SCRB-7740</span> / PIN <span className="text-[var(--text-muted)] font-bold">123456</span>
+      {/* Quick Access Demo Credentials */}
+      <div className="border-t border-border-color/30 pt-4">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[10px] font-mono uppercase text-[var(--text-muted)] tracking-wider font-bold">Quick Access</span>
+          <div className="flex-1 h-[1px] bg-border-color/30" />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {DEMO_CREDENTIALS.map((cred, index) => (
+            <button
+              key={cred.badge}
+              type="button"
+              onClick={() => handleQuickFill(cred.badge, cred.pin, index)}
+              className="flex items-center gap-2 p-2 bg-[var(--bg-secondary)]/40 hover:bg-[var(--bg-secondary)]/70 border border-border-color/30 hover:border-border-color/60 rounded-btn transition-all cursor-pointer group text-left"
+            >
+              <div 
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-mono font-bold shrink-0"
+                style={{ backgroundColor: `${cred.color}15`, color: cred.color, border: `1px solid ${cred.color}30` }}
+              >
+                {cred.role.substring(0, 2).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-mono font-bold text-[var(--text-primary)] truncate">{cred.badge}</div>
+                <div className="text-[9px] font-mono text-[var(--text-muted)]">{cred.role} • PIN: {cred.pin}</div>
+              </div>
+              {copiedIndex === index ? (
+                <Check className="w-3.5 h-3.5 text-[#0E9E78] shrink-0" />
+              ) : (
+                <Copy className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--text-secondary)] shrink-0" />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
