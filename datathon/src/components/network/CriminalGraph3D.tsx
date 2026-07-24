@@ -158,7 +158,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
   }, [hasError]);
 
   return (
-    <div className="w-full h-full relative bg-[var(--bg-surface)] rounded-card border border-border-color flex flex-col justify-between overflow-hidden">
+    <div className="w-full h-full min-h-[300px] relative bg-[var(--bg-surface)] rounded-card border border-border-color flex flex-col justify-between overflow-hidden">
       
       {/* SEARCH HEADER BAR */}
       <div className="absolute top-4 left-4 z-20 flex gap-2 w-full max-w-sm pointer-events-auto">
@@ -187,7 +187,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
       </div>
 
       {/* GRAPH VIEWPORT */}
-      <div ref={containerRef} className="flex-1 w-full relative">
+      <div ref={containerRef} className="flex-1 w-full h-full relative min-h-[300px]">
         {hasError ? (
           <GraphFallback onNodeSelect={onNodeSelect} />
         ) : (

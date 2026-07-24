@@ -45,16 +45,16 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data = [] }) => {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-              <XAxis dataKey="month" stroke="#A8B4CC" tickLine={false} axisLine={false} dy={6} style={{ fill: '#E8EDF5', fontSize: '11px', fontWeight: 'bold' }} />
-              <YAxis stroke="#A8B4CC" tickLine={false} axisLine={false} dx={-6} domain={[0, Math.ceil(maxY * 1.2)]} style={{ fill: '#E8EDF5', fontSize: '11px', fontWeight: 'bold' }} />
+              <XAxis dataKey="month" stroke="#A8B4CC" tickLine={false} axisLine={false} dy={6} style={{ fill: 'var(--text-primary)', fontSize: '11px', fontWeight: 'bold' }} />
+              <YAxis stroke="#A8B4CC" tickLine={false} axisLine={false} dx={-6} domain={[0, Math.ceil(maxY * 1.2)]} style={{ fill: 'var(--text-primary)', fontSize: '11px', fontWeight: 'bold' }} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'rgba(11, 20, 38, 0.95)',
+                  backgroundColor: 'rgba(11, 20, 38, 0.96)',
                   border: '1px solid rgba(255, 255, 255, 0.15)',
                   borderRadius: '6px',
                   fontFamily: 'JetBrains Mono, monospace',
                   fontSize: '11px',
-                  color: '#fff',
+                  color: '#E8EDF5',
                 }}
                 cursor={{ stroke: 'rgba(255,255,255,0.08)' }}
               />

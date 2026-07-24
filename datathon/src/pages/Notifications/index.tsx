@@ -101,7 +101,7 @@ const NotificationsPage: React.FC = () => {
             className={`flex items-center gap-2 px-4 py-2.5 text-[9.5px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 ${
               activeTab === tab.id
                 ? 'text-[var(--text-primary)] border-[#1E6FD9] bg-[#1E6FD9]/5'
-                : 'text-[var(--text-muted)] border-transparent hover:text-[var(--text-secondary)] hover:bg-white/[0.02]'
+                : 'text-[var(--text-muted)] border-transparent hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)]'
             }`}
           >
             {tab.icon}

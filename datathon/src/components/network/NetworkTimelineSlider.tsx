@@ -36,7 +36,7 @@ export const NetworkTimelineSlider: React.FC<NetworkTimelineSliderProps> = ({ on
           </button>
           <button
             onClick={() => setStep(12)}
-            className="p-1.5 bg-[var(--bg-tertiary)] hover:bg-white/10 border border-[var(--border-secondary)] rounded-btn text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs cursor-pointer"
+            className="p-1.5 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-secondary)] rounded-btn text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>

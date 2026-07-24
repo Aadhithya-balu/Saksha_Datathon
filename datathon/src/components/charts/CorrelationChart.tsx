@@ -182,25 +182,25 @@ export const CorrelationChart: React.FC = () => {
         {/* Custom D3 Tooltip card floating */}
         {tooltip && (
           <div 
-            className="absolute z-30 p-2.5 bg-black/90 border border-[var(--border-secondary)]/80 text-[9.5px] font-mono rounded max-w-[190px] shadow-2xl pointer-events-none"
+            className="absolute z-30 p-2.5 bg-[#0c1424] border border-[#1a2744] text-[9.5px] font-mono rounded max-w-[190px] shadow-2xl pointer-events-none"
             style={{ 
               left: `${(tooltip.x / width) * 100}%`, 
               top: `${(tooltip.y / height) * 100}%` 
             }}
           >
-            <span className="text-[var(--text-primary)] font-bold block uppercase">{tooltip.data.district}</span>
-            <div className="h-[1px] bg-[var(--bg-elevated)] my-1" />
-            <div className="flex justify-between gap-3 text-[var(--text-secondary)]">
+            <span className="text-[#E8EDF5] font-bold block uppercase">{tooltip.data.district}</span>
+            <div className="h-[1px] bg-[#1a2744] my-1" />
+            <div className="flex justify-between gap-3 text-[#a8b4cc]">
               <span>UNEMPLOYMENT:</span>
-              <span className="text-[var(--text-primary)]">{tooltip.data.unemployment}%</span>
+              <span className="text-[#E8EDF5]">{tooltip.data.unemployment}%</span>
             </div>
-            <div className="flex justify-between gap-3 text-[var(--text-secondary)] mt-0.5">
+            <div className="flex justify-between gap-3 text-[#a8b4cc] mt-0.5">
               <span>CRIME THREAT:</span>
-              <span className="text-red-400 font-bold">{tooltip.data.riskScore}/100</span>
+              <span className="text-[#C94A2A] font-bold">{tooltip.data.riskScore}/100</span>
             </div>
-            <div className="flex justify-between gap-3 text-[var(--text-secondary)] mt-0.5">
+            <div className="flex justify-between gap-3 text-[#a8b4cc] mt-0.5">
               <span>POP DENSITY:</span>
-              <span className="text-sky-400">{tooltip.data.populationDensity}/sq.km</span>
+              <span className="text-[#1E6FD9]">{tooltip.data.populationDensity}/sq.km</span>
             </div>
           </div>
         )}

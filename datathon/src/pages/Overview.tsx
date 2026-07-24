@@ -438,7 +438,7 @@ export const Overview: React.FC = () => {
 
           <button
             onClick={resetFilters}
-            className="mt-2.5 p-1 bg-white/5 border border-[var(--border-secondary)] rounded hover:bg-white/10 text-primary-text flex items-center justify-center hover:scale-105 transition-all cursor-pointer"
+            className="mt-2.5 p-1 bg-[var(--bg-tertiary)]/60 border border-[var(--border-secondary)] rounded hover:bg-[var(--bg-tertiary)] text-primary-text flex items-center justify-center hover:scale-105 transition-all cursor-pointer"
             title="Reset Filters"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
