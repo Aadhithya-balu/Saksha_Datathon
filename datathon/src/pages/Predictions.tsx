@@ -1,30 +1,33 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ForecastChart from '../components/charts/ForecastChart';
 import CorrelationChart from '../components/charts/CorrelationChart';
 import WeatherCorrelationChart from '../components/charts/WeatherCorrelationChart';
 import { Cpu, RefreshCw, BarChart2, ShieldAlert, Sparkles, TrendingUp } from 'lucide-react';
-import { getAnomalies, getRiskScores, type AnomalyRecord, type RiskScoresResponse } from '../services/api';
+import { getAnomalies, getRiskScores, getModelInfo, type AnomalyRecord, type RiskScoresResponse, type ModelInfo } from '../services/api';
 
 export const Predictions: React.FC = () => {
   const [riskScores, setRiskScores] = useState<RiskScoresResponse | null>(null);
   const [anomalies, setAnomalies] = useState<AnomalyRecord[]>([]);
+  const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    void Promise.all([getRiskScores(), getAnomalies()])
-      .then(([riskResponse, anomalyResponse]) => {
+    void Promise.all([getRiskScores(), getAnomalies(), getModelInfo()])
+      .then(([riskResponse, anomalyResponse, modelResponse]) => {
         if (!isMounted) {
           return;
         }
 
         setRiskScores(riskResponse);
         setAnomalies(anomalyResponse.anomalies);
+        setModelInfo(modelResponse);
       })
       .catch(() => {
         if (isMounted) {
           setRiskScores(null);
           setAnomalies([]);
+          setModelInfo(null);
         }
       });
 
@@ -77,7 +80,7 @@ export const Predictions: React.FC = () => {
         {/* Left Side: Insight Bullet cards (8 cols on lg) */}
         <div className="lg:col-span-8 bg-secondary-bg/25 border border-border-color p-5 rounded-card flex flex-col gap-4">
           <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest block border-b border-white/5 pb-2">
-            Strategic Threat Assessments {riskScores ? `â€¢ ${riskScores.model_version}` : ''}
+            Strategic Threat Assessments {modelInfo ? `• ${modelInfo.version}` : ''}
           </span>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
@@ -87,7 +90,7 @@ export const Predictions: React.FC = () => {
                 <div>
                   <span className="text-[#E8EDF5] font-bold uppercase text-[10.5px]">{row.district} risk score {row.risk_score}%</span>
                   <p className="text-[10px] text-[#A8B4CC] leading-relaxed mt-1">
-                    Confidence {Math.round((row.confidence ?? 0.8) * 100)}% â€¢ Backend forecast window {riskScores?.window ?? 'No backend window'}.
+                    Confidence {Math.round((row.confidence ?? 0.8) * 100)}% • Backend forecast window {riskScores?.window ?? 'No backend window'}.
                   </p>
                 </div>
               </div>
@@ -99,7 +102,7 @@ export const Predictions: React.FC = () => {
                 <div>
                   <span className="text-[#E8EDF5] font-bold uppercase text-[10.5px]">{anomaly.label}</span>
                   <p className="text-[10px] text-[#A8B4CC] leading-relaxed mt-1">
-                    {anomaly.reason} â€¢ Case {anomaly.case_id}.
+                    {anomaly.reason} • Case {anomaly.case_id}.
                   </p>
                 </div>
               </div>
@@ -116,19 +119,21 @@ export const Predictions: React.FC = () => {
           <div className="flex-1 flex flex-col justify-center gap-3.5 py-4 font-mono text-xs">
             <div className="flex justify-between items-center">
               <span className="text-[#6A7A96]">Algorithm Model</span>
-              <span className="text-white font-bold">{riskScores?.model_version ?? 'No backend model'}</span>
+              <span className="text-white font-bold">{modelInfo?.risk_algorithm ?? 'No backend model'}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[#6A7A96]">Root Mean Square Error</span>
-              <span className="text-orange-400 font-bold">{riskScores ? 'Rule score active' : 'No backend metric'}</span>
+              <span className="text-orange-400 font-bold">
+                {modelInfo?.risk_metrics?.rmse ? modelInfo.risk_metrics.rmse.toFixed(4) : (modelInfo?.risk_model_loaded === false ? 'Rule-based fallback active' : 'No backend metric')}
+              </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[#6A7A96]">Verification Dataset</span>
-              <span className="text-white font-bold">{predictionRows.length} risk clusters</span>
+              <span className="text-white font-bold">{modelInfo?.training_rows ? `${modelInfo.training_rows} rows` : `${predictionRows.length} risk clusters`}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[#6A7A96]">Last Epoch updates</span>
-              <span className="text-[#0E9E78] font-bold font-semiboldScale">{riskScores?.window ?? 'No backend window'}</span>
+              <span className="text-[#0E9E78] font-bold">{modelInfo?.trained_on ? new Date(modelInfo.trained_on).toLocaleDateString() : (riskScores?.window ?? 'No backend window')}</span>
             </div>
           </div>
         </div>

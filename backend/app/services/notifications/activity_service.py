@@ -39,9 +39,9 @@ def get_activity_feed(
         db.query(AuditLog)
         .options(joinedload(AuditLog.user))
         .filter(
-            AuditLog.created_at >= datetime.now(timezone.utc) - timedelta(days=7)
+            AuditLog.timestamp >= datetime.now(timezone.utc) - timedelta(days=7)
         )
-        .order_by(AuditLog.created_at.desc())
+        .order_by(AuditLog.timestamp.desc())
         .limit(limit)
     )
 
@@ -171,7 +171,7 @@ def get_live_event_timeline(
     audit_query = (
         db.query(AuditLog)
         .options(joinedload(AuditLog.user))
-        .order_by(AuditLog.created_at.desc())
+        .order_by(AuditLog.timestamp.desc())
         .limit(limit)
     )
     if case_id:

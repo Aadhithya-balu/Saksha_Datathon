@@ -915,3 +915,27 @@ connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection re
 2026-07-23 20:13:45.226 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
 2026-07-23 20:13:45.333 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
 2026-07-23 20:45:20.719 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 09:14:20.428 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 09:14:44.566 | ERROR    | app.main:lifespan:27 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (52.68.3.1), port 5432 failed: timeout expired
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (35.79.125.133), port 5432 failed: timeout expired
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (54.64.190.72), port 5432 failed: timeout expired
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-24 09:14:44.687 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 09:14:58.273 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 09:15:13.297 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 09:15:28.799 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
+2026-07-24 09:15:29.033 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 09:41:25.820 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 09:42:20.713 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 09:42:44.855 | ERROR    | app.main:lifespan:27 - PostgreSQL connection failed: (psycopg2.OperationalError) connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (54.64.190.72), port 5432 failed: timeout expired
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (35.79.125.133), port 5432 failed: timeout expired
+connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (52.68.3.1), port 5432 failed: timeout expired
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-24 09:42:45.095 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 09:43:12.538 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 09:43:25.905 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 09:43:39.818 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
+2026-07-24 09:43:40.067 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 10:10:32.332 | INFO     | app.main:lifespan:38 - Shutdown complete

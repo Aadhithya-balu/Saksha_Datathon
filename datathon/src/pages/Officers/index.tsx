@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRBAC } from '../../hooks/useRBAC';
 import { Search, Plus, Filter, ShieldCheck, Mail, Phone, Edit, Trash2 } from 'lucide-react';
-import { API_BASE_URL, getStoredTokens } from '../../services/api';
+import { apiRequest } from '../../services/api';
 
 interface Officer {
   id: string;
@@ -33,18 +33,9 @@ const OfficersPage: React.FC = () => {
   const fetchOfficers = async () => {
     try {
       setLoading(true);
-      const { accessToken } = getStoredTokens();
-      const res = await fetch(`${API_BASE_URL}/officers?search=${search}`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setOfficers(data.results || []);
-        setError(null);
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(data?.error?.message || data?.detail || 'Failed to fetch officers');
-      }
+      const data = await apiRequest<{ results: Officer[] }>(`/officers?search=${search}`);
+      setOfficers(data.results || []);
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch officers');
     } finally {
@@ -63,30 +54,27 @@ const OfficersPage: React.FC = () => {
     }
 
     try {
-      const { accessToken } = getStoredTokens();
       const method = isEditMode ? 'PUT' : 'POST';
-      const url = isEditMode ? `${API_BASE_URL}/officers/${currentOfficer.id}` : `${API_BASE_URL}/officers`;
+      const path = isEditMode ? `/officers/${currentOfficer.id}` : `/officers`;
       
       const payload = { ...currentOfficer };
       delete payload.id;
+      
+      // Normalize empty strings to null for optional fields
+      Object.keys(payload).forEach(key => {
+        if (payload[key as keyof typeof payload] === '') {
+          payload[key as keyof typeof payload] = null;
+        }
+      });
 
-      const res = await fetch(url, {
+      await apiRequest(path, {
         method,
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}` 
-        },
         body: JSON.stringify(payload)
       });
       
-      if (res.ok) {
-        setIsFormOpen(false);
-        setError(null);
-        void fetchOfficers();
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(data?.error?.message || data?.detail || 'Failed to save officer');
-      }
+      setIsFormOpen(false);
+      setError(null);
+      void fetchOfficers();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save officer');
     }
@@ -95,17 +83,8 @@ const OfficersPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this officer?")) return;
     try {
-      const { accessToken } = getStoredTokens();
-      const res = await fetch(`${API_BASE_URL}/officers/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      if (res.ok) {
-        void fetchOfficers();
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(data?.error?.message || data?.detail || 'Failed to delete officer');
-      }
+      await apiRequest(`/officers/${id}`, { method: 'DELETE' });
+      void fetchOfficers();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete officer');
     }

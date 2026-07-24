@@ -346,13 +346,24 @@ const buildQueryString = (params?: Record<string, string | number | boolean | nu
 const readErrorMessage = async (response: Response) => {
   try {
     const payload = await response.json();
-    return payload.detail || payload.message || payload.error?.message || response.statusText;
+    if (payload?.error?.message) return String(payload.error.message);
+    const detail = payload?.detail;
+    if (!detail) return payload?.message || response.statusText;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+      return detail.map((err: any) => {
+        const field = err.loc && err.loc.length > 1 ? err.loc.slice(1).join('.') : '';
+        return `${field ? `Field '${field}': ` : ''}${err.msg || 'Invalid value'}`;
+      }).join('; ');
+    }
+    if (typeof detail === 'object') return JSON.stringify(detail);
+    return String(detail);
   } catch {
     return response.statusText;
   }
 };
 
-async function apiRequest<T>(path: string, options: RequestInit = {}, includeAuth = true): Promise<T> {
+export async function apiRequest<T>(path: string, options: RequestInit = {}, includeAuth = true): Promise<T> {
   const { accessToken } = getStoredTokens();
 
   const headers = new Headers(options.headers ?? {});
@@ -1034,4 +1045,21 @@ export async function getActivityFeed(limit = 50, eventType?: string, resourceTy
 
 export async function getLiveTimeline(caseId?: string, limit = 30) {
   return apiRequest<any[]>(`/notifications/live-timeline${buildQueryString({ case_id: caseId, limit })}`);
+}
+
+export interface ModelInfo {
+  model_name: string;
+  risk_algorithm: string;
+  forecast_algorithm: string;
+  version: string;
+  trained_on: string | null;
+  training_rows: number;
+  risk_metrics: Record<string, any>;
+  forecast_metrics: Record<string, any>;
+  risk_model_loaded: boolean;
+  forecast_model_loaded: boolean;
+}
+
+export async function getModelInfo() {
+  return apiRequest<ModelInfo>('/ai/predictions/model-info');
 }
