@@ -79,7 +79,7 @@ export const ContextSelector: React.FC<ContextSelectorProps> = ({ context, onCha
 
           <button
             onClick={() => onChange({})}
-            className="text-slate-500 hover:text-red-400 transition-colors uppercase font-bold text-[8.5px] cursor-pointer"
+            className="text-[var(--text-muted)] hover:text-red-400 transition-colors uppercase font-bold text-[8.5px] cursor-pointer"
           >
             Clear All
           </button>
@@ -91,8 +91,8 @@ export const ContextSelector: React.FC<ContextSelectorProps> = ({ context, onCha
         onClick={() => setIsOpen(!isOpen)}
         className={`px-2.5 py-1 rounded border font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer ${
           hasContext
-            ? 'bg-[#1E6FD9]/20 border-[#1E6FD9]/50 text-[#1E6FD9]'
-            : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+            ? 'bg-[var(--accent-blue)]/20 border-[var(--accent-blue)]/50 text-[var(--accent-blue)]'
+            : 'bg-[var(--bg-tertiary)]/60 border-[var(--border-primary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-secondary)]'
         }`}
       >
         <Filter className="w-3 h-3" />
@@ -101,15 +101,15 @@ export const ContextSelector: React.FC<ContextSelectorProps> = ({ context, onCha
 
       {/* Context Selection Popover */}
       {isOpen && (
-        <div className="absolute bottom-14 left-4 z-40 bg-[#0c1629] border border-slate-800 rounded-card p-4 shadow-2xl max-w-sm w-full space-y-3 font-mono text-left">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-            <span className="text-[10px] font-bold text-white uppercase tracking-widest flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-[#1E6FD9]" />
+        <div className="absolute bottom-14 left-4 z-40 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-card p-4 shadow-2xl max-w-sm w-full space-y-3 font-mono text-left">
+          <div className="flex items-center justify-between border-b border-[var(--border-primary)] pb-2">
+            <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-widest flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
               Set Intelligence Context
             </span>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-slate-500 hover:text-white cursor-pointer"
+              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -117,7 +117,7 @@ export const ContextSelector: React.FC<ContextSelectorProps> = ({ context, onCha
 
           <div className="space-y-2.5">
             <div>
-              <label className="text-[8.5px] font-bold text-slate-400 uppercase block mb-1">
+              <label className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase block mb-1">
                 FIR ID / Number Filter
               </label>
               <input
@@ -125,12 +125,12 @@ export const ContextSelector: React.FC<ContextSelectorProps> = ({ context, onCha
                 value={firInput}
                 onChange={(e) => setFirInput(e.target.value)}
                 placeholder="e.g. FIR-2024-001"
-                className="w-full bg-slate-950 border border-slate-800 focus:border-[#1E6FD9] rounded px-2.5 py-1.5 text-[10.5px] text-white outline-none"
+                className="w-full bg-[var(--bg-secondary)] border border-[var(--border-primary)] focus:border-[var(--accent-blue)] rounded px-2.5 py-1.5 text-[10.5px] text-[var(--text-primary)] outline-none"
               />
             </div>
 
             <div>
-              <label className="text-[8.5px] font-bold text-slate-400 uppercase block mb-1">
+              <label className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase block mb-1">
                 Criminal / Suspect ID Filter
               </label>
               <input
@@ -138,12 +138,12 @@ export const ContextSelector: React.FC<ContextSelectorProps> = ({ context, onCha
                 value={criminalInput}
                 onChange={(e) => setCriminalInput(e.target.value)}
                 placeholder="e.g. CR-89421"
-                className="w-full bg-slate-950 border border-slate-800 focus:border-[#1E6FD9] rounded px-2.5 py-1.5 text-[10.5px] text-white outline-none"
+                className="w-full bg-[var(--bg-secondary)] border border-[var(--border-primary)] focus:border-[var(--accent-blue)] rounded px-2.5 py-1.5 text-[10.5px] text-[var(--text-primary)] outline-none"
               />
             </div>
 
             <div>
-              <label className="text-[8.5px] font-bold text-slate-400 uppercase block mb-1">
+              <label className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase block mb-1">
                 Evidence Record ID Filter
               </label>
               <input
@@ -151,12 +151,12 @@ export const ContextSelector: React.FC<ContextSelectorProps> = ({ context, onCha
                 value={evidenceInput}
                 onChange={(e) => setEvidenceInput(e.target.value)}
                 placeholder="e.g. EV-7890"
-                className="w-full bg-slate-950 border border-slate-800 focus:border-[#1E6FD9] rounded px-2.5 py-1.5 text-[10.5px] text-white outline-none"
+                className="w-full bg-[var(--bg-secondary)] border border-[var(--border-primary)] focus:border-[var(--accent-blue)] rounded px-2.5 py-1.5 text-[10.5px] text-[var(--text-primary)] outline-none"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+          <div className="flex items-center justify-between pt-2 border-t border-[var(--border-primary)]">
             <button
               onClick={handleClear}
               className="text-[9px] font-bold text-red-400 hover:text-red-300 uppercase cursor-pointer"
@@ -165,7 +165,7 @@ export const ContextSelector: React.FC<ContextSelectorProps> = ({ context, onCha
             </button>
             <button
               onClick={handleApply}
-              className="px-3 py-1 bg-[#1E6FD9] hover:bg-[#1E6FD9]/85 text-white text-[9.5px] font-bold uppercase rounded cursor-pointer transition-colors"
+              className="px-3 py-1 bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/85 text-[var(--text-primary)] text-[9.5px] font-bold uppercase rounded cursor-pointer transition-colors"
             >
               Apply Context
             </button>

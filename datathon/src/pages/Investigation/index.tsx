@@ -69,13 +69,13 @@ const InvestigationPage: React.FC = () => {
     return (
       <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/5 pb-3 shrink-0">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3 shrink-0">
           <div>
-            <h2 className="text-md font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
               <Layers className="w-5 h-5 text-[#1E6FD9]" />
               Unified Investigation Interface
             </h2>
-            <p className="text-[9.5px] font-mono text-[#6A7A96] mt-0.5">
+            <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
               KARNATAKA POLICE — INVESTIGATION DASHBOARD, TIMELINE, FIRs, CRIMINALS, EVIDENCE & AI ANALYSIS
             </p>
             {error && <p className="text-[9px] font-mono text-amber-400 uppercase mt-1">{error}</p>}
@@ -90,14 +90,14 @@ const InvestigationPage: React.FC = () => {
               placeholder="Search cases by number, description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 bg-slate-950/70 border border-slate-900 rounded text-white outline-none focus:border-[#1E6FD9] text-[10.5px]"
+              className="w-full pl-8 pr-3 py-1.5 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] rounded text-[var(--text-primary)] outline-none focus:border-[#1E6FD9] text-[10.5px]"
             />
-            <Search className="absolute left-2.5 w-3.5 h-3.5 text-[#6A7A96]" />
+            <Search className="absolute left-2.5 w-3.5 h-3.5 text-[var(--text-muted)]" />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-1.5 bg-slate-950 border border-slate-900 rounded text-[#A8B4CC] outline-none focus:border-[#1E6FD9] cursor-pointer"
+            className="px-3 py-1.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-[var(--text-secondary)] outline-none focus:border-[#1E6FD9] cursor-pointer"
           >
             <option value="">All Statuses</option>
             <option value="open">OPEN</option>
@@ -114,10 +114,10 @@ const InvestigationPage: React.FC = () => {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 space-y-3">
               <div className="w-8 h-8 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin" />
-              <span className="text-[10px] uppercase tracking-wider text-[#6A7A96]">Loading cases...</span>
+              <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">Loading cases...</span>
             </div>
           ) : cases.length === 0 ? (
-            <div className="p-12 text-center text-[10px] text-[#6A7A96] uppercase border border-dashed border-slate-900 rounded-lg">
+            <div className="p-12 text-center text-[10px] text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)] rounded-lg">
               No cases matching your filters
             </div>
           ) : (
@@ -129,7 +129,7 @@ const InvestigationPage: React.FC = () => {
                   className="p-4 bg-secondary-bg border border-border-color rounded-card text-left hover:border-[#1E6FD9]/30 hover:bg-[#1E6FD9]/5 transition-all cursor-pointer group"
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-[11px] font-bold text-white uppercase group-hover:text-[#1E6FD9] transition-colors">
+                    <span className="text-[11px] font-bold text-[var(--text-primary)] uppercase group-hover:text-[#1E6FD9] transition-colors">
                       {caseItem.case_number}
                     </span>
                     <span className={`px-1.5 py-0.5 text-[7.5px] rounded font-bold uppercase ${
@@ -141,10 +141,10 @@ const InvestigationPage: React.FC = () => {
                       {caseItem.priority}
                     </span>
                   </div>
-                  <p className="text-[9px] text-[#A8B4CC] line-clamp-2 leading-relaxed mb-2">
+                  <p className="text-[9px] text-[var(--text-secondary)] line-clamp-2 leading-relaxed mb-2">
                     {caseItem.description || 'No description'}
                   </p>
-                  <div className="flex items-center justify-between text-[8px] text-[#6A7A96]">
+                  <div className="flex items-center justify-between text-[8px] text-[var(--text-muted)]">
                     <span className="flex items-center gap-1">
                       <Activity className="w-3 h-3" />
                       {caseItem.status.replace(/_/g, ' ')}
@@ -165,7 +165,7 @@ const InvestigationPage: React.FC = () => {
     return (
       <div className="h-[84vh] flex flex-col items-center justify-center space-y-4">
         <div className="w-10 h-10 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin" />
-        <span className="text-[10px] font-mono text-[#6A7A96] uppercase">Loading investigation dashboard...</span>
+        <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase">Loading investigation dashboard...</span>
       </div>
     );
   }
@@ -177,7 +177,7 @@ const InvestigationPage: React.FC = () => {
       {/* Back button */}
       <button
         onClick={handleBack}
-        className="flex items-center gap-2 text-[#A8B4CC] hover:text-white transition-colors cursor-pointer text-xs uppercase font-bold"
+        className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer text-xs uppercase font-bold"
       >
         <ArrowLeft className="w-4 h-4" /> Back to Case List
       </button>

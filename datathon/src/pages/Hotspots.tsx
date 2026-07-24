@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import KarnatakaMap from '../components/map/KarnatakaMap';
 import { Compass, Download, ShieldAlert } from 'lucide-react';
 import { downloadSecureDossier } from '../utils/downloader';
@@ -70,16 +70,16 @@ export const Hotspots: React.FC = () => {
   };
 
   return (
-    <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none bg-[#060b13]">
+    <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none bg-[var(--bg-primary)]">
       
       {/* Page Title */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/5 pb-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3">
         <div>
-          <h2 className="text-md font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
             <Compass className="w-4 h-4 text-[#1E6FD9] animate-pulse" />
             District Hotspot Analysis Map
           </h2>
-          <p className="text-[9.5px] font-mono text-[#6A7A96] mt-0.5">
+          <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
             GEOSPATIAL INCIDENT GRID OVERLAY â€” MAPBOX DUST COORDS & DECK.GL SCATTER PLOTS
           </p>
         </div>
@@ -87,7 +87,7 @@ export const Hotspots: React.FC = () => {
         <div className="flex items-center gap-2 font-mono text-[9px] uppercase">
           <button
             onClick={handleExportGeoJSON}
-            className="px-2.5 py-1.5 bg-[#111D35] hover:bg-[#1E6FD9]/15 border border-border-color hover:border-[#1E6FD9]/30 text-[#A8B4CC] hover:text-white rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
+            className="px-2.5 py-1.5 bg-[var(--bg-tertiary)] hover:bg-[#1E6FD9]/15 border border-border-color hover:border-[#1E6FD9]/30 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
           >
             <Download className="w-3 h-3" />
             GEOJSON Export
@@ -97,10 +97,10 @@ export const Hotspots: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 text-[9px] font-mono">
         {hotspots.slice(0, 3).map((hotspot) => (
-          <div key={`${hotspot.name}-${hotspot.district_id}`} className="bg-[#0a1220]/80 border border-white/5 rounded-lg p-3 flex items-start justify-between gap-3">
+          <div key={`${hotspot.name}-${hotspot.district_id}`} className="bg-[var(--bg-secondary)]/80 border border-[var(--border-muted)] rounded-lg p-3 flex items-start justify-between gap-3">
             <div>
-              <p className="text-white font-semibold uppercase tracking-wide">{hotspot.name}</p>
-              <p className="text-[#6A7A96] mt-1">{hotspot.district_id} â€¢ {hotspot.category}</p>
+              <p className="text-[var(--text-primary)] font-semibold uppercase tracking-wide">{hotspot.name}</p>
+              <p className="text-[var(--text-muted)] mt-1">{hotspot.district_id} â€¢ {hotspot.category}</p>
             </div>
             <div className={`font-bold ${hotspot.score >= 80 ? 'text-[#C94A2A]' : hotspot.score >= 70 ? 'text-[#D4820A]' : 'text-[#0E9E78]'}`}>
               {hotspot.score}%

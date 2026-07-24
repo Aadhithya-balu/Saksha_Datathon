@@ -21,7 +21,7 @@ const CrimeCases: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-full min-h-[80vh] flex flex-col font-mono text-[#E8EDF5]">
+    <div className="w-full h-full min-h-[80vh] flex flex-col font-mono text-[var(--text-primary)]">
       {view === 'list' && (
         <CrimeCasesList
           onSelectCase={handleSelectCase}

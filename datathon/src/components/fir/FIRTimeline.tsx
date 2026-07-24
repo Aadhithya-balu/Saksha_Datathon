@@ -91,33 +91,33 @@ export const FIRTimeline: React.FC<FIRTimelineProps> = ({ fir }) => {
   }
 
   return (
-    <div className="bg-[#111D35]/30 border border-border-color p-5 rounded-card flex flex-col justify-between overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-slate-900 pb-3 mb-4">
-        <Calendar className="w-4 h-4 text-[#1E6FD9]" />
-        <span className="text-[10px] font-bold text-[#E8EDF5] uppercase tracking-wider">FIR Event History Timeline</span>
+    <div className="bg-[var(--bg-tertiary)]/30 border border-border-color p-5 rounded-card flex flex-col justify-between overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-[var(--border-primary)] pb-3 mb-4">
+        <Calendar className="w-4 h-4 text-[var(--accent-blue)]" />
+        <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider">FIR Event History Timeline</span>
       </div>
 
-      <div className="relative pl-6 border-l border-slate-800 space-y-6 max-h-[350px] overflow-y-auto custom-scrollbar">
+      <div className="relative pl-6 border-l border-[var(--border-primary)] space-y-6 max-h-[350px] overflow-y-auto custom-scrollbar">
         {events.map((ev, idx) => (
           <div key={idx} className="relative group">
             {/* Timeline node dot */}
-            <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border border-slate-950 flex items-center justify-center text-white shrink-0 ${ev.color} transition-all duration-300 group-hover:scale-110`}>
+            <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border border-[var(--border-primary)] flex items-center justify-center text-[var(--text-primary)] shrink-0 ${ev.color} transition-all duration-300 group-hover:scale-110`}>
               {ev.icon}
             </div>
 
             <div className="space-y-1">
               <div className="flex justify-between items-center text-[10px]">
-                <span className="text-white font-bold uppercase tracking-wide">{ev.title}</span>
-                <span className="text-slate-500 font-mono text-[9px]">{formatDate(ev.date)}</span>
+                <span className="text-[var(--text-primary)] font-bold uppercase tracking-wide">{ev.title}</span>
+                <span className="text-[var(--text-muted)] font-mono text-[9px]">{formatDate(ev.date)}</span>
               </div>
-              <p className="text-[10px] text-[#A8B4CC] leading-relaxed pr-2 font-mono">
+              <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed pr-2 font-mono">
                 {ev.description}
               </p>
             </div>
           </div>
         ))}
         {events.length === 0 && (
-          <div className="text-center py-6 text-[10px] text-slate-500 uppercase">
+          <div className="text-center py-6 text-[10px] text-[var(--text-muted)] uppercase">
             No history logs registered.
           </div>
         )}

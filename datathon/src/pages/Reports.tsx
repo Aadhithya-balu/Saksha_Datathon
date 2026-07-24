@@ -100,11 +100,11 @@ export const Reports: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[84vh] space-y-4 p-1 md:p-3 bg-[#060b13] font-mono">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 border-b border-white/5 pb-4">
+    <div className="min-h-[84vh] space-y-4 p-1 md:p-3 bg-[var(--bg-primary)] font-mono">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 border-b border-[var(--border-muted)] pb-4">
         <div>
-          <h2 className="text-md font-bold text-white uppercase tracking-wider">Administrative Reporting</h2>
-          <p className="mt-1 text-[9.5px] uppercase tracking-[0.2em] text-[#6A7A96]">Live case, officer, criminal, and evidence exports</p>
+          <h2 className="text-md font-bold text-[var(--text-primary)] uppercase tracking-wider">Administrative Reporting</h2>
+          <p className="mt-1 text-[9.5px] uppercase tracking-[0.2em] text-[var(--text-muted)]">Live case, officer, criminal, and evidence exports</p>
         </div>
         <div className="flex gap-2">
           <ExportButton label={exporting === 'pdf' ? 'Preparing PDF' : 'Download PDF'} disabled={!!exporting} onClick={() => void download('pdf')} />

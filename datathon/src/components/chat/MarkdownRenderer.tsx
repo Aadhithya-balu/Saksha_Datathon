@@ -21,8 +21,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
       if (inCodeBlock) {
         // End code block
         elements.push(
-          <div key={`code-${index}`} className="my-2 p-3 bg-slate-950 border border-slate-800 rounded text-xs font-mono overflow-x-auto text-emerald-400">
-            {codeLanguage && <div className="text-[9px] font-bold uppercase text-slate-500 mb-1">{codeLanguage}</div>}
+          <div key={`code-${index}`} className="my-2 p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-xs font-mono overflow-x-auto text-emerald-400">
+            {codeLanguage && <div className="text-[9px] font-bold uppercase text-[var(--text-muted)] mb-1">{codeLanguage}</div>}
             <pre className="whitespace-pre">{codeBlockBuffer.join('\n')}</pre>
           </div>
         );
@@ -44,7 +44,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
     // Headings
     if (line.startsWith('### ')) {
       elements.push(
-        <h4 key={index} className="text-xs font-bold text-white uppercase tracking-wider mt-3 mb-1 font-mono">
+        <h4 key={index} className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider mt-3 mb-1 font-mono">
           {formatInline(line.slice(4))}
         </h4>
       );
@@ -52,7 +52,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
     }
     if (line.startsWith('## ')) {
       elements.push(
-        <h3 key={index} className="text-sm font-extrabold text-white uppercase tracking-wider mt-3 mb-1.5 font-mono">
+        <h3 key={index} className="text-sm font-extrabold text-[var(--text-primary)] uppercase tracking-wider mt-3 mb-1.5 font-mono">
           {formatInline(line.slice(3))}
         </h3>
       );
@@ -60,7 +60,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
     }
     if (line.startsWith('# ')) {
       elements.push(
-        <h2 key={index} className="text-base font-black text-white uppercase tracking-widest mt-4 mb-2 font-mono border-b border-slate-800 pb-1">
+        <h2 key={index} className="text-base font-black text-[var(--text-primary)] uppercase tracking-widest mt-4 mb-2 font-mono border-b border-[var(--border-primary)] pb-1">
           {formatInline(line.slice(2))}
         </h2>
       );
@@ -70,7 +70,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
     // Blockquote
     if (line.startsWith('> ')) {
       elements.push(
-        <blockquote key={index} className="my-1.5 pl-3 border-l-2 border-[#1E6FD9] text-slate-300 italic text-[11px]">
+        <blockquote key={index} className="my-1.5 pl-3 border-l-2 border-[var(--accent-blue)] text-[var(--text-secondary)] italic text-[11px]">
           {formatInline(line.slice(2))}
         </blockquote>
       );
@@ -82,7 +82,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
       const itemText = line.trim().slice(2);
       elements.push(
         <div key={index} className="flex items-start gap-2 my-0.5 pl-2 text-[11.5px] leading-relaxed">
-          <span className="text-[#1E6FD9] font-bold shrink-0">•</span>
+          <span className="text-[var(--accent-blue)] font-bold shrink-0">•</span>
           <span>{formatInline(itemText)}</span>
         </div>
       );
@@ -94,7 +94,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
     if (numMatch) {
       elements.push(
         <div key={index} className="flex items-start gap-2 my-0.5 pl-2 text-[11.5px] leading-relaxed">
-          <span className="text-[#0E9E78] font-mono text-[10px] font-bold shrink-0">{numMatch[1]}.</span>
+          <span className="text-[var(--accent-teal)] font-mono text-[10px] font-bold shrink-0">{numMatch[1]}.</span>
           <span>{formatInline(numMatch[2])}</span>
         </div>
       );
@@ -133,7 +133,7 @@ function formatInline(text: string): React.ReactNode {
     if (boldMatch && (!codeMatch || boldMatch.index! <= codeMatch.index!)) {
       if (boldMatch[1]) parts.push(boldMatch[1]);
       parts.push(
-        <strong key={`b-${keyIdx++}`} className="font-bold text-white">
+        <strong key={`b-${keyIdx++}`} className="font-bold text-[var(--text-primary)]">
           {boldMatch[2]}
         </strong>
       );
@@ -141,7 +141,7 @@ function formatInline(text: string): React.ReactNode {
     } else if (codeMatch) {
       if (codeMatch[1]) parts.push(codeMatch[1]);
       parts.push(
-        <code key={`c-${keyIdx++}`} className="px-1.5 py-0.5 bg-slate-950 border border-slate-800 rounded text-[10.5px] font-mono text-[#0E9E78]">
+        <code key={`c-${keyIdx++}`} className="px-1.5 py-0.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-[10.5px] font-mono text-[var(--accent-teal)]">
           {codeMatch[2]}
         </code>
       );

@@ -21,25 +21,25 @@ const LinkedFIRs: React.FC<Props> = ({ firs }) => {
   return (
     <div className="p-5 bg-secondary-bg border border-border-color rounded-card">
       <div className="flex justify-between items-center mb-4 border-b border-border-color/60 pb-3">
-        <h3 className="text-xs uppercase tracking-wider font-bold text-white flex items-center gap-2">
-          <FileText className="w-4 h-4 text-[#1E6FD9]" /> Linked FIR Records
+        <h3 className="text-xs uppercase tracking-wider font-bold text-[var(--text-primary)] flex items-center gap-2">
+          <FileText className="w-4 h-4 text-[var(--accent-blue)]" /> Linked FIR Records
         </h3>
-        <span className="text-[10px] text-[#6A7A96] font-bold">{firs.length} FILED</span>
+        <span className="text-[10px] text-[var(--text-muted)] font-bold">{firs.length} FILED</span>
       </div>
 
       {firs.length === 0 ? (
-        <p className="text-[10px] text-[#6A7A96] py-4 text-center uppercase">NO FIRs LINKED TO THIS CASE.</p>
+        <p className="text-[10px] text-[var(--text-muted)] py-4 text-center uppercase">NO FIRs LINKED TO THIS CASE.</p>
       ) : (
         <div className="space-y-3 max-h-[350px] overflow-y-auto custom-scrollbar pr-1">
           {firs.map((fir) => (
-            <div key={fir.id} className="p-3 bg-slate-950/40 border border-border-color/40 rounded hover:border-[#1E6FD9]/20 transition-colors">
+            <div key={fir.id} className="p-3 bg-[var(--bg-secondary)]/40 border border-border-color/40 rounded hover:border-[var(--accent-blue)]/20 transition-colors">
               {/* FIR Header */}
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <span className="text-[11px] font-bold text-white uppercase">{fir.fir_number}</span>
+                  <span className="text-[11px] font-bold text-[var(--text-primary)] uppercase">{fir.fir_number}</span>
                   <div className="flex items-center gap-1.5 mt-1">
-                    <User className="w-3 h-3 text-[#6A7A96]" />
-                    <span className="text-[9px] text-[#A8B4CC]">{fir.complainant_name}</span>
+                    <User className="w-3 h-3 text-[var(--text-muted)]" />
+                    <span className="text-[9px] text-[var(--text-secondary)]">{fir.complainant_name}</span>
                   </div>
                 </div>
                 {getStatusBadge(fir.status)}
@@ -54,7 +54,7 @@ const LinkedFIRs: React.FC<Props> = ({ firs }) => {
               )}
 
               {/* Linked persons summary */}
-              <div className="flex gap-4 mt-2 text-[8px] text-[#6A7A96] uppercase">
+              <div className="flex gap-4 mt-2 text-[8px] text-[var(--text-muted)] uppercase">
                 <div className="flex items-center gap-1">
                   <Users className="w-3 h-3 text-red-400" />
                   <span>{fir.criminals.length} accused</span>
@@ -67,7 +67,7 @@ const LinkedFIRs: React.FC<Props> = ({ firs }) => {
 
               {/* Narrative excerpt */}
               {fir.narrative && (
-                <p className="text-[8.5px] text-[#6A7A96] mt-2 line-clamp-2 leading-relaxed border-t border-slate-900 pt-2">
+                <p className="text-[8.5px] text-[var(--text-muted)] mt-2 line-clamp-2 leading-relaxed border-t border-[var(--border-primary)] pt-2">
                   {fir.narrative}
                 </p>
               )}

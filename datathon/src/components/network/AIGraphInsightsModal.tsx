@@ -10,14 +10,14 @@ interface AIGraphInsightsModalProps {
 
 export const AIGraphInsightsModal: React.FC<AIGraphInsightsModalProps> = ({ insights, onSelectNodeIn3D }) => {
   return (
-    <div className="h-full flex flex-col gap-4 p-4 bg-[#080E1B] border border-white/10 rounded-card font-mono overflow-y-auto">
+    <div className="h-full flex flex-col gap-4 p-4 bg-[var(--bg-surface)] border border-[var(--border-secondary)] rounded-card font-mono overflow-y-auto">
       {/* Header */}
-      <div className="border-b border-white/10 pb-3">
-        <h3 className="text-md font-bold text-white uppercase tracking-wider flex items-center gap-2">
+      <div className="border-b border-[var(--border-secondary)] pb-3">
+        <h3 className="text-md font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
           AI Graph Intelligence & Threat Assessment
         </h3>
-        <p className="text-[10px] text-[#6A7A96] mt-1">
+        <p className="text-[10px] text-[var(--text-muted)] mt-1">
           AUTOMATED BROKER DISCOVERY, CROSS-SYNDICATE PATTERN MATCHING, AND ACTIONABLE INVESTIGATION ADVISORIES
         </p>
       </div>
@@ -27,7 +27,7 @@ export const AIGraphInsightsModal: React.FC<AIGraphInsightsModalProps> = ({ insi
         {insights.map((insight) => (
           <div
             key={insight.id}
-            className="p-4 bg-[#050912] border border-white/10 rounded-card space-y-3 shadow-lg"
+            className="p-4 bg-[var(--bg-primary)] border border-[var(--border-secondary)] rounded-card space-y-3 shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -40,7 +40,7 @@ export const AIGraphInsightsModal: React.FC<AIGraphInsightsModalProps> = ({ insi
                       : 'text-[#60A5FA]'
                   }`}
                 />
-                <h4 className="text-xs font-bold text-white uppercase">{insight.title}</h4>
+                <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase">{insight.title}</h4>
               </div>
               <span
                 className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
@@ -55,21 +55,21 @@ export const AIGraphInsightsModal: React.FC<AIGraphInsightsModalProps> = ({ insi
               </span>
             </div>
 
-            <p className="text-[11px] text-[#8A99AD] leading-relaxed">{insight.description}</p>
+            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">{insight.description}</p>
 
             {/* AI Recommendation Box */}
-            <div className="p-3 bg-[#0d1627] rounded border border-white/5 flex items-start gap-2 text-[10.5px]">
+            <div className="p-3 bg-[var(--bg-tertiary)] rounded border border-[var(--border-primary)] flex items-start gap-2 text-[10.5px]">
               <Lightbulb className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
               <div>
                 <strong className="text-amber-300 uppercase">AI Tactical Recommendation: </strong>
-                <span className="text-[#A8B4CC]">{insight.recommendation}</span>
+                <span className="text-[var(--text-secondary)]">{insight.recommendation}</span>
               </div>
             </div>
 
             {/* Target Nodes Action buttons */}
             {insight.target_node_ids && insight.target_node_ids.length > 0 && (
               <div className="flex items-center gap-2 text-[10px] pt-1">
-                <span className="text-[#6A7A96] uppercase">Target Nodes:</span>
+                <span className="text-[var(--text-muted)] uppercase">Target Nodes:</span>
                 {insight.target_node_ids.map((nid) => (
                   <button
                     key={nid}
@@ -83,7 +83,7 @@ export const AIGraphInsightsModal: React.FC<AIGraphInsightsModalProps> = ({ insi
                         casesCount: 3,
                       })
                     }
-                    className="px-2 py-0.5 bg-[#111D35] hover:bg-[#1E6FD9]/20 border border-white/10 text-[#60A5FA] rounded transition-colors cursor-pointer flex items-center gap-1 uppercase font-bold"
+                    className="px-2 py-0.5 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/20 border border-[var(--border-secondary)] text-[#60A5FA] rounded transition-colors cursor-pointer flex items-center gap-1 uppercase font-bold"
                   >
                     <Crosshair className="w-3 h-3" />
                     <span>{nid}</span>

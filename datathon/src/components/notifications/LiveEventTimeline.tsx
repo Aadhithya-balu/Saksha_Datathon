@@ -87,14 +87,14 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({
             <div className="w-4 h-4 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin" />
           </div>
         ) : events.length === 0 ? (
-          <div className="text-center py-3 text-[8px] font-mono text-[#6A7A96]">No events</div>
+          <div className="text-center py-3 text-[8px] font-mono text-[var(--text-muted)]">No events</div>
         ) : (
           events.slice(0, 5).map((event) => (
             <div key={event.id} className={`flex items-start gap-2 pl-2 border-l-2 ${getEventColor(event.type)}`}>
-              <span className="text-[#6A7A96] mt-0.5 shrink-0">{getEventIcon(event.type)}</span>
+              <span className="text-[var(--text-muted)] mt-0.5 shrink-0">{getEventIcon(event.type)}</span>
               <div className="min-w-0">
-                <p className="text-[8px] font-mono text-white truncate max-w-[180px]">{event.action}</p>
-                <p className="text-[6.5px] font-mono text-[#6A7A96]">
+                <p className="text-[8px] font-mono text-[var(--text-primary)] truncate max-w-[180px]">{event.action}</p>
+                <p className="text-[6.5px] font-mono text-[var(--text-muted)]">
                   {event.actor || 'System'} • {new Date(event.timestamp).toLocaleTimeString()}
                 </p>
               </div>
@@ -111,7 +111,7 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="w-5 h-5 text-[#1E6FD9]" />
-          <h3 className="text-[11px] font-mono font-bold text-white uppercase tracking-wider">
+          <h3 className="text-[11px] font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider">
             Live Event Timeline
           </h3>
           <span className="px-1.5 py-0.5 bg-[#0E9E78]/10 border border-[#0E9E78]/20 rounded text-[7px] text-[#0E9E78] font-bold font-mono">
@@ -122,7 +122,7 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
             className={`p-1 rounded cursor-pointer transition-colors ${
-              autoRefresh ? 'bg-[#0E9E78]/10 text-[#0E9E78]' : 'bg-white/5 text-[#6A7A96]'
+              autoRefresh ? 'bg-[#0E9E78]/10 text-[#0E9E78]' : 'bg-white/5 text-[var(--text-muted)]'
             }`}
             title={autoRefresh ? 'Pause auto-refresh' : 'Resume auto-refresh'}
           >
@@ -139,11 +139,11 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({
 
       {/* Filter */}
       <div className="flex items-center gap-2">
-        <Filter className="w-3 h-3 text-[#6A7A96]" />
+        <Filter className="w-3 h-3 text-[var(--text-muted)]" />
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
-          className="flex-1 px-2 py-1 bg-slate-950 border border-slate-900 rounded text-[9px] font-mono text-[#A8B4CC] outline-none focus:border-[#1E6FD9] cursor-pointer"
+          className="flex-1 px-2 py-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-[9px] font-mono text-[var(--text-secondary)] outline-none focus:border-[#1E6FD9] cursor-pointer"
         >
           <option value="">All Events</option>
           <option value="audit">Audit Events</option>
@@ -153,7 +153,7 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({
 
       {/* Timeline */}
       <div ref={listRef} className="flex-1 overflow-y-auto custom-scrollbar max-h-[400px] relative pl-4">
-        <div className="absolute left-[7px] top-2 bottom-2 w-px bg-white/[0.05]" />
+        <div className="absolute left-[7px] top-2 bottom-2 w-px bg-[var(--bg-tertiary)]/20" />
 
         {loading && events.length === 0 ? (
           <div className="flex items-center justify-center py-12">
@@ -161,8 +161,8 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({
           </div>
         ) : events.length === 0 ? (
           <div className="text-center py-12">
-            <Activity className="w-8 h-8 text-[#6A7A96] mx-auto mb-2 opacity-40" />
-            <p className="text-[9px] font-mono text-[#6A7A96]">No timeline events</p>
+            <Activity className="w-8 h-8 text-[var(--text-muted)] mx-auto mb-2 opacity-40" />
+            <p className="text-[9px] font-mono text-[var(--text-muted)]">No timeline events</p>
           </div>
         ) : (
           <div className="space-y-1">
@@ -176,30 +176,30 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({
                 }`} />
 
                 <div className="flex items-start gap-2.5">
-                  <span className="mt-1 text-[#6A7A96] shrink-0">
+                  <span className="mt-1 text-[var(--text-muted)] shrink-0">
                     {getResourceIcon(event.resource_type)}
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[9px] font-mono font-bold text-white truncate">
+                      <span className="text-[9px] font-mono font-bold text-[var(--text-primary)] truncate">
                         {event.action}
                       </span>
-                      <span className="shrink-0 text-[6.5px] font-mono uppercase px-1 py-0.5 rounded bg-white/[0.03] text-[#6A7A96]">
+                      <span className="shrink-0 text-[6.5px] font-mono uppercase px-1 py-0.5 rounded bg-[var(--bg-tertiary)]/5 text-[var(--text-muted)]">
                         {event.type}
                       </span>
                     </div>
                     {event.details && (
-                      <p className="text-[7.5px] font-mono text-[#A8B4CC] mt-0.5 line-clamp-1">
+                      <p className="text-[7.5px] font-mono text-[var(--text-secondary)] mt-0.5 line-clamp-1">
                         {event.details}
                       </p>
                     )}
                     <div className="flex items-center gap-2 mt-0.5">
                       {event.actor && (
-                        <span className="text-[6.5px] font-mono text-[#6A7A96]">
+                        <span className="text-[6.5px] font-mono text-[var(--text-muted)]">
                           {event.actor}
                         </span>
                       )}
-                      <span className="text-[6.5px] font-mono text-[#6A7A96]">
+                      <span className="text-[6.5px] font-mono text-[var(--text-muted)]">
                         {new Date(event.timestamp).toLocaleString()}
                       </span>
                     </div>

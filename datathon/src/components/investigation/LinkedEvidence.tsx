@@ -17,10 +17,10 @@ const LinkedEvidence: React.FC<Props> = ({ evidence }) => {
   if (evidence.length === 0) {
     return (
       <div className="p-5 bg-secondary-bg border border-border-color rounded-card">
-        <h3 className="text-xs uppercase tracking-wider font-bold text-white flex items-center gap-2 mb-4 border-b border-border-color/60 pb-3">
+        <h3 className="text-xs uppercase tracking-wider font-bold text-[var(--text-primary)] flex items-center gap-2 mb-4 border-b border-border-color/60 pb-3">
           <Package className="w-4 h-4 text-emerald-400" /> Evidence Registry
         </h3>
-        <p className="text-[10px] text-[#6A7A96] py-4 text-center uppercase">No evidence logged for this case.</p>
+        <p className="text-[10px] text-[var(--text-muted)] py-4 text-center uppercase">No evidence logged for this case.</p>
       </div>
     );
   }
@@ -28,22 +28,22 @@ const LinkedEvidence: React.FC<Props> = ({ evidence }) => {
   return (
     <div className="p-5 bg-secondary-bg border border-border-color rounded-card">
       <div className="flex justify-between items-center mb-4 border-b border-border-color/60 pb-3">
-        <h3 className="text-xs uppercase tracking-wider font-bold text-white flex items-center gap-2">
+        <h3 className="text-xs uppercase tracking-wider font-bold text-[var(--text-primary)] flex items-center gap-2">
           <Package className="w-4 h-4 text-emerald-400" /> Evidence Registry
         </h3>
-        <span className="text-[10px] text-[#6A7A96] font-bold">{evidence.length} ITEMS</span>
+        <span className="text-[10px] text-[var(--text-muted)] font-bold">{evidence.length} ITEMS</span>
       </div>
 
       <div className="space-y-3 max-h-[350px] overflow-y-auto custom-scrollbar pr-1">
         {evidence.map((item) => {
           const config = typeConfig[item.evidence_type] || typeConfig.document;
           return (
-            <div key={item.id} className="p-3 bg-slate-950/40 border border-border-color/40 rounded hover:border-emerald-900/30 transition-colors">
+            <div key={item.id} className="p-3 bg-[var(--bg-secondary)]/40 border border-border-color/40 rounded hover:border-emerald-900/30 transition-colors">
               {/* Header */}
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
                   <span className={`p-1 rounded ${config.color}`}>{config.icon}</span>
-                  <span className="text-[10px] font-bold text-white uppercase">{item.evidence_type}</span>
+                  <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase">{item.evidence_type}</span>
                 </div>
                 <span className={`px-1.5 py-0.5 text-[8px] rounded font-bold uppercase border ${config.color}`}>
                   {item.evidence_type}
@@ -52,11 +52,11 @@ const LinkedEvidence: React.FC<Props> = ({ evidence }) => {
 
               {/* Description */}
               {item.description && (
-                <p className="text-[9px] text-[#A8B4CC] leading-relaxed mb-2">{item.description}</p>
+                <p className="text-[9px] text-[var(--text-secondary)] leading-relaxed mb-2">{item.description}</p>
               )}
 
               {/* Metadata */}
-              <div className="grid grid-cols-2 gap-2 text-[8px] text-[#6A7A96]">
+              <div className="grid grid-cols-2 gap-2 text-[8px] text-[var(--text-muted)]">
                 {item.collected_by && (
                   <div className="flex items-center gap-1">
                     <User className="w-3 h-3" />
@@ -73,7 +73,7 @@ const LinkedEvidence: React.FC<Props> = ({ evidence }) => {
 
               {/* Chain of custody */}
               {item.chain_of_custody && (
-                <div className="flex items-start gap-1.5 mt-2 pt-2 border-t border-slate-900 text-[8px] text-[#6A7A96]">
+                <div className="flex items-start gap-1.5 mt-2 pt-2 border-t border-[var(--border-primary)] text-[8px] text-[var(--text-muted)]">
                   <Link className="w-3 h-3 text-cyan-500 mt-0.5 shrink-0" />
                   <span className="leading-relaxed">{item.chain_of_custody}</span>
                 </div>

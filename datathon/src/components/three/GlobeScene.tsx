@@ -270,7 +270,7 @@ const HotspotNode: React.FC<HotspotNodeProps> = ({ position, name, severity }) =
         <meshBasicMaterial color={color} transparent opacity={0.22} />
       </mesh>
       <Html distanceFactor={4} position={[0.07, 0, 0]}>
-        <div className="px-2 py-0.5 whitespace-nowrap bg-black/80 border border-white/10 text-[9px] font-mono rounded text-[#A8B4CC]">
+        <div className="px-2 py-0.5 whitespace-nowrap bg-black/80 border border-[var(--border-secondary)] text-[9px] font-mono rounded text-[var(--text-secondary)]">
           {name}
         </div>
       </Html>
@@ -303,8 +303,8 @@ const GlobeScene: React.FC = () => {
       
       {/* Decorative controls overlay */}
       <div className="absolute bottom-5 left-5 z-20 flex flex-col gap-1 pointer-events-none">
-        <div className="text-[10px] uppercase font-mono tracking-widest text-[#0E9E78]">Holographic Core Active</div>
-        <div className="text-[9px] font-mono text-[#6A7A96]">TACTICAL DIGITAL TWIN SIMULATION</div>
+        <div className="text-[10px] uppercase font-mono tracking-widest text-[var(--accent-teal)]">Holographic Core Active</div>
+        <div className="text-[9px] font-mono text-[var(--text-muted)]">TACTICAL DIGITAL TWIN SIMULATION</div>
       </div>
     </div>
   );
@@ -314,19 +314,19 @@ const GlobeScene: React.FC = () => {
 const GlobeFallback: React.FC = () => {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden bg-[#0a1122]">
-      <div className="w-80 h-80 rounded-full border border-dashed border-[#1E6FD9]/20 flex items-center justify-center animate-[spin_60s_linear_infinite] relative">
-        <div className="absolute inset-0 rounded-full border border-[#0E9E78]/10 animate-[pulse_2.5s_infinite]"></div>
-        <div className="absolute w-[160px] h-[160px] top-0 left-0 bg-gradient-to-tr from-transparent to-[#1E6FD9]/10 origin-bottom-right rounded-tl-full"></div>
+      <div className="w-80 h-80 rounded-full border border-dashed border-[var(--accent-blue)]/20 flex items-center justify-center animate-[spin_60s_linear_infinite] relative">
+        <div className="absolute inset-0 rounded-full border border-[var(--accent-teal)]/10 animate-[pulse_2.5s_infinite]"></div>
+        <div className="absolute w-[160px] h-[160px] top-0 left-0 bg-gradient-to-tr from-transparent to-[var(--accent-blue)]/10 origin-bottom-right rounded-tl-full"></div>
         <svg viewBox="0 0 100 100" className="w-48 h-48 opacity-60 text-emerald-500 fill-none stroke-current stroke-[0.5]">
-          <polygon points="50,15 65,25 72,40 68,55 58,62 55,75 48,85 41,75 35,66 32,54 40,43 38,32 50,15" className="fill-[#1E6FD9]/5" />
+          <polygon points="50,15 65,25 72,40 68,55 58,62 55,75 48,85 41,75 35,66 32,54 40,43 38,32 50,15" className="fill-[var(--accent-blue)]/5" />
           <circle cx="50" cy="45" r="1.5" className="fill-red-500 animate-ping" />
           <circle cx="48" cy="80" r="1.2" className="fill-orange-400" />
           <circle cx="68" cy="50" r="1.2" className="fill-teal-400" />
         </svg>
       </div>
       <div className="text-center mt-6">
-        <h4 className="text-[12px] font-mono uppercase tracking-[0.2em] text-[#1E6FD9]">Digital Twin Core Matrix</h4>
-        <p className="text-[10px] font-mono text-[#6A7A96] mt-1">SIMULATION MODE ACTIVE</p>
+        <h4 className="text-[12px] font-mono uppercase tracking-[0.2em] text-[var(--accent-blue)]">Digital Twin Core Matrix</h4>
+        <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">SIMULATION MODE ACTIVE</p>
       </div>
     </div>
   );

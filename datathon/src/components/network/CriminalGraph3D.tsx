@@ -158,7 +158,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
   }, [hasError]);
 
   return (
-    <div className="w-full h-full relative bg-[#080E1B] rounded-card border border-border-color flex flex-col justify-between overflow-hidden">
+    <div className="w-full h-full relative bg-[var(--bg-surface)] rounded-card border border-border-color flex flex-col justify-between overflow-hidden">
       
       {/* SEARCH HEADER BAR */}
       <div className="absolute top-4 left-4 z-20 flex gap-2 w-full max-w-sm pointer-events-auto">
@@ -168,9 +168,9 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
             placeholder="Search suspect name (e.g. Ramu)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-secondary-bg/90 backdrop-blur-sm text-[#E8EDF5] font-mono text-xs border border-border-color focus:border-[#1E6FD9] rounded-btn outline-none transition-colors"
+            className="w-full pl-9 pr-4 py-2 bg-secondary-bg/90 backdrop-blur-sm text-[var(--text-primary)] font-mono text-xs border border-border-color focus:border-[var(--accent-blue)] rounded-btn outline-none transition-colors"
           />
-          <Search className="absolute left-3 w-4 h-4 text-[#A8B4CC]" />
+          <Search className="absolute left-3 w-4 h-4 text-[var(--text-secondary)]" />
         </form>
         
         <button
@@ -180,7 +180,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
               setCurrentGraphData(resolvedGraphData);
             if (fgRef.current) fgRef.current.zoomToFit(1000);
           }}
-          className="px-3 bg-[#111D35] hover:bg-[#1E6FD9]/15 border border-border-color hover:border-[#1E6FD9]/30 rounded text-xs text-[#A8B4CC] cursor-pointer"
+          className="px-3 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-border-color hover:border-[var(--accent-blue)]/30 rounded text-xs text-[var(--text-secondary)] cursor-pointer"
         >
           Reset
         </button>
@@ -215,24 +215,24 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
 
         {/* Legend overlays */}
         <div className="absolute bottom-4 left-4 z-20 bg-secondary-bg/90 backdrop-blur-sm p-3.5 border border-border-color rounded-card font-mono text-[9px] flex flex-col gap-2 select-none pointer-events-none">
-          <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">
+          <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
             Clearance Categories
           </span>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#C94A2A] shadow-glow-coral" />
-            <span className="text-[#E8EDF5] uppercase">HIGH RISK SUSPECTS</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent-coral)] shadow-glow-coral" />
+            <span className="text-[var(--text-primary)] uppercase">HIGH RISK SUSPECTS</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#D4820A] shadow-glow-amber" />
-            <span className="text-[#E8EDF5]">KNOWN OFFENDERS</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent-amber)] shadow-glow-amber" />
+            <span className="text-[var(--text-primary)]">KNOWN OFFENDERS</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#1E6FD9] shadow-glow-blue" />
-            <span className="text-[#E8EDF5]">LOCATION COORDS</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent-blue)] shadow-glow-blue" />
+            <span className="text-[var(--text-primary)]">LOCATION COORDS</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#6A7A96]" />
-            <span className="text-[#E8EDF5]">VICTIMS/COMPLAINANTS</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-[var(--text-muted)]" />
+            <span className="text-[var(--text-primary)]">VICTIMS/COMPLAINANTS</span>
           </div>
         </div>
 
@@ -240,7 +240,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
         <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-1.5 pointer-events-auto">
           <button
             onClick={() => fgRef.current?.zoomToFit(1200)}
-            className="p-2 bg-[#111D35] hover:bg-[#1E6FD9]/15 border border-border-color hover:border-[#1E6FD9]/30 rounded text-[#A8B4CC] cursor-pointer"
+            className="p-2 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-border-color hover:border-[var(--accent-blue)]/30 rounded text-[var(--text-secondary)] cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
@@ -388,8 +388,8 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect }) => {
   }, [onNodeSelect, selectedNodeId]);
 
   return (
-    <div className="absolute inset-0 w-full h-full flex flex-col justify-between bg-[#080E1B] p-4 text-center">
-      <div className="w-full flex items-center justify-center gap-1.5 p-2 bg-[#D4820A]/10 border border-[#D4820A]/30 text-[#D4820A] text-[9.5px] font-mono rounded">
+    <div className="absolute inset-0 w-full h-full flex flex-col justify-between bg-[var(--bg-surface)] p-4 text-center">
+      <div className="w-full flex items-center justify-center gap-1.5 p-2 bg-[var(--accent-amber)]/10 border border-[var(--accent-amber)]/30 text-[var(--accent-amber)] text-[9.5px] font-mono rounded">
         <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />
         <span>WEBGL DIRECT X ACCELERATION OFF - RELATIONAL MATRIX SIMULATOR RUNNING</span>
       </div>

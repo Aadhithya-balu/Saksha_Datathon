@@ -68,7 +68,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
       case 'healthy': return 'text-[#0E9E78]';
       case 'degraded': return 'text-[#D4820A]';
       case 'down': return 'text-[#C94A2A]';
-      default: return 'text-[#6A7A96]';
+      default: return 'text-[var(--text-muted)]';
     }
   };
 
@@ -77,7 +77,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
       case 'healthy': return 'bg-[#0E9E78]/10 border-[#0E9E78]/20';
       case 'degraded': return 'bg-[#D4820A]/10 border-[#D4820A]/20';
       case 'down': return 'bg-[#C94A2A]/10 border-[#C94A2A]/20';
-      default: return 'bg-slate-950 border-slate-900';
+      default: return 'bg-[var(--bg-secondary)] border-[var(--border-primary)]';
     }
   };
 
@@ -86,7 +86,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
       case 'healthy': return <ShieldCheck className="w-4 h-4 text-[#0E9E78]" />;
       case 'degraded': return <ShieldAlert className="w-4 h-4 text-[#D4820A]" />;
       case 'down': return <ShieldAlert className="w-4 h-4 text-[#C94A2A]" />;
-      default: return <Shield className="w-4 h-4 text-[#6A7A96]" />;
+      default: return <Shield className="w-4 h-4 text-[var(--text-muted)]" />;
     }
   };
 
@@ -97,7 +97,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
           overallStatus === 'healthy' ? 'bg-[#0E9E78]' :
           overallStatus === 'degraded' ? 'bg-[#D4820A]' : 'bg-[#C94A2A]'
         } ${overallStatus === 'healthy' ? 'animate-pulse' : 'animate-ping'}`} />
-        <span className="text-[8px] font-mono text-[#6A7A96]">
+        <span className="text-[8px] font-mono text-[var(--text-muted)]">
           {overallStatus.toUpperCase()} • {uptime.toFixed(1)}h uptime
         </span>
       </div>
@@ -110,7 +110,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {getStatusIcon(overallStatus)}
-          <h3 className="text-[11px] font-mono font-bold text-white uppercase tracking-wider">
+          <h3 className="text-[11px] font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider">
             System Health
           </h3>
           <span className={`text-[8px] font-mono uppercase font-bold ${getStatusColor(overallStatus)}`}>
@@ -118,7 +118,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 text-[7px] font-mono text-[#6A7A96]">
+          <div className="flex items-center gap-1 text-[7px] font-mono text-[var(--text-muted)]">
             <Clock className="w-2.5 h-2.5" />
             {new Date(lastUpdated).toLocaleTimeString()}
           </div>
@@ -143,13 +143,13 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
                 {service.icon}
               </span>
               <div>
-                <p className="text-[9px] font-mono font-bold text-white">{service.name}</p>
+                <p className="text-[9px] font-mono font-bold text-[var(--text-primary)]">{service.name}</p>
                 <p className={`text-[7.5px] font-mono uppercase ${getStatusColor(service.status)}`}>
                   {service.status}
                 </p>
               </div>
             </div>
-            <span className="text-[8px] font-mono text-[#6A7A96]">
+            <span className="text-[8px] font-mono text-[var(--text-muted)]">
               {service.latency}
             </span>
           </div>
@@ -157,7 +157,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
       </div>
 
       {/* Uptime Footer */}
-      <div className="flex items-center justify-between text-[8px] font-mono text-[#6A7A96] border-t border-border-color pt-2">
+      <div className="flex items-center justify-between text-[8px] font-mono text-[var(--text-muted)] border-t border-border-color pt-2">
         <span>Uptime: {uptime.toFixed(1)} hours</span>
         <span>All systems: {services.filter(s => s.status === 'healthy').length}/{services.length}</span>
       </div>

@@ -215,16 +215,16 @@ export const SpatialCube3D: React.FC = () => {
   }, []);
 
   return (
-    <div className="w-full h-full bg-[#0a1220]/80 border border-white/5 p-4 rounded-lg flex flex-col justify-between select-none font-mono relative group overflow-hidden">
+    <div className="w-full h-full bg-[var(--bg-secondary)]/80 border border-[var(--border-primary)] p-4 rounded-lg flex flex-col justify-between select-none font-mono relative group overflow-hidden">
       
       {/* Title */}
       <div className="flex justify-between items-center mb-2">
         <div>
-          <h4 className="text-[11.5px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-            <Rotate3d className="w-4 h-4 text-[#1E6FD9] animate-pulse" />
+          <h4 className="text-[11.5px] font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-1.5">
+            <Rotate3d className="w-4 h-4 text-[var(--accent-blue)] animate-pulse" />
             3D Spatial Density Cube
           </h4>
-          <span className="text-[9px] text-[#A8B4CC] uppercase font-semibold">Hover to Query Beat Pillars • Drag to Rotate</span>
+          <span className="text-[9px] text-[var(--text-secondary)] uppercase font-semibold">Hover to Query Beat Pillars • Drag to Rotate</span>
         </div>
       </div>
 
@@ -242,30 +242,30 @@ export const SpatialCube3D: React.FC = () => {
               top: `${Math.min(hoveredSector.y - 10, 120)}px`
             }}
           >
-            <div className="flex items-center justify-between pb-1 border-b border-white/5">
-              <span className="text-[9.5px] text-white font-extrabold uppercase truncate">{hoveredSector.name}</span>
+            <div className="flex items-center justify-between pb-1 border-b border-[var(--border-primary)]">
+              <span className="text-[9.5px] text-[var(--text-primary)] font-extrabold uppercase truncate">{hoveredSector.name}</span>
             </div>
             <div className="flex justify-between items-center mt-1">
-              <span className="text-[8px] text-slate-400">THREAT INDEX:</span>
+              <span className="text-[8px] text-[var(--text-muted)]">THREAT INDEX:</span>
               <span className="text-[11px] font-bold" style={{ color: hoveredSector.color }}>{hoveredSector.score}%</span>
             </div>
             <div className="flex justify-between items-center mt-0.5">
-              <span className="text-[8px] text-slate-400">DOMINANT CRIME:</span>
-              <span className="text-[8.5px] text-white font-semibold truncate max-w-[110px]">{hoveredSector.category}</span>
+              <span className="text-[8px] text-[var(--text-muted)]">DOMINANT CRIME:</span>
+              <span className="text-[8.5px] text-[var(--text-primary)] font-semibold truncate max-w-[110px]">{hoveredSector.category}</span>
             </div>
           </div>
         ) : (
-          <div className="absolute top-2 right-2 bg-slate-950/60 border border-white/5 p-2 rounded text-[8px] text-[#A8B4CC] flex flex-col gap-1 select-none pointer-events-none">
-            <span className="flex items-center gap-1 font-bold text-white uppercase"><BarChart2 className="w-3 h-3 text-[#1e6fd9]" /> HUD Legend</span>
-            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#C94A2A]" /> HIGH (&gt;85%)</div>
-            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#D4820A]" /> MEDIUM (50-85%)</div>
-            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#0E9E78]" /> LOW (&lt;50%)</div>
+          <div className="absolute top-2 right-2 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] p-2 rounded text-[8px] text-[var(--text-secondary)] flex flex-col gap-1 select-none pointer-events-none">
+            <span className="flex items-center gap-1 font-bold text-[var(--text-primary)] uppercase"><BarChart2 className="w-3 h-3 text-[#1e6fd9]" /> HUD Legend</span>
+            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-coral)]" /> HIGH (&gt;85%)</div>
+            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-amber)]" /> MEDIUM (50-85%)</div>
+            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-teal)]" /> LOW (&lt;50%)</div>
           </div>
         )}
       </div>
 
       {/* Visual orientation metrics inside dashboard box */}
-      <div className="flex justify-between text-[9px] text-[#E8EDF5] font-bold uppercase tracking-widest pt-2 border-t border-slate-900 select-none">
+      <div className="flex justify-between text-[9px] text-[var(--text-primary)] font-bold uppercase tracking-widest pt-2 border-t border-[var(--border-primary)] select-none">
         <span className="flex items-center gap-1">
           <Compass className="w-3.5 h-3.5 text-[#0e9e78]" />
           Grid Orientations (X: East, Z: North)

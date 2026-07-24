@@ -15,17 +15,17 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data = [] }) => {
   const maxY = Math.max(...data.map((item) => item.totalCrimes), 1);
 
   return (
-    <div className="w-full h-full bg-[#0a1220]/80 border border-white/5 p-4 rounded-lg flex flex-col justify-between select-none relative">
+    <div className="w-full h-full bg-[var(--bg-secondary)]/80 border border-[var(--border-primary)] p-4 rounded-lg flex flex-col justify-between select-none relative">
       <div className="flex justify-between items-center mb-3 font-mono">
-        <h4 className="text-[11.5px] font-bold text-white uppercase tracking-wider">Crime Trend</h4>
+        <h4 className="text-[11.5px] font-bold text-[var(--text-primary)] uppercase tracking-wider">Crime Trend</h4>
         <div className="flex items-center gap-3 text-[9px]">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-1.5 rounded-full bg-[#6C43CC]" />
-            <span className="text-[#A8B4CC] uppercase">Total Crimes</span>
+            <span className="w-2.5 h-1.5 rounded-full bg-[var(--accent-purple)]" />
+            <span className="text-[var(--text-secondary)] uppercase">Total Crimes</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-1.5 rounded-full bg-[#0E9E78]" />
-            <span className="text-[#A8B4CC] uppercase">Solved Crimes</span>
+            <span className="w-2.5 h-1.5 rounded-full bg-[var(--accent-teal)]" />
+            <span className="text-[var(--text-secondary)] uppercase">Solved Crimes</span>
           </div>
         </div>
       </div>
@@ -63,7 +63,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data = [] }) => {
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-full flex items-center justify-center text-[10px] text-[#6A7A96] uppercase tracking-wider border border-dashed border-slate-800 rounded">
+          <div className="h-full flex items-center justify-center text-[10px] text-[var(--text-muted)] uppercase tracking-wider border border-dashed border-[var(--border-primary)] rounded">
             No backend trend rows available
           </div>
         )}
