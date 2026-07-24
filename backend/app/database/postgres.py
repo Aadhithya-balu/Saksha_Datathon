@@ -21,12 +21,14 @@ def _engine_options() -> dict:
     connect_args = {}
     if url.drivername.startswith("postgresql"):
         connect_args["connect_timeout"] = 8
+        connect_args["options"] = "-c statement_timeout=30000"
 
     return {
         "pool_size": 10,
-        "max_overflow": 20,
+        "max_overflow": 10,
         "pool_pre_ping": True,
-        "pool_recycle": 1800,
+        "pool_recycle": 300,
+        "pool_timeout": 10,
         "connect_args": connect_args,
         "echo": settings.debug_enabled,
     }

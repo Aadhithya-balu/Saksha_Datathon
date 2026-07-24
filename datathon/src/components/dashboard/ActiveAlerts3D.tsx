@@ -184,16 +184,16 @@ export const ActiveAlerts3D: React.FC<ActiveAlerts3DProps> = ({ alertRows = [], 
     window.addEventListener('mouseup', handleMouseUp);
 
     let animationFrameId: number;
+    const startTime = performance.now();
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
+      const elapsed = (performance.now() - startTime) / 1000;
       if (!isDragging && hoveredAlert === null) {
-        // Slow idle oscillation swing
-        scene.rotation.y = Math.sin(clock.getElapsedTime() * 0.1) * 0.25;
+        scene.rotation.y = Math.sin(elapsed * 0.1) * 0.25;
       }
       renderer.render(scene, camera);
     };
-    
-    const clock = new THREE.Clock();
+
     animate();
 
     const resizeObserver = new ResizeObserver((entries) => {
