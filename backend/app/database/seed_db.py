@@ -9,10 +9,12 @@ from app.models.criminal import Criminal
 from app.models.evidence import Evidence
 from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
 from app.models.location import Location
+from app.models.notification import Notification
 from app.models.officer import Officer
 from app.models.role import Role
 from app.models.user import User
 from app.models.victim import Victim
+from app.models.chain_of_custody import ChainOfCustody
 
 ROLES = ["admin", "crime_analyst", "investigator", "policymaker"]
 
@@ -114,6 +116,23 @@ CASES = [
 ]
 
 
+DEMO_NOTIFICATIONS = [
+    # (sender_username, recipient_username_or_None, subject, type, category, title, message, priority, severity, status, case_no, fir_no, is_broadcast, hours_ago)
+    ("SCRB-7740", "IO-3921", "Gang activity detected in Whitefield Sector-4", "intelligence_sharing", "intelligence_sharing", "Gang Activity Alert — Whitefield", "Recent analytics indicate repeated movement of suspects associated with CR-2026-BNG-001. Increase patrol frequency and verify CCTV feeds in Sector-4 between 22:00–04:00.", "high", "high", "unread", "CR-2026-BNG-001", None, False, 2),
+    ("IO-3921", "SCRB-7740", "Evidence Uploaded for CR-2026-MYS-001", "case_update", "evidence_request", "CCTV Footage & Witness Statements Ready", "Digital CCTV footage from Devaraja Market Zone and three witness statements have been uploaded for CR-2026-MYS-001. Please review for pattern analysis.", "medium", "medium", "read", "CR-2026-MYS-001", "FIR-789/MYS/2026", False, 5),
+    ("SP-0088", None, "Operation Night Shield — Statewide Directive", "emergency_broadcast", "emergency_broadcast", "Operation Night Shield Activated", "All officers are instructed to increase highway surveillance from 21:00 to 05:00 effective immediately. Refer to operational order KSP/2026/NS-041 for assignment details.", "critical", "critical", "unread", None, None, True, 8),
+    ("admin", None, "Scheduled System Maintenance Notice", "system_notification", "system_notification", "System Maintenance — 23:30 to 00:30", "Platform maintenance is scheduled tonight between 23:30 and 00:30 IST. All active sessions will be preserved. AI inference services may be temporarily unavailable.", "low", "low", "read", None, None, True, 12),
+    ("IO-3921", "SP-0088", "Request for Additional Cyber Forensic Personnel", "case_escalation", "case_escalation", "Cyber Forensic Support Required — CR-2026-BNG-001", "The investigation into CR-2026-BNG-001 requires dedicated cyber forensic support. Current evidence analysis has identified complex digital trails that need specialized extraction. Requesting immediate assignment of a cyber forensic unit.", "high", "high", "unread", "CR-2026-BNG-001", "FIR-045/BNG/2026", False, 3),
+    ("SCRB-7740", "admin", "AI Hotspot Prediction Generated — 3 Emerging Zones", "intelligence_sharing", "intelligence_sharing", "Hotspot Predictions Ready for Review", "AI model has identified three emerging crime hotspots in Bengaluru Urban requiring review. Predictions are based on 31-feature LightGBM analysis. See dashboard for detailed overlay.", "medium", "medium", "acknowledged", None, None, False, 6),
+    ("SP-0088", "IO-3921", "Arrest Warrant Approved — Sayed Ibrahim", "investigation_update", "investigation_update", "Arrest Warrant Issued", "The arrest warrant for Sayed Ibrahim (alias: Sayed) in connection with CR-2026-MNG-001 has been approved by the jurisdictional magistrate. Proceed with coordinated apprehension.", "critical", "critical", "unread", "CR-2026-MNG-001", "FIR-331/MNG/2026", False, 1),
+    ("IO-3921", "SCRB-7740", "Suspect Movement Tracked — Mysuru Division", "intelligence_sharing", "intelligence_sharing", "Real-Time Suspect Tracking Update", "Vehicle registration KA-09-M-4412 linked to Vikram Yadav was flagged at KR Puram Transit Corridor at 14:32. CCTV capture forwarded. Requesting SCRB analysis of route patterns.", "high", "high", "read", "CR-2026-BNG-001", "FIR-052/BNG/2026", False, 10),
+    ("SCRB-7740", "IO-3921", "Evidence Chain Verification Required", "evidence_request", "evidence_request", "Chain of Custody Verification — CR-2026-MYS-001", "Evidence packet for CR-2026-MYS-001 requires chain of custody verification. Physical evidence from Devaraja Market Zone must be cross-referenced with digital timestamps. Deadline: 48 hours.", "medium", "medium", "unread", "CR-2026-MYS-001", "FIR-789/MYS/2026", False, 4),
+    ("IO-3921", None, "Narcotics Seizure Report — Mangaluru Harbor", "case_update", "case_update", "Seizure Report Filed", "Detailed narcotics seizure report for the Mangaluru Harbor operation has been compiled. 2.4 kg synthetic MDMA recovered. Forensic lab results pending.", "high", "high", "unread", "CR-2026-MNG-001", "FIR-331/MNG/2026", True, 7),
+    ("SP-0088", "SCRB-7740", "Weekly Intelligence Brief — District Overview", "intelligence_sharing", "intelligence_sharing", "Weekly Intelligence Summary", "Weekly intelligence brief for all districts is now available. Key highlights: 3 new hotspots identified, 2 gang networks mapped, 15% reduction in property crimes in Mysuru division.", "low", "low", "read", None, None, False, 24),
+    ("admin", "IO-3921", "Officer Badge Update", "administrative", "administrative", "Badge Configuration Updated", "Your officer badge profile has been updated with the latest certification. All access permissions have been synchronized.", "low", "low", "read", None, None, False, 48),
+]
+
+
 def seed() -> None:
     db = SessionLocal()
     try:
@@ -125,6 +144,7 @@ def seed() -> None:
         criminal_objs = _seed_criminals(db)
         victim_objs = _seed_victims(db)
         _seed_cases_and_firs(db, category_objs, location_objs, criminal_objs, victim_objs, officer_objs)
+        _seed_notifications(db, user_objs)
         db.commit()
         print("Seed complete. Prototype logins:")
         print("- admin / 564738")
@@ -311,16 +331,126 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
 
         evidence_exists = db.query(Evidence).filter(Evidence.case_id == crime.id).first()
         if not evidence_exists:
-            db.add(
-                Evidence(
-                    case_id=crime.id,
-                    title=f"Evidence for {case_number}",
-                    evidence_type="digital" if "Cyber" in category_name else "document",
-                    description=f"Primary evidence packet for {case_number}",
-                    created_by=investigator.badge_number if investigator else "SCRB",
-                    status="Pending",
-                )
+            # Determine evidence type and description based on category
+            if "Cyber" in category_name:
+                ev_type = "digital"
+                ev_title = f"Digital Forensics — {case_number}"
+                ev_desc = f"Digital evidence including device images, network logs, and transaction records for {case_number}. Captured during initial response on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+            elif "Narcotics" in category_name or "Smuggling" in category_name:
+                ev_type = "physical"
+                ev_title = f"Narcotics Seizure Kit — {case_number}"
+                ev_desc = f"Physical evidence including seized substances, packaging materials, and transport vehicle documentation for {case_number}. Collected at scene on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+            elif "Theft" in category_name or "Burglar" in category_name:
+                ev_type = "physical"
+                ev_title = f"Burglary Evidence Packet — {case_number}"
+                ev_desc = f"Physical evidence including tool marks, fingerprints, and stolen property inventory for {case_number}. Secured from crime scene on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+            elif "Assault" in category_name:
+                ev_type = "document"
+                ev_title = f"Assault Case Documentation — {case_number}"
+                ev_desc = f"Medical reports, witness statements, and scene photographs for assault case {case_number}. Compiled on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+            elif "Mining" in category_name:
+                ev_type = "document"
+                ev_title = f"Mining Violation Records — {case_number}"
+                ev_desc = f"Satellite imagery, transit manifests, and forged permits for illegal mining case {case_number}. Documented on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+            elif "Domestic" in category_name:
+                ev_type = "document"
+                ev_title = f"DV Case Evidence — {case_number}"
+                ev_desc = f"Medical examination reports, complaint statements, and photographic evidence for {case_number}. Filed on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+            else:
+                ev_type = "document"
+                ev_title = f"Case Evidence — {case_number}"
+                ev_desc = f"Supporting documentation and evidence for {case_number}. Collected on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+
+            ev_status = "Analyzed" if status == "closed" else "Under Analysis" if progress > 30 else "Pending"
+            badge = investigator.badge_number if investigator else "SCRB"
+            officer_name = investigator.name if investigator else "SCRB Analyst"
+
+            evidence = Evidence(
+                case_id=crime.id,
+                title=ev_title,
+                evidence_type=ev_type,
+                description=ev_desc,
+                created_by=officer_name,
+                status=ev_status,
+                storage_path=f"/evidence/{crime.id}/{ev_type}_packet",
             )
+            db.add(evidence)
+            db.flush()
+
+            # Chain of custody: registration
+            db.add(ChainOfCustody(
+                evidence_id=evidence.id,
+                from_user=investigator.user_id if investigator else None,
+                to_user=investigator.user_id if investigator else None,
+                action="Evidence Registered",
+                location=locations[station].address if station in locations else "Unknown",
+                remarks=f"Evidence logged for case {case_number}",
+            ))
+
+            # Chain of custody: analysis started (if evidence is under analysis or beyond)
+            if progress > 30:
+                db.add(ChainOfCustody(
+                    evidence_id=evidence.id,
+                    from_user=investigator.user_id if investigator else None,
+                    to_user=investigator.user_id if investigator else None,
+                    action="Forensic Analysis Initiated",
+                    location="Forensic Lab",
+                    remarks="Evidence submitted for forensic examination",
+                ))
+
+            # Chain of custody: analyzed (if case is closed)
+            if status == "closed":
+                db.add(ChainOfCustody(
+                    evidence_id=evidence.id,
+                    from_user=investigator.user_id if investigator else None,
+                    to_user=investigator.user_id if investigator else None,
+                    action="Analysis Completed",
+                    location="Forensic Lab",
+                    remarks="Forensic analysis complete — results filed with charge sheet",
+                ))
+
+
+def _seed_notifications(db, user_objs):
+    """Seed inter-station communication notifications."""
+    existing = db.query(Notification).count()
+    if existing > 0:
+        return
+
+    now = datetime.now()
+    for entry in DEMO_NOTIFICATIONS:
+        sender_username, recipient_username, subject, ntype, category, title, message, priority, severity, status, case_no, fir_no, is_broadcast, hours_ago = entry
+
+        sender = user_objs.get(sender_username)
+        recipient = user_objs.get(recipient_username) if recipient_username else None
+
+        notif = Notification(
+            user_id=recipient.id if recipient else None,
+            sender_id=sender.id if sender else None,
+            subject=subject,
+            notification_type=ntype,
+            category=category,
+            title=title,
+            message=message,
+            priority=priority,
+            severity=severity,
+            status=status,
+            related_case_number=case_no,
+            related_fir_number=fir_no,
+            is_broadcast=is_broadcast,
+            is_read=(status != "unread"),
+            is_dismissed=False,
+            created_at=now - timedelta(hours=hours_ago),
+        )
+        if status == "read":
+            notif.read_at = now - timedelta(hours=max(0, hours_ago - 1))
+        elif status == "acknowledged":
+            notif.read_at = now - timedelta(hours=max(0, hours_ago - 1))
+            notif.acknowledged_at = now - timedelta(hours=max(0, hours_ago - 2))
+
+        db.add(notif)
+
+    db.flush()
+    print(f"Seeded {len(DEMO_NOTIFICATIONS)} demo notifications")
 
 
 if __name__ == "__main__":

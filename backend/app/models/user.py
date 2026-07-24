@@ -26,4 +26,6 @@ class User(Base, UUIDPKMixin, TimestampMixin):
 
     officer_profile: Mapped["Officer | None"] = relationship(back_populates="user", uselist=False)
     audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="user")
-    notifications: Mapped[list["Notification"]] = relationship(back_populates="user")
+    notifications: Mapped[list["Notification"]] = relationship(
+        back_populates="user", foreign_keys="Notification.user_id"
+    )

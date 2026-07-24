@@ -329,6 +329,25 @@ input[type="week"] {
   background: rgba(15, 82, 186, 0.3);
 }
 
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(30, 111, 217, 0.15);
+  border-radius: 2px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 111, 217, 0.35);
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(30, 111, 217, 0.15) transparent;
+}
+
 /* ============================================
    UTILITY CLASSES
    ============================================ */
@@ -649,6 +668,113 @@ input[type="week"] {
   .sk-card-elevated {
     padding: var(--space-4);
   }
+}
+
+/* ============================================
+   RECHARTS TOOLTIP FIXES
+   Ensure tooltip text is always visible in dark mode
+   ============================================ */
+
+/* Default Recharts tooltip styling */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: rgba(11, 20, 38, 0.96) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 6px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 11px !important;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-label {
+  color: #E8EDF5 !important;
+  font-weight: 700 !important;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-item {
+  color: #E8EDF5 !important;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-item-list li {
+  color: #E8EDF5 !important;
+}
+
+/* Light mode: keep tooltip readable with dark text on lighter bg */
+[data-theme="light"] .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-theme="light"] .recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-label {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-item {
+  color: #0f172a !important;
+}
+
+/* ============================================
+   CUSTOM TOOLTIP FIXES
+   bg-black/95 overlays always get light text
+   ============================================ */
+.bg-black\/95, .bg-black\/90 {
+  color: #E8EDF5 !important;
+}
+
+.bg-black\/95 .text-\[var\(--text-primary\)\],
+.bg-black\/90 .text-\[var\(--text-primary\)\] {
+  color: #E8EDF5 !important;
+}
+
+.bg-black\/95 .text-\[var\(--text-secondary\)\],
+.bg-black\/90 .text-\[var\(--text-secondary\)\] {
+  color: #a8b4cc !important;
+}
+
+.bg-black\/95 .text-\[var\(--text-muted\)\],
+.bg-black\/90 .text-\[var\(--text-muted\)\] {
+  color: #8a99ad !important;
+}
+
+/* Light mode: dark text on light tooltip bg */
+[data-theme="light"] .bg-black\/95,
+[data-theme="light"] .bg-black\/90 {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .bg-black\/95 .text-\[var\(--text-primary\)\],
+[data-theme="light"] .bg-black\/90 .text-\[var\(--text-primary\)\] {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .bg-black\/95 .text-\[var\(--text-secondary\)\],
+[data-theme="light"] .bg-black\/90 .text-\[var\(--text-secondary\)\] {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .bg-black\/95 .text-\[var\(--text-muted\)\],
+[data-theme="light"] .bg-black\/90 .text-\[var\(--text-muted\)\] {
+  color: #64748b !important;
+}
+
+/* ============================================
+   HARDCODED AXIS COLORS FOR RECHARTS
+   Ensure axis labels use theme tokens
+   ============================================ */
+.recharts-cartesian-axis-tick-value {
+  fill: var(--text-primary) !important;
+}
+
+.recharts-cartesian-axis-line {
+  stroke: var(--text-muted) !important;
+}
+
+.recharts-cartesian-grid line {
+  stroke: rgba(255, 255, 255, 0.04) !important;
+}
+
+[data-theme="light"] .recharts-cartesian-grid line {
+  stroke: rgba(0, 0, 0, 0.06) !important;
 }
 
 /* Print styles */

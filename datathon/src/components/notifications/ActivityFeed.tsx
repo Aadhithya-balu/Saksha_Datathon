@@ -147,7 +147,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ limit = 50, compact 
         ) : (
           <div className="relative pl-4">
             {/* Timeline line */}
-            <div className="absolute left-[7px] top-2 bottom-2 w-px bg-white/[0.05]" />
+            <div className="absolute left-[7px] top-2 bottom-2 w-px bg-[var(--border-secondary)]" />
             
             <div className="space-y-0">
               {events.map((event) => (

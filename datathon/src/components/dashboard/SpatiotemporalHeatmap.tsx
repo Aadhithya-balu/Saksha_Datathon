@@ -1,6 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
-import * as THREE from 'three';
-import { Flame, Compass, HelpCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Flame } from 'lucide-react';
 
 interface HeatmapCell {
   day: string;
@@ -12,295 +11,121 @@ interface HeatmapCell {
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'];
 
-const HEATMAP_DATA: HeatmapCell[] = [];
-DAYS.forEach(day => {
-  HOURS.forEach(hour => {
-    let base = 25;
-    if (day === 'Fri' || day === 'Sat') {
-      if (hour === '00:00' || hour === '20:00') base = 85;
-    } else if (hour === '12:00' || hour === '16:00') {
-      base = 60;
-    }
-    const cases = Math.floor(base + Math.random() * 15);
-    HEATMAP_DATA.push({
-      day,
-      hour,
-      intensity: cases,
-      cases
+const generateData = (): HeatmapCell[] => {
+  const cells: HeatmapCell[] = [];
+  DAYS.forEach(day => {
+    HOURS.forEach(hour => {
+      let base = 25;
+      if (day === 'Fri' || day === 'Sat') {
+        if (hour === '00:00' || hour === '20:00') base = 85;
+      } else if (hour === '12:00' || hour === '16:00') {
+        base = 60;
+      }
+      const cases = Math.floor(base + Math.random() * 15);
+      cells.push({ day, hour, intensity: cases, cases });
     });
   });
-});
+  return cells;
+};
+
+const getHeatColor = (cases: number): string => {
+  if (cases >= 75) return 'rgba(201, 74, 42, 0.85)';
+  if (cases >= 60) return 'rgba(212, 130, 10, 0.8)';
+  if (cases >= 45) return 'rgba(108, 67, 204, 0.7)';
+  return 'rgba(30, 111, 217, 0.55)';
+};
+
+const getStatusLabel = (cases: number) => {
+  if (cases >= 75) return { text: 'Critical Density', color: '#C94A2A' };
+  if (cases >= 50) return { text: 'Elevated Alert', color: '#D4820A' };
+  return { text: 'Normal Patrol', color: '#1E6FD9' };
+};
 
 export const SpatiotemporalHeatmap: React.FC = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [hoveredCell, setHoveredCell] = useState<{
-    day: string;
-    hour: string;
-    cases: number;
-    color: string;
-    x: number;
-    y: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const width = containerRef.current.clientWidth || 360;
-    const height = 230;
-
-    const scene = new THREE.Scene();
-    scene.background = null;
-
-    const camera = new THREE.PerspectiveCamera(45, width / height, 1, 100);
-    camera.position.set(7, 7, 7);
-    camera.lookAt(0, 0, 0);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    containerRef.current.appendChild(renderer.domElement);
-
-    // Create a grid base helper
-    const gridHelper = new THREE.GridHelper(6, 12, 0x6C43CC, 0x111D35);
-    gridHelper.position.y = -0.5;
-    scene.add(gridHelper);
-
-    // Columns list for raycaster
-    const columns: THREE.Mesh[] = [];
-
-    // Map cells to 3D columns
-    HEATMAP_DATA.forEach((cell) => {
-      const dayIndex = DAYS.indexOf(cell.day);
-      const hourIndex = HOURS.indexOf(cell.hour);
-
-      // Map dayIndex to x [-2.0, 2.0]
-      const x = -2.0 + (dayIndex * 4.0) / (DAYS.length - 1);
-      // Map hourIndex to z [-1.5, 1.5]
-      const z = -1.5 + (hourIndex * 3.0) / (HOURS.length - 1);
-
-      // Height mapping
-      const barHeight = cell.cases / 30;
-
-      // Color mapping
-      let color = 0x1E6FD9; // Low (Blue)
-      let hexColor = '#1E6FD9';
-      if (cell.cases >= 75) {
-        color = 0xC94A2A; // High (Red)
-        hexColor = '#C94A2A';
-      } else if (cell.cases >= 50) {
-        color = 0x6C43CC; // Med (Purple)
-        hexColor = '#6C43CC';
-      }
-
-      const geometry = new THREE.BoxGeometry(0.35, barHeight, 0.35);
-      const material = new THREE.MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity: 0.7,
-        wireframe: false
-      });
-      const mesh = new THREE.Mesh(geometry, material);
-      
-      mesh.position.set(x, barHeight / 2 - 0.5, z);
-      mesh.userData = {
-        day: cell.day,
-        hour: cell.hour,
-        cases: cell.cases,
-        hexColor
-      };
-
-      scene.add(mesh);
-      columns.push(mesh);
-
-      // Wireframe helper
-      const geoOutline = new THREE.EdgesGeometry(geometry);
-      const matOutline = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
-      const wireframe = new THREE.LineSegments(geoOutline, matOutline);
-      wireframe.position.copy(mesh.position);
-      scene.add(wireframe);
-    });
-
-    // Add axes helpers
-    const dirX = new THREE.Vector3(1, 0, 0);
-    const arrowX = new THREE.ArrowHelper(dirX, new THREE.Vector3(-3.0, -0.5, 2.0), 0.8, 0x6C43CC, 0.2, 0.1);
-    scene.add(arrowX);
-
-    const dirZ = new THREE.Vector3(0, 0, -1);
-    const arrowZ = new THREE.ArrowHelper(dirZ, new THREE.Vector3(-3.0, -0.5, 2.0), 0.8, 0xC94A2A, 0.2, 0.1);
-    scene.add(arrowZ);
-
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-
-    let isDragging = false;
-    let previousMousePosition = { x: 0, y: 0 };
-    const rotationSpeed = 0.005;
-
-    const handleMouseDown = (e: MouseEvent) => {
-      isDragging = true;
-      previousMousePosition = { x: e.clientX, y: e.clientY };
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = renderer.domElement.getBoundingClientRect();
-      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-      raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(columns);
-
-      if (intersects.length > 0) {
-        const hitMesh = intersects[0].object as THREE.Mesh;
-        columns.forEach(col => {
-          (col.material as THREE.MeshBasicMaterial).opacity = 0.35;
-        });
-        (hitMesh.material as THREE.MeshBasicMaterial).opacity = 0.95;
-
-        const data = hitMesh.userData;
-        setHoveredCell({
-          day: data.day,
-          hour: data.hour,
-          cases: data.cases,
-          color: data.hexColor,
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top
-        });
-      } else {
-        columns.forEach(col => {
-          (col.material as THREE.MeshBasicMaterial).opacity = 0.70;
-        });
-        setHoveredCell(null);
-      }
-
-      if (!isDragging) return;
-
-      const deltaMove = {
-        x: e.clientX - previousMousePosition.x,
-        y: e.clientY - previousMousePosition.y
-      };
-
-      scene.rotation.y += deltaMove.x * rotationSpeed;
-      scene.rotation.x += deltaMove.y * rotationSpeed;
-
-      previousMousePosition = { x: e.clientX, y: e.clientY };
-    };
-
-    const handleMouseUp = () => {
-      isDragging = false;
-    };
-
-    const domElement = renderer.domElement;
-    domElement.addEventListener('mousedown', handleMouseDown);
-    domElement.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    let animationFrameId: number;
-    const animate = () => {
-      animationFrameId = requestAnimationFrame(animate);
-      if (!isDragging && hoveredCell === null) {
-        scene.rotation.y += 0.003;
-      }
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (let entry of entries) {
-        const newWidth = entry.contentRect.width || containerRef.current?.clientWidth || 360;
-        camera.aspect = newWidth / height;
-        camera.updateProjectionMatrix();
-        renderer.setSize(newWidth, height);
-      }
-    });
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      domElement.removeEventListener('mousedown', handleMouseDown);
-      domElement.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      resizeObserver.disconnect();
-      scene.traverse((object) => {
-        if (object instanceof THREE.Mesh) {
-          object.geometry.dispose();
-          if (Array.isArray(object.material)) {
-            object.material.forEach((mat) => mat.dispose());
-          } else {
-            object.material.dispose();
-          }
-        }
-      });
-      if (containerRef.current && domElement.parentNode === containerRef.current) {
-        containerRef.current.removeChild(domElement);
-      }
-      try {
-        renderer.forceContextLoss();
-      } catch (e) {
-        console.error(e);
-      }
-      renderer.dispose();
-    };
-  }, []);
+  const [hoveredCell, setHoveredCell] = useState<{ day: string; hour: string; cases: number } | null>(null);
+  const heatmapData = useMemo(() => generateData(), []);
 
   return (
     <div className="w-full h-full bg-[var(--bg-secondary)]/80 border border-[var(--border-primary)] p-4 rounded-lg flex flex-col justify-between select-none font-mono relative overflow-hidden group">
-      
       {/* Title */}
       <div className="flex justify-between items-center mb-2">
         <div>
           <h4 className="text-[11.5px] font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-1.5">
-            <Flame className="w-4 h-4 text-[var(--accent-coral)] animate-pulse" />
-            3D Spatiotemporal Incident Heatmap
+            <Flame className="w-4 h-4 text-[var(--accent-coral)]" />
+            Spatiotemporal Incident Heatmap
           </h4>
-          <span className="text-[9px] text-[var(--text-secondary)] uppercase font-semibold">WebGL 3D Temporal Density Grid • Rotate & Hover</span>
+          <span className="text-[9px] text-[var(--text-secondary)] uppercase font-semibold">Day x Hour Crime Density Grid</span>
         </div>
       </div>
 
-      {/* WebGL Canvas & Tooltip */}
-      <div className="w-full relative flex justify-center items-center cursor-grab active:cursor-grabbing" style={{ height: '220px' }}>
-        <div ref={containerRef} className="w-full h-full" />
+      {/* Heatmap Grid */}
+      <div className="flex-grow w-full flex flex-col justify-center">
+        {/* Hour labels header */}
+        <div className="flex items-center mb-1">
+          <div className="w-[44px] shrink-0" />
+          {HOURS.map(hour => (
+            <div key={hour} className="flex-1 text-center text-[8px] text-[var(--text-muted)] uppercase font-bold tracking-wider">{hour}</div>
+          ))}
+        </div>
 
-        {hoveredCell ? (
-          <div 
-            className="absolute z-20 p-2.5 bg-black/95 border rounded shadow-2xl flex flex-col gap-1 w-48 pointer-events-none transition-all duration-150 animate-[fadeIn_0.15s_ease-out]"
-            style={{ 
-              borderColor: hoveredCell.color,
-              left: `${Math.min(hoveredCell.x + 15, containerRef.current ? containerRef.current.clientWidth - 200 : 100)}px`,
-              top: `${Math.min(hoveredCell.y - 10, 120)}px`
-            }}
-          >
-            <div className="flex items-center justify-between pb-1 border-b border-[var(--border-primary)]">
-              <span className="text-[9.5px] text-[var(--text-primary)] font-extrabold uppercase">{hoveredCell.day} @ {hoveredCell.hour}</span>
-            </div>
-            <div className="flex justify-between items-center mt-1">
-              <span className="text-[8px] text-[var(--text-muted)]">INCIDENT CASES:</span>
-              <span className="text-[11px] font-bold text-[var(--text-primary)]">{hoveredCell.cases} Cases</span>
-            </div>
-            <div className="flex justify-between items-center mt-0.5">
-              <span className="text-[8px] text-[var(--text-muted)]">STATUS LEVEL:</span>
-              <span className="text-[8px] font-bold uppercase" style={{ color: hoveredCell.color }}>
-                {hoveredCell.cases >= 75 ? 'Critical Density' : hoveredCell.cases >= 50 ? 'Elevated Alert' : 'Normal Patrol'}
-              </span>
+        {/* Grid rows */}
+        {DAYS.map(day => (
+          <div key={day} className="flex items-center mb-1">
+            <div className="w-[44px] shrink-0 text-[8.5px] text-[var(--text-secondary)] uppercase font-bold tracking-wider">{day}</div>
+            <div className="flex-1 flex gap-[3px]">
+              {HOURS.map(hour => {
+                const cell = heatmapData.find(c => c.day === day && c.hour === hour);
+                const cases = cell?.cases ?? 0;
+                const isHovered = hoveredCell?.day === day && hoveredCell?.hour === hour;
+                return (
+                  <div
+                    key={`${day}-${hour}`}
+                    className="flex-1 rounded-sm cursor-pointer transition-all duration-150 relative flex items-center justify-center"
+                    style={{
+                      backgroundColor: getHeatColor(cases),
+                      height: '36px',
+                      opacity: isHovered ? 1 : hoveredCell ? 0.5 : 0.85,
+                      transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+                      zIndex: isHovered ? 10 : 1,
+                    }}
+                    onMouseEnter={() => setHoveredCell({ day, hour, cases })}
+                    onMouseLeave={() => setHoveredCell(null)}
+                  >
+                    <span className="text-[8px] font-bold text-white/90 drop-shadow-sm">{cases}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        ) : (
-          <div className="absolute bottom-2 right-2 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] p-2 rounded text-[8px] text-[var(--text-secondary)] flex flex-col gap-1 select-none pointer-events-none">
-            <span className="flex items-center gap-1 font-bold text-[var(--text-primary)] uppercase"><HelpCircle className="w-3 h-3 text-[var(--accent-coral)]" /> Grid Bounds</span>
-            <div className="flex items-center gap-1">X-Axis: Days (Mon-Sun)</div>
-            <div className="flex items-center gap-1">Z-Axis: Hours (00:00-20:00)</div>
-          </div>
-        )}
+        ))}
       </div>
 
-      {/* Visual orientation metrics inside dashboard box */}
-      <div className="flex justify-between text-[9px] text-[var(--text-primary)] font-bold uppercase tracking-widest pt-2 border-t border-[var(--border-primary)] select-none">
-        <span className="flex items-center gap-1">
-          <Compass className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
-          Grid Orientations (X: Days, Z: Hours)
-        </span>
-        <span>Spatiotemporal Helix</span>
+      {/* Hover Tooltip */}
+      {hoveredCell && (
+        <div className="absolute top-14 right-4 z-20 p-2.5 bg-[#0c1424] border border-[var(--accent-coral)] rounded shadow-2xl flex flex-col gap-1 w-48 font-mono pointer-events-none animate-[fadeIn_0.15s_ease-out]">
+          <span className="text-[9.5px] text-[#E8EDF5] font-extrabold uppercase">{hoveredCell.day} @ {hoveredCell.hour}</span>
+          <div className="flex justify-between items-center mt-1">
+            <span className="text-[8px] text-[#8a99ad]">INCIDENT CASES:</span>
+            <span className="text-[11px] font-bold text-[#E8EDF5]">{hoveredCell.cases} Cases</span>
+          </div>
+          <div className="flex justify-between items-center mt-0.5">
+            <span className="text-[8px] text-[#8a99ad]">STATUS LEVEL:</span>
+            <span className="text-[8px] font-bold uppercase" style={{ color: getStatusLabel(hoveredCell.cases).color }}>
+              {getStatusLabel(hoveredCell.cases).text}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Legend & Footer */}
+      <div className="flex justify-between text-[9px] text-[var(--text-primary)] font-bold uppercase tracking-widest pt-2 border-t border-[var(--border-primary)] select-none mt-2">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'rgba(201, 74, 42, 0.85)' }} /> High (&gt;75)</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'rgba(212, 130, 10, 0.8)' }} /> Elevated (60-75)</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'rgba(108, 67, 204, 0.7)' }} /> Moderate (45-60)</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'rgba(30, 111, 217, 0.55)' }} /> Low (&lt;45)</span>
+        </div>
+        <span>Spatiotemporal Matrix</span>
       </div>
 
       <div className="absolute inset-0 chart-diagonal-grid opacity-5 pointer-events-none -z-10" />

@@ -118,9 +118,9 @@ export const ReportTable: React.FC<{ data: ReportPreviewData | null; loading: bo
         <thead className="bg-[var(--bg-primary)] text-[var(--text-muted)] uppercase tracking-wider">
           <tr>{data.headers.map((header) => <th key={header} className="px-3 py-3 whitespace-nowrap">{header.replace(/_/g, ' ')}</th>)}</tr>
         </thead>
-        <tbody className="divide-y divide-white/5 text-[var(--text-secondary)]">
+        <tbody className="divide-y divide-[var(--border-primary)] text-[var(--text-secondary)]">
           {data.results.map((row, index) => (
-            <tr key={index} className="hover:bg-white/[0.03]">
+            <tr key={index} className="hover:bg-[var(--bg-surface-hover)] transition-colors">
               {data.headers.map((header) => <td key={header} className="px-3 py-3 max-w-[280px] truncate">{row[header] ?? ''}</td>)}
             </tr>
           ))}

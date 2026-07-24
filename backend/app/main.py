@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.api.v1 import api_router
 from app.core.config import settings
@@ -14,6 +15,39 @@ from app.database.neo4j import close_neo4j_driver, verify_neo4j_connectivity
 from app.database.postgres import Base, engine
 import app.models  # ensure models are registered
 
+
+def _migrate_notifications_table():
+    """Add new columns to the notifications table if they don't exist."""
+    new_columns = [
+        ("sender_id", "UUID REFERENCES users(id)"),
+        ("subject", "VARCHAR(500) NOT NULL DEFAULT ''"),
+        ("category", "VARCHAR(50) NOT NULL DEFAULT 'system_notification'"),
+        ("priority", "VARCHAR(20) NOT NULL DEFAULT 'medium'"),
+        ("status", "VARCHAR(20) NOT NULL DEFAULT 'unread'"),
+        ("related_case_number", "VARCHAR(50)"),
+        ("related_fir_number", "VARCHAR(50)"),
+        ("is_broadcast", "BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("parent_id", "UUID"),
+        ("attachment_url", "VARCHAR(500)"),
+        ("acknowledged_at", "TIMESTAMPTZ"),
+        ("resolved_at", "TIMESTAMPTZ"),
+    ]
+    with engine.connect() as conn:
+        # Get existing columns
+        result = conn.execute(text(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications'"
+        ))
+        existing = {row[0] for row in result}
+
+        for col_name, col_def in new_columns:
+            if col_name not in existing:
+                try:
+                    conn.execute(text(f"ALTER TABLE notifications ADD COLUMN {col_name} {col_def}"))
+                except Exception:
+                    pass
+        conn.commit()
+    logger.info("Notifications table migration complete")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
@@ -21,6 +55,7 @@ async def lifespan(app: FastAPI):
 
     try:
         Base.metadata.create_all(bind=engine)
+        _migrate_notifications_table()
         with engine.connect():
             logger.info("PostgreSQL connection OK")
     except Exception as exc:

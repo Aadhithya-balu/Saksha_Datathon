@@ -160,7 +160,7 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
               </thead>
               <tbody className="divide-y divide-border-color/65">
                 {cases.map((c) => (
-                  <tr key={c.id} className="hover:bg-white/[0.02] transition-colors group">
+                   <tr key={c.id} className="hover:bg-[var(--bg-surface-hover)] transition-colors group">
                     <td className="p-4">
                       <div className="font-bold text-[var(--text-primary)] group-hover:text-[var(--text-primary)] uppercase">
                         {c.case_number}
