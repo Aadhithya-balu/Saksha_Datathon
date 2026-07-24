@@ -1201,3 +1201,227 @@ export interface ModelInfo {
 export async function getModelInfo() {
   return apiRequest<ModelInfo>('/ai/predictions/model-info');
 }
+
+// ── Sociological Insights ───────────────────────────────────────────────────
+
+export interface AgeGroupData {
+  group: string;
+  count: number;
+  percentage: number;
+}
+
+export interface GenderData {
+  gender: string;
+  count: number;
+  percentage: number;
+}
+
+export interface DemographicAnalysis {
+  age_groups: AgeGroupData[];
+  gender_distribution: GenderData[];
+  total_victims: number;
+}
+
+export interface UrbanRuralData {
+  type: string;
+  label: string;
+  count: number;
+  percentage: number;
+  color: string;
+}
+
+export interface DistrictDensity {
+  district: string;
+  crime_count: number;
+  crime_per_lakh: number;
+  crime_per_sqkm: number;
+  population_lakhs: number;
+  area_sq_km: number;
+  type: string;
+}
+
+export interface UrbanRuralAnalysis {
+  urban_rural_distribution: UrbanRuralData[];
+  district_crime_density: DistrictDensity[];
+  total_crimes: number;
+}
+
+export interface DistrictOverlay {
+  district: string;
+  crime_count: number;
+  population_lakhs: number;
+  area_sq_km: number;
+  population_density: number;
+  crime_per_lakh: number;
+  crime_per_sqkm: number;
+  urbanization_type: string;
+  literacy_rate: number;
+  sex_ratio: number;
+  avg_income_lakhs: number;
+  correlation_flags: string[];
+}
+
+export interface SocioeconomicAnalysis {
+  districts: DistrictOverlay[];
+  correlations: {
+    literacy_vs_crime: number;
+    income_vs_crime: number;
+  };
+  insights: Array<{
+    type: string;
+    title: string;
+    description: string;
+  }>;
+}
+
+export interface ScatterPoint {
+  district: string;
+  crime_count: number;
+  crime_per_lakh: number;
+  population_density: number;
+  urbanization_type: string;
+  color: string;
+}
+
+export interface TemporalDemographic {
+  hourly_distribution: Array<{ hour: string; count: number; percentage: number }>;
+  day_of_week_distribution: Array<{ day: string; count: number; percentage: number }>;
+  monthly_trend: Array<{ month: string; count: number }>;
+  night_crime_percentage: number;
+  weekend_crime_percentage: number;
+}
+
+export interface OffenderDemographics {
+  age_groups: AgeGroupData[];
+  gender_distribution: GenderData[];
+  status_distribution: Array<{ status: string; count: number; percentage: number }>;
+  total_offenders: number;
+}
+
+export async function getSociologicalDemographics() {
+  return apiRequest<DemographicAnalysis>('/sociological/demographics');
+}
+
+export async function getSociologicalUrbanRural() {
+  return apiRequest<UrbanRuralAnalysis>('/sociological/urban-rural');
+}
+
+export async function getSociologicalSocioeconomic() {
+  return apiRequest<SocioeconomicAnalysis>('/sociological/socioeconomic');
+}
+
+export async function getSociologicalPopulationCorrelation() {
+  return apiRequest<{ scatter: ScatterPoint[]; total_districts: number }>('/sociological/population-correlation');
+}
+
+export async function getSociologicalTemporal() {
+  return apiRequest<TemporalDemographic>('/sociological/temporal-demographics');
+}
+
+export async function getSociologicalOffenderDemographics() {
+  return apiRequest<OffenderDemographics>('/sociological/offender-demographics');
+}
+
+// ── Strategic Intelligence ──────────────────────────────────────────────────
+
+export interface StrategicBriefing {
+  generated_at: string;
+  summary: {
+    total_crimes: number;
+    recent_crimes_30d: number;
+    weekly_crimes: number;
+    open_cases: number;
+    high_priority_cases: number;
+    resolution_rate: number;
+    crime_trend_change: number;
+    total_firs: number;
+    total_criminals: number;
+    at_large_criminals: number;
+    total_victims: number;
+    total_officers: number;
+    total_evidence: number;
+    pending_evidence: number;
+    unread_notifications: number;
+  };
+  top_categories: Array<{ category: string; count: number }>;
+  districts_at_risk: Array<{
+    district: string;
+    crime_count: number;
+    risk_level: string;
+    trend: string;
+    factors: string[];
+  }>;
+  monthly_trend: Array<{ month: string; count: number }>;
+  emerging_trends: Array<{
+    category: string;
+    recent_count: number;
+    historical_count: number;
+    change_percentage: number;
+    direction: string;
+  }>;
+  deployment_suggestions: Array<{
+    priority: string;
+    action: string;
+    reason: string;
+    district: string;
+    resource_type: string;
+  }>;
+  top_criminals: Array<{
+    id: string;
+    name: string;
+    status: string;
+    aliases: string | null;
+    risk_factors: string | null;
+  }>;
+  recent_firs: Array<{
+    id: string;
+    fir_number: string;
+    complainant: string;
+    status: string;
+    filed_at: string | null;
+  }>;
+}
+
+export interface DailySummary {
+  date: string;
+  today_crimes: number;
+  yesterday_crimes: number;
+  trend: string;
+  today_firs: number;
+  open_cases: number;
+  at_large_criminals: number;
+  categories_today: Array<{ category: string; count: number }>;
+  districts_today: Array<{ district: string; count: number }>;
+}
+
+export interface ResourceAllocation {
+  allocations: Array<{
+    district: string;
+    crime_share_pct: number;
+    crime_count: number;
+    allocation_priority: string;
+    suggested_patrol_ratio: number;
+  }>;
+  total_districts: number;
+  generated_at: string;
+}
+
+export async function getStrategicBriefing() {
+  return apiRequest<StrategicBriefing>('/strategic/briefing');
+}
+
+export async function getHighRiskDistricts() {
+  return apiRequest<any[]>('/strategic/high-risk-districts');
+}
+
+export async function getEmergingTrends() {
+  return apiRequest<any[]>('/strategic/emerging-trends');
+}
+
+export async function getResourceAllocation() {
+  return apiRequest<ResourceAllocation>('/strategic/resource-allocation');
+}
+
+export async function getDailySummary() {
+  return apiRequest<DailySummary>('/strategic/daily-summary');
+}

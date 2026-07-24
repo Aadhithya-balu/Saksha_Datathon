@@ -24,6 +24,8 @@ import OfficersPage from './pages/Officers';
 import EvidencePage from './pages/Evidence';
 import InvestigationPage from './pages/Investigation';
 import NotificationsPage from './pages/Notifications';
+import SociologicalPage from './pages/Sociological';
+import StrategicPage from './pages/Strategic';
 import GlobalAIAssistant from './components/ai/GlobalAIAssistant';
 import DocsPage from './pages/Docs';
 
@@ -69,6 +71,8 @@ function App() {
       crime_cases: 'Crime Cases',
       investigation: 'Investigation',
       notifications: 'Intelligence Center',
+      sociological: 'Sociological Intelligence',
+      strategic: 'Strategic Intelligence',
       offenders: 'Offender Registry',
       criminals: 'Criminal Dossiers',
       victims: 'Victims Registry',
@@ -125,6 +129,8 @@ function App() {
       case 'officers': return <RoleGuard path="/officers"><OfficersPage /></RoleGuard>;
       case 'evidence': return <RoleGuard path="/evidence"><EvidencePage /></RoleGuard>;
       case 'notifications': return <RoleGuard path="/dashboard"><NotificationsPage /></RoleGuard>;
+      case 'sociological': return <RoleGuard path="/dashboard"><SociologicalPage /></RoleGuard>;
+      case 'strategic': return <RoleGuard path="/dashboard"><StrategicPage /></RoleGuard>;
       case 'docs': return <DocsPage />;
       default: return <Overview />;
     }
