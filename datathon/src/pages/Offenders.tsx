@@ -1,9 +1,11 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuditStore } from '../store/auditStore';
 import { useAuthStore } from '../store/authStore';
-import { ShieldAlert, Download, Terminal, Search, UserMinus } from 'lucide-react';
+import { ShieldAlert, Terminal, Search, UserMinus } from 'lucide-react';
 import { downloadSecureDossier } from '../utils/downloader';
 import { getOffenderDossiers, type OffenderDossier } from '../services/api';
+
+import { ExportMenu } from '../components/reports';
 
 export const Offenders: React.FC = () => {
   const { logs, addLog, clearLogs } = useAuditStore();
@@ -20,30 +22,33 @@ export const Offenders: React.FC = () => {
       .then((response) => {
         if (!isMounted) return;
         setOffenders(response.offenders);
-        setSelectedOffenderId(response.offenders[0]?.id ?? '');
-        setLoadError(null);
+        if (response.offenders.length > 0) {
+          setSelectedOffenderId(response.offenders[0].id);
+        }
       })
-      .catch((error) => {
+      .catch((err) => {
         if (!isMounted) return;
-        setOffenders([]);
-        setSelectedOffenderId('');
-        setLoadError(error instanceof Error ? error.message : 'Failed to load offenders');
+        setLoadError(err instanceof Error ? err.message : 'Failed to load offender dossier records');
       });
+
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const activeOffender = offenders.find((item) => item.id === selectedOffenderId) || offenders[0] || null;
-  const filteredOffenders = offenders.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.alias.toLowerCase().includes(searchQuery.toLowerCase())
+  const activeOffender = offenders.find((o) => o.id === selectedOffenderId) || offenders[0];
+
+  const filteredOffenders = offenders.filter(
+    (item) =>
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.crime_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.alias.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleExportPDF = () => {
+  const handleExport = (format: 'pdf' | 'docx' | 'txt' | 'csv') => {
     if (!activeOffender || !user) return;
-    addLog(user.name, user.badgeId, 'EXPORT', `Exported dossier for ${activeOffender.name} watermarked: [${selectedWatermark}]`);
-    downloadSecureDossier(`Offender Dossier - ${activeOffender.name}`, activeOffender, selectedWatermark);
+    addLog(user.name, user.badgeId, 'EXPORT', `Exported dossier for ${activeOffender.name} format: [${format.toUpperCase()}] watermarked: [${selectedWatermark}]`);
+    downloadSecureDossier(`Offender Dossier - ${activeOffender.name}`, activeOffender, selectedWatermark, format);
   };
 
   return (
@@ -162,13 +167,7 @@ export const Offenders: React.FC = () => {
                 </select>
               </div>
 
-              <button
-                onClick={handleExportPDF}
-                className="w-full sm:w-auto py-2 px-5 bg-[#C94A2A] hover:bg-[#C94A2A]/85 text-white font-mono text-[10px] uppercase rounded-btn font-semibold tracking-wider flex items-center justify-center gap-1.5 shadow-glow-coral cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Generate Secure Dossier PDF
-              </button>
+              <ExportMenu onExport={(format) => handleExport(format)} />
             </div>
           )}
         </div>

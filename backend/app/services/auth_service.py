@@ -18,7 +18,8 @@ def authenticate_user(db: Session, username: str, password: str) -> User:
     """
     Authenticate a user by checking:
       1. Local demo auth (username + hashed_password in users table).
-      2. Fallback to Supabase Auth REST API if local user not found.
+      2. Local demo auth by officer badge number.
+      3. Fallback to Supabase Auth REST API if local user not found.
 
     The fallback path:
       - Authenticates with Supabase Auth using email/username + password.
@@ -28,6 +29,13 @@ def authenticate_user(db: Session, username: str, password: str) -> User:
     Raises UnauthorizedException on all failure paths.
     """
     user = db.query(User).filter(User.username == username).first()
+    
+    if not user:
+        from app.models.officer import Officer
+        officer = db.query(Officer).filter(Officer.badge_number == username).first()
+        if officer and officer.user:
+            user = officer.user
+
     if user:
         # Local user exists — verify password locally (demo user path)
         if not verify_password(password, user.hashed_password):

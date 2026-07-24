@@ -16,23 +16,20 @@ import { FIRTimeline } from '../../components/fir/FIRTimeline';
 import { FIRAttachments } from '../../components/fir/FIRAttachments';
 import { FIRRiskScore } from '../../components/fir/FIRRiskScore';
 import {
-  FileText,
-  Plus,
   Search,
   Filter,
-  Trash2,
-  Edit3,
-  Download,
-  MapPin,
-  User,
-  ShieldCheck,
+  Plus,
+  RefreshCw,
+  MoreVertical,
   Calendar,
   AlertTriangle,
-  FolderOpen,
-  UserCheck,
-  Activity,
-  ArrowRight
+  User,
+  MapPin,
+  FileText,
+  Clock,
+  ShieldAlert
 } from 'lucide-react';
+import { ExportMenu } from '../../components/reports';
 
 const DISTRICTS = [
   'Bengaluru Urban',
@@ -208,15 +205,10 @@ export const FIRPage: React.FC = () => {
 
     // Secure dossier document payload
     const exportData = {
-      DOCUMENT_TYPE: 'CLASSIFIED FIRST INFORMATION REPORT (FIR)',
-      EXPORTED_BY: `${user.name} (Badge: ${user.badgeId})`,
-      SECURITY_CLEARANCE: 'LEVEL-3 CLASSIFIED',
-      TIMESTAMP: new Date().toISOString(),
-      FIR_DETAILS: {
+      BASIC_DETAILS: {
         fir_number: selectedFir.fir_number,
-        filed_at: selectedFir.filed_at,
-        complainant_name: selectedFir.complainant_name,
-        complainant_contact: selectedFir.complainant_contact || 'None',
+        complainant: selectedFir.complainant_name,
+        contact: selectedFir.complainant_contact,
         sections: selectedFir.sections || 'Unspecified',
         narrative: selectedFir.narrative || 'No statement details',
         status: selectedFir.status.toUpperCase()
@@ -240,7 +232,8 @@ export const FIRPage: React.FC = () => {
     downloadSecureDossier(
       `FIR_DOSSIER_${selectedFir.fir_number.replace(/\//g, '_')}`,
       exportData,
-      `CONFIDENTIAL - ${user.badgeId} - ${user.role}`
+      `CONFIDENTIAL - ${user.badgeId} - ${user.role}`,
+      format
     );
   };
 
@@ -463,13 +456,9 @@ export const FIRPage: React.FC = () => {
                       </button>
                     </>
                   )}
-                  <button
-                    onClick={handleExportPDF}
-                    className="px-2.5 py-1.5 bg-[#111D35] hover:bg-[#1E6FD9]/15 border border-slate-900 hover:border-[#1E6FD9]/30 text-[#A8B4CC] hover:text-white rounded-btn transition-colors cursor-pointer flex items-center gap-1.5 font-bold"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Secure Dossier
-                  </button>
+                  <ExportMenu 
+                    onExport={(format) => handleExportPDF(format)} 
+                  />
                 </div>
               </div>
 

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { API_BASE_URL, getStoredTokens } from '../services/api';
 import {
   ExportButton,
+  ExportMenu,
   ReportCards,
   ReportFilters,
   ReportPreview,
@@ -84,7 +85,7 @@ export const Reports: React.FC = () => {
     setFilters((current) => ({ ...current, reportType, status: '', sortBy: 'created_at' }));
   };
 
-  const download = async (format: 'pdf' | 'csv') => {
+  const download = async (format: 'pdf' | 'csv' | 'docx' | 'txt') => {
     setExporting(format);
     setError(null);
     try {
@@ -98,8 +99,12 @@ export const Reports: React.FC = () => {
       const anchor = document.createElement('a');
       anchor.href = url;
       anchor.download = filename;
+      document.body.appendChild(anchor);
       anchor.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => {
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+      }, 300);
       await loadPreview();
     } catch (err) {
       setError(err instanceof Error ? err.message : `Failed to export ${format.toUpperCase()}`);
@@ -116,8 +121,7 @@ export const Reports: React.FC = () => {
           <p className="mt-1 text-[9.5px] uppercase tracking-[0.2em] text-[#6A7A96]">Live case, officer, criminal, and evidence exports</p>
         </div>
         <div className="flex gap-2">
-          <ExportButton label={exporting === 'pdf' ? 'Preparing PDF' : 'Download PDF'} disabled={!!exporting} onClick={() => void download('pdf')} />
-          <ExportButton label={exporting === 'csv' ? 'Preparing CSV' : 'Download CSV'} disabled={!!exporting} onClick={() => void download('csv')} />
+          <ExportMenu disabled={!!exporting} exportingFormat={exporting} onExport={(fmt) => void download(fmt)} />
         </div>
       </div>
 

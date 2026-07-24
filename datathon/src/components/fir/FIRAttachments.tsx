@@ -3,7 +3,8 @@ import { type FIRDetailRecord, updateFIR } from '../../services/api';
 import { FileText, Download, UploadCloud, CheckCircle, Trash2, ShieldAlert } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAuditStore } from '../../store/auditStore';
-
+import { downloadSecureDossier } from '../../utils/downloader';
+import { ExportMenu } from '../reports';
 interface FIRAttachmentsProps {
   fir: FIRDetailRecord;
   onAttachmentAdded: (updatedAttachments: any[]) => void;
@@ -110,18 +111,18 @@ export const FIRAttachments: React.FC<FIRAttachmentsProps> = ({ fir, onAttachmen
     }
   };
 
-  const handleDownload = (filename: string) => {
-    // Generate mock secure file download
-    const content = `SAKSHA CASE RECON DATA - CLASSIFIED SYSTEM\nSTAMP: ${new Date().toISOString()}\nFIR ID: ${fir.fir_number}\nFILE: ${filename}`;
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const handleDownload = (filename: string, format: 'pdf' | 'docx' | 'txt' | 'csv' = 'pdf') => {
+    downloadSecureDossier(
+      `ATTACHMENT_${filename.replace(/[^a-zA-Z0-9]/g, '_')}`,
+      {
+        "FIR ID": fir.fir_number,
+        "File Name": filename,
+        "Classification": "SAKSHA CASE RECON DATA - CLASSIFIED SYSTEM",
+        "Timestamp": new Date().toISOString()
+      },
+      `CONFIDENTIAL - ${user?.badgeId || 'SYSTEM'}`,
+      format
+    );
 
     if (user) {
       addLog(
@@ -215,13 +216,9 @@ export const FIRAttachments: React.FC<FIRAttachmentsProps> = ({ fir, onAttachmen
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  onClick={() => handleDownload(file.name)}
-                  className="p-1 text-slate-500 hover:text-white hover:bg-slate-900 rounded cursor-pointer transition-colors"
-                  title="Secure Download"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                </button>
+                <ExportMenu 
+                  onExport={(format) => handleDownload(file.name, format)} 
+                />
                 <button
                   onClick={() => handleDelete(idx)}
                   className="p-1 text-slate-500 hover:text-red-400 hover:bg-slate-900 rounded cursor-pointer transition-colors"

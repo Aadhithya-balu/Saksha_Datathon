@@ -79,6 +79,35 @@ export const ExportButton: React.FC<{ label: string; onClick: () => void; disabl
   </button>
 );
 
+export const ExportMenu: React.FC<{ disabled?: boolean; exportingFormat?: string | null; onExport: (format: 'pdf' | 'docx' | 'txt' | 'csv') => void }> = ({ disabled, exportingFormat, onExport }) => {
+  return (
+    <div className="relative inline-block text-left">
+      <select
+        disabled={disabled}
+        value=""
+        onChange={(e) => {
+          if (e.target.value) {
+            onExport(e.target.value as any);
+          }
+        }}
+        className="appearance-none inline-flex items-center justify-center gap-2 rounded bg-[#0E9E78]/15 border border-[#0E9E78]/35 pl-8 pr-6 py-2 text-[10px] font-bold uppercase tracking-wider text-white disabled:opacity-40 cursor-pointer outline-none focus:border-[#0E9E78]"
+      >
+        <option value="" disabled hidden>{exportingFormat ? `Preparing ${exportingFormat.toUpperCase()}...` : 'Export As...'}</option>
+        <option value="pdf" className="bg-[#0A1220] text-white">Export PDF</option>
+        <option value="docx" className="bg-[#0A1220] text-white">Export DOCX</option>
+        <option value="txt" className="bg-[#0A1220] text-white">Export TXT</option>
+        <option value="csv" className="bg-[#0A1220] text-white">Export CSV</option>
+      </select>
+      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2">
+        <Download className="h-3.5 w-3.5 text-[#0E9E78]" />
+      </div>
+      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+        <svg className="h-3 w-3 text-[#0E9E78]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+      </div>
+    </div>
+  );
+};
+
 export const ReportTable: React.FC<{ data: ReportPreviewData | null; loading: boolean; error: string | null }> = ({ data, loading, error }) => (
   <div className="min-h-[260px] overflow-auto rounded-lg border border-border-color bg-[#111D35]/25 custom-scrollbar">
     {loading && <div className="p-10 text-center text-[10px] uppercase tracking-widest text-[#6A7A96]">Loading live backend report</div>}

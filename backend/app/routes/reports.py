@@ -1,4 +1,4 @@
-"""Live reporting routes with paginated data, PDF export, and CSV export."""
+"""Live reporting routes with paginated data, PDF export, DOCX export, TXT export, and CSV export."""
 from __future__ import annotations
 
 import csv
@@ -6,6 +6,10 @@ import io
 import re
 from datetime import datetime, timezone
 from typing import Any, Callable
+
+from fpdf import FPDF
+from docx import Document
+from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
@@ -17,9 +21,11 @@ from app.auth.dependencies import get_current_user
 from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INSPECTOR, ROLE_INVESTIGATOR, ROLE_POLICYMAKER, require_roles
 from app.database.postgres import get_db
 from app.models.crime import CrimeCase
+from app.models.crime_category import CrimeCategory
 from app.models.criminal import Criminal
 from app.models.evidence import Evidence
 from app.models.fir import FIR
+from app.models.location import Location
 from app.models.officer import Officer
 from app.models.report import Report
 from app.models.user import User
@@ -36,7 +42,7 @@ router = APIRouter(prefix="/reports", tags=["Reports"], dependencies=[Depends(re
 ))])
 
 REPORT_TYPES = {"cases", "officers", "criminals", "evidence"}
-EXPORT_FORMATS = {"pdf", "csv"}
+EXPORT_FORMATS = {"pdf", "csv", "docx", "txt"}
 SORTABLE_COLUMNS: dict[str, dict[str, Any]] = {
     "cases": {
         "case_number": CrimeCase.case_number,
@@ -69,10 +75,42 @@ SORTABLE_COLUMNS: dict[str, dict[str, Any]] = {
 }
 
 
+def _format_human_readable_value(v: Any) -> str:
+    if v is None:
+        return ""
+    if isinstance(v, (int, float, bool)):
+        return str(v)
+    if isinstance(v, str):
+        return v.strip()
+    if isinstance(v, dict):
+        if v.get("type") == "Feature" and "properties" in v:
+            props = v.get("properties", {})
+            coords = v.get("geometry", {}).get("coordinates", [])
+            coord_str = f" (Coords: {coords[0]}, {coords[1]})" if coords and len(coords) >= 2 else ""
+            items = [f"{str(pk).replace('_', ' ').title()}: {pv}" for pk, pv in props.items()]
+            return ", ".join(items) + coord_str
+        res = []
+        for k, val in v.items():
+            key_name = str(k).replace("_", " ").title()
+            res.append(f"- {key_name}: {_format_human_readable_value(val)}")
+        return "\n".join(res)
+    if isinstance(v, list):
+        res = []
+        for idx, item in enumerate(v, 1):
+            if isinstance(item, dict):
+                res.append(f"{idx}. {_format_human_readable_value(item)}")
+            else:
+                res.append(f"- {str(item)}")
+        return "\n".join(res)
+    return str(v)
+
+
 def _clean_text(value: Any) -> str:
     if value is None:
         return ""
-    return re.sub(r"\s+", " ", str(value)).strip()
+    if isinstance(value, (dict, list)):
+        return _format_human_readable_value(value)
+    return str(value).strip()
 
 
 def _serialize_datetime(value: Any) -> str:
@@ -109,23 +147,32 @@ def _report_query(
     sort_order: str,
 ) -> tuple[SQLAlchemyQuery, list[str], Callable[[Any], dict[str, Any]]]:
     if report_type == "cases":
-        query = db.query(CrimeCase).options(joinedload(CrimeCase.assigned_officer))
+        query = db.query(CrimeCase).options(
+            joinedload(CrimeCase.assigned_officer),
+            joinedload(CrimeCase.category),
+            joinedload(CrimeCase.location)
+        )
         if search:
             query = query.filter(or_(CrimeCase.case_number.ilike(f"%{search}%"), CrimeCase.description.ilike(f"%{search}%")))
         if status:
             query = query.filter(CrimeCase.status == status)
         if district:
-            query = query.join(Officer, CrimeCase.assigned_officer_id == Officer.id, isouter=True).filter(Officer.district == district)
+            query = query.join(Location, CrimeCase.location_id == Location.id, isouter=True).filter(Location.district == district)
         query = _apply_date_range(query, CrimeCase.occurred_at, date_from, date_to)
-        headers = ["case_number", "status", "priority", "occurred_at", "reported_at", "assigned_officer", "description"]
+        headers = ["case_number", "category", "district", "station", "status", "priority", "progress", "occurred_at", "reported_at", "assigned_officer", "mo_tags", "description"]
         mapper = lambda item: {
             "case_number": item.case_number,
+            "category": item.category.name if item.category else "",
+            "district": item.location.district if item.location else "",
+            "station": item.location.station if item.location else "",
             "status": item.status,
-            "priority": item.priority,
+            "priority": item.priority or "medium",
+            "progress": f"{item.progress or 0}%",
             "occurred_at": _serialize_datetime(item.occurred_at),
             "reported_at": _serialize_datetime(item.reported_at),
-            "assigned_officer": item.assigned_officer.name if item.assigned_officer else "",
-            "description": item.description,
+            "assigned_officer": item.assigned_officer.name if item.assigned_officer else "Unassigned",
+            "mo_tags": item.mo_tags or "",
+            "description": item.description or "",
         }
     elif report_type == "officers":
         query = db.query(Officer)
@@ -135,16 +182,17 @@ def _report_query(
             query = query.filter(Officer.status == status)
         if district:
             query = query.filter(Officer.district == district)
-        headers = ["badge_number", "name", "rank", "designation", "district", "station", "status", "email"]
+        headers = ["badge_number", "name", "rank", "designation", "district", "station", "status", "phone", "email"]
         mapper = lambda item: {
             "badge_number": item.badge_number,
             "name": item.name,
-            "rank": item.rank,
-            "designation": item.designation,
-            "district": item.district,
-            "station": item.station,
+            "rank": item.rank or "",
+            "designation": item.designation or "",
+            "district": item.district or "",
+            "station": item.station or "",
             "status": item.status,
-            "email": item.email,
+            "phone": item.phone or "",
+            "email": item.email or "",
         }
     elif report_type == "criminals":
         query = db.query(Criminal)
@@ -152,15 +200,16 @@ def _report_query(
             query = query.filter(or_(Criminal.full_name.ilike(f"%{search}%"), Criminal.aliases.ilike(f"%{search}%"), Criminal.mo_summary.ilike(f"%{search}%")))
         if status:
             query = query.filter(Criminal.status == status)
-        headers = ["full_name", "aliases", "gender", "date_of_birth", "status", "address", "mo_summary"]
+        headers = ["full_name", "aliases", "gender", "date_of_birth", "status", "address", "identifying_marks", "mo_summary"]
         mapper = lambda item: {
             "full_name": item.full_name,
-            "aliases": item.aliases,
-            "gender": item.gender,
+            "aliases": item.aliases or "",
+            "gender": item.gender or "",
             "date_of_birth": _serialize_datetime(item.date_of_birth),
             "status": item.status,
-            "address": item.address,
-            "mo_summary": item.mo_summary,
+            "address": item.address or "",
+            "identifying_marks": item.identifying_marks or "",
+            "mo_summary": item.mo_summary or "",
         }
     else:
         query = db.query(Evidence).options(joinedload(Evidence.crime_case), joinedload(Evidence.assignee))
@@ -169,16 +218,17 @@ def _report_query(
         if status:
             query = query.filter(Evidence.status == status)
         query = _apply_date_range(query, Evidence.created_at, date_from, date_to)
-        headers = ["title", "case_number", "evidence_type", "status", "assigned_to", "created_by", "created_at", "description"]
+        headers = ["title", "case_number", "evidence_type", "status", "assigned_to", "created_by", "storage_path", "created_at", "description"]
         mapper = lambda item: {
             "title": item.title,
             "case_number": item.crime_case.case_number if item.crime_case else "",
             "evidence_type": item.evidence_type,
             "status": item.status,
             "assigned_to": item.assignee.full_name if item.assignee else "",
-            "created_by": item.created_by,
+            "created_by": item.created_by or "",
+            "storage_path": item.storage_path or "",
             "created_at": _serialize_datetime(item.created_at),
-            "description": item.description,
+            "description": item.description or "",
         }
     return _apply_sort(query, report_type, sort_by, sort_order), headers, mapper
 
@@ -201,61 +251,176 @@ def _csv_response(filename: str, headers: list[str], rows: list[dict[str, Any]])
     )
 
 
-def _pdf_escape(text: str) -> str:
-    return text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-
-
-def _simple_pdf(title: str, filters: dict[str, Any], headers: list[str], rows: list[dict[str, Any]]) -> bytes:
+def _generate_txt(title: str, filters: dict, headers: list[str], rows: list[dict]) -> bytes:
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    pages: list[list[str]] = []
-    current = [
-        "SAKSHA Police Investigation Platform",
-        title,
-        f"Generated: {generated}",
-        "Applied filters: " + (", ".join(f"{k}={v}" for k, v in filters.items()) or "None"),
+    filter_str = ", ".join(f"{k}={v}" for k, v in filters.items()) if filters else "None"
+    
+    lines = [
+        "=" * 90,
+        "SAKSHA POLICE INTELLIGENCE & ANALYTICS PLATFORM".center(90),
+        "CONFIDENTIAL LAW-ENFORCEMENT REPORT".center(90),
+        "=" * 90,
         "",
-        " | ".join(headers),
+        f"REPORT TITLE   : {title.upper()}",
+        f"GENERATED AT   : {generated}",
+        f"TOTAL RECORDS  : {len(rows)}",
+        f"FILTERS APPLIED: {filter_str}",
+        "",
+        "-" * 90,
+        "REPORT SUMMARY & DETAILS".center(90),
+        "-" * 90,
+        ""
     ]
-    for row in rows:
-        line = " | ".join(_clean_text(row.get(header))[:34] for header in headers)
-        current.append(line)
-        if len(current) >= 36:
-            pages.append(current)
-            current = ["SAKSHA Police Investigation Platform", title, f"Generated: {generated}", "", " | ".join(headers)]
-    pages.append(current)
+    
+    if not headers or not rows:
+        lines.append("No records available for the current filter criteria.")
+    else:
+        formatted_headers = [h.replace("_", " ").title() for h in headers]
+        col_widths = {h: len(fh) for h, fh in zip(headers, formatted_headers)}
+        for row in rows:
+            for h in headers:
+                val = _clean_text(row.get(h))
+                col_widths[h] = max(col_widths[h], len(val))
+        
+        for h in headers:
+            col_widths[h] = min(max(col_widths[h], 10), 35)
+            
+        header_line = " | ".join(fh.ljust(col_widths[h]) for h, fh in zip(headers, formatted_headers))
+        lines.append(header_line)
+        lines.append("-" * len(header_line))
+        
+        for row in rows:
+            line_parts = []
+            for h in headers:
+                val = _clean_text(row.get(h)).replace('\n', ' ')
+                if len(val) > col_widths[h]:
+                    val = val[:col_widths[h] - 3] + "..."
+                line_parts.append(val.ljust(col_widths[h]))
+            lines.append(" | ".join(line_parts))
+            
+    lines.append("")
+    lines.append("=" * 90)
+    lines.append("SECURITY COMPLIANCE ACT NOTICE: CONFIDENTIAL LAW-ENFORCEMENT REPORT".center(90))
+    lines.append("=" * 90)
+    
+    return "\n".join(lines).encode("utf-8")
 
-    objects: list[str] = []
-    page_refs: list[int] = []
-    font_obj = 3
-    for page_no, lines in enumerate(pages, start=1):
-        text_ops = ["BT", "/F1 9 Tf", "50 792 Td", "14 TL"]
-        for index, line in enumerate(lines):
-            safe = _pdf_escape(line)
-            text_ops.append(f"({safe}) Tj" if index == 0 else f"T* ({safe}) Tj")
-        text_ops.extend([f"50 36 Td (Page {page_no} of {len(pages)} | Confidential law-enforcement report) Tj", "ET"])
-        stream = "\n".join(text_ops)
-        content_obj = len(objects) + 4
-        page_obj = content_obj + 1
-        objects.append(f"{content_obj} 0 obj\n<< /Length {len(stream.encode('utf-8'))} >>\nstream\n{stream}\nendstream\nendobj\n")
-        objects.append(f"{page_obj} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 {font_obj} 0 R >> >> /Contents {content_obj} 0 R >>\nendobj\n")
-        page_refs.append(page_obj)
 
-    body_objects = [
-        "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
-        f"2 0 obj\n<< /Type /Pages /Kids [{' '.join(f'{ref} 0 R' for ref in page_refs)}] /Count {len(page_refs)} >>\nendobj\n",
-        "3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
-        *objects,
-    ]
-    pdf = "%PDF-1.4\n"
-    offsets = [0]
-    for obj in body_objects:
-        offsets.append(len(pdf.encode("utf-8")))
-        pdf += obj
-    xref_offset = len(pdf.encode("utf-8"))
-    pdf += f"xref\n0 {len(body_objects) + 1}\n0000000000 65535 f \n"
-    pdf += "".join(f"{offset:010d} 00000 n \n" for offset in offsets[1:])
-    pdf += f"trailer\n<< /Size {len(body_objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF"
-    return pdf.encode("utf-8")
+def _generate_pdf(title: str, filters: dict, headers: list[str], rows: list[dict]) -> bytes:
+    def to_latin1(text):
+        return str(text).encode('latin-1', 'replace').decode('latin-1')
+
+    safe_title = to_latin1(title)
+
+    class ReportPDF(FPDF):
+        def header(self):
+            self.set_font("helvetica", "B", 14)
+            self.set_text_color(15, 23, 42)
+            self.cell(0, 8, "SAKSHA Police Intelligence & Analytics Platform", align="C", new_x="LMARGIN", new_y="NEXT")
+            self.set_font("helvetica", "B", 11)
+            self.set_text_color(30, 111, 217)
+            self.cell(0, 6, safe_title, align="C", new_x="LMARGIN", new_y="NEXT")
+            self.set_draw_color(200, 210, 225)
+            self.line(10, self.get_y() + 2, self.w - 10, self.get_y() + 2)
+            self.ln(6)
+
+        def footer(self):
+            self.set_y(-15)
+            self.set_font("helvetica", "I", 8)
+            self.set_text_color(100, 115, 140)
+            self.cell(0, 10, f"SAKSHA Platform  |  Page {self.page_no()} of {{nb}}  |  CONFIDENTIAL LAW-ENFORCEMENT REPORT", align="C")
+
+    pdf = ReportPDF(orientation="L")
+    pdf.alias_nb_pages()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    filter_str = ", ".join(f"{k}={v}" for k, v in filters.items()) if filters else "None"
+
+    pdf.set_font("helvetica", "B", 10)
+    pdf.set_text_color(30, 41, 59)
+    pdf.cell(0, 6, "REPORT SUMMARY & METADATA", new_x="LMARGIN", new_y="NEXT")
+    
+    pdf.set_font("helvetica", "", 9)
+    pdf.set_text_color(71, 85, 105)
+    pdf.cell(0, 5, f"Generated At: {generated}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 5, to_latin1(f"Applied Filters: {filter_str}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 5, f"Total Records: {len(rows)}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    if headers and rows:
+        formatted_headers = [to_latin1(h.replace("_", " ").title()) for h in headers]
+        
+        pdf.set_font("helvetica", "", 8)
+        pdf.set_text_color(15, 23, 42)
+
+        with pdf.table(
+            first_row_as_headings=True,
+            line_height=5,
+            padding=2
+        ) as table:
+            header_row = table.row()
+            for h in formatted_headers:
+                header_row.cell(h)
+
+            for row in rows:
+                r_row = table.row()
+                for h in headers:
+                    val = _clean_text(row.get(h))
+                    r_row.cell(to_latin1(val))
+    else:
+        pdf.set_font("helvetica", "I", 9)
+        pdf.cell(0, 8, "No records found matching the requested criteria.", new_x="LMARGIN", new_y="NEXT")
+
+    return bytes(pdf.output())
+
+
+def _generate_docx(title: str, filters: dict, headers: list[str], rows: list[dict]) -> bytes:
+    doc = Document()
+    
+    h0 = doc.add_heading("SAKSHA Police Intelligence & Analytics Platform", level=0)
+    if h0.runs:
+        h0.runs[0].font.bold = True
+    
+    doc.add_heading(title, level=1)
+    
+    generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    filter_str = ", ".join(f"{k}={v}" for k, v in filters.items()) if filters else "None"
+
+    doc.add_heading("Report Metadata & Summary", level=2)
+    doc.add_paragraph(f"Generated Date & Time: {generated}")
+    doc.add_paragraph(f"Applied Filters: {filter_str}")
+    doc.add_paragraph(f"Total Records: {len(rows)}")
+
+    doc.add_heading("Report Details", level=2)
+
+    if not headers or not rows:
+        doc.add_paragraph("No data available for the requested criteria.")
+    else:
+        table = doc.add_table(rows=1, cols=len(headers))
+        table.style = 'Table Grid'
+        
+        hdr_cells = table.rows[0].cells
+        for i, h in enumerate(headers):
+            hdr_cells[i].text = h.replace("_", " ").title()
+            for paragraph in hdr_cells[i].paragraphs:
+                for run in paragraph.runs:
+                    run.font.bold = True
+            
+        for row in rows:
+            row_cells = table.add_row().cells
+            for i, h in enumerate(headers):
+                row_cells[i].text = _clean_text(row.get(h))
+                
+    doc.add_paragraph()
+    notice_p = doc.add_paragraph("SECURITY COMPLIANCE ACT NOTICE: CONFIDENTIAL LAW-ENFORCEMENT REPORT")
+    if notice_p.runs:
+        notice_p.runs[0].font.italic = True
+    
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    return buffer.getvalue()
 
 
 def _create_report_record(db: Session, current_user: User, report_type: str, export_format: str, filters: dict[str, Any]) -> Report:
@@ -331,7 +496,7 @@ def preview_report(
 def generate_report(
     report_type: str,
     request: Request,
-    export_format: str = Query("pdf", pattern="^(pdf|csv)$"),
+    export_format: str = Query("pdf", pattern="^(pdf|csv|docx|txt)$"),
     search: str | None = None,
     status: str | None = None,
     district: str | None = None,
@@ -374,7 +539,52 @@ def export_report(
     audit_service.log_action(db, current_user, "REPORT_EXPORT", "Report", str(report.id), details=f"{export_format}:{filters}", ip_address=request.client.host if request.client else None)
     db.commit()
     filename = f"saksha_{report_type}_report_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+    title = f"{report_type.title()} Report"
+    
     if export_format == "csv":
         return _csv_response(filename, headers, rows)
-    pdf = _simple_pdf(f"{report_type.title()} Report", filters, headers, rows)
-    return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}.pdf"'})
+    elif export_format == "docx":
+        docx_bytes = _generate_docx(title, filters, headers, rows)
+        return Response(content=docx_bytes, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", headers={"Content-Disposition": f'attachment; filename="{filename}.docx"'})
+    elif export_format == "txt":
+        txt_bytes = _generate_txt(title, filters, headers, rows)
+        return Response(content=txt_bytes, media_type="text/plain; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{filename}.txt"'})
+    
+    pdf_bytes = _generate_pdf(title, filters, headers, rows)
+    return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}.pdf"'})
+
+
+class DossierPayload(BaseModel):
+    title: str
+    data: dict[str, Any]
+    watermark: str = ""
+
+
+@router.post("/dossier/export/{export_format}")
+def export_dossier(
+    export_format: str,
+    payload: DossierPayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if export_format not in EXPORT_FORMATS:
+        return Response(status_code=404, content="Unknown export format")
+        
+    audit_service.log_action(db, current_user, "DOSSIER_EXPORT", "Dossier", payload.title, details=export_format)
+    
+    headers = ["Property", "Value"]
+    rows = [{"Property": str(k).replace("_", " ").title(), "Value": _format_human_readable_value(v)} for k, v in payload.data.items()]
+    filters = {"Watermark": payload.watermark} if payload.watermark else {}
+    filename = f"ksp_{payload.title.lower().replace(' ', '_')}"
+    
+    if export_format == "csv":
+        return _csv_response(filename, headers, rows)
+    elif export_format == "docx":
+        docx_bytes = _generate_docx(payload.title, filters, headers, rows)
+        return Response(content=docx_bytes, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", headers={"Content-Disposition": f'attachment; filename="{filename}.docx"'})
+    elif export_format == "txt":
+        txt_bytes = _generate_txt(payload.title, filters, headers, rows)
+        return Response(content=txt_bytes, media_type="text/plain; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{filename}.txt"'})
+    
+    pdf_bytes = _generate_pdf(payload.title, filters, headers, rows)
+    return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}.pdf"'})
