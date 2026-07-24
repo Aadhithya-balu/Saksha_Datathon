@@ -63,7 +63,7 @@ class BackendFetcher:
             if call.service == "neo4j":
                 return self._exec_neo4j(call, db)
             if call.service == "ml":
-                return self._exec_ml(call)
+                return self._exec_ml(call, db)
             if call.service == "analytics":
                 return self._exec_analytics(call, db)
             return BackendResult(
@@ -342,7 +342,7 @@ class BackendFetcher:
             return self._neo4j_gangs()
         return BackendResult(source="neo4j", data_type=method, content="Neo4j unavailable, no SQL fallback.")
 
-    def _exec_ml(self, call: BackendCall) -> BackendResult:
+    def _exec_ml(self, call: BackendCall, db: Session) -> BackendResult:
         method = call.method
         params = call.params
 
@@ -353,15 +353,22 @@ class BackendFetcher:
         if method == "hotspot_predict":
             return self._ml_hotspot_predict(params)
         if method == "find_similar_offenders":
-            return self._ml_similar(params)
+            return self._ml_similar(params, db)
         if method == "criminal_risk":
-            return self._ml_criminal_risk(params)
+            return self._ml_criminal_risk(params, db)
         return BackendResult(source="ml", data_type=method, content="ML method not implemented")
 
     def _ml_risk_predict(self, params: dict) -> BackendResult:
         from app.ai.inference.risk import predict_risk
+        from datetime import datetime
         district = params.get("district", "Bengaluru Urban")
-        result = predict_risk([{"district": district, "crime_count": 10, "open_cases": 5}])
+        category = params.get("category", "Theft")
+        result = predict_risk([{
+            "district": district,
+            "category": category,
+            "occurred_at": datetime.now().isoformat(),
+            "crime_count": params.get("crime_count", 10),
+        }])
         if not result:
             return BackendResult(source="ml", data_type="risk", content="No prediction available.")
         r = result[0] if isinstance(result, list) else result
@@ -375,44 +382,77 @@ class BackendFetcher:
 
     def _ml_forecast(self, params: dict) -> BackendResult:
         from app.ai.inference.risk import predict_forecast
+        from datetime import datetime
         district = params.get("district", "Bengaluru Urban")
         months = params.get("months", 6)
-        result = predict_forecast(district, months)
+        records = [{
+            "district": district,
+            "category": "General",
+            "occurred_at": datetime.now().isoformat(),
+            "crime_count": params.get("crime_count", 10),
+        }]
+        result = predict_forecast(records)
         if not result:
             return BackendResult(source="ml", data_type="forecast", content="No forecast available.")
         if isinstance(result, list):
-            parts = [f"Month {f.get('month', i+1)}: Predicted {f.get('predicted_count', 'N/A')} crimes" for i, f in enumerate(result[:months])]
+            parts = [f"Month {f.get('month', i+1)}: Predicted {f.get('predicted_count', f.get('predicted_crime_count', 'N/A'))} crimes" for i, f in enumerate(result[:months])]
         else:
             parts = [f"Forecast for {district}: {result}"]
         return BackendResult(source="ml", data_type="forecast", content="\n".join(parts), raw_data=result)
 
     def _ml_hotspot_predict(self, params: dict) -> BackendResult:
         from app.ai.inference.hotspot import predict as hotspot_predict
-        district = params.get("district", "")
-        result = hotspot_predict([{"district": district, "lat": 12.97, "lon": 77.59, "hour": 14, "day_of_week": 2}])
-        if not result:
-            return BackendResult(source="ml", data_type="hotspot", content="No hotspot prediction available.")
-        return BackendResult(source="ml", data_type="hotspot", content=str(result), raw_data=result)
+        from datetime import datetime
+        district = params.get("district", "Bengaluru Urban")
+        try:
+            result = hotspot_predict([{
+                "CaseMasterID": f"CHAT-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                "IncidentFromDate": datetime.now().isoformat(),
+                "latitude": params.get("lat", 12.97),
+                "longitude": params.get("lon", 77.59),
+                "PoliceStationID": params.get("station", "PS001"),
+                "GravityOffenceID": params.get("gravity", "G001"),
+                "CrimeMajorHeadID": params.get("category", "Theft"),
+            }])
+            if not result:
+                return BackendResult(source="ml", data_type="hotspot", content="No hotspot prediction available.")
+            parts = [f"Hotspot: Risk={h.get('risk_level', 'N/A')}, Count={h.get('predicted_count', 'N/A')}" for h in result[:5]]
+            return BackendResult(source="ml", data_type="hotspot", content="\n".join(parts), raw_data=result)
+        except Exception as e:
+            return BackendResult(source="ml", data_type="hotspot", content=f"Hotspot prediction unavailable: {e}", success=False)
 
-    def _ml_similar(self, params: dict) -> BackendResult:
+    def _ml_similar(self, params: dict, db: Session) -> BackendResult:
         from app.ai.inference.criminal import find_similar_offenders
-        name = params.get("name", "")
-        result = find_similar_offenders(name)
+        criminal_id = params.get("criminal_id", params.get("name", ""))
+        if not criminal_id:
+            return BackendResult(source="ml", data_type="similar", content="No criminal ID provided.")
+        result = find_similar_offenders(db, criminal_id)
         if not result:
             return BackendResult(source="ml", data_type="similar", content="No similar offenders found.")
-        if isinstance(result, list):
-            parts = [f"Similar: {s.get('name', 'N/A')} (similarity: {s.get('score', 'N/A')})" for s in result[:5]]
+        similar_list = result.get("similar_offenders", []) if isinstance(result, dict) else []
+        if similar_list:
+            parts = [f"Similar: {s.get('name', 'N/A')} (similarity: {s.get('similarity_score', s.get('score', 'N/A'))})" for s in similar_list[:5]]
         else:
             parts = [str(result)]
-        return BackendResult(source="ml", data_type="similar", content="\n".join(parts))
+        return BackendResult(source="ml", data_type="similar", content="\n".join(parts), raw_data=result)
 
-    def _ml_criminal_risk(self, params: dict) -> BackendResult:
+    def _ml_criminal_risk(self, params: dict, db: Session) -> BackendResult:
         from app.ai.inference.criminal import score_criminal_risk
         criminal_id = params.get("criminal_id", "")
-        result = score_criminal_risk(criminal_id)
+        if not criminal_id:
+            return BackendResult(source="ml", data_type="criminal_risk", content="No criminal ID provided.")
+        result = score_criminal_risk(db, criminal_id)
         if not result:
             return BackendResult(source="ml", data_type="criminal_risk", content="No risk score available.")
-        return BackendResult(source="ml", data_type="criminal_risk", content=str(result), raw_data=result)
+        if isinstance(result, dict) and "error" in result:
+            return BackendResult(source="ml", data_type="criminal_risk", content=result["error"])
+        risk_score = result.get("risk_score", "N/A") if isinstance(result, dict) else "N/A"
+        risk_band = result.get("risk_band", "N/A") if isinstance(result, dict) else "N/A"
+        return BackendResult(
+            source="ml", data_type="criminal_risk",
+            content=f"Criminal Risk: {risk_score}/100 ({risk_band})",
+            raw_data=result,
+        )
 
     def _exec_analytics(self, call: BackendCall, db: Session) -> BackendResult:
         method = call.method
