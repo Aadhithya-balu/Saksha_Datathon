@@ -1,12 +1,16 @@
 """
-Notification routes — real-time intelligence & notification center endpoints.
+Notification routes — inter-station communication center endpoints.
 
 Provides:
 - GET /notifications — list notifications (paginated, filterable)
 - GET /notifications/count — unread notification counts
 - GET /notifications/recent — recent notifications for bell dropdown
+- GET /notifications/dashboard — dashboard summary cards
+- POST /notifications — create a new notification (Inform Station)
 - PUT /notifications/{id}/read — mark single notification as read
 - PUT /notifications/read-all — mark all notifications as read
+- PUT /notifications/{id}/acknowledge — acknowledge a notification
+- PUT /notifications/{id}/resolve — resolve a notification
 - DELETE /notifications/{id} — dismiss a notification
 - GET /notifications/activity-feed — unified activity feed
 - GET /notifications/live-timeline — live event timeline
@@ -23,9 +27,11 @@ from app.database.postgres import get_db
 from app.models.user import User
 from app.schemas.notification import (
     ActivityFeedOut,
+    NotificationActionOut,
     NotificationCountOut,
+    NotificationCreate,
+    NotificationDashboardSummary,
     NotificationListOut,
-    NotificationMarkReadOut,
     NotificationOut,
 )
 from app.services.notifications import (
@@ -42,6 +48,11 @@ def list_notifications(
     page_size: int = Query(20, ge=1, le=100),
     notification_type: str | None = Query(None),
     severity: str | None = Query(None),
+    priority: str | None = Query(None),
+    category: str | None = Query(None),
+    status: str | None = Query(None),
+    sender_id: str | None = Query(None),
+    search: str | None = Query(None),
     unread_only: bool = Query(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -54,6 +65,11 @@ def list_notifications(
         page_size=page_size,
         notification_type=notification_type,
         severity=severity,
+        priority=priority,
+        category=category,
+        status=status,
+        sender_id=sender_id,
+        search=search,
         unread_only=unread_only,
     )
 
@@ -74,10 +90,44 @@ def get_recent_notifications(
     current_user: User = Depends(get_current_user),
 ):
     """Get recent notifications for the bell dropdown."""
-    return notification_service.get_recent_notifications(db, current_user.id, limit)
+    data = notification_service.get_recent_notifications(db, current_user.id, limit)
+    return [NotificationOut.model_validate(d) for d in data]
 
 
-@router.put("/{notification_id}/read", response_model=NotificationMarkReadOut)
+@router.get("/dashboard", response_model=NotificationDashboardSummary)
+def get_dashboard_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get dashboard summary cards for the communication center."""
+    return notification_service.get_dashboard_summary(db, current_user.id)
+
+
+@router.post("", response_model=NotificationOut)
+def create_notification(
+    payload: NotificationCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a new notification (Inform Station)."""
+    payload.sender_id = current_user.id
+
+    if payload.is_broadcast:
+        notifications = notification_service.create_broadcast_notification(
+            db, payload, exclude_user_id=current_user.id
+        )
+        if notifications:
+            enriched = notification_service._enrich_notification(notifications[0], db)
+            return NotificationOut.model_validate(enriched)
+    else:
+        notification = notification_service.create_notification(db, payload)
+        enriched = notification_service._enrich_notification(notification, db)
+        return NotificationOut.model_validate(enriched)
+
+    raise HTTPException(status_code=400, detail="Failed to create notification")
+
+
+@router.put("/{notification_id}/read", response_model=NotificationActionOut)
 def mark_notification_read(
     notification_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -89,23 +139,53 @@ def mark_notification_read(
     )
     if not result:
         raise HTTPException(status_code=404, detail="Notification not found")
-    return NotificationMarkReadOut(success=True, message="Notification marked as read")
+    return NotificationActionOut(success=True, message="Notification marked as read")
 
 
-@router.put("/read-all", response_model=NotificationMarkReadOut)
+@router.put("/read-all", response_model=NotificationActionOut)
 def mark_all_notifications_read(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Mark all unread notifications as read."""
     count = notification_service.mark_all_read(db, current_user.id)
-    return NotificationMarkReadOut(
+    return NotificationActionOut(
         success=True,
         message=f"{count} notification(s) marked as read",
     )
 
 
-@router.delete("/{notification_id}", response_model=NotificationMarkReadOut)
+@router.put("/{notification_id}/acknowledge", response_model=NotificationActionOut)
+def acknowledge_notification(
+    notification_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Acknowledge a notification."""
+    result = notification_service.acknowledge_notification(
+        db, notification_id, current_user.id
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return NotificationActionOut(success=True, message="Notification acknowledged")
+
+
+@router.put("/{notification_id}/resolve", response_model=NotificationActionOut)
+def resolve_notification(
+    notification_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Resolve a notification."""
+    result = notification_service.resolve_notification(
+        db, notification_id, current_user.id
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return NotificationActionOut(success=True, message="Notification resolved")
+
+
+@router.delete("/{notification_id}", response_model=NotificationActionOut)
 def dismiss_notification(
     notification_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -117,7 +197,7 @@ def dismiss_notification(
     )
     if not result:
         raise HTTPException(status_code=404, detail="Notification not found")
-    return NotificationMarkReadOut(success=True, message="Notification dismissed")
+    return NotificationActionOut(success=True, message="Notification dismissed")
 
 
 @router.get("/activity-feed", response_model=ActivityFeedOut)
@@ -151,4 +231,3 @@ def get_live_timeline(
         case_id=case_id,
         limit=limit,
     )
-
