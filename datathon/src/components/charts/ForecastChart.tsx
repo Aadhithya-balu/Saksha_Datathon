@@ -221,16 +221,16 @@ export const ForecastChart: React.FC = () => {
   }, []);
 
   return (
-    <div className="w-full h-[280px] bg-[#111D35]/30 border border-border-color p-4 rounded-card relative overflow-hidden flex flex-col justify-between font-mono">
+    <div className="w-full h-[280px] bg-[var(--bg-tertiary)]/30 border border-border-color p-4 rounded-card relative overflow-hidden flex flex-col justify-between font-mono">
       
       {/* Title */}
       <div className="flex justify-between items-center mb-2 select-none">
         <div>
-          <span className="text-[10px] text-[#D4820A] uppercase font-bold tracking-wider flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-[#D4820A] animate-pulse" />
+          <span className="text-[10px] text-[var(--accent-amber)] uppercase font-bold tracking-wider flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-[var(--accent-amber)] animate-pulse" />
             3D AI PREDICTIVE TIMELINE
           </span>
-          <h4 className="text-[12px] font-bold text-white mt-0.5">30-Day Cylinder Forecast Model</h4>
+          <h4 className="text-[12px] font-bold text-[var(--text-primary)] mt-0.5">30-Day Cylinder Forecast Model</h4>
         </div>
       </div>
 
@@ -247,34 +247,34 @@ export const ForecastChart: React.FC = () => {
               top: `${Math.min(hoveredPoint.y - 10, 110)}px`
             }}
           >
-            <div className="flex items-center justify-between pb-1 border-b border-white/5">
-              <span className="text-[9.5px] text-white font-extrabold uppercase">{hoveredPoint.day}</span>
+            <div className="flex items-center justify-between pb-1 border-b border-[var(--border-primary)]">
+              <span className="text-[9.5px] text-[var(--text-primary)] font-extrabold uppercase">{hoveredPoint.day}</span>
             </div>
             <div className="flex justify-between items-center mt-1">
-              <span className="text-[8px] text-slate-400">DATA VALUE:</span>
-              <span className="text-[11px] font-bold text-white">{hoveredPoint.value} Incidents</span>
+              <span className="text-[8px] text-[var(--text-muted)]">DATA VALUE:</span>
+              <span className="text-[11px] font-bold text-[var(--text-primary)]">{hoveredPoint.value} Incidents</span>
             </div>
             <div className="flex justify-between items-center mt-0.5">
-              <span className="text-[8px] text-slate-400">MODEL TYPE:</span>
+              <span className="text-[8px] text-[var(--text-muted)]">MODEL TYPE:</span>
               <span className="text-[8px] font-bold uppercase" style={{ color: hoveredPoint.color }}>
                 {hoveredPoint.type}
               </span>
             </div>
           </div>
         ) : (
-          <div className="absolute top-2 right-2 bg-slate-950/60 border border-white/5 p-2 rounded text-[8px] text-[#A8B4CC] flex flex-col gap-1 select-none pointer-events-none">
-            <span className="flex items-center gap-1 font-bold text-white uppercase"><Rotate3d className="w-3 h-3 text-[#D4820A]" /> Timeline Keys</span>
-            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#1E6FD9]" /> HISTORICAL</div>
-            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#0E9E78]" /> TODAY</div>
+          <div className="absolute top-2 right-2 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] p-2 rounded text-[8px] text-[var(--text-secondary)] flex flex-col gap-1 select-none pointer-events-none">
+            <span className="flex items-center gap-1 font-bold text-[var(--text-primary)] uppercase"><Rotate3d className="w-3 h-3 text-[var(--accent-amber)]" /> Timeline Keys</span>
+            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-blue)]" /> HISTORICAL</div>
+            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-teal)]" /> TODAY</div>
             <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#0ea5e9]" /> AI PREDICTED</div>
           </div>
         )}
       </div>
 
       {/* Visual orientation metrics inside dashboard box */}
-      <div className="flex justify-between text-[9px] text-[#E8EDF5] font-bold uppercase tracking-widest pt-2 border-t border-slate-900 select-none">
+      <div className="flex justify-between text-[9px] text-[var(--text-primary)] font-bold uppercase tracking-widest pt-2 border-t border-[var(--border-primary)] select-none">
         <span className="flex items-center gap-1">
-          <HelpCircle className="w-3.5 h-3.5 text-[#D4820A]" />
+          <HelpCircle className="w-3.5 h-3.5 text-[var(--accent-amber)]" />
           Drag to Pivot Timeline • Left to Right progression
         </span>
         <span>Confidence Interval: 94.6%</span>

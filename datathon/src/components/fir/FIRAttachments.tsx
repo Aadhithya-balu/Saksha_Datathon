@@ -151,10 +151,10 @@ export const FIRAttachments: React.FC<FIRAttachmentsProps> = ({ fir, onAttachmen
   };
 
   return (
-    <div className="bg-[#111D35]/30 border border-border-color p-5 rounded-card flex flex-col justify-between overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-slate-900 pb-3 mb-4">
-        <UploadCloud className="w-4 h-4 text-[#0E9E78]" />
-        <span className="text-[10px] font-bold text-[#E8EDF5] uppercase tracking-wider">Classification & FIR Attachments</span>
+    <div className="bg-[var(--bg-tertiary)]/30 border border-border-color p-5 rounded-card flex flex-col justify-between overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-[var(--border-primary)] pb-3 mb-4">
+        <UploadCloud className="w-4 h-4 text-[var(--accent-teal)]" />
+        <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider">Classification & FIR Attachments</span>
       </div>
 
       <div className="space-y-4 text-xs font-mono">
@@ -166,8 +166,8 @@ export const FIRAttachments: React.FC<FIRAttachmentsProps> = ({ fir, onAttachmen
           onClick={() => fileInputRef.current?.click()}
           className={`border-2 border-dashed rounded-lg p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200 ${
             isDragOver 
-              ? 'border-[#0E9E78] bg-[#0E9E78]/10' 
-              : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/75'
+              ? 'border-[var(--accent-teal)] bg-[var(--accent-teal)]/10' 
+              : 'border-[var(--border-primary)] hover:border-[var(--border-secondary)] bg-[var(--bg-secondary)]/40 hover:bg-[var(--bg-secondary)]/75'
           }`}
         >
           <input
@@ -179,22 +179,22 @@ export const FIRAttachments: React.FC<FIRAttachmentsProps> = ({ fir, onAttachmen
           
           {uploadingFile ? (
             <div className="w-full text-center space-y-2">
-              <p className="text-[9.5px] uppercase text-[#E8EDF5] truncate">Uploading: {uploadingFile}</p>
-              <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+              <p className="text-[9.5px] uppercase text-[var(--text-primary)] truncate">Uploading: {uploadingFile}</p>
+              <div className="w-full h-1.5 bg-[var(--bg-tertiary)] rounded-full overflow-hidden border border-[var(--border-primary)]">
                 <div 
                   className="h-full bg-emerald-500 rounded-full transition-all duration-150" 
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
-              <span className="text-[8px] text-[#6A7A96]">{uploadProgress}% Telemetry Synced</span>
+              <span className="text-[8px] text-[var(--text-muted)]">{uploadProgress}% Telemetry Synced</span>
             </div>
           ) : (
             <>
-              <UploadCloud className="w-8 h-8 text-[#6A7A96] group-hover:text-white" />
-              <span className="text-[9px] uppercase tracking-wider text-slate-400 text-center">
+              <UploadCloud className="w-8 h-8 text-[var(--text-muted)] group-hover:text-[var(--text-primary)]" />
+              <span className="text-[9px] uppercase tracking-wider text-[var(--text-muted)] text-center">
                 Drag investigative reports or click to browse
               </span>
-              <span className="text-[7.5px] text-[#6A7A96] uppercase">PDF, JPG, PNG â€¢ SECURE CHANNEL ONLY</span>
+              <span className="text-[7.5px] text-[var(--text-muted)] uppercase">PDF, JPG, PNG â€¢ SECURE CHANNEL ONLY</span>
             </>
           )}
         </div>
@@ -204,27 +204,27 @@ export const FIRAttachments: React.FC<FIRAttachmentsProps> = ({ fir, onAttachmen
           {attachments.map((file, idx) => (
             <div 
               key={idx} 
-              className="flex items-center justify-between p-2.5 bg-slate-950/60 border border-slate-900 rounded-md hover:border-slate-800 transition-colors"
+              className="flex items-center justify-between p-2.5 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] rounded-md hover:border-[var(--border-primary)] transition-colors"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <FileText className="w-4 h-4 text-[#A8B4CC] shrink-0" />
+                <FileText className="w-4 h-4 text-[var(--text-secondary)] shrink-0" />
                 <div className="truncate">
-                  <p className="text-[10px] text-white font-medium truncate select-all">{file.name}</p>
-                  <p className="text-[8px] text-[#6A7A96] mt-0.5">{formatSize(file.size || 0)}</p>
+                  <p className="text-[10px] text-[var(--text-primary)] font-medium truncate select-all">{file.name}</p>
+                  <p className="text-[8px] text-[var(--text-muted)] mt-0.5">{formatSize(file.size || 0)}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   onClick={() => handleDownload(file.name)}
-                  className="p-1 text-slate-500 hover:text-white hover:bg-slate-900 rounded cursor-pointer transition-colors"
+                  className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded cursor-pointer transition-colors"
                   title="Secure Download"
                 >
                   <Download className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => handleDelete(idx)}
-                  className="p-1 text-slate-500 hover:text-red-400 hover:bg-slate-900 rounded cursor-pointer transition-colors"
+                  className="p-1 text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--bg-tertiary)] rounded cursor-pointer transition-colors"
                   title="Remove Document"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -234,7 +234,7 @@ export const FIRAttachments: React.FC<FIRAttachmentsProps> = ({ fir, onAttachmen
           ))}
 
           {attachments.length === 0 && !uploadingFile && (
-            <div className="flex flex-col items-center justify-center p-6 border border-dashed border-slate-900 rounded-lg text-[#6A7A96] text-center gap-1">
+            <div className="flex flex-col items-center justify-center p-6 border border-dashed border-[var(--border-primary)] rounded-lg text-[var(--text-muted)] text-center gap-1">
               <ShieldAlert className="w-4 h-4 text-amber-500/60" />
               <span className="text-[9px] uppercase tracking-wide">No dossiers attached</span>
             </div>

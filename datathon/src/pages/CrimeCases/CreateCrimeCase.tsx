@@ -82,11 +82,11 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
       <div className="flex justify-between items-center pb-4 border-b border-border-color">
         <button
           onClick={onCancel}
-          className="flex items-center gap-2 text-[#A8B4CC] hover:text-white transition-colors cursor-pointer text-xs uppercase font-bold"
+          className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer text-xs uppercase font-bold"
         >
           <ArrowLeft className="w-4 h-4" /> Cancel Enrolment
         </button>
-        <h2 className="text-sm font-bold text-white uppercase tracking-wider">Crime Case Registry Enrolment</h2>
+        <h2 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">Crime Case Registry Enrolment</h2>
       </div>
 
       {error && (
@@ -97,40 +97,40 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
       )}
 
       {/* Main input form */}
-      <form onSubmit={handleSubmit} className="p-6 bg-secondary-bg border border-border-color rounded-card space-y-5 font-mono text-xs text-[#A8B4CC]">
+      <form onSubmit={handleSubmit} className="p-6 bg-secondary-bg border border-border-color rounded-card space-y-5 font-mono text-xs text-[var(--text-secondary)]">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {/* Case Number */}
           <div className="flex flex-col gap-1.5">
-            <label className="uppercase text-[10px] text-[#6A7A96] font-bold">Case Number *</label>
+            <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Case Number *</label>
             <input
               type="text"
               required
               placeholder="e.g. CR-2026-BLR-8321"
               value={caseNumber}
               onChange={(e) => setCaseNumber(e.target.value)}
-              className="px-3.5 py-2 bg-slate-900 border border-border-color rounded text-xs text-white uppercase placeholder-[#6A7A96] focus:border-[#1E6FD9]/60 focus:outline-none"
+              className="px-3.5 py-2 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] uppercase placeholder-[var(--text-muted)] focus:border-[#1E6FD9]/60 focus:outline-none"
             />
           </div>
 
           {/* Occurred At */}
           <div className="flex flex-col gap-1.5">
-            <label className="uppercase text-[10px] text-[#6A7A96] font-bold">Date *</label>
+            <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Date *</label>
             <input
               type="datetime-local"
               required
               value={occurredAt}
               onChange={(e) => setOccurredAt(e.target.value)}
-              className="px-3.5 py-2 bg-slate-900 border border-border-color rounded text-xs text-white uppercase focus:border-[#1E6FD9]/60 focus:outline-none"
+              className="px-3.5 py-2 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] uppercase focus:border-[#1E6FD9]/60 focus:outline-none"
             />
           </div>
 
           {/* Crime Category */}
           <div className="flex flex-col gap-1.5">
-            <label className="uppercase text-[10px] text-[#6A7A96] font-bold">Category *</label>
+            <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Category *</label>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="px-3.5 py-2 bg-slate-900 border border-border-color rounded text-xs text-white cursor-pointer focus:border-[#1E6FD9]/60 focus:outline-none"
+              className="px-3.5 py-2 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] cursor-pointer focus:border-[#1E6FD9]/60 focus:outline-none"
             >
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -142,11 +142,11 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
 
           {/* Incident Location */}
           <div className="flex flex-col gap-1.5">
-            <label className="uppercase text-[10px] text-[#6A7A96] font-bold">Location *</label>
+            <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Location *</label>
             <select
               value={locationId}
               onChange={(e) => setLocationId(e.target.value)}
-              className="px-3.5 py-2 bg-slate-900 border border-border-color rounded text-xs text-white cursor-pointer focus:border-[#1E6FD9]/60 focus:outline-none"
+              className="px-3.5 py-2 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] cursor-pointer focus:border-[#1E6FD9]/60 focus:outline-none"
             >
               {locations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
@@ -159,23 +159,23 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
 
         {/* MO Tags */}
         <div className="flex flex-col gap-1.5">
-          <label className="uppercase text-[10px] text-[#6A7A96] font-bold">Crime Type / MO Tags</label>
+          <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Crime Type / MO Tags</label>
           <input
             type="text"
             placeholder="e.g. night-trespass, safe-cracking, lock-break"
             value={moTags}
             onChange={(e) => setMoTags(e.target.value)}
-            className="px-3.5 py-2 bg-slate-900 border border-border-color rounded text-xs text-white placeholder-[#6A7A96] focus:border-[#1E6FD9]/60 focus:outline-none"
+            className="px-3.5 py-2 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[#1E6FD9]/60 focus:outline-none"
           />
         </div>
 
         {/* Case Status */}
         <div className="flex flex-col gap-1.5">
-          <label className="uppercase text-[10px] text-[#6A7A96] font-bold">Initial Process Status</label>
+          <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Initial Process Status</label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="px-3.5 py-2 bg-slate-900 border border-border-color rounded text-xs text-white cursor-pointer focus:border-[#1E6FD9]/60 focus:outline-none"
+            className="px-3.5 py-2 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] cursor-pointer focus:border-[#1E6FD9]/60 focus:outline-none"
           >
             <option value="open">OPEN</option>
             <option value="assigned">ASSIGNED</option>
@@ -185,13 +185,13 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
 
         {/* Description Statement */}
         <div className="flex flex-col gap-1.5">
-          <label className="uppercase text-[10px] text-[#6A7A96] font-bold">Description</label>
+          <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Description</label>
           <textarea
             placeholder="ENTER COMPREHENSIVE DESCRIPTION DETAILS RELEVANT TO THIS ACTIVE INTELLIGENCE FILE..."
             rows={5}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full p-3.5 bg-slate-900 border border-border-color rounded text-xs text-white placeholder-[#6A7A96] focus:border-[#1E6FD9]/60 focus:outline-none resize-none uppercase"
+            className="w-full p-3.5 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[#1E6FD9]/60 focus:outline-none resize-none uppercase"
           />
         </div>
 
@@ -200,14 +200,14 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 border border-border-color hover:bg-white/5 rounded uppercase font-bold cursor-pointer"
+            className="px-4 py-2 border border-border-color hover:bg-[var(--bg-tertiary)]/10 rounded uppercase font-bold cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-2 px-5 py-2 bg-[#1E6FD9] hover:bg-[#1E6FD9]/80 disabled:opacity-50 transition-colors rounded uppercase font-bold text-white cursor-pointer animate-pulse-slow"
+            className="flex items-center gap-2 px-5 py-2 bg-[#1E6FD9] hover:bg-[#1E6FD9]/80 disabled:opacity-50 transition-colors rounded uppercase font-bold text-[var(--text-primary)] cursor-pointer animate-pulse-slow"
           >
             <Save className="w-4 h-4" /> Create Case
           </button>

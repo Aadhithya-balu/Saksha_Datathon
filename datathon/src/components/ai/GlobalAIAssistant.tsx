@@ -188,11 +188,11 @@ export const GlobalAIAssistant: React.FC = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-12 right-6 z-[100] w-14 h-14 rounded-full bg-[#1E6FD9] hover:bg-[#1E6FD9]/85 text-white shadow-glow-blue flex items-center justify-center transition-all hover:scale-110 cursor-pointer group"
+          className="fixed bottom-12 right-6 z-[100] w-14 h-14 rounded-full bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/85 text-[var(--text-primary)] shadow-glow-blue flex items-center justify-center transition-all hover:scale-110 cursor-pointer group"
           title="SAKSHA AI Assistant"
         >
           <Sparkles className="w-6 h-6 group-hover:animate-pulse" />
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#0E9E78] rounded-full border-2 border-[#0a1220] animate-pulse" />
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-[var(--accent-teal)] rounded-full border-2 border-[var(--bg-secondary)] animate-pulse" />
         </button>
       )}
 
@@ -206,24 +206,24 @@ export const GlobalAIAssistant: React.FC = () => {
           />
 
           {/* Panel */}
-          <div className="relative w-full max-w-md bg-[#0a1220] border-l border-border-color flex flex-col shadow-2xl pointer-events-auto animate-[slideInRight_0.3s_ease-out]">
+          <div className="relative w-full max-w-md bg-[var(--bg-secondary)] border-l border-border-color flex flex-col shadow-2xl pointer-events-auto animate-[slideInRight_0.3s_ease-out]">
             
             {/* Panel Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border-color bg-slate-950/50">
+            <div className="flex items-center justify-between p-4 border-b border-border-color bg-[var(--bg-secondary)]/50">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#1E6FD9]/15 border border-[#1E6FD9]/30 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-[#1E6FD9]" />
+                <div className="w-8 h-8 rounded-lg bg-[var(--accent-blue)]/15 border border-[var(--accent-blue)]/30 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-[var(--accent-blue)]" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">SAKSHA AI</h3>
-                  <p className="text-[9px] font-mono text-slate-500 uppercase">Intelligence Assistant</p>
+                  <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider font-mono">SAKSHA AI</h3>
+                  <p className="text-[9px] font-mono text-[var(--text-muted)] uppercase">Intelligence Assistant</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 {messages.length > 0 && (
                   <button
                     onClick={() => setMessages([])}
-                    className="p-1.5 text-slate-500 hover:text-white rounded transition-colors cursor-pointer"
+                    className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded transition-colors cursor-pointer"
                     title="Clear chat"
                   >
                     <MessageSquare className="w-4 h-4" />
@@ -231,7 +231,7 @@ export const GlobalAIAssistant: React.FC = () => {
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-1.5 text-slate-500 hover:text-white rounded transition-colors cursor-pointer"
+                  className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded transition-colors cursor-pointer"
                   title="Close"
                 >
                   <X className="w-4 h-4" />
@@ -243,12 +243,12 @@ export const GlobalAIAssistant: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center select-none space-y-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#1E6FD9]/15 border border-[#1E6FD9]/30 flex items-center justify-center text-[#1E6FD9]">
+                  <div className="w-12 h-12 rounded-xl bg-[var(--accent-blue)]/15 border border-[var(--accent-blue)]/30 flex items-center justify-center text-[var(--accent-blue)]">
                     <Sparkles className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold text-white uppercase tracking-wider font-mono">Quick Intelligence</p>
-                    <p className="text-[10px] text-slate-500 font-mono mt-1">
+                    <p className="text-[11px] font-bold text-[var(--text-primary)] uppercase tracking-wider font-mono">Quick Intelligence</p>
+                    <p className="text-[10px] text-[var(--text-muted)] font-mono mt-1">
                       Ask about cases, criminals, FIRs, or crime data
                     </p>
                   </div>
@@ -261,7 +261,7 @@ export const GlobalAIAssistant: React.FC = () => {
                       <button
                         key={i}
                         onClick={() => handleSendMessage(q)}
-                        className="w-full p-2 bg-slate-950/50 border border-slate-900 rounded text-[10px] font-mono text-[#A8B4CC] hover:text-white hover:border-[#1E6FD9]/40 transition-all text-left cursor-pointer"
+                        className="w-full p-2 bg-[var(--bg-secondary)]/50 border border-[var(--border-primary)] rounded text-[10px] font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-blue)]/40 transition-all text-left cursor-pointer"
                       >
                         {q}
                       </button>
@@ -273,7 +273,7 @@ export const GlobalAIAssistant: React.FC = () => {
                   const isUser = msg.sender === 'user';
                   return (
                     <div key={msg.id} className={`flex flex-col gap-1.5 ${isUser ? 'items-end' : 'items-start'}`}>
-                      <div className="flex items-center gap-2 font-mono text-[8px] text-slate-600">
+                      <div className="flex items-center gap-2 font-mono text-[8px] text-[var(--text-secondary)]">
                         <span>{isUser ? 'YOU' : 'AI'}</span>
                         <span>·</span>
                         <span>{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -281,8 +281,8 @@ export const GlobalAIAssistant: React.FC = () => {
 
                       <div className={`p-3 rounded-lg border text-[11px] leading-relaxed max-w-[90%] text-left font-mono ${
                         isUser
-                          ? 'bg-[#1E6FD9]/10 border-[#1E6FD9]/20 text-white'
-                          : 'bg-[#111D35]/35 border-slate-900 text-[#A8B4CC] relative group'
+                          ? 'bg-[var(--accent-blue)]/10 border-[var(--accent-blue)]/20 text-[var(--text-primary)]'
+                          : 'bg-[var(--bg-tertiary)]/35 border-[var(--border-primary)] text-[var(--text-secondary)] relative group'
                       }`}>
                         {isUser ? (
                           <div className="whitespace-pre-wrap">{msg.text}</div>
@@ -294,11 +294,11 @@ export const GlobalAIAssistant: React.FC = () => {
                           <CitationBadge citations={msg.citations} />
                         )}
                         {!isUser && msg.sources && msg.sources.length > 0 && !msg.citations?.length && (
-                          <div className="mt-3 pt-2 border-t border-slate-900">
+                          <div className="mt-3 pt-2 border-t border-[var(--border-primary)]">
                             <div className="flex flex-wrap gap-1.5">
                               {msg.sources.map((src, sIdx) => (
-                                <span key={sIdx} className="px-2 py-0.5 bg-slate-950/60 border border-slate-900 rounded text-[8px] text-[#A8B4CC] flex items-center gap-1 font-mono">
-                                  <FileText className="w-2.5 h-2.5 text-[#0E9E78]" />
+                                <span key={sIdx} className="px-2 py-0.5 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] rounded text-[8px] text-[var(--text-secondary)] flex items-center gap-1 font-mono">
+                                  <FileText className="w-2.5 h-2.5 text-[var(--accent-teal)]" />
                                   {src}
                                 </span>
                               ))}
@@ -309,7 +309,7 @@ export const GlobalAIAssistant: React.FC = () => {
                         {!isUser && (
                           <button
                             onClick={() => handleCopyText(msg.text, msg.id)}
-                            className="absolute right-2 top-2 p-1 bg-slate-950/70 border border-slate-900 text-slate-400 hover:text-white rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                            className="absolute right-2 top-2 p-1 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                           >
                             {copiedId === msg.id ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                           </button>
@@ -322,7 +322,7 @@ export const GlobalAIAssistant: React.FC = () => {
                             <button
                               key={sIdx}
                               onClick={() => handleFollowUp(s)}
-                              className="px-2 py-1 bg-[#1E6FD9]/10 border border-[#1E6FD9]/20 rounded text-[9px] font-mono text-[#A8B4CC] hover:text-white hover:border-[#1E6FD9]/40 transition-all cursor-pointer"
+                              className="px-2 py-1 bg-[var(--accent-blue)]/10 border border-[var(--accent-blue)]/20 rounded text-[9px] font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-blue)]/40 transition-all cursor-pointer"
                             >
                               {s}
                             </button>
@@ -337,15 +337,15 @@ export const GlobalAIAssistant: React.FC = () => {
               {/* Streaming loader */}
               {isLoading && (
                 <div className="flex flex-col gap-1.5 items-start">
-                  <div className="font-mono text-[8px] text-slate-600">AI</div>
-                  <div className="p-3 bg-[#111D35]/35 border border-slate-900 rounded-lg">
+                  <div className="font-mono text-[8px] text-[var(--text-secondary)]">AI</div>
+                  <div className="p-3 bg-[var(--bg-tertiary)]/35 border border-[var(--border-primary)] rounded-lg">
                     <div className="flex items-center gap-2">
                       <div className="flex space-x-1">
-                        <div className="w-1.5 h-1.5 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-1.5 h-1.5 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-1.5 h-1.5 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div className="w-1.5 h-1.5 bg-[var(--accent-blue)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 bg-[var(--accent-blue)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 bg-[var(--accent-blue)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
-                      <div className="flex items-center gap-1 text-[9px] font-mono text-slate-500">
+                      <div className="flex items-center gap-1 text-[9px] font-mono text-[var(--text-muted)]">
                         {getStepIcon(streamStatus)}
                         <span className="uppercase tracking-wider">{streamStatus || 'Processing...'}</span>
                       </div>
@@ -355,8 +355,8 @@ export const GlobalAIAssistant: React.FC = () => {
                         const isDone = streamStatus.includes('Generating') || (streamStatus.includes('Retrieved') && idx < 2) || (streamStatus.includes('Intent') && idx === 0);
                         const isCurrent = (idx === 0 && streamStatus.includes('Analyzing')) || (idx === 1 && (streamStatus.includes('Querying') || streamStatus.includes('Intent') || streamStatus.includes('Retrieved'))) || (idx === 2 && streamStatus.includes('Generating'));
                         return (
-                          <div key={step} className={`flex items-center gap-1 text-[7px] font-mono uppercase ${isCurrent ? 'text-[#1E6FD9]' : isDone ? 'text-[#0E9E78]' : 'text-slate-700'}`}>
-                            <div className={`w-1 h-1 rounded-full ${isCurrent ? 'bg-[#1E6FD9] animate-pulse' : isDone ? 'bg-[#0E9E78]' : 'bg-slate-700'}`} />
+                          <div key={step} className={`flex items-center gap-1 text-[7px] font-mono uppercase ${isCurrent ? 'text-[var(--accent-blue)]' : isDone ? 'text-[var(--accent-teal)]' : 'text-[var(--text-disabled)]'}`}>
+                            <div className={`w-1 h-1 rounded-full ${isCurrent ? 'bg-[var(--accent-blue)] animate-pulse' : isDone ? 'bg-[var(--accent-teal)]' : 'bg-[var(--bg-elevated)]'}`} />
                             {step}
                           </div>
                         );
@@ -370,26 +370,26 @@ export const GlobalAIAssistant: React.FC = () => {
             </div>
 
             {/* Input */}
-            <div className="p-3 border-t border-border-color bg-slate-950/30">
-              <div className="flex items-end gap-2 bg-slate-950/70 border border-slate-900 focus-within:border-[#1E6FD9]/40 rounded-lg p-2">
+            <div className="p-3 border-t border-border-color bg-[var(--bg-secondary)]/30">
+              <div className="flex items-end gap-2 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] focus-within:border-[var(--accent-blue)]/40 rounded-lg p-2">
                 <textarea
                   ref={inputRef}
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask about cases, criminals..."
-                  className="flex-grow bg-transparent outline-none border-none text-white text-[11px] font-mono resize-none max-h-20 py-1 placeholder-slate-600"
+                  className="flex-grow bg-transparent outline-none border-none text-[var(--text-primary)] text-[11px] font-mono resize-none max-h-20 py-1 placeholder-slate-600"
                   rows={1}
                 />
                 <button
                   onClick={() => handleSendMessage()}
                   disabled={isLoading}
-                  className="p-1.5 bg-[#1E6FD9] hover:bg-[#1E6FD9]/85 text-white disabled:opacity-30 rounded shrink-0 cursor-pointer"
+                  className="p-1.5 bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/85 text-[var(--text-primary)] disabled:opacity-30 rounded shrink-0 cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <p className="text-[7px] font-mono text-slate-700 mt-1 text-center uppercase">
+              <p className="text-[7px] font-mono text-[var(--text-disabled)] mt-1 text-center uppercase">
                 Press Enter to send
               </p>
             </div>

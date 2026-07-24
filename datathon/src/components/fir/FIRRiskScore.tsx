@@ -32,17 +32,17 @@ export const FIRRiskScore: React.FC<FIRRiskScoreProps> = ({ score, reasons }) =>
   }
 
   return (
-    <div className={`bg-[#111D35]/30 border border-border-color p-5 rounded-card flex flex-col justify-between overflow-hidden relative shadow-lg ${borderGlow}`}>
+    <div className={`bg-[var(--bg-tertiary)]/30 border border-border-color p-5 rounded-card flex flex-col justify-between overflow-hidden relative shadow-lg ${borderGlow}`}>
       {/* Cyber radar scan aesthetic sweep line */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#1E6FD9]/5 to-transparent pointer-events-none -z-10 h-1/2 animate-[pulse_3s_infinite]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[var(--accent-blue)]/5 to-transparent pointer-events-none -z-10 h-1/2 animate-[pulse_3s_infinite]" />
 
-      <div className="flex items-center justify-between border-b border-slate-900 pb-3 mb-4">
+      <div className="flex items-center justify-between border-b border-[var(--border-primary)] pb-3 mb-4">
         <div className="flex items-center gap-2">
           <Cpu className="w-4 h-4 text-red-500 animate-spin-slow" />
-          <span className="text-[10px] font-bold text-[#E8EDF5] uppercase tracking-wider">AI Risk & Threat Assessment</span>
+          <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider">AI Risk & Threat Assessment</span>
         </div>
-        <div className="flex items-center gap-1 text-[7px] font-mono text-[#6A7A96]">
-          <Fingerprint className="w-3 h-3 text-[#1E6FD9]" />
+        <div className="flex items-center gap-1 text-[7px] font-mono text-[var(--text-muted)]">
+          <Fingerprint className="w-3 h-3 text-[var(--accent-blue)]" />
           <span>INFERENCE MODEL: RULE-SQL-V2</span>
         </div>
       </div>
@@ -76,8 +76,8 @@ export const FIRRiskScore: React.FC<FIRRiskScoreProps> = ({ score, reasons }) =>
             </svg>
             {/* Inside circular value */}
             <div className="absolute text-center select-none font-mono">
-              <span className="text-xl font-extrabold text-white block leading-none">{score}%</span>
-              <span className="text-[7.5px] text-[#6A7A96] block uppercase mt-1.5 tracking-wider">Severity</span>
+              <span className="text-xl font-extrabold text-[var(--text-primary)] block leading-none">{score}%</span>
+              <span className="text-[7.5px] text-[var(--text-muted)] block uppercase mt-1.5 tracking-wider">Severity</span>
             </div>
           </div>
           <span className={`text-[9.5px] uppercase tracking-wider mt-2.5 ${ratingColor}`}>
@@ -87,11 +87,11 @@ export const FIRRiskScore: React.FC<FIRRiskScoreProps> = ({ score, reasons }) =>
 
         {/* Right Side: Threat reasons */}
         <div className="sm:col-span-7 space-y-2.5">
-          <span className="text-[8.5px] text-slate-500 uppercase tracking-widest block font-bold">Threat Factors Detected</span>
+          <span className="text-[8.5px] text-[var(--text-muted)] uppercase tracking-widest block font-bold">Threat Factors Detected</span>
           
           <div className="space-y-1.5 max-h-[140px] overflow-y-auto custom-scrollbar pr-1">
             {reasons.length > 0 ? reasons.map((reason, idx) => (
-              <div key={idx} className="flex items-start gap-2 text-[9.5px] text-[#A8B4CC]">
+              <div key={idx} className="flex items-start gap-2 text-[9.5px] text-[var(--text-secondary)]">
                 <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
                 <span className="font-mono leading-relaxed">{reason}</span>
               </div>

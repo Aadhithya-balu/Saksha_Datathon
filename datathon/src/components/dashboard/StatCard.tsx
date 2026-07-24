@@ -28,27 +28,27 @@ export const StatCard: React.FC<StatCardProps> = ({
   const colorSchemes = {
     blue: { 
       bg: 'bg-blue-500/10 border-blue-500/20', 
-      iconColor: 'text-[#1E6FD9]', 
+      iconColor: 'text-[var(--accent-blue)]', 
       glow: 'hover:shadow-[0_0_20px_rgba(30,111,217,0.25)] hover:border-blue-500/45' 
     },
     teal: { 
       bg: 'bg-teal-500/10 border-teal-500/20', 
-      iconColor: 'text-[#0E9E78]', 
+      iconColor: 'text-[var(--accent-teal)]', 
       glow: 'hover:shadow-[0_0_20px_rgba(14,158,120,0.25)] hover:border-emerald-500/45' 
     },
     amber: { 
       bg: 'bg-amber-500/10 border-amber-500/20', 
-      iconColor: 'text-[#D4820A]', 
+      iconColor: 'text-[var(--accent-amber)]', 
       glow: 'hover:shadow-[0_0_20px_rgba(212,130,10,0.25)] hover:border-amber-500/45' 
     },
     coral: { 
       bg: 'bg-red-500/10 border-red-500/20', 
-      iconColor: 'text-[#C94A2A]', 
+      iconColor: 'text-[var(--accent-coral)]', 
       glow: 'hover:shadow-[0_0_20px_rgba(201,74,42,0.25)] hover:border-red-500/45' 
     },
     purple: { 
       bg: 'bg-purple-500/10 border-purple-500/20', 
-      iconColor: 'text-[#6C43CC]', 
+      iconColor: 'text-[var(--accent-purple)]', 
       glow: 'hover:shadow-[0_0_20px_rgba(108,67,204,0.25)] hover:border-purple-500/45' 
     },
     indigo: { 
@@ -89,7 +89,7 @@ export const StatCard: React.FC<StatCardProps> = ({
 
       {/* Metrics Stack */}
       <div className="w-full text-left" style={{ transform: 'translateZ(10px)' }}>
-        <span className="block text-[9px] font-mono uppercase tracking-wider text-[#6A7A96] font-bold">
+        <span className="block text-[9px] font-mono uppercase tracking-wider text-[var(--text-muted)] font-bold">
           {title}
         </span>
         <h3 className="text-lg md:text-xl font-mono font-extrabold text-primary-text mt-1 leading-none">
@@ -104,18 +104,18 @@ export const StatCard: React.FC<StatCardProps> = ({
             {isStable && '•'}
             {trendValue}
           </span>
-          <span className="text-[#6A7A96]">{subtext}</span>
+          <span className="text-[var(--text-muted)]">{subtext}</span>
         </div>
       </div>
 
       {/* Bottom neon glow strip */}
       <div 
         className={`absolute bottom-0 left-0 right-0 h-[2.5px] transition-all duration-300 ${
-          glowColor === 'blue' ? 'bg-[#1E6FD9]/30 group-hover:bg-[#1E6FD9] group-hover:shadow-[0_0_10px_#1E6FD9]' :
-          glowColor === 'teal' ? 'bg-[#0E9E78]/30 group-hover:bg-[#0E9E78] group-hover:shadow-[0_0_10px_#0E9E78]' :
-          glowColor === 'amber' ? 'bg-[#D4820A]/30 group-hover:bg-[#D4820A] group-hover:shadow-[0_0_10px_#D4820A]' :
-          glowColor === 'coral' ? 'bg-[#C94A2A]/30 group-hover:bg-[#C94A2A] group-hover:shadow-[0_0_10px_#C94A2A]' :
-          glowColor === 'purple' ? 'bg-[#6C43CC]/30 group-hover:bg-[#6C43CC] group-hover:shadow-[0_0_10px_#6C43CC]' :
+          glowColor === 'blue' ? 'bg-[var(--accent-blue)]/30 group-hover:bg-[var(--accent-blue)] group-hover:shadow-[0_0_10px_var(--accent-blue)]' :
+          glowColor === 'teal' ? 'bg-[var(--accent-teal)]/30 group-hover:bg-[var(--accent-teal)] group-hover:shadow-[0_0_10px_var(--accent-teal)]' :
+          glowColor === 'amber' ? 'bg-[var(--accent-amber)]/30 group-hover:bg-[var(--accent-amber)] group-hover:shadow-[0_0_10px_var(--accent-amber)]' :
+          glowColor === 'coral' ? 'bg-[var(--accent-coral)]/30 group-hover:bg-[var(--accent-coral)] group-hover:shadow-[0_0_10px_var(--accent-coral)]' :
+          glowColor === 'purple' ? 'bg-[var(--accent-purple)]/30 group-hover:bg-[var(--accent-purple)] group-hover:shadow-[0_0_10px_var(--accent-purple)]' :
           glowColor === 'indigo' ? 'bg-indigo-500/30 group-hover:bg-indigo-500 group-hover:shadow-[0_0_10px_#6366f1]' :
           'bg-emerald-500/30 group-hover:bg-emerald-500 group-hover:shadow-[0_0_10px_#10b981]'
         }`}

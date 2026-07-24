@@ -33,16 +33,16 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose 
               isSuspect ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 
               isOffender ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
               isLocation ? 'bg-sky-500/10 text-sky-500 border border-sky-500/20' :
-              'bg-slate-500/10 text-slate-400 border border-slate-700'
+              'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border border-[var(--border-secondary)]'
             }`}>
               {isLocation ? <MapPin className="w-5 h-5" /> : <User className="w-5 h-5" />}
             </div>
 
             <div>
-              <h4 className="text-xs font-mono font-bold text-white uppercase max-w-[160px] truncate">
+              <h4 className="text-xs font-mono font-bold text-[var(--text-primary)] uppercase max-w-[160px] truncate">
                 {node.name}
               </h4>
-              <span className="text-[8.5px] font-mono text-[#6A7A96] uppercase tracking-wider block mt-0.5">
+              <span className="text-[8.5px] font-mono text-[var(--text-muted)] uppercase tracking-wider block mt-0.5">
                 Clearance: {node.category}
               </span>
             </div>
@@ -50,7 +50,7 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose 
 
           <button
             onClick={onClose}
-            className="p-1 hover:bg-[#1E6FD9]/15 rounded text-[#A8B4CC] cursor-pointer"
+            className="p-1 hover:bg-[var(--accent-blue)]/15 rounded text-[var(--text-secondary)] cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -63,11 +63,11 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose 
           {!isVictim && !isLocation && (
             <div className={`p-3 rounded-card border flex items-center justify-between ${
               node.riskScore >= 80 
-                ? 'bg-[#C94A2A]/5 border-[#C94A2A]/20 text-[#C94A2A]' 
-                : 'bg-[#D4820A]/5 border-[#D4820A]/20 text-[#D4820A]'
+                ? 'bg-[var(--accent-coral)]/5 border-[var(--accent-coral)]/20 text-[var(--accent-coral)]' 
+                : 'bg-[var(--accent-amber)]/5 border-[var(--accent-amber)]/20 text-[var(--accent-amber)]'
             }`}>
               <div>
-                <span className="text-[8px] uppercase tracking-widest text-slate-500 block">
+                <span className="text-[8px] uppercase tracking-widest text-[var(--text-muted)] block">
                   Threat Threat Metric
                 </span>
                 <span className="text-lg font-bold block mt-0.5">{node.riskScore}%</span>
@@ -78,8 +78,8 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose 
 
           {/* Location Risk Banner */}
           {isLocation && (
-            <div className="p-3 rounded-card bg-[#1E6FD9]/5 border border-[#1E6FD9]/20 text-[#1E6FD9]">
-              <span className="text-[8px] uppercase tracking-widest text-[#6A7A96] block">
+            <div className="p-3 rounded-card bg-[var(--accent-blue)]/5 border border-[var(--accent-blue)]/20 text-[var(--accent-blue)]">
+              <span className="text-[8px] uppercase tracking-widest text-[var(--text-muted)] block">
                 Regional Grid Density
               </span>
               <span className="text-lg font-bold block mt-0.5">{node.riskScore}% severity</span>
@@ -89,37 +89,37 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose 
           {/* Details Descriptions */}
           <div className="space-y-4 pt-1">
             <div>
-              <span className="text-[8.5px] font-bold text-slate-500 uppercase tracking-widest block mb-1">
+              <span className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-1">
                 Intelligence Description
               </span>
-              <p className="text-[10.5px] text-[#A8B4CC] leading-relaxed bg-[#0c1527] p-3 rounded-btn border border-slate-900">
+              <p className="text-[10.5px] text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-secondary)] p-3 rounded-btn border border-[var(--border-primary)]">
                 {node.details}
               </p>
             </div>
 
             {/* Suspect context meta details */}
-            <div className="space-y-2 border-t border-slate-900 pt-3">
+            <div className="space-y-2 border-t border-[var(--border-primary)] pt-3">
               {node.phone && (
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-[#6A7A96] flex items-center gap-1">
-                    <Phone className="w-3 h-3 text-[#1E6FD9]" /> Core Contact
+                  <span className="text-[var(--text-muted)] flex items-center gap-1">
+                    <Phone className="w-3 h-3 text-[var(--accent-blue)]" /> Core Contact
                   </span>
-                  <span className="text-white hover:text-[#1E6FD9] cursor-pointer">{node.phone}</span>
+                  <span className="text-[var(--text-primary)] hover:text-[var(--accent-blue)] cursor-pointer">{node.phone}</span>
                 </div>
               )}
 
               <div className="flex items-center justify-between text-[10px]">
-                <span className="text-[#6A7A96] flex items-center gap-1">
-                  <Briefcase className="w-3 h-3 text-[#0E9E78]" /> Related Case Files
+                <span className="text-[var(--text-muted)] flex items-center gap-1">
+                  <Briefcase className="w-3 h-3 text-[var(--accent-teal)]" /> Related Case Files
                 </span>
-                <span className="text-[#0E9E78] font-bold">{node.casesCount} active FIRs</span>
+                <span className="text-[var(--accent-teal)] font-bold">{node.casesCount} active FIRs</span>
               </div>
             </div>
 
             {/* Modus Operandi tags */}
             {!isVictim && !isLocation && (
               <div>
-                <span className="text-[8.5px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
+                <span className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-1.5">
                   Modus Operandi Marks
                 </span>
                 <div className="flex flex-wrap gap-1.5 mt-1">
@@ -143,15 +143,15 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose 
             {/* Location coordinates mock grid */}
             {isLocation && (
               <div>
-                <span className="text-[8.5px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
+                <span className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-1.5">
                   Sub-grid sectors
                 </span>
-                <div className="flex flex-col gap-1 mt-1 text-[10px] text-[#A8B4CC]">
-                  <div className="flex justify-between py-1 bg-slate-950/30 px-2 rounded">
+                <div className="flex flex-col gap-1 mt-1 text-[10px] text-[var(--text-secondary)]">
+                  <div className="flex justify-between py-1 bg-[var(--bg-secondary)]/30 px-2 rounded">
                     <span>Beat Sector A (High Density)</span>
                     <span className="text-red-400">88% ris</span>
                   </div>
-                  <div className="flex justify-between py-1 bg-slate-950/30 px-2 rounded">
+                  <div className="flex justify-between py-1 bg-[var(--bg-secondary)]/30 px-2 rounded">
                     <span>Beat Sector B (Medium Density)</span>
                     <span className="text-amber-400">62% ris</span>
                   </div>
@@ -182,7 +182,7 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose 
               );
             }
           }}
-          className="w-full py-2 bg-[#1E6FD9] hover:bg-[#1E6FD9]/80 text-white text-[10px] uppercase rounded-btn font-semibold cursor-pointer text-center select-none"
+          className="w-full py-2 bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/80 text-[var(--text-primary)] text-[10px] uppercase rounded-btn font-semibold cursor-pointer text-center select-none"
         >
           View Full Police Dossier
         </button>
@@ -207,7 +207,7 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose 
               );
             }
           }}
-          className="w-full py-2 bg-slate-950 hover:bg-slate-900 text-[#A8B4CC] text-[10px] uppercase rounded-btn font-semibold border border-slate-800 hover:border-slate-700 cursor-pointer text-center select-none flex items-center justify-center gap-1.5"
+          className="w-full py-2 bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-[10px] uppercase rounded-btn font-semibold border border-[var(--border-primary)] hover:border-[var(--border-secondary)] cursor-pointer text-center select-none flex items-center justify-center gap-1.5"
         >
           <Link2 className="w-3.5 h-3.5" />
           Export Connection Map

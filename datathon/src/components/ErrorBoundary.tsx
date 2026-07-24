@@ -31,10 +31,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
       return (
         <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center">
           <AlertTriangle className="w-12 h-12 text-[#D4820A] mb-4" />
-          <h2 className="text-sm font-mono font-bold text-[#E8EDF5] uppercase tracking-wider mb-2">
+          <h2 className="text-sm font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider mb-2">
             Module Runtime Error
           </h2>
-          <p className="text-[10px] font-mono text-[#6A7A96] max-w-md mb-4">
+          <p className="text-[10px] font-mono text-[var(--text-muted)] max-w-md mb-4">
             {this.props.fallbackLabel
               ? `The ${this.props.fallbackLabel} module encountered an unexpected error.`
               : 'This module encountered an unexpected error.'}

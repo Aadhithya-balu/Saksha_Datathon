@@ -40,9 +40,9 @@ const AIChatPanel: React.FC<Props> = ({ caseId }) => {
   return (
     <div className="p-5 bg-secondary-bg border border-border-color rounded-card flex flex-col h-full min-h-[300px]">
       {/* Header */}
-      <h3 className="text-xs uppercase tracking-wider font-bold text-white flex items-center gap-2 mb-4 border-b border-border-color/60 pb-3 shrink-0">
-        <Bot className="w-4 h-4 text-[#0E9E78]" /> AI Investigation Assistant
-        <Sparkles className="w-3 h-3 text-[#0E9E78] animate-pulse ml-auto" />
+      <h3 className="text-xs uppercase tracking-wider font-bold text-[var(--text-primary)] flex items-center gap-2 mb-4 border-b border-border-color/60 pb-3 shrink-0">
+        <Bot className="w-4 h-4 text-[var(--accent-teal)]" /> AI Investigation Assistant
+        <Sparkles className="w-3 h-3 text-[var(--accent-teal)] animate-pulse ml-auto" />
       </h3>
 
       {/* Messages */}
@@ -50,27 +50,27 @@ const AIChatPanel: React.FC<Props> = ({ caseId }) => {
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'assistant' && (
-              <div className="w-6 h-6 rounded bg-[#0E9E78]/10 border border-[#0E9E78]/30 flex items-center justify-center text-[#0E9E78] shrink-0 mt-0.5">
+              <div className="w-6 h-6 rounded bg-[var(--accent-teal)]/10 border border-[var(--accent-teal)]/30 flex items-center justify-center text-[var(--accent-teal)] shrink-0 mt-0.5">
                 <Bot className="w-3.5 h-3.5" />
               </div>
             )}
             <div className={`max-w-[85%] p-2.5 rounded text-[10px] leading-relaxed ${
               msg.role === 'user'
-                ? 'bg-[#1E6FD9]/15 border border-[#1E6FD9]/20 text-white'
-                : 'bg-slate-950/50 border border-slate-900 text-[#A8B4CC]'
+                ? 'bg-[var(--accent-blue)]/15 border border-[var(--accent-blue)]/20 text-[var(--text-primary)]'
+                : 'bg-[var(--bg-secondary)]/50 border border-[var(--border-primary)] text-[var(--text-secondary)]'
             }`}>
               {msg.content}
             </div>
             {msg.role === 'user' && (
-              <div className="w-6 h-6 rounded bg-[#1E6FD9]/10 border border-[#1E6FD9]/30 flex items-center justify-center text-[#1E6FD9] shrink-0 mt-0.5">
+              <div className="w-6 h-6 rounded bg-[var(--accent-blue)]/10 border border-[var(--accent-blue)]/30 flex items-center justify-center text-[var(--accent-blue)] shrink-0 mt-0.5">
                 <User className="w-3.5 h-3.5" />
               </div>
             )}
           </div>
         ))}
         {loading && (
-          <div className="flex items-center gap-2 text-[#6A7A96] text-[9px] uppercase">
-            <div className="w-3 h-3 rounded-full border border-[#0E9E78] border-t-transparent animate-spin" />
+          <div className="flex items-center gap-2 text-[var(--text-muted)] text-[9px] uppercase">
+            <div className="w-3 h-3 rounded-full border border-[var(--accent-teal)] border-t-transparent animate-spin" />
             Analyzing case data...
           </div>
         )}
@@ -83,13 +83,13 @@ const AIChatPanel: React.FC<Props> = ({ caseId }) => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about this investigation..."
-          className="flex-1 px-3 py-2 bg-slate-950 border border-slate-900 rounded text-[10px] text-white placeholder-[#6A7A96] focus:border-[#0E9E78]/60 focus:outline-none uppercase"
+          className="flex-1 px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-[10px] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--accent-teal)]/60 focus:outline-none uppercase"
           disabled={loading}
         />
         <button
           type="submit"
           disabled={!input.trim() || loading}
-          className="px-3 py-2 bg-[#0E9E78] hover:bg-[#0E9E78]/80 disabled:opacity-50 text-white rounded transition-colors cursor-pointer shrink-0"
+          className="px-3 py-2 bg-[var(--accent-teal)] hover:bg-[var(--accent-teal)]/80 disabled:opacity-50 text-[var(--text-primary)] rounded transition-colors cursor-pointer shrink-0"
         >
           <Send className="w-3.5 h-3.5" />
         </button>

@@ -1061,3 +1061,11 @@ connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (52.68.3.1), 
 2026-07-24 12:39:04.667 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
 2026-07-24 12:39:04.731 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
 2026-07-24 12:40:02.678 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 12:41:28.371 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 12:41:34.020 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
+2026-07-24 12:41:34.078 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 12:52:52.541 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 14:07:52.393 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 14:07:57.327 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
+2026-07-24 14:07:57.391 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 15:23:13.164 | INFO     | app.main:lifespan:38 - Shutdown complete

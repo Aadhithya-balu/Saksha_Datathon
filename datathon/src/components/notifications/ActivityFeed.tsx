@@ -69,7 +69,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ limit = 50, compact 
             <div className="w-5 h-5 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin" />
           </div>
         ) : events.length === 0 ? (
-          <div className="text-center py-4 text-[8px] font-mono text-[#6A7A96]">No recent activity</div>
+          <div className="text-center py-4 text-[8px] font-mono text-[var(--text-muted)]">No recent activity</div>
         ) : (
           events.slice(0, 10).map((event) => (
             <div key={event.id} className={`flex items-start gap-2.5 pl-2 border-l-2 ${getEventColor(event.event_type, event.severity)}`}>
@@ -77,8 +77,8 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ limit = 50, compact 
                 {getEventIcon(event.event_type)}
               </div>
               <div className="min-w-0">
-                <p className="text-[8.5px] font-mono text-white truncate max-w-[200px]">{event.title}</p>
-                <p className="text-[7px] font-mono text-[#6A7A96]">
+                <p className="text-[8.5px] font-mono text-[var(--text-primary)] truncate max-w-[200px]">{event.title}</p>
+                <p className="text-[7px] font-mono text-[var(--text-muted)]">
                   {event.actor || 'System'} • {new Date(event.timestamp).toLocaleTimeString()}
                 </p>
               </div>
@@ -95,7 +95,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ limit = 50, compact 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="w-5 h-5 text-[#1E6FD9]" />
-          <h3 className="text-[11px] font-mono font-bold text-white uppercase tracking-wider">
+          <h3 className="text-[11px] font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider">
             Unified Activity Feed
           </h3>
         </div>
@@ -110,11 +110,11 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ limit = 50, compact 
 
       {/* Filter */}
       <div className="flex items-center gap-2">
-        <Search className="w-3 h-3 text-[#6A7A96]" />
+        <Search className="w-3 h-3 text-[var(--text-muted)]" />
         <select
           value={eventFilter}
           onChange={(e) => setEventFilter(e.target.value)}
-          className="flex-1 px-2 py-1 bg-slate-950 border border-slate-900 rounded text-[9px] font-mono text-[#A8B4CC] outline-none focus:border-[#1E6FD9] cursor-pointer"
+          className="flex-1 px-2 py-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-[9px] font-mono text-[var(--text-secondary)] outline-none focus:border-[#1E6FD9] cursor-pointer"
         >
           <option value="">All Events</option>
           <option value="case_created">Case Created</option>
@@ -141,8 +141,8 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ limit = 50, compact 
           </div>
         ) : events.length === 0 ? (
           <div className="text-center py-12">
-            <Activity className="w-8 h-8 text-[#6A7A96] mx-auto mb-2 opacity-40" />
-            <p className="text-[9px] font-mono text-[#6A7A96]">No activity found</p>
+            <Activity className="w-8 h-8 text-[var(--text-muted)] mx-auto mb-2 opacity-40" />
+            <p className="text-[9px] font-mono text-[var(--text-muted)]">No activity found</p>
           </div>
         ) : (
           <div className="relative pl-4">
@@ -166,7 +166,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ limit = 50, compact 
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[9.5px] font-mono font-bold text-white truncate">
+                        <span className="text-[9.5px] font-mono font-bold text-[var(--text-primary)] truncate">
                           {event.title}
                         </span>
                         <span className={`shrink-0 text-[7px] font-mono uppercase px-1 py-0.5 rounded ${
@@ -178,16 +178,16 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ limit = 50, compact 
                           {event.event_type.replace(/_/g, ' ')}
                         </span>
                       </div>
-                      <p className="text-[8px] font-mono text-[#A8B4CC] mt-0.5 leading-relaxed">
+                      <p className="text-[8px] font-mono text-[var(--text-secondary)] mt-0.5 leading-relaxed">
                         {event.description}
                       </p>
                       <div className="flex items-center gap-3 mt-1">
                         {event.actor && (
-                          <span className="text-[7px] font-mono text-[#6A7A96]">
+                          <span className="text-[7px] font-mono text-[var(--text-muted)]">
                             by {event.actor} {event.actor_badge ? `(${event.actor_badge})` : ''}
                           </span>
                         )}
-                        <span className="text-[7px] font-mono text-[#6A7A96]">
+                        <span className="text-[7px] font-mono text-[var(--text-muted)]">
                           {new Date(event.timestamp).toLocaleString()}
                         </span>
                       </div>
@@ -201,7 +201,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ limit = 50, compact 
       </div>
 
       {feed && (
-        <div className="text-[7px] font-mono text-[#6A7A96] text-right border-t border-border-color pt-2">
+        <div className="text-[7px] font-mono text-[var(--text-muted)] text-right border-t border-border-color pt-2">
           {feed.total} events loaded
         </div>
       )}

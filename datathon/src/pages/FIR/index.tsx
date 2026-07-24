@@ -284,13 +284,13 @@ export const FIRPage: React.FC = () => {
   return (
     <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none">
       {/* Top Header HUD */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/5 pb-3 shrink-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3 shrink-0">
         <div>
-          <h2 className="text-md font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
             <FileText className="w-5 h-5 text-[#1E6FD9] animate-pulse" />
             FIR Lifecycle Registry Center
           </h2>
-          <p className="text-[9.5px] font-mono text-[#6A7A96] mt-0.5">
+          <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
             KARNATAKA POLICE DEPT â€” LAW ENFORCEMENT RECORDS, CRIMINAL LINKAGES & AI ANALYSIS TELEMETRY
           </p>
           {error && <p className="text-[9px] font-mono text-amber-400 uppercase mt-1">{error}</p>}
@@ -300,7 +300,7 @@ export const FIRPage: React.FC = () => {
         {(user?.role === 'SCRB' || user?.role === 'IO') && !showForm && (
           <button
             onClick={handleCreateNewClick}
-            className="px-3 py-1.5 bg-[#1E6FD9] hover:bg-[#1E6FD9]/80 border border-[#1E6FD9]/20 text-white font-mono text-[10px] uppercase font-bold rounded-btn transition-colors cursor-pointer flex items-center gap-1.5 shadow-glow-blue select-none shrink-0"
+            className="px-3 py-1.5 bg-[#1E6FD9] hover:bg-[#1E6FD9]/80 border border-[#1E6FD9]/20 text-[var(--text-primary)] font-mono text-[10px] uppercase font-bold rounded-btn transition-colors cursor-pointer flex items-center gap-1.5 shadow-glow-blue select-none shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
             Register New FIR
@@ -312,9 +312,9 @@ export const FIRPage: React.FC = () => {
       <div className="flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden min-h-0">
         
         {/* Left Side: Filter search list panel */}
-        <div className="lg:col-span-4 bg-[#111D35]/20 border border-border-color p-4 rounded-card flex flex-col justify-between overflow-hidden">
+        <div className="lg:col-span-4 bg-[var(--bg-tertiary)]/20 border border-border-color p-4 rounded-card flex flex-col justify-between overflow-hidden">
           <div className="flex flex-col gap-3 overflow-hidden flex-1">
-            <span className="text-[10px] font-mono font-bold text-[#E8EDF5] uppercase tracking-wider border-b border-slate-900 pb-2 shrink-0">
+            <span className="text-[10px] font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider border-b border-[var(--border-primary)] pb-2 shrink-0">
               FIR Document Directory
             </span>
 
@@ -327,9 +327,9 @@ export const FIRPage: React.FC = () => {
                   placeholder="Search FIR id, complainant, sections..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 bg-slate-950/70 border border-slate-900 rounded text-white outline-none focus:border-[#1E6FD9] text-[10.5px]"
+                  className="w-full pl-8 pr-3 py-1.5 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] rounded text-[var(--text-primary)] outline-none focus:border-[#1E6FD9] text-[10.5px]"
                 />
-                <Search className="absolute left-2.5 w-3.5 h-3.5 text-[#6A7A96]" />
+                <Search className="absolute left-2.5 w-3.5 h-3.5 text-[var(--text-muted)]" />
               </div>
 
               {/* Filtering selects */}
@@ -338,7 +338,7 @@ export const FIRPage: React.FC = () => {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-2 py-1.5 bg-slate-950 border border-slate-900 rounded text-[#A8B4CC] outline-none focus:border-[#1E6FD9] cursor-pointer"
+                  className="w-full px-2 py-1.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-[var(--text-secondary)] outline-none focus:border-[#1E6FD9] cursor-pointer"
                 >
                   <option value="">All Statuses</option>
                   <option value="registered">Registered</option>
@@ -350,7 +350,7 @@ export const FIRPage: React.FC = () => {
                 <select
                   value={districtFilter}
                   onChange={(e) => setDistrictFilter(e.target.value)}
-                  className="w-full px-2 py-1.5 bg-slate-950 border border-slate-900 rounded text-[#A8B4CC] outline-none focus:border-[#1E6FD9] cursor-pointer"
+                  className="w-full px-2 py-1.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-[var(--text-secondary)] outline-none focus:border-[#1E6FD9] cursor-pointer"
                 >
                   <option value="">All Districts</option>
                   {DISTRICTS.map(d => (
@@ -364,8 +364,8 @@ export const FIRPage: React.FC = () => {
             <div className="flex-grow overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
               {isLoadingList ? (
                 <div className="flex flex-col items-center justify-center p-12 space-y-3">
-                  <div className="w-6 h-6 rounded-full border border-slate-700 border-t-[#1E6FD9] animate-spin" />
-                  <span className="text-[9px] uppercase tracking-wider text-[#6A7A96]">Reading registry...</span>
+                  <div className="w-6 h-6 rounded-full border border-[var(--border-secondary)] border-t-[#1E6FD9] animate-spin" />
+                  <span className="text-[9px] uppercase tracking-wider text-[var(--text-muted)]">Reading registry...</span>
                 </div>
               ) : firs.length > 0 ? (
                 firs.map((item) => (
@@ -377,14 +377,14 @@ export const FIRPage: React.FC = () => {
                     }}
                     className={`p-3 rounded-md text-left font-mono transition-all border cursor-pointer flex justify-between gap-3 ${
                       selectedFirId === item.id && !showForm
-                        ? 'bg-[#1E6FD9]/10 border-[#1E6FD9]/30 text-white shadow-glow-blue'
-                        : 'bg-[#111D35]/40 border-slate-900 text-[#A8B4CC] hover:bg-slate-950/20 hover:border-slate-800'
+                        ? 'bg-[#1E6FD9]/10 border-[#1E6FD9]/30 text-[var(--text-primary)] shadow-glow-blue'
+                        : 'bg-[var(--bg-tertiary)]/40 border-[var(--border-primary)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/20 hover:border-[var(--border-primary)]'
                     }`}
                   >
                     <div className="min-w-0 space-y-1">
-                      <span className="text-[11.5px] font-bold block truncate text-white">{item.fir_number}</span>
-                      <span className="text-[9.5px] text-[#6A7A96] block truncate">Complainant: {item.complainant_name}</span>
-                      <span className="text-[8px] text-slate-500 block">FILED: {new Date(item.filed_at).toLocaleDateString('en-IN')}</span>
+                      <span className="text-[11.5px] font-bold block truncate text-[var(--text-primary)]">{item.fir_number}</span>
+                      <span className="text-[9.5px] text-[var(--text-muted)] block truncate">Complainant: {item.complainant_name}</span>
+                      <span className="text-[8px] text-[var(--text-muted)] block">FILED: {new Date(item.filed_at).toLocaleDateString('en-IN')}</span>
                     </div>
                     <div className="flex items-start shrink-0">
                       {item.status === 'closed' ? (
@@ -398,7 +398,7 @@ export const FIRPage: React.FC = () => {
                   </button>
                 ))
               ) : (
-                <div className="p-8 text-center text-[10px] text-[#6A7A96] uppercase border border-dashed border-slate-900 rounded-lg">
+                <div className="p-8 text-center text-[10px] text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)] rounded-lg">
                   No records matching filters
                 </div>
               )}
@@ -422,20 +422,20 @@ export const FIRPage: React.FC = () => {
             /* Loading Detail */
             <div className="flex-grow flex flex-col items-center justify-center space-y-4">
               <div className="w-8 h-8 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin" />
-              <span className="text-[10px] font-mono text-[#6A7A96] uppercase">Syncing Case Telemetry...</span>
+              <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase">Syncing Case Telemetry...</span>
             </div>
           ) : selectedFir ? (
             /* Detailed View */
             <div className="flex-grow flex flex-col justify-between overflow-y-auto custom-scrollbar pr-1 gap-4">
               
               {/* Detail Header HUD */}
-              <div className="p-4 bg-[#111D35]/35 border border-border-color rounded-card shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+              <div className="p-4 bg-[var(--bg-tertiary)]/35 border border-border-color rounded-card shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-extrabold text-white font-mono select-all tracking-wide">{selectedFir.fir_number}</h3>
+                    <h3 className="text-sm font-extrabold text-[var(--text-primary)] font-mono select-all tracking-wide">{selectedFir.fir_number}</h3>
                     {getStatusBadge(selectedFir.status)}
                   </div>
-                  <p className="text-[8.5px] font-mono text-[#6A7A96] mt-1 uppercase">
+                  <p className="text-[8.5px] font-mono text-[var(--text-muted)] mt-1 uppercase">
                     SAKSHA CASE COMMAND DOSSIER INDEXID: {selectedFir.id.slice(0, 8)}...
                   </p>
                 </div>
@@ -449,7 +449,7 @@ export const FIRPage: React.FC = () => {
                           setIsEditing(true);
                           setShowForm(true);
                         }}
-                        className="px-2.5 py-1.5 bg-[#111D35] hover:bg-[#1E6FD9]/15 border border-slate-900 hover:border-[#1E6FD9]/30 text-[#A8B4CC] hover:text-white rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
+                        className="px-2.5 py-1.5 bg-[var(--bg-tertiary)] hover:bg-[#1E6FD9]/15 border border-[var(--border-primary)] hover:border-[#1E6FD9]/30 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         Edit FIR
@@ -465,7 +465,7 @@ export const FIRPage: React.FC = () => {
                   )}
                   <button
                     onClick={handleExportPDF}
-                    className="px-2.5 py-1.5 bg-[#111D35] hover:bg-[#1E6FD9]/15 border border-slate-900 hover:border-[#1E6FD9]/30 text-[#A8B4CC] hover:text-white rounded-btn transition-colors cursor-pointer flex items-center gap-1.5 font-bold"
+                    className="px-2.5 py-1.5 bg-[var(--bg-tertiary)] hover:bg-[#1E6FD9]/15 border border-[var(--border-primary)] hover:border-[#1E6FD9]/30 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-btn transition-colors cursor-pointer flex items-center gap-1.5 font-bold"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Secure Dossier
@@ -474,32 +474,32 @@ export const FIRPage: React.FC = () => {
               </div>
 
               {/* Main Metadata Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 shrink-0 font-mono text-xs text-[#A8B4CC]">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 shrink-0 font-mono text-xs text-[var(--text-secondary)]">
                 {/* Complainant & Narrative panel */}
-                <div className="md:col-span-8 bg-[#111D35]/15 border border-slate-900 rounded-lg p-4 space-y-4">
-                  <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider">Statement Information</span>
+                <div className="md:col-span-8 bg-[var(--bg-tertiary)]/15 border border-[var(--border-primary)] rounded-lg p-4 space-y-4">
+                  <span className="block text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-wider">Statement Information</span>
                   
                   <div className="grid grid-cols-2 gap-3 text-[10.5px]">
                     <div>
-                      <span className="text-[8px] text-slate-500 uppercase block">Complainant name</span>
-                      <span className="text-white font-bold block mt-0.5">{selectedFir.complainant_name}</span>
+                      <span className="text-[8px] text-[var(--text-muted)] uppercase block">Complainant name</span>
+                      <span className="text-[var(--text-primary)] font-bold block mt-0.5">{selectedFir.complainant_name}</span>
                     </div>
                     <div>
-                      <span className="text-[8px] text-slate-500 uppercase block">Contact number</span>
-                      <span className="text-white font-semibold block mt-0.5">{selectedFir.complainant_contact || 'NOT LOGGED'}</span>
+                      <span className="text-[8px] text-[var(--text-muted)] uppercase block">Contact number</span>
+                      <span className="text-[var(--text-primary)] font-semibold block mt-0.5">{selectedFir.complainant_contact || 'NOT LOGGED'}</span>
                     </div>
                   </div>
 
                   <div>
-                    <span className="text-[8px] text-slate-500 uppercase block mb-1">Penal Sections Charged</span>
-                    <span className="px-2 py-1 bg-slate-950/70 border border-slate-900 text-amber-400 font-bold rounded block text-[10px] w-fit">
+                    <span className="text-[8px] text-[var(--text-muted)] uppercase block mb-1">Penal Sections Charged</span>
+                    <span className="px-2 py-1 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] text-amber-400 font-bold rounded block text-[10px] w-fit">
                       {selectedFir.sections || 'IPC GENERAL QUERY INQUIRY'}
                     </span>
                   </div>
 
                   <div className="space-y-1">
-                    <span className="text-[8px] text-slate-500 uppercase block">Accused Statement Summary</span>
-                    <div className="p-3 bg-slate-950/70 border border-slate-900 text-[#E8EDF5] rounded text-[10px] leading-relaxed max-h-[120px] overflow-y-auto custom-scrollbar">
+                    <span className="text-[8px] text-[var(--text-muted)] uppercase block">Accused Statement Summary</span>
+                    <div className="p-3 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] text-[var(--text-primary)] rounded text-[10px] leading-relaxed max-h-[120px] overflow-y-auto custom-scrollbar">
                       {selectedFir.narrative || 'No statement summary logged in database.'}
                     </div>
                   </div>
@@ -509,41 +509,41 @@ export const FIRPage: React.FC = () => {
                 <div className="md:col-span-4 space-y-4 flex flex-col">
                   {/* Case link card */}
                   {selectedFir.crime_case ? (
-                    <div className="bg-[#111D35]/15 border border-slate-900 rounded-lg p-4 flex-1">
-                      <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-2.5 flex items-center justify-between">
+                    <div className="bg-[var(--bg-tertiary)]/15 border border-[var(--border-primary)] rounded-lg p-4 flex-1">
+                      <span className="block text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-wider mb-2.5 flex items-center justify-between">
                         Incident Link
                         <span className="px-1.5 py-0.5 bg-[#1E6FD9]/15 text-[#1E6FD9] border border-[#1E6FD9]/30 rounded text-[7.5px] font-bold">
                           LINKED
                         </span>
                       </span>
-                      <p className="text-[11px] font-bold text-white uppercase truncate">{selectedFir.crime_case.case_number}</p>
-                      <p className="text-[9px] text-[#6A7A96] mt-1">
+                      <p className="text-[11px] font-bold text-[var(--text-primary)] uppercase truncate">{selectedFir.crime_case.case_number}</p>
+                      <p className="text-[9px] text-[var(--text-muted)] mt-1">
                         Reported: {new Date(selectedFir.crime_case.reported_at).toLocaleDateString('en-IN')}
                       </p>
-                      <p className="text-[9.5px] text-[#A8B4CC] mt-2 line-clamp-3 leading-relaxed">
+                      <p className="text-[9.5px] text-[var(--text-secondary)] mt-2 line-clamp-3 leading-relaxed">
                         {selectedFir.crime_case.description}
                       </p>
                     </div>
                   ) : (
-                    <div className="bg-slate-950/40 border border-dashed border-slate-900 rounded-lg p-4 flex-1 flex flex-col items-center justify-center text-center">
+                    <div className="bg-[var(--bg-secondary)]/40 border border-dashed border-[var(--border-primary)] rounded-lg p-4 flex-1 flex flex-col items-center justify-center text-center">
                       <AlertTriangle className="w-5 h-5 text-amber-500/60 mb-2" />
-                      <span className="text-[9px] uppercase text-[#6A7A96]">No case file linkage</span>
+                      <span className="text-[9px] uppercase text-[var(--text-muted)]">No case file linkage</span>
                     </div>
                   )}
 
                   {/* Officer assigned card */}
-                  <div className="bg-[#111D35]/15 border border-slate-900 rounded-lg p-4">
-                    <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-2.5">Command Officer</span>
+                  <div className="bg-[var(--bg-tertiary)]/15 border border-[var(--border-primary)] rounded-lg p-4">
+                    <span className="block text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-wider mb-2.5">Command Officer</span>
                     {selectedFir.investigating_officer ? (
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#1E6FD9]/15 border border-[#1E6FD9]/30 flex items-center justify-center text-[#1E6FD9]">
                           <UserCheck className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[10px] font-bold text-white truncate">
+                          <p className="text-[10px] font-bold text-[var(--text-primary)] truncate">
                             Inspector {selectedFir.investigating_officer.badge_number}
                           </p>
-                          <p className="text-[8px] text-[#6A7A96] truncate">
+                          <p className="text-[8px] text-[var(--text-muted)] truncate">
                             {selectedFir.investigating_officer.rank || 'Officer'} â€¢ {selectedFir.investigating_officer.station}
                           </p>
                         </div>
@@ -558,16 +558,16 @@ export const FIRPage: React.FC = () => {
               {/* Linked Persons Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0 font-mono text-[10px]">
                 {/* Linked Suspects */}
-                <div className="bg-[#111D35]/10 border border-slate-900 rounded-lg p-4">
-                  <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-2.5">
+                <div className="bg-[var(--bg-tertiary)]/10 border border-[var(--border-primary)] rounded-lg p-4">
+                  <span className="block text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-wider mb-2.5">
                     Accused / Named Suspects ({selectedFir.criminals.length})
                   </span>
                   <div className="space-y-2 max-h-[140px] overflow-y-auto custom-scrollbar">
                     {selectedFir.criminals.map(c => (
-                      <div key={c.id} className="p-2 bg-slate-950/40 border border-slate-900 rounded flex justify-between gap-3">
+                      <div key={c.id} className="p-2 bg-[var(--bg-secondary)]/40 border border-[var(--border-primary)] rounded flex justify-between gap-3">
                         <div>
-                          <p className="font-bold text-white">{c.full_name}</p>
-                          <p className="text-[#6A7A96] text-[8px] mt-0.5">ALIAS: {c.aliases || 'None'}</p>
+                          <p className="font-bold text-[var(--text-primary)]">{c.full_name}</p>
+                          <p className="text-[var(--text-muted)] text-[8px] mt-0.5">ALIAS: {c.aliases || 'None'}</p>
                         </div>
                         <span className="text-[7.5px] uppercase font-bold text-red-400 bg-red-950/20 border border-red-900/30 px-1 py-0.5 rounded select-none h-fit">
                           {c.status.replace('_', ' ')}
@@ -575,32 +575,32 @@ export const FIRPage: React.FC = () => {
                       </div>
                     ))}
                     {selectedFir.criminals.length === 0 && (
-                      <p className="text-[#6A7A96] text-center uppercase py-3">No suspects linked to FIR</p>
+                      <p className="text-[var(--text-muted)] text-center uppercase py-3">No suspects linked to FIR</p>
                     )}
                   </div>
                 </div>
 
                 {/* Linked Victims */}
-                <div className="bg-[#111D35]/10 border border-slate-900 rounded-lg p-4">
-                  <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-2.5">
+                <div className="bg-[var(--bg-tertiary)]/10 border border-[var(--border-primary)] rounded-lg p-4">
+                  <span className="block text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-wider mb-2.5">
                     Victims Named ({selectedFir.victims.length})
                   </span>
                   <div className="space-y-2 max-h-[140px] overflow-y-auto custom-scrollbar">
                     {selectedFir.victims.map(v => (
-                      <div key={v.id} className="p-2 bg-slate-950/40 border border-slate-900 rounded space-y-1">
+                      <div key={v.id} className="p-2 bg-[var(--bg-secondary)]/40 border border-[var(--border-primary)] rounded space-y-1">
                         <div className="flex justify-between items-center">
-                          <p className="font-bold text-white">{v.full_name}</p>
+                          <p className="font-bold text-[var(--text-primary)]">{v.full_name}</p>
                           {v.gender && v.age && (
-                            <span className="text-[#6A7A96] text-[8px] uppercase">{v.gender} â€¢ AGE: {v.age}</span>
+                            <span className="text-[var(--text-muted)] text-[8px] uppercase">{v.gender} â€¢ AGE: {v.age}</span>
                           )}
                         </div>
-                        <p className="text-[#A8B4CC] text-[8.5px] line-clamp-2 italic leading-relaxed">
+                        <p className="text-[var(--text-secondary)] text-[8.5px] line-clamp-2 italic leading-relaxed">
                           "{v.statement || 'No victim statement logged.'}"
                         </p>
                       </div>
                     ))}
                     {selectedFir.victims.length === 0 && (
-                      <p className="text-[#6A7A96] text-center uppercase py-3">No victims linked to FIR</p>
+                      <p className="text-[var(--text-muted)] text-center uppercase py-3">No victims linked to FIR</p>
                     )}
                   </div>
                 </div>
@@ -615,41 +615,41 @@ export const FIRPage: React.FC = () => {
                 />
 
                 {/* Hotspot prediction mini panel */}
-                <div className="bg-[#111D35]/30 border border-border-color p-5 rounded-card flex flex-col justify-between overflow-hidden relative">
-                  <div className="flex items-center justify-between border-b border-slate-900 pb-3 mb-4 font-mono">
+                <div className="bg-[var(--bg-tertiary)]/30 border border-border-color p-5 rounded-card flex flex-col justify-between overflow-hidden relative">
+                  <div className="flex items-center justify-between border-b border-[var(--border-primary)] pb-3 mb-4 font-mono">
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-rose-500" />
-                      <span className="text-[10px] font-bold text-[#E8EDF5] uppercase tracking-wider">Linked Hotspot Metrics</span>
+                      <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider">Linked Hotspot Metrics</span>
                     </div>
-                    <span className="text-[8px] text-[#6A7A96] uppercase">GRID DECK.GL COORDS</span>
+                    <span className="text-[8px] text-[var(--text-muted)] uppercase">GRID DECK.GL COORDS</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 font-mono text-xs items-center">
                     {/* Location specs */}
                     <div className="space-y-3">
                       <div>
-                        <span className="text-[8px] text-slate-500 uppercase block">District Precinct</span>
-                        <span className="text-white font-bold block mt-0.5 uppercase tracking-wide">
+                        <span className="text-[8px] text-[var(--text-muted)] uppercase block">District Precinct</span>
+                        <span className="text-[var(--text-primary)] font-bold block mt-0.5 uppercase tracking-wide">
                           {selectedFir.crime_case?.location?.district || selectedFir.investigating_officer?.district || 'State HQ'}
                         </span>
                       </div>
                       <div>
-                        <span className="text-[8px] text-slate-500 uppercase block">Coordinates</span>
-                        <span className="text-white block mt-0.5 text-[10px] select-all">
+                        <span className="text-[8px] text-[var(--text-muted)] uppercase block">Coordinates</span>
+                        <span className="text-[var(--text-primary)] block mt-0.5 text-[10px] select-all">
                           {selectedFir.crime_case?.location?.latitude?.toFixed(4) || '12.9716'}, {selectedFir.crime_case?.location?.longitude?.toFixed(4) || '77.5946'}
                         </span>
                       </div>
                     </div>
 
                     {/* Stats metrics */}
-                    <div className="p-3 bg-slate-950/50 border border-slate-900 rounded space-y-2 text-center">
-                      <span className="text-[7.5px] text-[#6A7A96] uppercase tracking-widest block font-bold">Predictive Risk Index</span>
+                    <div className="p-3 bg-[var(--bg-secondary)]/50 border border-[var(--border-primary)] rounded space-y-2 text-center">
+                      <span className="text-[7.5px] text-[var(--text-muted)] uppercase tracking-widest block font-bold">Predictive Risk Index</span>
                       <span className="text-xl font-extrabold text-red-400 block leading-none">82%</span>
                       <span className="text-[8px] text-emerald-400 font-semibold block uppercase">TRENDING UPWARD</span>
                     </div>
                   </div>
 
-                  <div className="border border-slate-900 p-2.5 rounded bg-slate-950/20 text-[9.5px] font-mono leading-relaxed text-[#A8B4CC] flex items-center justify-between gap-3 mt-3">
+                  <div className="border border-[var(--border-primary)] p-2.5 rounded bg-[var(--bg-secondary)]/20 text-[9.5px] font-mono leading-relaxed text-[var(--text-secondary)] flex items-center justify-between gap-3 mt-3">
                     <span>Target beat patrol recommendation generated. Dispatching auto-telemetry alerts.</span>
                     <ArrowRight className="w-4 h-4 text-[#1E6FD9] shrink-0" />
                   </div>
@@ -671,11 +671,11 @@ export const FIRPage: React.FC = () => {
             </div>
           ) : (
             /* Selected Placeholder */
-            <div className="flex-grow flex flex-col items-center justify-center p-12 border border-dashed border-slate-900 rounded-lg text-center space-y-4">
-              <FolderOpen className="w-10 h-10 text-[#6A7A96] animate-bounce" />
+            <div className="flex-grow flex flex-col items-center justify-center p-12 border border-dashed border-[var(--border-primary)] rounded-lg text-center space-y-4">
+              <FolderOpen className="w-10 h-10 text-[var(--text-muted)] animate-bounce" />
               <div className="space-y-1 select-none">
-                <span className="text-xs uppercase tracking-wider text-white font-bold font-mono">No FIR Selected</span>
-                <p className="text-[9.5px] text-[#6A7A96] font-mono uppercase">
+                <span className="text-xs uppercase tracking-wider text-[var(--text-primary)] font-bold font-mono">No FIR Selected</span>
+                <p className="text-[9.5px] text-[var(--text-muted)] font-mono uppercase">
                   Select a First Information Report file from the directory sidebar console
                 </p>
               </div>

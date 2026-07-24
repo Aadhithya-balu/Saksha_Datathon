@@ -50,11 +50,11 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
   ];
 
   return (
-    <div className="flex flex-col gap-3 bg-[#0a101d] p-3 rounded-card border border-white/10 shadow-lg font-mono">
+    <div className="flex flex-col gap-3 bg-[var(--bg-secondary)] p-3 rounded-card border border-[var(--border-secondary)] shadow-lg font-mono">
       {/* Top Navigation Row */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Workspace View Mode Selector */}
-        <div className="flex items-center gap-1.5 bg-[#050912] p-1 rounded-btn border border-white/5 overflow-x-auto">
+        <div className="flex items-center gap-1.5 bg-[var(--bg-primary)] p-1 rounded-btn border border-[var(--border-primary)] overflow-x-auto">
           {views.map((v) => {
             const Icon = v.icon;
             const isActive = activeView === v.id;
@@ -64,11 +64,11 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
                 onClick={() => setActiveView(v.id)}
                 className={`px-3 py-1.5 rounded-btn text-[11px] font-bold tracking-wider uppercase transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
                   isActive
-                    ? 'bg-[#1E6FD9] text-white shadow-[0_0_12px_rgba(30,111,217,0.5)] border border-[#3B82F6]'
-                    : 'text-[#8A99AD] hover:text-white hover:bg-white/5'
+                    ? 'bg-[var(--accent-blue)] text-[var(--text-primary)] shadow-[0_0_12px_rgba(30,111,217,0.5)] border border-[#3B82F6]'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]/10'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white animate-pulse' : 'text-[#8A99AD]'}`} />
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[var(--text-primary)] animate-pulse' : 'text-[var(--text-muted)]'}`} />
                 <span>{v.label}</span>
               </button>
             );
@@ -92,7 +92,7 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
           <button
             onClick={onNeo4jSync}
             title="Sync PostgreSQL relational records to Neo4j Graph"
-            className="px-2.5 py-1.5 bg-[#111D35] hover:bg-[#1E6FD9]/20 border border-[#1e6fd9]/30 text-[#A8B4CC] hover:text-white rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
+            className="px-2.5 py-1.5 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/20 border border-[var(--accent-blue)]/30 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
           >
             <RefreshCw className="w-3 h-3" />
             <span>Sync Neo4j</span>
@@ -100,7 +100,7 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
 
           <button
             onClick={onExportMatrix}
-            className="px-2.5 py-1.5 bg-[#1E6FD9]/15 hover:bg-[#1E6FD9]/30 border border-[#1E6FD9]/40 text-[#60A5FA] hover:text-white rounded-btn transition-colors cursor-pointer flex items-center gap-1.5 font-bold"
+            className="px-2.5 py-1.5 bg-[var(--accent-blue)]/15 hover:bg-[var(--accent-blue)]/30 border border-[var(--accent-blue)]/40 text-[#60A5FA] hover:text-[var(--text-primary)] rounded-btn transition-colors cursor-pointer flex items-center gap-1.5 font-bold"
           >
             <Share2 className="w-3 h-3" />
             <span>Export Matrix</span>
@@ -109,28 +109,28 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
       </div>
 
       {/* Bottom Filter & Search Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/5 text-[11px]">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[var(--border-primary)] text-[11px]">
         {/* Node Search Bar */}
         <div className="relative flex-1 min-w-[220px] max-w-sm">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#6A7A96]" />
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[var(--text-muted)]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search suspect, case, location..."
-            className="w-full bg-[#050912] border border-white/10 rounded-btn pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#6A7A96] focus:outline-none focus:border-[#1E6FD9]"
+            className="w-full bg-[var(--bg-primary)] border border-[var(--border-secondary)] rounded-btn pl-8 pr-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
           />
         </div>
 
         {/* Category Filters */}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-[#6A7A96] uppercase font-bold flex items-center gap-1">
-            <Sliders className="w-3 h-3 text-[#1E6FD9]" /> Entity:
+          <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold flex items-center gap-1">
+            <Sliders className="w-3 h-3 text-[var(--accent-blue)]" /> Entity:
           </span>
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="bg-[#050912] border border-white/10 text-white rounded-btn px-2.5 py-1 text-xs focus:outline-none focus:border-[#1E6FD9]"
+            className="bg-[var(--bg-primary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-btn px-2.5 py-1 text-xs focus:outline-none focus:border-[var(--accent-blue)]"
           >
             <option value="all">All Categories</option>
             <option value="suspect">Suspects (At Large)</option>
@@ -143,7 +143,7 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
 
         {/* Risk Threshold Slider */}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-[#6A7A96] uppercase font-bold">Min Risk: {minRisk}</span>
+          <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Min Risk: {minRisk}</span>
           <input
             type="range"
             min={0}
@@ -151,7 +151,7 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
             step={5}
             value={minRisk}
             onChange={(e) => setMinRisk(Number(e.target.value))}
-            className="w-24 accent-[#1E6FD9] cursor-pointer"
+            className="w-24 accent-[var(--accent-blue)] cursor-pointer"
           />
         </div>
       </div>

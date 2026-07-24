@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useAuthStore } from './store/authStore';
 import { useAuditStore } from './store/auditStore';
+import { useAppStore } from './store/appStore';
 import Login from './pages/Login';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
+import CommandPalette from './components/ui/CommandPalette';
 import Overview from './pages/Overview';
 import Hotspots from './pages/Hotspots';
 import Network from './pages/Network';
@@ -23,22 +25,26 @@ import EvidencePage from './pages/Evidence';
 import InvestigationPage from './pages/Investigation';
 import NotificationsPage from './pages/Notifications';
 import GlobalAIAssistant from './components/ai/GlobalAIAssistant';
+import DocsPage from './pages/Docs';
 
 function App() {
   const { isAuthenticated, user, isHydrating, initializeSession } = useAuthStore();
   const { addLog } = useAuditStore();
-  
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const { activeTab, setActiveTab, sidebarCollapsed, setSidebarCollapsed, theme } = useAppStore();
 
   useEffect(() => {
     void initializeSession();
   }, [initializeSession]);
 
+  // Initialize theme from store on mount
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
   // Listen for navigation requests (cross-tab links)
   useEffect(() => {
     const handleNavigate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ tab: string, targetId?: string }>;
+      const customEvent = e as CustomEvent<{ tab: string; targetId?: string }>;
       if (customEvent.detail?.tab) {
         setActiveTab(customEvent.detail.tab);
         if (customEvent.detail.targetId) {
@@ -48,45 +54,49 @@ function App() {
     };
     window.addEventListener('navigate-tab', handleNavigate);
     return () => window.removeEventListener('navigate-tab', handleNavigate);
-  }, []);
+  }, [setActiveTab]);
 
-  // Automatically log PAGE_VIEW transitions
+  // Log page views
   useEffect(() => {
     if (!isAuthenticated || !user) return;
-
     const tabLabels: Record<string, string> = {
       dashboard: 'Overview Dashboard',
-      fir: 'FIR Lifecycle Management',
-      hotspot: 'Hotspot Map Analysis',
-      network: 'Criminal Network Graph Workspace',
-      predictive: 'AI Predictive Intelligence',
-      anomaly: 'Anomaly Alert Feed',
-      crime_cases: 'Crime Case Management',
-      investigation: 'Unified Investigation Interface',
-      notifications: 'Notification & Intelligence Center',
-      offenders: 'Offender Dossiers Registry',
-      criminals: 'Criminal Dossier Registry',
-      victims: 'Victim & Witness Index',
-      reports: 'Reports & Downloads Center',
-      settings_help: 'Settings & Operator Help',
-      ai_chat: 'AI Chat Copilot Workspace'
+      fir: 'FIR Registry',
+      hotspot: 'Hotspot Map',
+      network: 'Network Graph',
+      predictive: 'Predictive AI',
+      anomaly: 'Anomaly Feed',
+      crime_cases: 'Crime Cases',
+      investigation: 'Investigation',
+      notifications: 'Intelligence Center',
+      offenders: 'Offender Registry',
+      criminals: 'Criminal Dossiers',
+      victims: 'Victims Registry',
+      reports: 'Reports Center',
+      settings_help: 'Settings',
+      ai_chat: 'AI Assistant',
+      officers: 'Officer Management',
+      evidence: 'Evidence Handling',
+      docs: 'Documentation',
     };
-
-    const label = tabLabels[activeTab] || activeTab;
-    addLog(
-      user.name,
-      user.badgeId,
-      'PAGE_VIEW',
-      `Accessed ${label}`
-    );
+    addLog(user.name, user.badgeId, 'PAGE_VIEW', `Accessed ${tabLabels[activeTab] || activeTab}`);
   }, [activeTab, isAuthenticated, user, addLog]);
 
+  // Loading screen
   if (isHydrating) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-primary-bg text-primary-text font-mono">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin mx-auto" />
-          <p className="text-xs uppercase tracking-[0.3em] text-[#6A7A96]">Synchronizing secure session</p>
+      <div className="min-h-screen w-full flex items-center justify-center bg-[var(--bg-primary)] text-[var(--text-primary)]">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-[var(--accent-blue-subtle)] border border-[var(--accent-blue)]/20 flex items-center justify-center mx-auto">
+            <svg className="w-6 h-6 text-[var(--accent-blue)] animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-[var(--text-primary)]">Initializing Saksha</p>
+            <p className="text-xs text-[var(--text-muted)] mt-1">Establishing secure session...</p>
+          </div>
         </div>
       </div>
     );
@@ -96,124 +106,33 @@ function App() {
     return <Login />;
   }
 
-  // Active page selector
   const renderActivePage = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return <Overview />;
-      case 'fir':
-        return (
-          <RoleGuard path="/firs">
-            <FIRPage />
-          </RoleGuard>
-        );
-      case 'hotspot':
-        return (
-          <RoleGuard path="/hotspots">
-            <Hotspots />
-          </RoleGuard>
-        );
-      case 'network':
-        return (
-          <RoleGuard path="/network">
-            <Network />
-          </RoleGuard>
-        );
-      case 'predictive':
-        return (
-          <RoleGuard path="/predictions">
-            <Predictions />
-          </RoleGuard>
-        );
-      case 'anomaly':
-        return (
-          <RoleGuard path="/anomalies">
-            <Anomalies />
-          </RoleGuard>
-        );
-      case 'offenders':
-        return (
-          <RoleGuard path="/offenders">
-            <Offenders />
-          </RoleGuard>
-        );
-      case 'criminals':
-        return (
-          <RoleGuard path="/offenders">
-            <Criminals />
-          </RoleGuard>
-        );
-      case 'victims':
-        return (
-          <RoleGuard path="/offenders">
-            <Victims />
-          </RoleGuard>
-        );
-      case 'reports':
-        return (
-          <RoleGuard path="/reports">
-            <Reports />
-          </RoleGuard>
-        );
-      case 'settings_help':
-        return (
-          <RoleGuard path="/admin">
-            <Admin />
-          </RoleGuard>
-        );
-      case 'crime_cases':
-        return (
-          <RoleGuard path="/crime-cases">
-            <CrimeCases />
-          </RoleGuard>
-        );
-      case 'investigation':
-        return (
-          <RoleGuard path="/crime-cases">
-            <InvestigationPage />
-          </RoleGuard>
-        );
-      case 'ai_chat':
-        return (
-          <RoleGuard path="/ai-chat">
-            <AIChat />
-          </RoleGuard>
-        );
-      case 'officers':
-        return (
-          <RoleGuard path="/officers">
-            <OfficersPage />
-          </RoleGuard>
-        );
-      case 'evidence':
-        return (
-          <RoleGuard path="/evidence">
-            <EvidencePage />
-          </RoleGuard>
-        );
-      case 'notifications':
-        return (
-          <RoleGuard path="/dashboard">
-            <NotificationsPage />
-          </RoleGuard>
-        );
-      default:
-        return <Overview />;
+      case 'dashboard': return <Overview />;
+      case 'fir': return <RoleGuard path="/firs"><FIRPage /></RoleGuard>;
+      case 'hotspot': return <RoleGuard path="/hotspots"><Hotspots /></RoleGuard>;
+      case 'network': return <RoleGuard path="/network"><Network /></RoleGuard>;
+      case 'predictive': return <RoleGuard path="/predictions"><Predictions /></RoleGuard>;
+      case 'anomaly': return <RoleGuard path="/anomalies"><Anomalies /></RoleGuard>;
+      case 'offenders': return <RoleGuard path="/offenders"><Offenders /></RoleGuard>;
+      case 'criminals': return <RoleGuard path="/offenders"><Criminals /></RoleGuard>;
+      case 'victims': return <RoleGuard path="/offenders"><Victims /></RoleGuard>;
+      case 'reports': return <RoleGuard path="/reports"><Reports /></RoleGuard>;
+      case 'settings_help': return <RoleGuard path="/admin"><Admin /></RoleGuard>;
+      case 'crime_cases': return <RoleGuard path="/crime-cases"><CrimeCases /></RoleGuard>;
+      case 'investigation': return <RoleGuard path="/crime-cases"><InvestigationPage /></RoleGuard>;
+      case 'ai_chat': return <RoleGuard path="/ai-chat"><AIChat /></RoleGuard>;
+      case 'officers': return <RoleGuard path="/officers"><OfficersPage /></RoleGuard>;
+      case 'evidence': return <RoleGuard path="/evidence"><EvidencePage /></RoleGuard>;
+      case 'notifications': return <RoleGuard path="/dashboard"><NotificationsPage /></RoleGuard>;
+      case 'docs': return <DocsPage />;
+      default: return <Overview />;
     }
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-primary-bg text-primary-text">
-      
-      {/* Mobile Sidebar backdrop overlay */}
-      {!sidebarCollapsed && (
-        <div 
-          className="md:hidden fixed inset-0 bg-black/60 z-35 backdrop-blur-sm transition-opacity duration-300"
-          onClick={() => setSidebarCollapsed(true)}
-        />
-      )}
-
-      {/* 3D-styled Collapsible Sidebar Drawer */}
+    <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)]">
+      {/* Sidebar */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -221,36 +140,31 @@ function App() {
         setCollapsed={setSidebarCollapsed}
       />
 
-      {/* Main Console display workspace */}
-      <div className="flex-grow flex flex-col min-w-0 h-full relative">
-        <Header 
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0 h-full">
+        <Header
           sidebarCollapsed={sidebarCollapsed}
           setSidebarCollapsed={setSidebarCollapsed}
         />
-        
-        {/* Dynamic page container viewport scrollable */}
-        <main className="flex-grow p-4 md:p-6 overflow-y-auto custom-scrollbar relative">
-          
-          {/* Cyber grid aesthetic background indicators */}
-          <div className="absolute inset-0 bg-primary-bg pointer-events-none -z-20 opacity-90" />
-          
-          {/* Main layout contents */}
-          <div className="w-full max-w-[1600px] mx-auto animate-[fadeIn_0.5s_ease-out]">
+
+        <main className="flex-1 overflow-y-auto">
+          <div className="w-full max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8 sk-page-enter">
             {renderActivePage()}
           </div>
-
         </main>
-        
-        {/* Global telemetry footer confidentiality stamp */}
-        <footer className="h-6 bg-slate-950 border-t border-border-color text-[8px] font-mono text-[#6A7A96] flex items-center justify-between px-6 select-none shrink-0">
-          <span>CLASSIFIED TELEMETRY DATABASES LOCK</span>
-          <span>STAMP CODE: 2026-SCRB-KSP</span>
+
+        {/* Footer */}
+        <footer className="h-9 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]/50 px-6 flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)] select-none shrink-0 no-print">
+          <span>SAKSHA v1.0 &middot; Karnataka State Police</span>
+          <span className="hidden sm:inline">CLASSIFIED &middot; STAMP: 2026-SCRB-KSP</span>
         </footer>
       </div>
 
-      {/* Global AI Assistant - always accessible */}
-      <GlobalAIAssistant />
+      {/* Global Command Palette */}
+      <CommandPalette />
 
+      {/* Global AI Assistant */}
+      <GlobalAIAssistant />
     </div>
   );
 }

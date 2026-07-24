@@ -104,8 +104,8 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
           <Shield className="w-5 h-5 animate-pulse" />
         </div>
         <div>
-          <h4 className="text-[11.5px] font-mono uppercase text-[#A8B4CC] font-bold">Officer Database Check</h4>
-          <span className="text-[9.5px] font-mono text-[#6A7A96] uppercase select-none">Access audited by KSP secure logs</span>
+          <h4 className="text-[11.5px] font-mono uppercase text-[var(--text-secondary)] font-bold">Officer Database Check</h4>
+          <span className="text-[9.5px] font-mono text-[var(--text-muted)] uppercase select-none">Access audited by KSP secure logs</span>
         </div>
       </div>
 
@@ -114,11 +114,11 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
         
         {/* Badge ID Input */}
         <div>
-          <label className="block text-[9px] font-mono uppercase text-[#6A7A96] mb-1 tracking-wider">
+          <label className="block text-[9px] font-mono uppercase text-[var(--text-muted)] mb-1 tracking-wider">
             Police Badge ID
           </label>
           <div className="relative">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#6A7A96] pointer-events-none">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[var(--text-muted)] pointer-events-none">
               <div className="w-1.5 h-3.5 flex flex-col gap-0.5 mr-2 shrink-0">
                 <div className="w-full bg-[#f48f42] h-0.5" />
                 <div className="w-full bg-white h-0.5" />
@@ -130,7 +130,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
               placeholder="e.g. SCRB-7740, IO-3921"
               value={badgeId}
               onChange={(e) => setBadgeId(e.target.value)}
-              className="w-full pl-8 pr-16 py-2 bg-slate-950/60 text-white font-mono text-xs border border-border-color focus:border-[#1E6FD9]/45 rounded-btn outline-none transition-colors"
+              className="w-full pl-8 pr-16 py-2 bg-[var(--bg-secondary)]/60 text-[var(--text-primary)] font-mono text-xs border border-border-color focus:border-[#1E6FD9]/45 rounded-btn outline-none transition-colors"
             />
             {detectedRole && (
               <span className="absolute right-2 top-1.5 px-2 py-0.5 bg-[#1E6FD9]/20 text-[#1E6FD9] text-[8px] font-mono rounded-full border border-[#1E6FD9]/30 flex items-center gap-1 select-none font-bold">
@@ -158,7 +158,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
 
         {/* 6-Digit PIN input (Masked & Keyboard-Typable) */}
         <div>
-          <label className="block text-[9px] font-mono uppercase text-[#6A7A96] mb-1 tracking-wider">
+          <label className="block text-[9px] font-mono uppercase text-[var(--text-muted)] mb-1 tracking-wider">
             6-Digit Authentication PIN
           </label>
           
@@ -173,7 +173,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
               value={pin}
               onChange={handlePinChange}
               onKeyDown={handleKeyDown}
-              className="w-full py-2 bg-slate-950/60 text-white font-mono text-center tracking-[1.5em] text-xs border border-border-color focus:border-[#1E6FD9]/45 rounded-btn outline-none transition-colors"
+              className="w-full py-2 bg-[var(--bg-secondary)]/60 text-[var(--text-primary)] font-mono text-center tracking-[1.5em] text-xs border border-border-color focus:border-[#1E6FD9]/45 rounded-btn outline-none transition-colors"
               placeholder="••••••"
             />
           </div>
@@ -181,13 +181,13 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
       </div>
 
       {/* Screen Pad (Numeric Keypad Grid) */}
-      <div className="grid grid-cols-3 gap-1.5 bg-slate-950/40 p-2 border border-border-color/30 rounded-card">
+      <div className="grid grid-cols-3 gap-1.5 bg-[var(--bg-secondary)]/40 p-2 border border-border-color/30 rounded-card">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
           <button
             key={num}
             type="button"
             onClick={() => handleKeypadPress(num)}
-            className="py-2.5 bg-secondary-bg/25 hover:bg-[#1E6FD9]/10 border border-border-color/30 hover:border-[#1E6FD9]/45 text-[#A8B4CC] hover:text-white font-mono text-[13px] font-bold text-center hover:scale-[1.03] active:scale-[0.97] rounded transition-all cursor-pointer"
+            className="py-2.5 bg-secondary-bg/25 hover:bg-[#1E6FD9]/10 border border-border-color/30 hover:border-[#1E6FD9]/45 text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-mono text-[13px] font-bold text-center hover:scale-[1.03] active:scale-[0.97] rounded transition-all cursor-pointer"
           >
             {num}
           </button>
@@ -197,7 +197,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
         <button
           type="button"
           onClick={handleClear}
-          className="py-2.5 bg-[#C94A2A]/5 hover:bg-[#C94A2A]/20 border border-[#C94A2A]/15 hover:border-[#C94A2A]/40 text-[#C94A2A] hover:text-white font-mono text-[10px] uppercase font-bold text-center rounded transition-all cursor-pointer"
+          className="py-2.5 bg-[#C94A2A]/5 hover:bg-[#C94A2A]/20 border border-[#C94A2A]/15 hover:border-[#C94A2A]/40 text-[#C94A2A] hover:text-[var(--text-primary)] font-mono text-[10px] uppercase font-bold text-center rounded transition-all cursor-pointer"
         >
           Clear
         </button>
@@ -205,7 +205,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
         <button
           type="button"
           onClick={() => handleKeypadPress(0)}
-          className="py-2.5 bg-secondary-bg/25 hover:bg-[#1E6FD9]/10 border border-border-color/30 hover:border-[#1E6FD9]/45 text-[#A8B4CC] hover:text-white font-mono text-[13px] font-bold text-center hover:scale-[1.03] active:scale-[0.97] rounded transition-all cursor-pointer"
+          className="py-2.5 bg-secondary-bg/25 hover:bg-[#1E6FD9]/10 border border-border-color/30 hover:border-[#1E6FD9]/45 text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-mono text-[13px] font-bold text-center hover:scale-[1.03] active:scale-[0.97] rounded transition-all cursor-pointer"
         >
           0
         </button>
@@ -213,7 +213,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
         <button
           type="button"
           onClick={handleBackspace}
-          className="py-2.5 bg-[#D4820A]/5 hover:bg-[#D4820A]/20 border border-[#D4820A]/15 hover:border-[#D4820A]/40 text-[#D4820A] hover:text-white font-mono text-[10px] uppercase font-bold text-center rounded transition-all cursor-pointer"
+          className="py-2.5 bg-[#D4820A]/5 hover:bg-[#D4820A]/20 border border-[#D4820A]/15 hover:border-[#D4820A]/40 text-[#D4820A] hover:text-[var(--text-primary)] font-mono text-[10px] uppercase font-bold text-center rounded transition-all cursor-pointer"
         >
           Del
         </button>
@@ -221,19 +221,19 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
 
       {/* Error Notices */}
       {(loginError || localErrors) && (
-        <div className="flex items-start gap-2 bg-[#C94A2A]/15 border border-[#C94A2A]/30 p-2.5 rounded-btn text-[10.5px] text-white">
+        <div className="flex items-start gap-2 bg-[#C94A2A]/15 border border-[#C94A2A]/30 p-2.5 rounded-btn text-[10.5px] text-[var(--text-primary)]">
           <AlertCircle className="w-4 h-4 text-[#C94A2A] shrink-0 mt-0.5" />
           <span>{localErrors || loginError}</span>
         </div>
       )}
 
       {/* Mock credentials list */}
-      <div className="text-center text-[8.5px] font-mono text-[#6A7A96] leading-relaxed select-none border-t border-border-color/30 pt-3">
+      <div className="text-center text-[8.5px] font-mono text-[var(--text-muted)] leading-relaxed select-none border-t border-border-color/30 pt-3">
         MOCK CREDENTIALS SPECIFICATION:<br />
-        Admin: <span className="text-slate-400 font-bold">admin</span> / PIN <span className="text-slate-400 font-bold">564738</span><br />
-        Superintendent: <span className="text-slate-400 font-bold">SP-0088</span> / PIN <span className="text-slate-400 font-bold">987654</span><br />
-        Investigator: <span className="text-slate-400 font-bold">IO-3921</span> / PIN <span className="text-slate-400 font-bold">456789</span><br />
-        Analyst: <span className="text-slate-400 font-bold">SCRB-7740</span> / PIN <span className="text-slate-400 font-bold">123456</span>
+        Admin: <span className="text-[var(--text-muted)] font-bold">admin</span> / PIN <span className="text-[var(--text-muted)] font-bold">564738</span><br />
+        Superintendent: <span className="text-[var(--text-muted)] font-bold">SP-0088</span> / PIN <span className="text-[var(--text-muted)] font-bold">987654</span><br />
+        Investigator: <span className="text-[var(--text-muted)] font-bold">IO-3921</span> / PIN <span className="text-[var(--text-muted)] font-bold">456789</span><br />
+        Analyst: <span className="text-[var(--text-muted)] font-bold">SCRB-7740</span> / PIN <span className="text-[var(--text-muted)] font-bold">123456</span>
       </div>
     </div>
   );

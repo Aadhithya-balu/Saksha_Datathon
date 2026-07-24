@@ -146,26 +146,26 @@ export const Admin: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[84vh] space-y-4 p-1 md:p-3 bg-[#060b13] font-mono">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 border-b border-white/5 pb-4">
+    <div className="min-h-[84vh] space-y-4 p-1 md:p-3 bg-[var(--bg-primary)] font-mono">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 border-b border-[var(--border-muted)] pb-4">
         <div>
-          <h2 className="text-md font-bold uppercase tracking-wider text-white">Administrative Control</h2>
-          <p className="mt-1 text-[9.5px] uppercase tracking-[0.2em] text-[#6A7A96]">Users, RBAC, audit logs, and persisted platform settings</p>
+          <h2 className="text-md font-bold uppercase tracking-wider text-[var(--text-primary)]">Administrative Control</h2>
+          <p className="mt-1 text-[9.5px] uppercase tracking-[0.2em] text-[var(--text-muted)]">Users, RBAC, audit logs, and persisted platform settings</p>
         </div>
-        <button onClick={() => void loadAll()} className="inline-flex items-center gap-2 rounded border border-[#1E6FD9]/35 bg-[#1E6FD9]/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>
+        <button onClick={() => void loadAll()} className="inline-flex items-center gap-2 rounded border border-[#1E6FD9]/35 bg-[#1E6FD9]/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-primary)]"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>
       </div>
 
       {(message || error || loading) && <div className={`rounded border px-3 py-2 text-[10px] uppercase tracking-wider ${error ? 'border-amber-500/30 text-amber-300' : 'border-[#0E9E78]/30 text-[#0E9E78]'}`}>{error ?? message ?? 'Loading admin data'}</div>}
 
       <div className="flex flex-wrap gap-2">
         {(['users', 'roles', 'audit', 'settings'] as Tab[]).map((item) => (
-          <button key={item} onClick={() => setTab(item)} className={`rounded border px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${tab === item ? 'border-[#1E6FD9] bg-[#1E6FD9]/20 text-white' : 'border-border-color bg-[#111D35]/35 text-[#A8B4CC]'}`}>{item}</button>
+          <button key={item} onClick={() => setTab(item)} className={`rounded border px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${tab === item ? 'border-[#1E6FD9] bg-[#1E6FD9]/20 text-[var(--text-primary)]' : 'border-border-color bg-[var(--bg-tertiary)]/35 text-[var(--text-secondary)]'}`}>{item}</button>
         ))}
       </div>
 
       {tab === 'users' && (
         <div className="space-y-3">
-          <div className="relative max-w-md"><Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#6A7A96]" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search users" className="w-full rounded bg-[#060B13] border border-border-color py-2 pl-9 pr-3 text-xs text-white" /></div>
+          <div className="relative max-w-md"><Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[var(--text-muted)]" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search users" className="w-full rounded bg-[var(--bg-primary)] border border-border-color py-2 pl-9 pr-3 text-xs text-[var(--text-primary)]" /></div>
           <UserForm roles={roles} value={userDraft} onChange={setUserDraft} onSubmit={() => void saveUser()} />
           <UserTable users={users} onEdit={setUserDraft} onToggle={(user) => void toggleUser(user)} onDelete={setConfirmUser} />
         </div>
@@ -173,7 +173,7 @@ export const Admin: React.FC = () => {
       {tab === 'roles' && <RoleMatrix roles={roles} permissions={permissions} onSave={(role) => void saveRole(role)} />}
       {tab === 'audit' && (
         <div className="space-y-3">
-          <button onClick={() => void exportAudit()} className="inline-flex items-center gap-2 rounded border border-[#0E9E78]/35 bg-[#0E9E78]/15 px-3 py-2 text-[10px] font-bold uppercase text-white"><Download className="h-3.5 w-3.5" /> Export Audit CSV</button>
+          <button onClick={() => void exportAudit()} className="inline-flex items-center gap-2 rounded border border-[#0E9E78]/35 bg-[#0E9E78]/15 px-3 py-2 text-[10px] font-bold uppercase text-[var(--text-primary)]"><Download className="h-3.5 w-3.5" /> Export Audit CSV</button>
           <AuditTable rows={auditRows} />
         </div>
       )}

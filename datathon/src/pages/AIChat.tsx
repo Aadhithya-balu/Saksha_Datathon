@@ -314,22 +314,22 @@ export const AIChat: React.FC = () => {
   };
 
   return (
-    <div className="h-[80vh] flex border border-border-color rounded-card bg-[#0a1220]/45 overflow-hidden font-sans">
+    <div className="h-[80vh] flex border border-border-color rounded-card bg-[var(--bg-secondary)]/45 overflow-hidden font-sans">
       
       {/* 1. CONVERSATION HISTORIES SIDEBAR */}
-      <div className="w-64 border-r border-border-color flex flex-col justify-between bg-slate-950/40 select-none">
+      <div className="w-64 border-r border-border-color flex flex-col justify-between bg-[var(--bg-secondary)]/40 select-none">
         <div className="p-4 flex flex-col gap-3.5 overflow-hidden flex-grow">
           
           <button 
             onClick={handleCreateNewChat}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#1E6FD9] hover:bg-[#1E6FD9]/85 text-white font-mono text-[10.5px] font-bold uppercase rounded-btn transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#1E6FD9] hover:bg-[#1E6FD9]/85 text-[var(--text-primary)] font-mono text-[10.5px] font-bold uppercase rounded-btn transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>New Investigation</span>
           </button>
 
           <div className="flex-grow overflow-y-auto flex flex-col gap-1.5 custom-scrollbar pr-1">
-            <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest block mb-1">
+            <span className="text-[8px] font-mono text-[var(--text-muted)] uppercase tracking-widest block mb-1">
               Active Briefing Files
             </span>
             {sessions.map(s => {
@@ -341,20 +341,20 @@ export const AIChat: React.FC = () => {
                   onClick={() => setActiveSessionId(s.id)}
                   className={`flex items-center justify-between p-2.5 rounded border transition-all cursor-pointer font-mono text-[10px] ${
                     isActive 
-                      ? 'bg-[#1E6FD9]/10 border-[#1E6FD9]/30 text-white font-bold'
-                      : 'bg-transparent border-transparent text-[#A8B4CC] hover:bg-white/5'
+                      ? 'bg-[#1E6FD9]/10 border-[#1E6FD9]/30 text-[var(--text-primary)] font-bold'
+                      : 'bg-transparent border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]/10'
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
                     <MessageSquare className="w-3.5 h-3.5 shrink-0" />
                     <div className="flex flex-col truncate">
                       <span className="truncate">{s.title}</span>
-                      <span className="text-[8px] text-slate-600">{msgCount} message{msgCount !== 1 ? 's' : ''}</span>
+                      <span className="text-[8px] text-[var(--text-secondary)]">{msgCount} message{msgCount !== 1 ? 's' : ''}</span>
                     </div>
                   </div>
                   <button 
                     onClick={(e) => handleDeleteSession(s.id, e)}
-                    className="p-1 text-slate-600 hover:text-red-400 rounded transition-colors shrink-0"
+                    className="p-1 text-[var(--text-secondary)] hover:text-red-400 rounded transition-colors shrink-0"
                     title="Delete Chat"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -365,7 +365,7 @@ export const AIChat: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-3 border-t border-border-color flex justify-center bg-slate-950/20">
+        <div className="p-3 border-t border-border-color flex justify-center bg-[var(--bg-secondary)]/20">
           <button 
             onClick={handleClearAllChats}
             className="flex items-center gap-1 text-[9px] font-mono text-red-400 hover:text-red-500 transition-colors uppercase font-bold cursor-pointer"
@@ -388,13 +388,13 @@ export const AIChat: React.FC = () => {
               </div>
               
               <div className="text-center">
-                <h3 className="text-[17px] font-extrabold uppercase tracking-wider text-white">
+                <h3 className="text-[17px] font-extrabold uppercase tracking-wider text-[var(--text-primary)]">
                   SAKSHA Copilot AI
                 </h3>
-                <p className="text-[11px] font-mono text-[#6A7A96] mt-1.5 uppercase tracking-widest">
+                <p className="text-[11px] font-mono text-[var(--text-muted)] mt-1.5 uppercase tracking-widest">
                   Secure Law Enforcement Intelligence Assistant
                 </p>
-                <p className="text-[9px] font-mono text-slate-600 mt-3 max-w-md leading-relaxed">
+                <p className="text-[9px] font-mono text-[var(--text-secondary)] mt-3 max-w-md leading-relaxed">
                   Ask about cases, criminals, FIRs, crime statistics, hotspots, predictions, or network analysis. 
                   Data is sourced directly from the Saksha database.
                 </p>
@@ -408,14 +408,14 @@ export const AIChat: React.FC = () => {
                       key={idx}
                       onClick={() => handleSendMessage(p.query)}
                       disabled={isLoading}
-                      className="p-3 bg-slate-950/40 border border-slate-900 rounded-card text-left text-[10px] text-[#A8B4CC] hover:text-white hover:border-[#1E6FD9]/45 hover:bg-slate-900/20 transition-all flex flex-col justify-between group cursor-pointer h-24 disabled:opacity-50"
+                      className="p-3 bg-[var(--bg-secondary)]/40 border border-[var(--border-primary)] rounded-card text-left text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[#1E6FD9]/45 hover:bg-[var(--bg-tertiary)]/20 transition-all flex flex-col justify-between group cursor-pointer h-24 disabled:opacity-50"
                     >
                       <div className="flex items-center gap-2 mb-1.5">
                         <Icon className="w-3.5 h-3.5 text-[#1E6FD9]" />
-                        <span className="text-[8px] text-slate-500 uppercase font-bold">{p.category}</span>
+                        <span className="text-[8px] text-[var(--text-muted)] uppercase font-bold">{p.category}</span>
                       </div>
-                      <span className="font-bold text-white text-[11px]">{p.text}</span>
-                      <span className="flex items-center justify-between w-full text-[9px] text-slate-600 font-mono mt-auto">
+                      <span className="font-bold text-[var(--text-primary)] text-[11px]">{p.text}</span>
+                      <span className="flex items-center justify-between w-full text-[9px] text-[var(--text-secondary)] font-mono mt-auto">
                         Run query
                         <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                       </span>
@@ -436,7 +436,7 @@ export const AIChat: React.FC = () => {
                     key={msg.id}
                     className={`flex flex-col gap-1.5 ${isUser ? 'items-end' : 'items-start'}`}
                   >
-                    <div className="flex items-center gap-2 font-mono text-[9px] text-slate-500 select-none">
+                    <div className="flex items-center gap-2 font-mono text-[9px] text-[var(--text-muted)] select-none">
                       <span>{isUser ? 'INVESTIGATOR' : 'SAKSHA CORE AI'}</span>
                       <span>·</span>
                       <span>{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -444,8 +444,8 @@ export const AIChat: React.FC = () => {
 
                     <div className={`p-4 rounded-card border text-[11.5px] leading-relaxed max-w-[85%] text-left font-mono ${
                       isUser
-                        ? 'bg-[#1E6FD9]/10 border-[#1E6FD9]/20 text-white'
-                        : 'bg-[#111D35]/35 border-slate-900 text-[#A8B4CC] shadow-md relative group'
+                        ? 'bg-[#1E6FD9]/10 border-[#1E6FD9]/20 text-[var(--text-primary)]'
+                        : 'bg-[var(--bg-tertiary)]/35 border-[var(--border-primary)] text-[var(--text-secondary)] shadow-md relative group'
                     }`}>
                       
                       {isUser ? (
@@ -458,7 +458,7 @@ export const AIChat: React.FC = () => {
                         <CitationBadge citations={msg.citations} />
                       ) : (
                         msg.sources && msg.sources.length > 0 && (
-                          <div className="mt-4 pt-3 border-t border-slate-900 select-none">
+                          <div className="mt-4 pt-3 border-t border-[var(--border-primary)] select-none">
                             <span className="text-[8.5px] font-bold text-[#0E9E78] uppercase tracking-widest block mb-2">
                               Intelligence References (Sources)
                             </span>
@@ -466,7 +466,7 @@ export const AIChat: React.FC = () => {
                               {msg.sources.map((src, sIdx) => (
                                 <div 
                                   key={sIdx}
-                                  className="px-2.5 py-1 bg-slate-950/60 border border-slate-900 rounded text-[8px] text-[#A8B4CC] flex items-center gap-1 font-mono hover:border-slate-800 transition-colors"
+                                  className="px-2.5 py-1 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] rounded text-[8px] text-[var(--text-secondary)] flex items-center gap-1 font-mono hover:border-[var(--border-primary)] transition-colors"
                                 >
                                   <FileText className="w-3 h-3 text-[#0E9E78]" />
                                   <span>{src}</span>
@@ -480,7 +480,7 @@ export const AIChat: React.FC = () => {
                       {!isUser && (
                         <button
                           onClick={() => handleCopyText(msg.text, msg.id)}
-                          className="absolute right-3 top-3 p-1 bg-slate-950/70 border border-slate-900 text-slate-400 hover:text-white rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                          className="absolute right-3 top-3 p-1 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                           title="Copy AI Response"
                         >
                           {copiedId === msg.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -493,7 +493,7 @@ export const AIChat: React.FC = () => {
                         {lastUserMsg && (
                           <button
                             onClick={() => handleRetry(lastUserMsg.text)}
-                            className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-950/50 border border-slate-900 rounded text-[9px] font-mono text-slate-500 hover:text-white hover:border-slate-700 transition-all cursor-pointer"
+                            className="flex items-center gap-1.5 px-2.5 py-1 bg-[var(--bg-secondary)]/50 border border-[var(--border-primary)] rounded text-[9px] font-mono text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-secondary)] transition-all cursor-pointer"
                             title="Regenerate response"
                           >
                             <RefreshCw className="w-3 h-3" />
@@ -505,13 +505,13 @@ export const AIChat: React.FC = () => {
 
                     {!isUser && msg.followUpSuggestions && msg.followUpSuggestions.length > 0 && isLastAIMessage && !isLoading && (
                       <div className="flex flex-wrap gap-2 mt-2 ml-1 max-w-[85%]">
-                        <span className="text-[8px] font-mono text-slate-600 uppercase self-center mr-1">Follow up:</span>
+                        <span className="text-[8px] font-mono text-[var(--text-secondary)] uppercase self-center mr-1">Follow up:</span>
                         {msg.followUpSuggestions.map((suggestion, sIdx) => (
                           <button
                             key={sIdx}
                             onClick={() => handleFollowUpClick(suggestion)}
                             disabled={isLoading}
-                            className="px-3 py-1.5 bg-[#1E6FD9]/10 border border-[#1E6FD9]/25 rounded-btn text-[9.5px] font-mono text-[#A8B4CC] hover:text-white hover:border-[#1E6FD9]/50 hover:bg-[#1E6FD9]/15 transition-all cursor-pointer disabled:opacity-50"
+                            className="px-3 py-1.5 bg-[#1E6FD9]/10 border border-[#1E6FD9]/25 rounded-btn text-[9.5px] font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[#1E6FD9]/50 hover:bg-[#1E6FD9]/15 transition-all cursor-pointer disabled:opacity-50"
                           >
                             {suggestion}
                           </button>
@@ -526,17 +526,17 @@ export const AIChat: React.FC = () => {
 
           {isLoading && (
             <div className="flex flex-col gap-1.5 items-start max-w-4xl mx-auto">
-              <div className="font-mono text-[9px] text-slate-500 uppercase">
+              <div className="font-mono text-[9px] text-[var(--text-muted)] uppercase">
                 SAKSHA CORE AI
               </div>
-              <div className="p-4 bg-[#111D35]/35 border border-slate-900 rounded-card">
+              <div className="p-4 bg-[var(--bg-tertiary)]/35 border border-[var(--border-primary)] rounded-card">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="flex space-x-1.5">
                     <div className="w-2 h-2 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                     <div className="w-2 h-2 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                     <div className="w-2 h-2 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
-                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-[var(--text-muted)]">
                     {getStepIcon(streamStatus)}
                     <span className="uppercase tracking-widest">
                       {streamStatus || 'Querying backend services...'}
@@ -553,10 +553,10 @@ export const AIChat: React.FC = () => {
                                      (idx === 2 && streamStatus.includes('Generating'));
                     return (
                       <div key={step} className={`flex items-center gap-1 text-[8px] font-mono uppercase ${
-                        isCurrent ? 'text-[#1E6FD9]' : isDone ? 'text-[#0E9E78]' : 'text-slate-700'
+                        isCurrent ? 'text-[#1E6FD9]' : isDone ? 'text-[#0E9E78]' : 'text-[var(--text-disabled)]'
                       }`}>
                         <div className={`w-1.5 h-1.5 rounded-full ${
-                          isCurrent ? 'bg-[#1E6FD9] animate-pulse' : isDone ? 'bg-[#0E9E78]' : 'bg-slate-700'
+                          isCurrent ? 'bg-[#1E6FD9] animate-pulse' : isDone ? 'bg-[#0E9E78]' : 'bg-[var(--bg-elevated)]'
                         }`} />
                         <span>{step}</span>
                       </div>
@@ -570,7 +570,7 @@ export const AIChat: React.FC = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 border-t border-border-color bg-slate-950/20">
+        <div className="p-4 border-t border-border-color bg-[var(--bg-secondary)]/20">
           <div className="max-w-4xl mx-auto flex flex-col gap-2 relative">
             
             {attachedFile && (
@@ -586,11 +586,11 @@ export const AIChat: React.FC = () => {
               </div>
             )}
 
-            <div className="flex items-end gap-2.5 bg-slate-950/70 border border-slate-900 focus-within:border-[#1E6FD9]/45 rounded-card p-2">
+            <div className="flex items-end gap-2.5 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] focus-within:border-[#1E6FD9]/45 rounded-card p-2">
               
               <button
                 onClick={handleAttachMockFile}
-                className="p-2 text-slate-500 hover:text-[#0E9E78] rounded transition-colors shrink-0 cursor-pointer"
+                className="p-2 text-[var(--text-muted)] hover:text-[#0E9E78] rounded transition-colors shrink-0 cursor-pointer"
                 title="Attach Evidence Document"
               >
                 <Paperclip className="w-4 h-4" />
@@ -602,20 +602,20 @@ export const AIChat: React.FC = () => {
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask SAKSHA AI to analyze crime files, query offender connections..."
-                className="flex-grow bg-transparent outline-none border-none text-white text-[11px] font-mono resize-none max-h-24 py-1.5 placeholder-slate-600 custom-scrollbar"
+                className="flex-grow bg-transparent outline-none border-none text-[var(--text-primary)] text-[11px] font-mono resize-none max-h-24 py-1.5 placeholder-slate-600 custom-scrollbar"
                 rows={1}
               />
 
               <button
                 onClick={() => handleSendMessage()}
                 disabled={isLoading}
-                className="p-2 bg-[#1E6FD9] hover:bg-[#1E6FD9]/85 text-white disabled:opacity-30 rounded-btn shrink-0 flex items-center justify-center transition-colors cursor-pointer"
+                className="p-2 bg-[#1E6FD9] hover:bg-[#1E6FD9]/85 text-[var(--text-primary)] disabled:opacity-30 rounded-btn shrink-0 flex items-center justify-center transition-colors cursor-pointer"
                 title="Send Message"
               >
                 <Send className="w-4.5 h-4.5" />
               </button>
             </div>
-            <div className="flex justify-between items-center text-[7.5px] text-slate-600 uppercase select-none px-1">
+            <div className="flex justify-between items-center text-[7.5px] text-[var(--text-secondary)] uppercase select-none px-1">
               <span>Press Enter to send, Shift+Enter for newline</span>
               <span className="flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3 text-[#0E9E78]" />

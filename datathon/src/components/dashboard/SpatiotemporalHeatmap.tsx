@@ -245,16 +245,16 @@ export const SpatiotemporalHeatmap: React.FC = () => {
   }, []);
 
   return (
-    <div className="w-full h-full bg-[#0a1220]/80 border border-white/5 p-4 rounded-lg flex flex-col justify-between select-none font-mono relative overflow-hidden group">
+    <div className="w-full h-full bg-[var(--bg-secondary)]/80 border border-[var(--border-primary)] p-4 rounded-lg flex flex-col justify-between select-none font-mono relative overflow-hidden group">
       
       {/* Title */}
       <div className="flex justify-between items-center mb-2">
         <div>
-          <h4 className="text-[11.5px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-            <Flame className="w-4 h-4 text-[#C94A2A] animate-pulse" />
+          <h4 className="text-[11.5px] font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-1.5">
+            <Flame className="w-4 h-4 text-[var(--accent-coral)] animate-pulse" />
             3D Spatiotemporal Incident Heatmap
           </h4>
-          <span className="text-[9px] text-[#A8B4CC] uppercase font-semibold">WebGL 3D Temporal Density Grid • Rotate & Hover</span>
+          <span className="text-[9px] text-[var(--text-secondary)] uppercase font-semibold">WebGL 3D Temporal Density Grid • Rotate & Hover</span>
         </div>
       </div>
 
@@ -271,23 +271,23 @@ export const SpatiotemporalHeatmap: React.FC = () => {
               top: `${Math.min(hoveredCell.y - 10, 120)}px`
             }}
           >
-            <div className="flex items-center justify-between pb-1 border-b border-white/5">
-              <span className="text-[9.5px] text-white font-extrabold uppercase">{hoveredCell.day} @ {hoveredCell.hour}</span>
+            <div className="flex items-center justify-between pb-1 border-b border-[var(--border-primary)]">
+              <span className="text-[9.5px] text-[var(--text-primary)] font-extrabold uppercase">{hoveredCell.day} @ {hoveredCell.hour}</span>
             </div>
             <div className="flex justify-between items-center mt-1">
-              <span className="text-[8px] text-slate-400">INCIDENT CASES:</span>
-              <span className="text-[11px] font-bold text-white">{hoveredCell.cases} Cases</span>
+              <span className="text-[8px] text-[var(--text-muted)]">INCIDENT CASES:</span>
+              <span className="text-[11px] font-bold text-[var(--text-primary)]">{hoveredCell.cases} Cases</span>
             </div>
             <div className="flex justify-between items-center mt-0.5">
-              <span className="text-[8px] text-slate-400">STATUS LEVEL:</span>
+              <span className="text-[8px] text-[var(--text-muted)]">STATUS LEVEL:</span>
               <span className="text-[8px] font-bold uppercase" style={{ color: hoveredCell.color }}>
                 {hoveredCell.cases >= 75 ? 'Critical Density' : hoveredCell.cases >= 50 ? 'Elevated Alert' : 'Normal Patrol'}
               </span>
             </div>
           </div>
         ) : (
-          <div className="absolute bottom-2 right-2 bg-slate-950/60 border border-white/5 p-2 rounded text-[8px] text-[#A8B4CC] flex flex-col gap-1 select-none pointer-events-none">
-            <span className="flex items-center gap-1 font-bold text-white uppercase"><HelpCircle className="w-3 h-3 text-[#C94A2A]" /> Grid Bounds</span>
+          <div className="absolute bottom-2 right-2 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] p-2 rounded text-[8px] text-[var(--text-secondary)] flex flex-col gap-1 select-none pointer-events-none">
+            <span className="flex items-center gap-1 font-bold text-[var(--text-primary)] uppercase"><HelpCircle className="w-3 h-3 text-[var(--accent-coral)]" /> Grid Bounds</span>
             <div className="flex items-center gap-1">X-Axis: Days (Mon-Sun)</div>
             <div className="flex items-center gap-1">Z-Axis: Hours (00:00-20:00)</div>
           </div>
@@ -295,9 +295,9 @@ export const SpatiotemporalHeatmap: React.FC = () => {
       </div>
 
       {/* Visual orientation metrics inside dashboard box */}
-      <div className="flex justify-between text-[9px] text-[#E8EDF5] font-bold uppercase tracking-widest pt-2 border-t border-slate-900 select-none">
+      <div className="flex justify-between text-[9px] text-[var(--text-primary)] font-bold uppercase tracking-widest pt-2 border-t border-[var(--border-primary)] select-none">
         <span className="flex items-center gap-1">
-          <Compass className="w-3.5 h-3.5 text-[#C94A2A]" />
+          <Compass className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
           Grid Orientations (X: Days, Z: Hours)
         </span>
         <span>Spatiotemporal Helix</span>
