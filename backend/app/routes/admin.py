@@ -122,7 +122,9 @@ class SettingsPayload(BaseModel):
 
 
 def _ensure_admin_tables() -> None:
-    Base.metadata.create_all(bind=engine, tables=[SystemSetting.__table__, RolePermission.__table__])
+    if not getattr(_ensure_admin_tables, "_done", False):
+        Base.metadata.create_all(bind=engine, tables=[SystemSetting.__table__, RolePermission.__table__])
+        _ensure_admin_tables._done = True
 
 
 def _client_ip(request: Request) -> str | None:

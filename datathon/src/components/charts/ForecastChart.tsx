@@ -176,15 +176,16 @@ export const ForecastChart: React.FC = () => {
     window.addEventListener('mouseup', handleMouseUp);
 
     let animationFrameId: number;
+    const startTime = performance.now();
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
+      const elapsed = (performance.now() - startTime) / 1000;
       if (!isDragging && hoveredPoint === null) {
-        scene.rotation.y = Math.sin(clock.getElapsedTime() * 0.15) * 0.4;
+        scene.rotation.y = Math.sin(elapsed * 0.15) * 0.4;
       }
       renderer.render(scene, camera);
     };
 
-    const clock = new THREE.Clock();
     animate();
 
     const handleResize = () => {

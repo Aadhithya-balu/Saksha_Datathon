@@ -939,3 +939,45 @@ connection to server at "aws-0-ap-northeast-1.pooler.supabase.com" (52.68.3.1), 
 2026-07-24 09:43:39.818 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
 2026-07-24 09:43:40.067 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
 2026-07-24 10:10:32.332 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 10:38:56.302 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 10:39:02.505 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
+2026-07-24 10:39:02.612 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 10:45:31.749 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 10:45:39.259 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 10:45:44.706 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
+2026-07-24 10:45:44.809 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 10:46:39.324 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 10:46:45.723 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
+2026-07-24 10:46:45.831 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 10:51:27.290 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 10:51:28.178 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 10:51:37.624 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 10:51:37.626 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 10:51:42.723 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
+2026-07-24 10:51:42.903 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 10:51:42.920 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
+2026-07-24 10:51:43.090 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 10:51:45.635 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 10:51:45.667 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 10:51:52.529 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 10:51:59.191 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
+2026-07-24 10:51:59.261 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 10:52:21.803 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 10:52:29.467 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 10:52:35.863 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
+2026-07-24 10:52:35.961 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 10:52:43.899 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 10:52:51.220 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 10:52:51.222 | ERROR    | app.main:lifespan:27 - PostgreSQL connection failed: (psycopg2.ProgrammingError) invalid dsn: invalid connection option "prepared_statement_cache_size"
+
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-07-24 10:52:51.312 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 10:52:58.561 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 10:53:06.000 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 10:53:13.283 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
+2026-07-24 10:53:13.360 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 10:56:50.279 | INFO     | app.main:lifespan:20 - Starting SAKSHA Backend in development mode
+2026-07-24 10:56:57.555 | INFO     | app.main:lifespan:25 - PostgreSQL connection OK
+2026-07-24 10:56:58.255 | WARNING  | app.main:lifespan:33 - Neo4j connection could not be verified
+2026-07-24 11:01:58.107 | INFO     | app.main:lifespan:38 - Shutdown complete
+2026-07-24 11:01:58.108 | INFO     | app.main:lifespan:38 - Shutdown complete
