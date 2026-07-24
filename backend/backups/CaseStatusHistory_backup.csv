@@ -1,0 +1,6 @@
+StatusHistoryID,CrimeCaseID,Status,SequenceNo,ChangedByOfficerID,ChangedAt,Remarks
+1,1,Open,1,5966,2025-03-30 00:00:00,Case status moved to 'Open'.
+2,1,Assigned,2,5966,2025-04-26 00:00:00,Case status moved to 'Assigned'.
+3,1,Under Investigation,3,5966,2025-05-26 00:00:00,Case status moved to 'Under Investigation'.
+4,1,Evidence Collection,4,5966,2025-06-06 00:00:00,Case status moved to 'Evidence Collection'.
+5,1,Witness Interviews,5,5966,2025-06-10 00:00:00,Case status moved to 'Witness Interviews'.

@@ -1,0 +1,6 @@
+NoteID,CrimeCaseID,OfficerID,NoteType,NoteText,CreatedAt
+1,1,5966,Forensic,DNA samples submitted to FSL Bengaluru for analysis.,2025-10-15 16:00:00
+2,1,14834,Legal,Notice under Section 41A CrPC issued to suspect.,2025-07-28 15:00:00
+3,1,12406,Forensic,Forensic report awaited from Regional FSL.,2025-05-13 12:00:00
+4,1,12406,Witness,Recorded statement of eyewitness under Section 161 CrPC.,2025-07-22 13:00:00
+5,1,5966,Forensic,Fingerprint match request sent to State CID.,2025-07-08 17:00:00
