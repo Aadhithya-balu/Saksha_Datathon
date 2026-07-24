@@ -22,13 +22,13 @@ export const CitationBadge: React.FC<CitationBadgeProps> = ({ citations }) => {
   const getScoreColor = (score: number) => {
     if (score >= 0.7) return 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40';
     if (score >= 0.4) return 'text-amber-400 border-amber-500/30 bg-amber-950/40';
-    return 'text-slate-400 border-slate-700 bg-slate-900/40';
+    return 'text-[var(--text-muted)] border-[var(--border-secondary)] bg-[var(--bg-tertiary)]/40';
   };
 
   return (
-    <div className="mt-3 pt-3 border-t border-slate-900 select-none">
+    <div className="mt-3 pt-3 border-t border-[var(--border-primary)] select-none">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[8.5px] font-bold text-[#0E9E78] uppercase tracking-widest flex items-center gap-1 font-mono">
+        <span className="text-[8.5px] font-bold text-[var(--accent-teal)] uppercase tracking-widest flex items-center gap-1 font-mono">
           <Database className="w-3 h-3" />
           Intelligence Citations ({citations.length})
         </span>
@@ -56,29 +56,29 @@ export const CitationBadge: React.FC<CitationBadgeProps> = ({ citations }) => {
 
       {/* Citation Detail Modal */}
       {activeCitation && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0b1329] border border-slate-800 rounded-card p-5 max-w-lg w-full font-mono text-left shadow-2xl relative">
+        <div className="fixed inset-0 bg-[var(--bg-secondary)]/70 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-card p-5 max-w-lg w-full font-mono text-left shadow-2xl relative">
             <button
               onClick={() => setActiveCitation(null)}
-              className="absolute top-3.5 right-3.5 text-slate-400 hover:text-white p-1 rounded transition-colors cursor-pointer"
+              className="absolute top-3.5 right-3.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
 
             <div className="flex items-center gap-2 mb-3">
               {getSourceIcon(activeCitation.source)}
-              <span className="text-[9px] font-bold uppercase tracking-widest text-[#1E6FD9]">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--accent-blue)]">
                 Source: {activeCitation.source}
               </span>
             </div>
 
-            <h3 className="text-sm font-extrabold text-white mb-2">{activeCitation.title}</h3>
+            <h3 className="text-sm font-extrabold text-[var(--text-primary)] mb-2">{activeCitation.title}</h3>
 
-            <div className="p-3 bg-slate-950/80 border border-slate-900 rounded text-[10.5px] text-slate-300 leading-relaxed space-y-2">
+            <div className="p-3 bg-[var(--bg-secondary)]/80 border border-[var(--border-primary)] rounded text-[10.5px] text-[var(--text-secondary)] leading-relaxed space-y-2">
               <div>
-                <span className="text-slate-500 font-bold uppercase text-[8.5px] block">Relevance Match Confidence</span>
+                <span className="text-[var(--text-muted)] font-bold uppercase text-[8.5px] block">Relevance Match Confidence</span>
                 <div className="flex items-center gap-2 mt-1">
-                  <div className="flex-1 bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                  <div className="flex-1 bg-[var(--bg-tertiary)] rounded-full h-1.5 overflow-hidden">
                     <div
                       className="bg-emerald-500 h-full rounded-full"
                       style={{ width: `${Math.round(activeCitation.score * 100)}%` }}
@@ -90,16 +90,16 @@ export const CitationBadge: React.FC<CitationBadgeProps> = ({ citations }) => {
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-900">
-                <span className="text-slate-500 font-bold uppercase text-[8.5px] block">Document ID / Source</span>
-                <p className="text-slate-200 mt-0.5">{activeCitation.title}</p>
+              <div className="pt-2 border-t border-[var(--border-primary)]">
+                <span className="text-[var(--text-muted)] font-bold uppercase text-[8.5px] block">Document ID / Source</span>
+                <p className="text-[var(--text-primary)] mt-0.5">{activeCitation.title}</p>
               </div>
             </div>
 
             <div className="mt-4 flex justify-end">
               <button
                 onClick={() => setActiveCitation(null)}
-                className="px-4 py-1.5 bg-[#1E6FD9] hover:bg-[#1E6FD9]/85 text-white font-mono text-[10px] uppercase font-bold rounded cursor-pointer transition-colors"
+                className="px-4 py-1.5 bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/85 text-[var(--text-primary)] font-mono text-[10px] uppercase font-bold rounded cursor-pointer transition-colors"
               >
                 Close
               </button>

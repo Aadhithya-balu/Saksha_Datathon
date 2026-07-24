@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRBAC } from '../../hooks/useRBAC';
 import { Search, Plus, Filter, ShieldCheck, Mail, Phone, Edit, Trash2 } from 'lucide-react';
-import { API_BASE_URL, getStoredTokens } from '../../services/api';
+import { apiRequest } from '../../services/api';
 
 interface Officer {
   id: string;
@@ -33,18 +33,9 @@ const OfficersPage: React.FC = () => {
   const fetchOfficers = async () => {
     try {
       setLoading(true);
-      const { accessToken } = getStoredTokens();
-      const res = await fetch(`${API_BASE_URL}/officers?search=${search}`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setOfficers(data.results || []);
-        setError(null);
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(data?.error?.message || data?.detail || 'Failed to fetch officers');
-      }
+      const data = await apiRequest<{ results: Officer[] }>(`/officers?search=${search}`);
+      setOfficers(data.results || []);
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch officers');
     } finally {
@@ -63,30 +54,27 @@ const OfficersPage: React.FC = () => {
     }
 
     try {
-      const { accessToken } = getStoredTokens();
       const method = isEditMode ? 'PUT' : 'POST';
-      const url = isEditMode ? `${API_BASE_URL}/officers/${currentOfficer.id}` : `${API_BASE_URL}/officers`;
+      const path = isEditMode ? `/officers/${currentOfficer.id}` : `/officers`;
       
       const payload = { ...currentOfficer };
       delete payload.id;
+      
+      // Normalize empty strings to null for optional fields
+      Object.keys(payload).forEach(key => {
+        if (payload[key as keyof typeof payload] === '') {
+          payload[key as keyof typeof payload] = null;
+        }
+      });
 
-      const res = await fetch(url, {
+      await apiRequest(path, {
         method,
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}` 
-        },
         body: JSON.stringify(payload)
       });
       
-      if (res.ok) {
-        setIsFormOpen(false);
-        setError(null);
-        void fetchOfficers();
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(data?.error?.message || data?.detail || 'Failed to save officer');
-      }
+      setIsFormOpen(false);
+      setError(null);
+      void fetchOfficers();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save officer');
     }
@@ -95,17 +83,8 @@ const OfficersPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this officer?")) return;
     try {
-      const { accessToken } = getStoredTokens();
-      const res = await fetch(`${API_BASE_URL}/officers/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      if (res.ok) {
-        void fetchOfficers();
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(data?.error?.message || data?.detail || 'Failed to delete officer');
-      }
+      await apiRequest(`/officers/${id}`, { method: 'DELETE' });
+      void fetchOfficers();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete officer');
     }
@@ -126,15 +105,15 @@ const OfficersPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-6">
       {/* Header Panel */}
-      <div className="flex items-center justify-between p-6 bg-[#080E1B]/80 border border-border-color rounded-lg relative overflow-hidden">
+      <div className="flex items-center justify-between p-6 bg-[var(--bg-surface)]/80 border border-border-color rounded-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#1E6FD9]/10 rounded-full blur-[80px]" />
         
         <div className="z-10">
-          <h1 className="text-2xl font-mono font-bold text-white uppercase tracking-wider flex items-center gap-3">
+          <h1 className="text-2xl font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-3">
             <ShieldCheck className="w-7 h-7 text-[#1E6FD9]" />
             Officer Management
           </h1>
-          <p className="text-[#A8B4CC] text-sm mt-2 font-mono">Manage personnel, assignments, and structural hierarchy.</p>
+          <p className="text-[var(--text-secondary)] text-sm mt-2 font-mono">Manage personnel, assignments, and structural hierarchy.</p>
         </div>
         
         <div className="z-10 flex gap-4">
@@ -144,17 +123,17 @@ const OfficersPage: React.FC = () => {
               placeholder="Search by name or badge..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-64 bg-secondary-bg border border-border-color rounded-btn px-4 py-2 pl-10 text-sm font-mono text-white focus:border-[#1E6FD9] outline-none"
+              className="w-64 bg-secondary-bg border border-border-color rounded-btn px-4 py-2 pl-10 text-sm font-mono text-[var(--text-primary)] focus:border-[#1E6FD9] outline-none"
             />
-            <Search className="w-4 h-4 text-[#6A7A96] absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3 top-2.5" />
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-secondary-bg hover:bg-white/5 border border-border-color rounded-btn text-sm font-mono text-white transition-all">
+          <button className="flex items-center gap-2 px-4 py-2 bg-secondary-bg hover:bg-[var(--bg-tertiary)]/10 border border-border-color rounded-btn text-sm font-mono text-[var(--text-primary)] transition-all">
             <Filter className="w-4 h-4" /> Filter
           </button>
           {isSCRB && (
             <button 
               onClick={openCreate}
-              className="flex items-center gap-2 px-4 py-2 bg-[#1E6FD9] hover:bg-[#155BB5] border border-transparent rounded-btn text-sm font-mono text-white font-bold transition-all shadow-glow-blue"
+              className="flex items-center gap-2 px-4 py-2 bg-[#1E6FD9] hover:bg-[#155BB5] border border-transparent rounded-btn text-sm font-mono text-[var(--text-primary)] font-bold transition-all shadow-glow-blue"
             >
               <Plus className="w-4 h-4" /> Add Officer
             </button>
@@ -184,30 +163,30 @@ const OfficersPage: React.FC = () => {
                       {officer.name.charAt(0)}
                     </div>
                     <div>
-                      <h3 className="text-white font-bold text-sm">{officer.name}</h3>
+                      <h3 className="text-[var(--text-primary)] font-bold text-sm">{officer.name}</h3>
                       <p className="text-[#0E9E78] font-mono text-[10px] uppercase font-bold tracking-wider">{officer.badge_number}</p>
                     </div>
                   </div>
                   {isSCRB && (
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openEdit(officer)} className="text-[#A8B4CC] hover:text-white"><Edit className="w-4 h-4" /></button>
+                      <button onClick={() => openEdit(officer)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"><Edit className="w-4 h-4" /></button>
                       <button onClick={() => handleDelete(officer.id)} className="text-[#C94A2A] hover:text-[#ff5e36]"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   )}
                 </div>
                 
-                <div className="space-y-2 text-xs font-mono text-[#A8B4CC]">
-                  <div className="flex justify-between"><span>Rank</span><span className="text-white">{officer.rank || 'N/A'}</span></div>
-                  <div className="flex justify-between"><span>Station</span><span className="text-white">{officer.station}</span></div>
-                  <div className="flex justify-between"><span>District</span><span className="text-white">{officer.district || 'N/A'}</span></div>
+                <div className="space-y-2 text-xs font-mono text-[var(--text-secondary)]">
+                  <div className="flex justify-between"><span>Rank</span><span className="text-[var(--text-primary)]">{officer.rank || 'N/A'}</span></div>
+                  <div className="flex justify-between"><span>Station</span><span className="text-[var(--text-primary)]">{officer.station}</span></div>
+                  <div className="flex justify-between"><span>District</span><span className="text-[var(--text-primary)]">{officer.district || 'N/A'}</span></div>
                 </div>
                 
                 <div className="mt-auto pt-4 border-t border-border-color flex justify-between">
                   <div className="flex gap-3">
-                    {officer.email && <a href={`mailto:${officer.email}`} className="text-[#6A7A96] hover:text-[#1E6FD9] transition-colors" title={officer.email}><Mail className="w-4 h-4" /></a>}
-                    {officer.phone && <a href={`tel:${officer.phone}`} className="text-[#6A7A96] hover:text-[#1E6FD9] transition-colors" title={officer.phone}><Phone className="w-4 h-4" /></a>}
+                    {officer.email && <a href={`mailto:${officer.email}`} className="text-[var(--text-muted)] hover:text-[#1E6FD9] transition-colors" title={officer.email}><Mail className="w-4 h-4" /></a>}
+                    {officer.phone && <a href={`tel:${officer.phone}`} className="text-[var(--text-muted)] hover:text-[#1E6FD9] transition-colors" title={officer.phone}><Phone className="w-4 h-4" /></a>}
                   </div>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${officer.status === 'active' ? 'bg-[#0E9E78]/20 text-[#0E9E78]' : 'bg-[#6A7A96]/20 text-[#6A7A96]'}`}>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${officer.status === 'active' ? 'bg-[#0E9E78]/20 text-[#0E9E78]' : 'bg-[#6A7A96]/20 text-[var(--text-muted)]'}`}>
                     {officer.status}
                   </span>
                 </div>
@@ -219,46 +198,46 @@ const OfficersPage: React.FC = () => {
 
       {/* Form Modal */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 bg-[#080E1B]/80 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-[var(--bg-surface)]/80 flex items-center justify-center p-4">
           <div className="bg-secondary-bg border border-[#1E6FD9]/40 rounded-lg shadow-glow-blue max-w-lg w-full p-6 animate-[fadeIn_0.2s_ease-out]">
-            <h2 className="text-lg font-bold text-white mb-4 uppercase font-mono">{isEditMode ? 'Edit Officer' : 'New Officer Profile'}</h2>
+            <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4 uppercase font-mono">{isEditMode ? 'Edit Officer' : 'New Officer Profile'}</h2>
             
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-mono text-[#6A7A96] uppercase">Full Name</label>
-                <input type="text" value={currentOfficer.name} onChange={e => setCurrentOfficer({...currentOfficer, name: e.target.value})} className="bg-[#080E1B] border border-border-color rounded px-3 py-2 text-sm text-white focus:border-[#1E6FD9] outline-none" />
+                <label className="text-[10px] font-mono text-[var(--text-muted)] uppercase">Full Name</label>
+                <input type="text" value={currentOfficer.name} onChange={e => setCurrentOfficer({...currentOfficer, name: e.target.value})} className="bg-[var(--bg-surface)] border border-border-color rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#1E6FD9] outline-none" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-mono text-[#6A7A96] uppercase">Badge Number</label>
-                <input type="text" value={currentOfficer.badge_number} onChange={e => setCurrentOfficer({...currentOfficer, badge_number: e.target.value})} className="bg-[#080E1B] border border-border-color rounded px-3 py-2 text-sm text-white focus:border-[#1E6FD9] outline-none" disabled={isEditMode} />
+                <label className="text-[10px] font-mono text-[var(--text-muted)] uppercase">Badge Number</label>
+                <input type="text" value={currentOfficer.badge_number} onChange={e => setCurrentOfficer({...currentOfficer, badge_number: e.target.value})} className="bg-[var(--bg-surface)] border border-border-color rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#1E6FD9] outline-none" disabled={isEditMode} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-mono text-[#6A7A96] uppercase">Rank</label>
-                <input type="text" value={currentOfficer.rank} onChange={e => setCurrentOfficer({...currentOfficer, rank: e.target.value})} className="bg-[#080E1B] border border-border-color rounded px-3 py-2 text-sm text-white focus:border-[#1E6FD9] outline-none" />
+                <label className="text-[10px] font-mono text-[var(--text-muted)] uppercase">Rank</label>
+                <input type="text" value={currentOfficer.rank} onChange={e => setCurrentOfficer({...currentOfficer, rank: e.target.value})} className="bg-[var(--bg-surface)] border border-border-color rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#1E6FD9] outline-none" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-mono text-[#6A7A96] uppercase">Designation</label>
-                <input type="text" value={currentOfficer.designation} onChange={e => setCurrentOfficer({...currentOfficer, designation: e.target.value})} className="bg-[#080E1B] border border-border-color rounded px-3 py-2 text-sm text-white focus:border-[#1E6FD9] outline-none" />
+                <label className="text-[10px] font-mono text-[var(--text-muted)] uppercase">Designation</label>
+                <input type="text" value={currentOfficer.designation} onChange={e => setCurrentOfficer({...currentOfficer, designation: e.target.value})} className="bg-[var(--bg-surface)] border border-border-color rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#1E6FD9] outline-none" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-mono text-[#6A7A96] uppercase">Station</label>
-                <input type="text" value={currentOfficer.station} onChange={e => setCurrentOfficer({...currentOfficer, station: e.target.value})} className="bg-[#080E1B] border border-border-color rounded px-3 py-2 text-sm text-white focus:border-[#1E6FD9] outline-none" />
+                <label className="text-[10px] font-mono text-[var(--text-muted)] uppercase">Station</label>
+                <input type="text" value={currentOfficer.station} onChange={e => setCurrentOfficer({...currentOfficer, station: e.target.value})} className="bg-[var(--bg-surface)] border border-border-color rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#1E6FD9] outline-none" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-mono text-[#6A7A96] uppercase">District</label>
-                <input type="text" value={currentOfficer.district} onChange={e => setCurrentOfficer({...currentOfficer, district: e.target.value})} className="bg-[#080E1B] border border-border-color rounded px-3 py-2 text-sm text-white focus:border-[#1E6FD9] outline-none" />
+                <label className="text-[10px] font-mono text-[var(--text-muted)] uppercase">District</label>
+                <input type="text" value={currentOfficer.district} onChange={e => setCurrentOfficer({...currentOfficer, district: e.target.value})} className="bg-[var(--bg-surface)] border border-border-color rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#1E6FD9] outline-none" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-mono text-[#6A7A96] uppercase">Phone</label>
-                <input type="text" value={currentOfficer.phone} onChange={e => setCurrentOfficer({...currentOfficer, phone: e.target.value})} className="bg-[#080E1B] border border-border-color rounded px-3 py-2 text-sm text-white focus:border-[#1E6FD9] outline-none" />
+                <label className="text-[10px] font-mono text-[var(--text-muted)] uppercase">Phone</label>
+                <input type="text" value={currentOfficer.phone} onChange={e => setCurrentOfficer({...currentOfficer, phone: e.target.value})} className="bg-[var(--bg-surface)] border border-border-color rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#1E6FD9] outline-none" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-mono text-[#6A7A96] uppercase">Email</label>
-                <input type="email" value={currentOfficer.email} onChange={e => setCurrentOfficer({...currentOfficer, email: e.target.value})} className="bg-[#080E1B] border border-border-color rounded px-3 py-2 text-sm text-white focus:border-[#1E6FD9] outline-none" />
+                <label className="text-[10px] font-mono text-[var(--text-muted)] uppercase">Email</label>
+                <input type="email" value={currentOfficer.email} onChange={e => setCurrentOfficer({...currentOfficer, email: e.target.value})} className="bg-[var(--bg-surface)] border border-border-color rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#1E6FD9] outline-none" />
               </div>
               <div className="flex flex-col gap-1.5 col-span-2">
-                <label className="text-[10px] font-mono text-[#6A7A96] uppercase">Status</label>
-                <select value={currentOfficer.status} onChange={e => setCurrentOfficer({...currentOfficer, status: e.target.value})} className="bg-[#080E1B] border border-border-color rounded px-3 py-2 text-sm text-white focus:border-[#1E6FD9] outline-none">
+                <label className="text-[10px] font-mono text-[var(--text-muted)] uppercase">Status</label>
+                <select value={currentOfficer.status} onChange={e => setCurrentOfficer({...currentOfficer, status: e.target.value})} className="bg-[var(--bg-surface)] border border-border-color rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#1E6FD9] outline-none">
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                   <option value="suspended">Suspended</option>
@@ -267,8 +246,8 @@ const OfficersPage: React.FC = () => {
             </div>
             
             <div className="flex justify-end gap-3">
-              <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 border border-border-color rounded text-sm text-[#A8B4CC] hover:bg-white/5 transition-colors font-mono">Cancel</button>
-              <button onClick={handleSave} className="px-4 py-2 bg-[#1E6FD9] hover:bg-[#155BB5] rounded text-sm text-white font-bold transition-colors font-mono">Save Profile</button>
+              <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 border border-border-color rounded text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]/10 transition-colors font-mono">Cancel</button>
+              <button onClick={handleSave} className="px-4 py-2 bg-[#1E6FD9] hover:bg-[#155BB5] rounded text-sm text-[var(--text-primary)] font-bold transition-colors font-mono">Save Profile</button>
             </div>
           </div>
         </div>

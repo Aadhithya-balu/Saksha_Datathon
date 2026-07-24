@@ -144,67 +144,67 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
   }, [selectedDistrict]);
 
   return (
-    <div className="w-full h-full relative overflow-hidden flex flex-col justify-between bg-[#080E1B] rounded-card border border-border-color">
+    <div className="w-full h-full relative overflow-hidden flex flex-col justify-between bg-[var(--bg-surface)] rounded-card border border-border-color">
       
       {/* MAP HEADER PANELS */}
       <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 max-w-xs pointer-events-none select-none">
         <div className="px-3 py-2 bg-secondary-bg/95 backdrop-blur-md border border-border-color rounded-card pointer-events-auto">
-          <span className="text-[10px] font-mono text-[#0E9E78] uppercase font-bold tracking-wider">
+          <span className="text-[10px] font-mono text-[var(--accent-teal)] uppercase font-bold tracking-wider">
             Vector Grid Telemetry
           </span>
-          <h3 className="text-[13px] font-mono font-bold text-[#E8EDF5] mt-0.5">
+          <h3 className="text-[13px] font-mono font-bold text-[var(--text-primary)] mt-0.5">
             {selectedDistrict ? `Focus: ${selectedDistrict}` : 'Statewide Overview'}
           </h3>
-          <p className="text-[9px] font-mono text-[#6A7A96] mt-1 select-none">
+          <p className="text-[9px] font-mono text-[var(--text-muted)] mt-1 select-none">
             LAT/LON D3 GEODESIC AUTO-CENTERING
           </p>
         </div>
 
         {/* LAYER SELECTORS */}
         <div className="px-3 py-2 bg-secondary-bg/95 backdrop-blur-md border border-border-color rounded-card pointer-events-auto flex flex-col gap-1.5">
-          <span className="text-[8px] font-mono uppercase tracking-widest text-[#6A7A96] mb-1">
+          <span className="text-[8px] font-mono uppercase tracking-widest text-[var(--text-muted)] mb-1">
             Display Layers
           </span>
           <button
             onClick={() => toggleLayer('hotspot')}
             className={`w-full py-1 px-2.5 rounded text-[9.5px] font-mono uppercase flex items-center justify-between transition-colors border cursor-pointer ${
               layers.hotspot 
-                ? 'bg-[#1E6FD9]/15 border-[#1E6FD9] text-[#1E6FD9]' 
-                : 'bg-transparent border-slate-700 text-[#A8B4CC]'
+                ? 'bg-[var(--accent-blue)]/15 border-[var(--accent-blue)] text-[var(--accent-blue)]' 
+                : 'bg-transparent border-[var(--border-secondary)] text-[var(--text-secondary)]'
             }`}
           >
             <span>Hotspots Data</span>
-            <div className={`w-1.5 h-1.5 rounded-full ${layers.hotspot ? 'bg-[#1E6FD9] animate-pulse' : 'bg-slate-600'}`} />
+            <div className={`w-1.5 h-1.5 rounded-full ${layers.hotspot ? 'bg-[var(--accent-blue)] animate-pulse' : 'bg-[var(--text-muted)]'}`} />
           </button>
           
           <button
             onClick={() => toggleLayer('beatCoverage')}
             className={`w-full py-1 px-2.5 rounded text-[9.5px] font-mono uppercase flex items-center justify-between transition-colors border cursor-pointer ${
               layers.beatCoverage 
-                ? 'bg-[#0E9E78]/15 border-[#0E9E78] text-[#0E9E78]' 
-                : 'bg-transparent border-slate-700 text-[#A8B4CC]'
+                ? 'bg-[var(--accent-teal)]/15 border-[var(--accent-teal)] text-[var(--accent-teal)]' 
+                : 'bg-transparent border-[var(--border-secondary)] text-[var(--text-secondary)]'
             }`}
           >
             <span>Beat Officer Ratio</span>
-            <div className={`w-1.5 h-1.5 rounded-full ${layers.beatCoverage ? 'bg-[#0E9E78] animate-pulse' : 'bg-slate-600'}`} />
+            <div className={`w-1.5 h-1.5 rounded-full ${layers.beatCoverage ? 'bg-[var(--accent-teal)] animate-pulse' : 'bg-[var(--text-muted)]'}`} />
           </button>
           
           <button
             onClick={() => toggleLayer('riskScore')}
             className={`w-full py-1 px-2.5 rounded text-[9.5px] font-mono uppercase flex items-center justify-between transition-colors border cursor-pointer ${
               layers.riskScore 
-                ? 'bg-[#6C43CC]/15 border-[#6C43CC] text-[#6C43CC]' 
-                : 'bg-transparent border-slate-700 text-[#A8B4CC]'
+                ? 'bg-[var(--accent-purple)]/15 border-[var(--accent-purple)] text-[var(--accent-purple)]' 
+                : 'bg-transparent border-[var(--border-secondary)] text-[var(--text-secondary)]'
             }`}
           >
             <span>Regional Risk Index</span>
-            <div className={`w-1.5 h-1.5 rounded-full ${layers.riskScore ? 'bg-[#6C43CC] animate-pulse' : 'bg-slate-600'}`} />
+            <div className={`w-1.5 h-1.5 rounded-full ${layers.riskScore ? 'bg-[var(--accent-purple)] animate-pulse' : 'bg-[var(--text-muted)]'}`} />
           </button>
         </div>
       </div>
 
       {/* RENDER CANVAS CONTAINER */}
-      <div className="flex-1 w-full relative cursor-grab active:cursor-grabbing bg-slate-950 overflow-hidden">
+      <div className="flex-1 w-full relative cursor-grab active:cursor-grabbing bg-[var(--bg-secondary)] overflow-hidden">
         
         {/* GEODESIC BACKGROUND GRID */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20">
@@ -285,7 +285,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
                 <polygon
                   key={name}
                   points={projectedPoints}
-                  className="transition-all duration-300 hover:fill-slate-800/40 hover:stroke-[#1E6FD9]/80 cursor-pointer"
+                  className="transition-all duration-300 hover:fill-slate-800/40 hover:stroke-[var(--accent-blue)]/80 cursor-pointer"
                   fill={fill}
                   stroke={stroke}
                   strokeWidth={isSelected ? 2 : 1}
@@ -315,7 +315,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
                   <text
                     x={x + 6}
                     y={y + 3}
-                    className="font-mono text-[9px] fill-[#6A7A96] font-semibold"
+                    className="font-mono text-[9px] fill-[var(--text-muted)] font-semibold"
                   >
                     {name}
                   </text>
@@ -359,20 +359,20 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
                     {/* Popover Tooltip inside foreignObject so it scales with map view zoom & pan */}
                     {isSelected && (
                       <foreignObject x={x - 90} y={y - 120} width="180" height="110" className="z-50 pointer-events-auto">
-                        <div className="bg-[#111D35] border border-[#1E6FD9] p-2.5 rounded-card shadow-glow-blue text-left flex flex-col gap-1.5 font-mono text-[9px] leading-tight text-white relative">
-                          <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                            <span className="font-bold text-[#0E9E78] uppercase text-[7.5px]">Hotspot Details</span>
+                        <div className="bg-[var(--bg-tertiary)] border border-[var(--accent-blue)] p-2.5 rounded-card shadow-glow-blue text-left flex flex-col gap-1.5 font-mono text-[9px] leading-tight text-[var(--text-primary)] relative">
+                          <div className="flex justify-between items-center border-b border-[var(--border-primary)] pb-1">
+                            <span className="font-bold text-[var(--accent-teal)] uppercase text-[7.5px]">Hotspot Details</span>
                             <button 
                               onClick={(e) => { e.stopPropagation(); setSelectedHotspot(null); }}
-                              className="text-slate-500 hover:text-white cursor-pointer font-bold text-xs"
+                              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer font-bold text-xs"
                             >
                               ×
                             </button>
                           </div>
                           <div>
-                            <p className="font-bold text-white uppercase truncate">{hs.name}</p>
-                            <p className="text-[#6A7A96] mt-0.5 truncate">Sector: {hs.district_id}</p>
-                            <p className="text-[#A8B4CC] mt-0.5 truncate">Category: {hs.type}</p>
+                            <p className="font-bold text-[var(--text-primary)] uppercase truncate">{hs.name}</p>
+                            <p className="text-[var(--text-muted)] mt-0.5 truncate">Sector: {hs.district_id}</p>
+                            <p className="text-[var(--text-secondary)] mt-0.5 truncate">Category: {hs.type}</p>
                             <p className="text-red-400 font-bold mt-0.5">Threat Level: {hs.weight}%</p>
                           </div>
                         </div>
@@ -389,7 +389,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
         {selectedDistrict && (
           <button
             onClick={() => setSelectedDistrict(null)}
-            className="absolute bottom-4 left-4 z-20 px-3 py-1.5 bg-[#C94A2A] hover:bg-[#C94A2A]/80 text-white font-mono text-[10px] uppercase rounded-btn flex items-center gap-1 shadow-glow-coral cursor-pointer"
+            className="absolute bottom-4 left-4 z-20 px-3 py-1.5 bg-[var(--accent-coral)] hover:bg-[var(--accent-coral)]/80 text-[var(--text-primary)] font-mono text-[10px] uppercase rounded-btn flex items-center gap-1 shadow-glow-coral cursor-pointer"
           >
             <span>Reset View Coordinates</span>
           </button>
@@ -410,14 +410,14 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
               {/* Header drawer row */}
               <div className="flex justify-between items-center border-b border-border-color pb-3 mb-4">
                 <div className="flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-[#1E6FD9] shrink-0" />
-                  <h3 className="text-sm font-mono font-bold text-white uppercase truncate">
+                  <Shield className="w-5 h-5 text-[var(--accent-blue)] shrink-0" />
+                  <h3 className="text-sm font-mono font-bold text-[var(--text-primary)] uppercase truncate">
                     {activeDistrictInfo.name}
                   </h3>
                 </div>
                 <button
                   onClick={() => setPanelOpen(false)}
-                  className="p-1 hover:bg-[#1E6FD9]/15 rounded text-[#A8B4CC] hover:text-white cursor-pointer"
+                  className="p-1 hover:bg-[var(--accent-blue)]/15 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -429,11 +429,11 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
                 {/* Risk gauge card */}
                 <div className={`p-4 rounded-card border flex items-center justify-between ${
                   activeDistrictInfo.riskScore >= 75 
-                    ? 'bg-[#C94A2A]/5 border-[#C94A2A]/20 text-[#C94A2A]' 
-                    : 'bg-[#0E9E78]/5 border-[#0E9E78]/20 text-[#0E9E78]'
+                    ? 'bg-[var(--accent-coral)]/5 border-[var(--accent-coral)]/20 text-[var(--accent-coral)]' 
+                    : 'bg-[var(--accent-teal)]/5 border-[var(--accent-teal)]/20 text-[var(--accent-teal)]'
                 }`}>
                   <div>
-                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#627a96] block">
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-[var(--text-muted)] block">
                       Active Threat Score
                     </span>
                     <span className="text-2xl font-mono font-extrabold mt-0.5 block">
@@ -449,21 +449,21 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
 
                 {/* Primary Stats lists */}
                 <div className="space-y-3 font-mono text-xs">
-                  <div className="flex justify-between py-1.5 border-b border-slate-900">
-                    <span className="text-[#6A7A96]">Monthly FIR Total</span>
-                    <span className="text-white font-bold">{activeDistrictInfo.crimeCount} filings</span>
+                  <div className="flex justify-between py-1.5 border-b border-[var(--border-primary)]">
+                    <span className="text-[var(--text-muted)]">Monthly FIR Total</span>
+                    <span className="text-[var(--text-primary)] font-bold">{activeDistrictInfo.crimeCount} filings</span>
                   </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-900">
-                    <span className="text-[#6A7A96]">Beat coverage Ratio</span>
-                    <span className="text-white font-bold">{activeDistrictInfo.beatRatio}% efficiency</span>
+                  <div className="flex justify-between py-1.5 border-b border-[var(--border-primary)]">
+                    <span className="text-[var(--text-muted)]">Beat coverage Ratio</span>
+                    <span className="text-[var(--text-primary)] font-bold">{activeDistrictInfo.beatRatio}% efficiency</span>
                   </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-900">
-                    <span className="text-[#6A7A96]">Emerging Crime</span>
+                  <div className="flex justify-between py-1.5 border-b border-[var(--border-primary)]">
+                    <span className="text-[var(--text-muted)]">Emerging Crime</span>
                     <span className="text-orange-400 font-semibold">{activeDistrictInfo.topCrimeType}</span>
                   </div>
                   
-                  <div className="flex justify-between py-1.5 border-b border-slate-900 items-center">
-                    <span className="text-[#6A7A96]">Weekly Trend Direction</span>
+                  <div className="flex justify-between py-1.5 border-b border-[var(--border-primary)] items-center">
+                    <span className="text-[var(--text-muted)]">Weekly Trend Direction</span>
                     {activeDistrictInfo.weeklyTrend === 'up' ? (
                       <span className="text-red-500 font-bold flex items-center gap-1">
                         <TrendingUp className="w-3.5 h-3.5" />
@@ -481,11 +481,11 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
                 </div>
 
                 {/* Actionable recommendation block */}
-                <div className="mt-4 p-3 bg-slate-950/40 border border-slate-800 rounded-btn">
-                  <span className="text-[8px] font-bold font-mono text-[#1E6FD9] uppercase tracking-wider block mb-1">
+                <div className="mt-4 p-3 bg-[var(--bg-secondary)]/40 border border-[var(--border-primary)] rounded-btn">
+                  <span className="text-[8px] font-bold font-mono text-[var(--accent-blue)] uppercase tracking-wider block mb-1">
                     SCRB Analyst Notes
                   </span>
-                  <p className="text-[10px] leading-relaxed text-[#A8B4CC]">
+                  <p className="text-[10px] leading-relaxed text-[var(--text-secondary)]">
                     Backend-derived from active FIRs, linked crime cases, risk scores, and dominant category for this district.
                   </p>
                 </div>
@@ -511,7 +511,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
                     );
                   }
                 }}
-                className="w-full py-2 bg-[#1E6FD9] hover:bg-[#1E6FD9]/80 text-white font-mono text-[10px] uppercase rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none"
+                className="w-full py-2 bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/80 text-[var(--text-primary)] font-mono text-[10px] uppercase rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none"
               >
                 Export Regional Dossier (PDF)
               </button>

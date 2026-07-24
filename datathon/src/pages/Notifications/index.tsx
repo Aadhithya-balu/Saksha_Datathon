@@ -20,13 +20,13 @@ const NotificationsPage: React.FC = () => {
   return (
     <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/5 pb-3 shrink-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3 shrink-0">
         <div>
-          <h2 className="text-md font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
             <Bell className="w-5 h-5 text-[#1E6FD9]" />
             Real-Time Intelligence & Notifications
           </h2>
-          <p className="text-[9.5px] font-mono text-[#6A7A96] mt-0.5">
+          <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
             KARNATAKA POLICE — NOTIFICATION CENTER, ACTIVITY FEED, SYSTEM HEALTH & LIVE EVENT TIMELINE
           </p>
         </div>
@@ -40,8 +40,8 @@ const NotificationsPage: React.FC = () => {
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2.5 text-[9.5px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 ${
               activeTab === tab.id
-                ? 'text-white border-[#1E6FD9] bg-[#1E6FD9]/5'
-                : 'text-[#6A7A96] border-transparent hover:text-[#A8B4CC] hover:bg-white/[0.02]'
+                ? 'text-[var(--text-primary)] border-[#1E6FD9] bg-[#1E6FD9]/5'
+                : 'text-[var(--text-muted)] border-transparent hover:text-[var(--text-secondary)] hover:bg-white/[0.02]'
             }`}
           >
             {tab.icon}

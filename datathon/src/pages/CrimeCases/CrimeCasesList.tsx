@@ -68,14 +68,14 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
       case 'closed':
         return 'bg-[#0E9E78]/10 text-[#0E9E78] border border-[#0E9E78]/30';
       default:
-        return 'bg-slate-500/10 text-slate-400 border border-slate-500/30';
+        return 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border border-[var(--border-secondary)]/30';
     }
   };
 
   const getPriorityStyle = (priority: string) => {
     switch (priority.toLowerCase()) {
       case 'low':
-        return 'bg-slate-500/10 text-slate-400 border border-slate-500/20';
+        return 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border border-[var(--border-secondary)]/20';
       case 'medium':
         return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
       case 'high':
@@ -83,7 +83,7 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
       case 'critical':
         return 'bg-[#C94A2A]/15 text-[#C94A2A] border border-[#C94A2A]/40 font-bold';
       default:
-        return 'bg-slate-500/10 text-slate-400 border border-slate-500/20';
+        return 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border border-[var(--border-secondary)]/20';
     }
   };
 
@@ -92,12 +92,12 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
       {/* Header telemetry area */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-5 bg-secondary-bg border border-border-color rounded-card shadow-glow-blue/5">
         <div>
-          <h2 className="text-sm uppercase tracking-[0.2em] font-bold text-white">SAKSHA Crime Intelligence Cases</h2>
-          <p className="text-[10px] text-[#6A7A96] mt-1">OPERATOR SYSTEM PROFILE CLEARANCE LEVEL: {user?.role}</p>
+          <h2 className="text-sm uppercase tracking-[0.2em] font-bold text-[var(--text-primary)]">SAKSHA Crime Intelligence Cases</h2>
+          <p className="text-[10px] text-[var(--text-muted)] mt-1">OPERATOR SYSTEM PROFILE CLEARANCE LEVEL: {user?.role}</p>
         </div>
         <button
           onClick={onCreateCase}
-          className="flex items-center gap-2 px-4 py-2 bg-[#1E6FD9] hover:bg-[#1E6FD9]/80 transition-colors rounded text-xs text-white cursor-pointer uppercase font-semibold"
+          className="flex items-center gap-2 px-4 py-2 bg-[#1E6FD9] hover:bg-[#1E6FD9]/80 transition-colors rounded text-xs text-[var(--text-primary)] cursor-pointer uppercase font-semibold"
         >
           <Plus className="w-4 h-4" /> Create Crime Case
         </button>
@@ -106,19 +106,19 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
       {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-1 relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6A7A96]" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
           <input
             type="text"
             placeholder="SEARCH BY CASE NUMBER OR DESCRIPTION..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-secondary-bg border border-border-color rounded font-mono text-xs text-white uppercase placeholder-[#6A7A96] focus:border-[#1E6FD9]/60 focus:outline-none"
+            className="w-full pl-10 pr-4 py-2 bg-secondary-bg border border-border-color rounded font-mono text-xs text-[var(--text-primary)] uppercase placeholder-[var(--text-muted)] focus:border-[#1E6FD9]/60 focus:outline-none"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-full md:w-60 px-3 py-2 bg-secondary-bg border border-border-color rounded font-mono text-xs text-white placeholder-[#6A7A96] focus:border-[#1E6FD9]/60 focus:outline-none cursor-pointer"
+          className="w-full md:w-60 px-3 py-2 bg-secondary-bg border border-border-color rounded font-mono text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[#1E6FD9]/60 focus:outline-none cursor-pointer"
         >
           <option value="">ALL STATUS LEVELS</option>
           <option value="open">OPEN</option>
@@ -141,7 +141,7 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
           <span>{error}</span>
         </div>
       ) : cases.length === 0 ? (
-        <div className="p-8 border border-border-color bg-secondary-bg rounded-card text-center text-xs text-[#6A7A96]">
+        <div className="p-8 border border-border-color bg-secondary-bg rounded-card text-center text-xs text-[var(--text-muted)]">
           NO ACTIVE CRIME CASES ENROLLED MATCHING CURRENT TELEMETRY FILTERS
         </div>
       ) : (
@@ -149,7 +149,7 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full border-collapse font-mono text-xs text-left">
               <thead>
-                <tr className="border-b border-border-color bg-slate-950/40 text-[#6A7A96] uppercase select-none">
+                <tr className="border-b border-border-color bg-[var(--bg-secondary)]/40 text-[var(--text-muted)] uppercase select-none">
                   <th className="p-4">Case Details</th>
                   <th className="p-4">Occurred At</th>
                   <th className="p-4 text-center">Status</th>
@@ -162,14 +162,14 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
                 {cases.map((c) => (
                   <tr key={c.id} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="p-4">
-                      <div className="font-bold text-[#E8EDF5] group-hover:text-white uppercase">
+                      <div className="font-bold text-[var(--text-primary)] group-hover:text-[var(--text-primary)] uppercase">
                         {c.case_number}
                       </div>
-                      <div className="text-[10px] text-[#6A7A96] mt-1 line-clamp-1 max-w-sm">
+                      <div className="text-[10px] text-[var(--text-muted)] mt-1 line-clamp-1 max-w-sm">
                         {c.description || 'No description provided'}
                       </div>
                     </td>
-                    <td className="p-4 text-[#A8B4CC]">
+                    <td className="p-4 text-[var(--text-secondary)]">
                       {new Date(c.occurred_at).toLocaleString()}
                     </td>
                     <td className="p-4 text-center">
@@ -184,13 +184,13 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
                     </td>
                     <td className="p-4 min-w-[150px]">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                        <div className="flex-1 h-1.5 bg-[var(--bg-tertiary)] rounded-full overflow-hidden border border-[var(--border-primary)]">
                           <div
                             className="h-full bg-gradient-to-r from-[#1E6FD9] to-[#0E9E78] transition-all duration-500"
                             style={{ width: `${c.progress}%` }}
                           />
                         </div>
-                        <span className="text-[10px] font-bold text-white shrink-0">
+                        <span className="text-[10px] font-bold text-[var(--text-primary)] shrink-0">
                           {c.progress}%
                         </span>
                       </div>
@@ -200,14 +200,14 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
                         <button
                           onClick={() => onSelectCase(c.id)}
                           title="View Case Dossier"
-                          className="p-1.5 hover:bg-[#1E6FD9]/15 border border-border-color rounded text-[#A8B4CC] hover:text-[#1E6FD9] transition-colors cursor-pointer"
+                          className="p-1.5 hover:bg-[#1E6FD9]/15 border border-border-color rounded text-[var(--text-secondary)] hover:text-[#1E6FD9] transition-colors cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => onEditCase(c.id)}
                           title="Edit Configuration"
-                          className="p-1.5 hover:bg-[#0E9E78]/15 border border-border-color rounded text-[#A8B4CC] hover:text-[#0E9E78] transition-colors cursor-pointer"
+                          className="p-1.5 hover:bg-[#0E9E78]/15 border border-border-color rounded text-[var(--text-secondary)] hover:text-[#0E9E78] transition-colors cursor-pointer"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
@@ -215,7 +215,7 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
                           <button
                             onClick={() => handleDelete(c.id)}
                             title="Purge Case Record"
-                            className="p-1.5 hover:bg-[#C94A2A]/15 border border-border-color rounded text-[#A8B4CC] hover:text-[#C94A2A] transition-colors cursor-pointer"
+                            className="p-1.5 hover:bg-[#C94A2A]/15 border border-border-color rounded text-[var(--text-secondary)] hover:text-[#C94A2A] transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>

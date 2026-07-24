@@ -189,16 +189,16 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data = [] }) => {
   }, [data, hoveredRing]);
 
   return (
-    <div className="w-full h-[280px] bg-[#0a1220]/80 border border-white/5 p-4 rounded-lg flex flex-col justify-between select-none relative font-mono overflow-hidden">
+    <div className="w-full h-[280px] bg-[var(--bg-secondary)]/80 border border-[var(--border-primary)] p-4 rounded-lg flex flex-col justify-between select-none relative font-mono overflow-hidden">
       
       {/* Title */}
       <div className="flex justify-between items-center mb-2 select-none">
         <div>
-          <h4 className="text-[11.5px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-            <LayoutGrid className="w-4 h-4 text-[#1E6FD9] animate-pulse" />
+          <h4 className="text-[11.5px] font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-1.5">
+            <LayoutGrid className="w-4 h-4 text-[var(--accent-blue)] animate-pulse" />
             3D Crime Category Orbits
           </h4>
-          <span className="text-[9px] text-[#A8B4CC] uppercase font-semibold">WebGL Radial Tube Distribution Matrix</span>
+          <span className="text-[9px] text-[var(--text-secondary)] uppercase font-semibold">WebGL Radial Tube Distribution Matrix</span>
         </div>
       </div>
 
@@ -217,21 +217,21 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data = [] }) => {
                   top: `${Math.min(hoveredRing.y - 10, 110)}px`
                 }}
               >
-                <div className="flex items-center justify-between pb-1 border-b border-white/5">
-                  <span className="text-[9.5px] text-white font-extrabold uppercase truncate">{hoveredRing.name}</span>
+                <div className="flex items-center justify-between pb-1 border-b border-[var(--border-primary)]">
+                  <span className="text-[9.5px] text-[var(--text-primary)] font-extrabold uppercase truncate">{hoveredRing.name}</span>
                 </div>
                 <div className="flex justify-between items-center mt-1">
-                  <span className="text-[8px] text-slate-400">TOTAL CASES:</span>
-                  <span className="text-[11px] font-bold text-white">{hoveredRing.value.toLocaleString()}</span>
+                  <span className="text-[8px] text-[var(--text-muted)]">TOTAL CASES:</span>
+                  <span className="text-[11px] font-bold text-[var(--text-primary)]">{hoveredRing.value.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center mt-0.5">
-                  <span className="text-[8px] text-slate-400">SHARE METRIC:</span>
+                  <span className="text-[8px] text-[var(--text-muted)]">SHARE METRIC:</span>
                   <span className="text-[11px] font-bold" style={{ color: hoveredRing.color }}>{hoveredRing.percent}</span>
                 </div>
               </div>
             ) : (
-              <div className="absolute top-2 right-2 bg-slate-950/60 border border-white/5 p-2 rounded text-[8px] text-[#A8B4CC] flex flex-col gap-1 select-none pointer-events-none max-w-[140px]">
-                <span className="flex items-center gap-1 font-bold text-white uppercase"><BarChart2 className="w-3 h-3 text-[#1e6fd9]" /> HUD Orbits</span>
+              <div className="absolute top-2 right-2 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] p-2 rounded text-[8px] text-[var(--text-secondary)] flex flex-col gap-1 select-none pointer-events-none max-w-[140px]">
+                <span className="flex items-center gap-1 font-bold text-[var(--text-primary)] uppercase"><BarChart2 className="w-3 h-3 text-[#1e6fd9]" /> HUD Orbits</span>
                 {data.slice(0, 4).map((item, index) => (
                   <div key={item.name} className="flex items-center gap-1 truncate">
                     <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
@@ -242,14 +242,14 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data = [] }) => {
             )}
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-[10px] text-[#6A7A96] uppercase tracking-wider border border-dashed border-slate-800 rounded">
+          <div className="w-full h-full flex items-center justify-center text-[10px] text-[var(--text-muted)] uppercase tracking-wider border border-dashed border-[var(--border-primary)] rounded">
             No category rows available
           </div>
         )}
       </div>
 
       {/* Visual orientation metrics inside dashboard box */}
-      <div className="flex justify-between text-[9px] text-[#E8EDF5] font-bold uppercase tracking-widest pt-2 border-t border-slate-900 select-none">
+      <div className="flex justify-between text-[9px] text-[var(--text-primary)] font-bold uppercase tracking-widest pt-2 border-t border-[var(--border-primary)] select-none">
         <span>Drag to rotate Orbits</span>
         <span>Total: {totalCrimes.toLocaleString()} Cases</span>
       </div>

@@ -70,15 +70,15 @@ export const NetworkPageWorkspace: React.FC = () => {
   };
 
   return (
-    <div className="h-[85vh] flex flex-col gap-3 p-1 md:p-3 select-none bg-[#060b13] font-mono">
+    <div className="min-h-[85vh] lg:h-[85vh] flex flex-col gap-3 p-1 md:p-3 select-none bg-[var(--bg-primary)] font-mono">
       {/* Title & Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/5 pb-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-2">
         <div>
-          <h2 className="text-md font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <h2 className="text-md font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
             <NetIcon className="w-5 h-5 text-[#6C43CC] animate-pulse" />
             Graph-Based Criminal Intelligence & Relationship Analysis
           </h2>
-          <p className="text-[9.5px] text-[#6A7A96] mt-0.5">
+          <p className="text-[9.5px] text-[var(--text-muted)] mt-0.5">
             NEO4J CYPHER GRAPH DB • THREE.JS FORCE DIRECTED NETWORK • SHORTEST PATH • GANG SYNDICATES • LINK CENTRALITY
           </p>
         </div>
@@ -100,7 +100,7 @@ export const NetworkPageWorkspace: React.FC = () => {
       />
 
       {/* Workspace Display Area */}
-      <div className="flex-1 w-full overflow-hidden">
+      <div className="flex-1 w-full overflow-y-auto lg:overflow-hidden">
         {activeView === '3d_explorer' && (
           <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Left 8 cols: 3D Scene */}
@@ -108,7 +108,7 @@ export const NetworkPageWorkspace: React.FC = () => {
               {graphData ? (
                 <CriminalGraph3D onNodeSelect={setSelectedNode} graphData={graphData} />
               ) : (
-                <div className="h-full flex items-center justify-center bg-[#080E1B] rounded-card border border-white/10 text-xs text-[#6A7A96] uppercase">
+                <div className="h-full flex items-center justify-center bg-[var(--bg-surface)] rounded-card border border-[var(--border-secondary)] text-xs text-[var(--text-muted)] uppercase">
                   {loading ? 'Loading graph telemetry...' : error || 'Graph data unavailable'}
                 </div>
               )}
@@ -118,8 +118,8 @@ export const NetworkPageWorkspace: React.FC = () => {
               {selectedNode ? (
                 <NodeDetailPanel node={selectedNode} onClose={() => setSelectedNode(null)} />
               ) : (
-                <div className="h-full flex flex-col items-center justify-center p-6 text-center text-xs text-[#6A7A96] uppercase border border-dashed border-slate-800/40 rounded-card">
-                  <Layers className="w-10 h-10 mb-3 text-slate-800" />
+                <div className="h-full flex flex-col items-center justify-center p-6 text-center text-xs text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)]/40 rounded-card">
+                  <Layers className="w-10 h-10 mb-3 text-[var(--text-disabled)]" />
                   <span>Select suspect node inside 3D relations workspace to unlock dossiers telemetry</span>
                 </div>
               )}
@@ -142,8 +142,8 @@ export const NetworkPageWorkspace: React.FC = () => {
               {selectedNode ? (
                 <NodeDetailPanel node={selectedNode} onClose={() => setSelectedNode(null)} />
               ) : (
-                <div className="h-full flex flex-col items-center justify-center p-6 text-center text-xs text-[#6A7A96] uppercase border border-dashed border-slate-800/40 rounded-card">
-                  <Layers className="w-10 h-10 mb-3 text-slate-800" />
+                <div className="h-full flex flex-col items-center justify-center p-6 text-center text-xs text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)]/40 rounded-card">
+                  <Layers className="w-10 h-10 mb-3 text-[var(--text-disabled)]" />
                   <span>Select any path node to inspect dossier details</span>
                 </div>
               )}
@@ -173,8 +173,8 @@ export const NetworkPageWorkspace: React.FC = () => {
                 {selectedNode ? (
                   <NodeDetailPanel node={selectedNode} onClose={() => setSelectedNode(null)} />
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center p-6 text-center text-xs text-[#6A7A96] uppercase border border-dashed border-slate-800/40 rounded-card">
-                    <Layers className="w-10 h-10 mb-3 text-slate-800" />
+                  <div className="h-full flex flex-col items-center justify-center p-6 text-center text-xs text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)]/40 rounded-card">
+                    <Layers className="w-10 h-10 mb-3 text-[var(--text-disabled)]" />
                     <span>Scrub timeline slider to inspect temporal graph changes</span>
                   </div>
                 )}

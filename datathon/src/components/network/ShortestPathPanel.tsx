@@ -29,26 +29,26 @@ export const ShortestPathPanel: React.FC<ShortestPathPanelProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col gap-4 p-4 bg-[#080E1B] border border-white/10 rounded-card font-mono overflow-y-auto">
+    <div className="h-full flex flex-col gap-4 p-4 bg-[var(--bg-surface)] border border-[var(--border-secondary)] rounded-card font-mono overflow-y-auto">
       {/* Header */}
-      <div className="border-b border-white/10 pb-3">
-        <h3 className="text-md font-bold text-white uppercase tracking-wider flex items-center gap-2">
+      <div className="border-b border-[var(--border-secondary)] pb-3">
+        <h3 className="text-md font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
           <GitCommit className="w-5 h-5 text-[#3B82F6] animate-pulse" />
           Shortest Relationship Path Analysis
         </h3>
-        <p className="text-[10px] text-[#6A7A96] mt-1">
+        <p className="text-[10px] text-[var(--text-muted)] mt-1">
           CYPHER & GRAPH BFS DEGREES OF SEPARATION BETWEEN TWO CRIMINAL ENTITIES OR LOCATIONS
         </p>
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-[#050912] p-3 rounded-card border border-white/5">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-[var(--bg-primary)] p-3 rounded-card border border-[var(--border-primary)]">
         <div className="md:col-span-5 flex flex-col gap-1">
-          <label className="text-[10px] uppercase text-[#8A99AD] font-bold">Start Entity (Source):</label>
+          <label className="text-[10px] uppercase text-[var(--text-muted)] font-bold">Start Entity (Source):</label>
           <select
             value={sourceId}
             onChange={(e) => setSourceId(e.target.value)}
-            className="w-full bg-[#0d1627] border border-white/10 rounded-btn px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#3B82F6]"
+            className="w-full bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-btn px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#3B82F6]"
           >
             {nodes.map((n) => (
               <option key={`src-${n.id}`} value={n.id}>
@@ -59,11 +59,11 @@ export const ShortestPathPanel: React.FC<ShortestPathPanelProps> = ({
         </div>
 
         <div className="md:col-span-5 flex flex-col gap-1">
-          <label className="text-[10px] uppercase text-[#8A99AD] font-bold">Target Entity (Destination):</label>
+          <label className="text-[10px] uppercase text-[var(--text-muted)] font-bold">Target Entity (Destination):</label>
           <select
             value={targetId}
             onChange={(e) => setTargetId(e.target.value)}
-            className="w-full bg-[#0d1627] border border-white/10 rounded-btn px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#3B82F6]"
+            className="w-full bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-btn px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#3B82F6]"
           >
             {nodes.map((n) => (
               <option key={`tgt-${n.id}`} value={n.id}>
@@ -77,7 +77,7 @@ export const ShortestPathPanel: React.FC<ShortestPathPanelProps> = ({
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 bg-[#1E6FD9] hover:bg-[#3B82F6] text-white text-xs font-bold uppercase rounded-btn transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="w-full py-2 bg-[var(--accent-blue)] hover:bg-[#3B82F6] text-[var(--text-primary)] text-xs font-bold uppercase rounded-btn transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
           >
             {loading ? <Cpu className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
             Solve Path
@@ -86,9 +86,9 @@ export const ShortestPathPanel: React.FC<ShortestPathPanelProps> = ({
       </form>
 
       {/* Path Output Results */}
-      <div className="flex-1 min-h-[300px] bg-[#050912] p-4 rounded-card border border-white/5 flex flex-col gap-3">
+      <div className="flex-1 min-h-[300px] bg-[var(--bg-primary)] p-4 rounded-card border border-[var(--border-primary)] flex flex-col gap-3">
         {loading ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-xs text-[#6A7A96] gap-2">
+          <div className="flex-1 flex flex-col items-center justify-center text-xs text-[var(--text-muted)] gap-2">
             <Cpu className="w-8 h-8 animate-spin text-[#3B82F6]" />
             <span>Computing shortest path graph traversal...</span>
           </div>
@@ -110,7 +110,7 @@ export const ShortestPathPanel: React.FC<ShortestPathPanelProps> = ({
             {/* Path Nodes Flow Sequence */}
             {pathResult.found && (
               <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase text-[#8A99AD] tracking-wider">Connection Chain Sequence:</h4>
+                <h4 className="text-xs font-bold uppercase text-[var(--text-muted)] tracking-wider">Connection Chain Sequence:</h4>
                 <div className="flex flex-col gap-2">
                   {pathResult.path_nodes.map((node, idx) => {
                     const edgeRel = pathResult.path_edges[idx]?.relationship;
@@ -119,18 +119,18 @@ export const ShortestPathPanel: React.FC<ShortestPathPanelProps> = ({
                         {/* Node Card */}
                         <div
                           onClick={() => onSelectNodeIn3D?.(node as GraphNode)}
-                          className="p-3 bg-[#0d1627] hover:bg-[#15233e] border border-white/10 rounded-card transition-colors cursor-pointer flex items-center justify-between"
+                          className="p-3 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-elevated)] border border-[var(--border-secondary)] rounded-card transition-colors cursor-pointer flex items-center justify-between"
                         >
                           <div className="flex items-center gap-3">
-                            <span className="w-6 h-6 rounded-full bg-[#1E6FD9]/30 text-[#60A5FA] border border-[#1E6FD9]/50 flex items-center justify-center text-xs font-bold">
+                            <span className="w-6 h-6 rounded-full bg-[var(--accent-blue)]/30 text-[#60A5FA] border border-[var(--accent-blue)]/50 flex items-center justify-center text-xs font-bold">
                               {idx + 1}
                             </span>
                             <div>
-                              <div className="text-xs font-bold text-white uppercase">{node.name}</div>
-                              <div className="text-[10px] text-[#6A7A96] uppercase">{node.category} • Risk: {node.riskScore}</div>
+                              <div className="text-xs font-bold text-[var(--text-primary)] uppercase">{node.name}</div>
+                              <div className="text-[10px] text-[var(--text-muted)] uppercase">{node.category} • Risk: {node.riskScore}</div>
                             </div>
                           </div>
-                          <span className="text-[9px] px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[#8A99AD] uppercase">
+                          <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--bg-tertiary)]/10 border border-[var(--border-secondary)] text-[var(--text-muted)] uppercase">
                             Inspect
                           </span>
                         </div>
@@ -150,8 +150,8 @@ export const ShortestPathPanel: React.FC<ShortestPathPanelProps> = ({
             )}
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-xs text-[#6A7A96] text-center p-6 border border-dashed border-white/10 rounded-card">
-            <GitCommit className="w-10 h-10 text-white/10 mb-2" />
+          <div className="flex-1 flex flex-col items-center justify-center text-xs text-[var(--text-muted)] text-center p-6 border border-dashed border-[var(--border-secondary)] rounded-card">
+            <GitCommit className="w-10 h-10 text-[var(--text-primary)]/10 mb-2" />
             <span>Select a start entity and target entity above to calculate degrees of separation and connection chains.</span>
           </div>
         )}

@@ -16,8 +16,8 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ path, children }) => {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">
         <ShieldAlert className="w-12 h-12 text-[#C94A2A] mb-4 animate-bounce" />
-        <h3 className="text-lg font-mono font-bold text-[#E8EDF5] uppercase tracking-wider">Authentication Required</h3>
-        <p className="text-xs font-mono text-[#6A7A96] mt-2">Establish authorization links with police badge database to unlock telemetry.</p>
+        <h3 className="text-lg font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider">Authentication Required</h3>
+        <p className="text-xs font-mono text-[var(--text-muted)] mt-2">Establish authorization links with police badge database to unlock telemetry.</p>
       </div>
     );
   }
@@ -34,7 +34,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ path, children }) => {
           <div className="absolute inset-[-8px] rounded-full border-t border-b border-[#C94A2A]/20 animate-[spin_10s_linear_infinite] pointer-events-none" />
           
           {/* Outer glowing frame */}
-          <div className="w-24 h-24 rounded-full bg-slate-950 flex items-center justify-center border border-[#C94A2A]/40 shadow-glow-coral relative group-hover:scale-105 transition-transform duration-300">
+          <div className="w-24 h-24 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center border border-[#C94A2A]/40 shadow-glow-coral relative group-hover:scale-105 transition-transform duration-300">
             <Lock className="w-10 h-10 text-[#C94A2A] animate-pulse" />
           </div>
           
@@ -47,15 +47,15 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ path, children }) => {
         </h2>
         
         <div className="max-w-md bg-[#C94A2A]/5 border border-[#C94A2A]/20 p-4 rounded-card mt-4 flex flex-col gap-3 font-mono">
-          <p className="text-[11px] text-[#A8B4CC] leading-relaxed">
+          <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
             Your credentials <span className="text-orange-400 font-bold">[{user.badgeId}]</span> do not grant security permissions for this intelligence module.
           </p>
 
-          <div className="h-[1px] bg-slate-800 w-full" />
+          <div className="h-[1px] bg-[var(--bg-elevated)] w-full" />
           
-          <div className="text-[9.5px] text-[#6A7A96] flex items-center justify-center gap-1.5">
+          <div className="text-[9.5px] text-[var(--text-muted)] flex items-center justify-center gap-1.5">
             <ShieldAlert className="w-3.5 h-3.5" />
-            <span>REQUIRED ENCR-CLEARANCE: <span className="text-[#E8EDF5] font-semibold">{requiredRoles.join(' / ')}</span></span>
+            <span>REQUIRED ENCR-CLEARANCE: <span className="text-[var(--text-primary)] font-semibold">{requiredRoles.join(' / ')}</span></span>
           </div>
 
           <div className="text-[9.5px] text-[#C94A2A] font-semibold flex items-center justify-center gap-1.5 animate-pulse">

@@ -30,10 +30,10 @@ const InvestigationDashboard: React.FC<Props> = ({ data }) => {
       {/* Case Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <span className="text-[10px] text-[#0E9E78] font-bold tracking-[0.15em] uppercase">
+          <span className="text-[10px] text-[var(--accent-teal)] font-bold tracking-[0.15em] uppercase">
             SAKSHA INVESTIGATION DASHBOARD
           </span>
-          <h1 className="text-xl md:text-2xl font-bold text-white uppercase tracking-wider mt-1">
+          <h1 className="text-xl md:text-2xl font-bold text-[var(--text-primary)] uppercase tracking-wider mt-1">
             {data.case_number}
           </h1>
         </div>
@@ -48,28 +48,28 @@ const InvestigationDashboard: React.FC<Props> = ({ data }) => {
       </div>
 
       {/* Description */}
-      <p className="text-xs text-[#A8B4CC] leading-relaxed border-t border-border-color/60 mt-4 pt-4">
+      <p className="text-xs text-[var(--text-secondary)] leading-relaxed border-t border-border-color/60 mt-4 pt-4">
         {data.description || 'NO DESCRIPTION PROVIDED FOR THIS CASE.'}
       </p>
 
       {/* Meta Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 pt-4 border-t border-border-color/30 text-[10px] text-[#6A7A96] uppercase">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 pt-4 border-t border-border-color/30 text-[10px] text-[var(--text-muted)] uppercase">
         <div className="flex items-center gap-2">
-          <Calendar className="w-3.5 h-3.5 text-[#1E6FD9]" />
+          <Calendar className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
           <span>REPORTED: {new Date(data.reported_at).toLocaleDateString()}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Clock className="w-3.5 h-3.5 text-[#0E9E78]" />
+          <Clock className="w-3.5 h-3.5 text-[var(--accent-teal)]" />
           <span>OCCURRED: {new Date(data.occurred_at).toLocaleDateString()}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Shield className="w-3.5 h-3.5 text-[#6C43CC]" />
+          <Shield className="w-3.5 h-3.5 text-[var(--accent-purple)]" />
           <span>PROGRESS: {data.progress}%</span>
         </div>
         <div className="flex items-center gap-2">
           {data.assigned_officer ? (
             <>
-              <User className="w-3.5 h-3.5 text-[#1E6FD9]" />
+              <User className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
               <span className="truncate">{data.assigned_officer.full_name}</span>
             </>
           ) : (
@@ -84,10 +84,10 @@ const InvestigationDashboard: React.FC<Props> = ({ data }) => {
       {/* MO Tags */}
       {data.mo_tags && (
         <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border-color/20">
-          <MapPin className="w-3 h-3 text-[#C94A2A]" />
+          <MapPin className="w-3 h-3 text-[var(--accent-coral)]" />
           <div className="flex gap-1.5 flex-wrap">
             {data.mo_tags.split(',').map((tag, i) => (
-              <span key={i} className="px-1.5 py-0.5 bg-slate-950/60 border border-slate-900 rounded text-[8px] text-[#A8B4CC] uppercase font-mono">
+              <span key={i} className="px-1.5 py-0.5 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] rounded text-[8px] text-[var(--text-secondary)] uppercase font-mono">
                 {tag.trim()}
               </span>
             ))}

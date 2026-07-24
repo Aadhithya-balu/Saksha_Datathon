@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { CrimeAlert } from '../store/alertStore';
 import { getAnomalies } from '../services/api';
 import { useAuthStore } from '../store/authStore';
@@ -83,24 +83,24 @@ export const Anomalies: React.FC = () => {
             placeholder="Search FIR id, category, district..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-950/70 text-white border border-border-color focus:border-[#1E6FD9] rounded-btn outline-none transition-colors"
+            className="w-full pl-9 pr-4 py-2 bg-[var(--bg-secondary)]/70 text-[var(--text-primary)] border border-border-color focus:border-[#1E6FD9] rounded-btn outline-none transition-colors"
           />
-          <Search className="absolute left-3 w-4 h-4 text-[#6A7A96]" />
+          <Search className="absolute left-3 w-4 h-4 text-[var(--text-muted)]" />
         </div>
 
         {/* Filters */}
         <div className="w-full md:w-auto flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-[#6A7A96] text-[10px] uppercase">SEVERITY:</span>
-            <div className="flex bg-slate-950 rounded border border-border-color p-0.5">
+            <span className="text-[var(--text-muted)] text-[10px] uppercase">SEVERITY:</span>
+            <div className="flex bg-[var(--bg-secondary)] rounded border border-border-color p-0.5">
               {(['ALL', 'HIGH', 'WATCH'] as const).map(sev => (
                 <button
                   key={sev}
                   onClick={() => setSelectedSeverity(sev)}
                   className={`px-2.5 py-1 text-[9px] font-bold rounded transition-colors cursor-pointer ${
                     selectedSeverity === sev 
-                      ? 'bg-[#1E6FD9] text-white' 
-                      : 'text-[#A8B4CC] hover:text-white'
+                      ? 'bg-[#1E6FD9] text-[var(--text-primary)]' 
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   {sev}
@@ -110,16 +110,16 @@ export const Anomalies: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[#6A7A96] text-[10px] uppercase">INVESTIGATION:</span>
-            <div className="flex bg-slate-950 rounded border border-border-color p-0.5">
+            <span className="text-[var(--text-muted)] text-[10px] uppercase">INVESTIGATION:</span>
+            <div className="flex bg-[var(--bg-secondary)] rounded border border-border-color p-0.5">
               {(['ALL', 'PENDING', 'REVIEWED', 'ESCALATED'] as const).map(stat => (
                 <button
                   key={stat}
                   onClick={() => setSelectedStatus(stat)}
                   className={`px-2 py-1 text-[9px] font-bold rounded transition-colors cursor-pointer ${
                     selectedStatus === stat 
-                      ? 'bg-[#1E6FD9] text-white' 
-                      : 'text-[#A8B4CC] hover:text-white'
+                      ? 'bg-[#1E6FD9] text-[var(--text-primary)]' 
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   {stat}
@@ -145,16 +145,16 @@ export const Anomalies: React.FC = () => {
               <div
                 key={alert.id}
                 onClick={() => setSelectedAlertId(alert.id)}
-                className={`p-4 bg-slate-950/45 border transition-all duration-300 rounded-card cursor-pointer flex flex-col gap-2 ${
+                className={`p-4 bg-[var(--bg-secondary)]/45 border transition-all duration-300 rounded-card cursor-pointer flex flex-col gap-2 ${
                   isSelected 
                     ? 'border-[#1E6FD9] bg-[#1E6FD9]/5 shadow-glow-blue' 
-                    : 'border-border-color hover:border-slate-700/60'
+                    : 'border-border-color hover:border-[var(--border-secondary)]/60'
                 }`}
               >
                 <div className="flex justify-between items-start">
                   <div className="flex flex-col">
-                    <span className="text-[11px] font-bold text-white font-mono">{alert.firNumber}</span>
-                    <span className="text-[8.5px] font-mono text-[#6A7A96] uppercase mt-0.5">{alert.station}</span>
+                    <span className="text-[11px] font-bold text-[var(--text-primary)] font-mono">{alert.firNumber}</span>
+                    <span className="text-[8.5px] font-mono text-[var(--text-muted)] uppercase mt-0.5">{alert.station}</span>
                   </div>
                   <span className={`px-2 py-0.5 rounded text-[8px] font-bold font-mono ${
                     isHigh ? 'bg-[#C94A2A]/10 text-[#C94A2A] border border-[#C94A2A]/20' : 'bg-[#D4820A]/10 text-[#D4820A] border border-[#D4820A]/20'
@@ -162,13 +162,13 @@ export const Anomalies: React.FC = () => {
                     {alert.anomalyScore}%
                   </span>
                 </div>
-                <p className="text-[10px] text-[#A8B4CC] leading-relaxed line-clamp-2">{alert.offenceDetails}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed line-clamp-2">{alert.offenceDetails}</p>
                 
-                <div className="flex justify-between items-center mt-1 border-t border-slate-900/60 pt-2 text-[8px] font-mono">
+                <div className="flex justify-between items-center mt-1 border-t border-[var(--border-primary)]/60 pt-2 text-[8px] font-mono">
                   <span className={alert.status === 'PENDING' ? 'text-red-400' : alert.status === 'REVIEWED' ? 'text-[#0E9E78]' : 'text-purple-400'}>
                     STATUS: {alert.status}
                   </span>
-                  <span className="text-[#6A7A96]">
+                  <span className="text-[var(--text-muted)]">
                     {new Date(alert.timestamp).toLocaleDateString()} IST
                   </span>
                 </div>
@@ -177,7 +177,7 @@ export const Anomalies: React.FC = () => {
           })}
 
           {filteredAlerts.length === 0 && (
-            <div className="p-8 text-center text-xs font-mono text-[#6A7A96] uppercase border border-dashed border-slate-800/40 rounded-card">
+            <div className="p-8 text-center text-xs font-mono text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)]/40 rounded-card">
               No matching anomalies found
             </div>
           )}
@@ -190,12 +190,12 @@ export const Anomalies: React.FC = () => {
               
               {/* Card Meta details */}
               <div className="space-y-4">
-                <div className="flex justify-between items-start border-b border-white/5 pb-3">
+                <div className="flex justify-between items-start border-b border-[var(--border-muted)] pb-3">
                   <div>
                     <span className="px-2 py-0.5 bg-[#1E6FD9]/15 border border-[#1E6FD9]/30 text-[#1E6FD9] rounded text-[8.5px] font-mono font-bold tracking-wider uppercase">
                       CRIMINAL INCIDENT DETECTED
                     </span>
-                    <h3 className="text-sm font-mono font-extrabold text-white mt-1.5">{activeAlert.firNumber}</h3>
+                    <h3 className="text-sm font-mono font-extrabold text-[var(--text-primary)] mt-1.5">{activeAlert.firNumber}</h3>
                   </div>
                   
                   {/* Status Tag */}
@@ -210,38 +210,38 @@ export const Anomalies: React.FC = () => {
 
                 {/* Geography details */}
                 <div className="grid grid-cols-2 gap-3 text-[10px] font-mono">
-                  <div className="p-2 border border-slate-900 bg-slate-950/20 rounded">
-                    <span className="text-[#6A7A96] block uppercase text-[8px]">TOWN DISTRICT</span>
-                    <span className="text-white font-bold mt-0.5 flex items-center gap-1.5">
+                  <div className="p-2 border border-[var(--border-primary)] bg-[var(--bg-secondary)]/20 rounded">
+                    <span className="text-[var(--text-muted)] block uppercase text-[8px]">TOWN DISTRICT</span>
+                    <span className="text-[var(--text-primary)] font-bold mt-0.5 flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-[#1e6fd9]" />
                       {activeAlert.district}
                     </span>
                   </div>
-                  <div className="p-2 border border-slate-900 bg-slate-950/20 rounded">
-                    <span className="text-[#6A7A96] block uppercase text-[8px]">POLICE BEAT TARGET</span>
-                    <span className="text-white font-bold mt-0.5 truncate">{activeAlert.station}</span>
+                  <div className="p-2 border border-[var(--border-primary)] bg-[var(--bg-secondary)]/20 rounded">
+                    <span className="text-[var(--text-muted)] block uppercase text-[8px]">POLICE BEAT TARGET</span>
+                    <span className="text-[var(--text-primary)] font-bold mt-0.5 truncate">{activeAlert.station}</span>
                   </div>
                 </div>
 
                 {/* Core description text box */}
                 <div>
-                  <span className="text-[8.5px] font-bold text-slate-500 uppercase tracking-widest block mb-1">
+                  <span className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-1">
                     Offence description
                   </span>
-                  <p className="text-[11px] text-[#A8B4CC] leading-relaxed bg-[#0b1425] p-3 rounded border border-slate-900">
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-secondary)] p-3 rounded border border-[var(--border-primary)]">
                     {activeAlert.offenceDetails}
                   </p>
                 </div>
 
                 {/* Scoring factors checklist */}
                 <div>
-                  <span className="text-[8.5px] font-bold text-slate-500 uppercase tracking-widest block mb-2.5">
+                  <span className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-2.5">
                     AI Feature Explanations
                   </span>
                   <div className="grid grid-cols-2 gap-2 text-[9.5px] font-mono">
                     {Object.entries(activeAlert.featureBreakdown).map(([feat, score]) => (
-                      <div key={feat} className="p-2 bg-slate-950/30 border border-slate-900/60 rounded flex justify-between items-center">
-                        <span className="text-[#A8B4CC] truncate max-w-[120px]">{feat}</span>
+                      <div key={feat} className="p-2 bg-[var(--bg-secondary)]/30 border border-[var(--border-primary)]/60 rounded flex justify-between items-center">
+                        <span className="text-[var(--text-secondary)] truncate max-w-[120px]">{feat}</span>
                         <span className="text-red-400 font-bold font-mono">{score}% weight</span>
                       </div>
                     ))}
@@ -259,11 +259,11 @@ export const Anomalies: React.FC = () => {
               </div>
 
               {/* ACTION BUTTON WORKBENCH */}
-              <div className="pt-5 border-t border-white/5 flex gap-3 text-[9.5px] font-mono uppercase">
+              <div className="pt-5 border-t border-[var(--border-muted)] flex gap-3 text-[9.5px] font-mono uppercase">
                 {activeAlert.status === 'PENDING' && (
                   <button
                     onClick={() => reviewAlert(activeAlert.id, user?.name || 'Inspector System')}
-                    className="flex-1 py-2.5 bg-[#0E9E78] hover:bg-[#0E9E78]/80 text-white rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none flex items-center justify-center gap-1.5"
+                    className="flex-1 py-2.5 bg-[#0E9E78] hover:bg-[#0E9E78]/80 text-[var(--text-primary)] rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none flex items-center justify-center gap-1.5"
                   >
                     <CheckCircle className="w-3.5 h-3.5" />
                     Mark Under Investigation
@@ -272,7 +272,7 @@ export const Anomalies: React.FC = () => {
                 {activeAlert.status !== 'ESCALATED' && (
                   <button
                     onClick={() => escalateAlert(activeAlert.id, user?.name || 'Inspector System')}
-                    className="py-2.5 px-4 bg-[#C94A2A] hover:bg-[#C94A2A]/80 text-white rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none flex items-center justify-center gap-1.5"
+                    className="py-2.5 px-4 bg-[#C94A2A] hover:bg-[#C94A2A]/80 text-[var(--text-primary)] rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none flex items-center justify-center gap-1.5"
                   >
                     <ShieldAlert className="w-3.5 h-3.5" />
                     Escalate to SP
@@ -282,8 +282,8 @@ export const Anomalies: React.FC = () => {
 
             </div>
           ) : (
-            <div className="h-full flex items-center justify-center p-6 text-center text-xs font-mono text-[#6A7A96] uppercase border border-dashed border-slate-800/40 rounded-card select-none">
-              <HardDrive className="w-8 h-8 text-slate-800 mb-2" />
+            <div className="h-full flex items-center justify-center p-6 text-center text-xs font-mono text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)]/40 rounded-card select-none">
+              <HardDrive className="w-8 h-8 text-[var(--text-disabled)] mb-2" />
               <span>Select case from feed to check and review anomalies logs</span>
             </div>
           )}

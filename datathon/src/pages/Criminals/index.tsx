@@ -17,7 +17,8 @@ import {
   FileText, 
   TrendingUp, 
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  Sparkles
 } from 'lucide-react';
 
 interface CriminalSummary {
@@ -132,9 +133,9 @@ export const Criminals: React.FC = () => {
       case 'convicted':
         return 'text-[#1E6FD9] bg-[#1E6FD9]/10 border-[#1E6FD9]/20';
       case 'deceased':
-        return 'text-slate-400 bg-slate-800/50 border-slate-700';
+        return 'text-[var(--text-muted)] bg-[var(--bg-elevated)]/50 border-[var(--border-secondary)]';
       default:
-        return 'text-white bg-slate-900 border-slate-800';
+        return 'text-[var(--text-primary)] bg-[var(--bg-tertiary)] border-[var(--border-primary)]';
     }
   };
 
@@ -149,7 +150,7 @@ export const Criminals: React.FC = () => {
       case 'LOW':
         return 'text-emerald-500 border-emerald-500/30 bg-emerald-950/20';
       default:
-        return 'text-slate-400 border-slate-700 bg-slate-900/50';
+        return 'text-[var(--text-muted)] border-[var(--border-secondary)] bg-[var(--bg-tertiary)]/50';
     }
   };
 
@@ -161,7 +162,7 @@ export const Criminals: React.FC = () => {
     
     if (nodes.length === 0) {
       return (
-        <div className="h-64 flex items-center justify-center border border-slate-800 border-dashed rounded text-slate-500 text-xs font-mono">
+        <div className="h-64 flex items-center justify-center border border-[var(--border-primary)] border-dashed rounded text-[var(--text-muted)] text-xs font-mono">
           No relationship linkages found
         </div>
       );
@@ -194,7 +195,7 @@ export const Criminals: React.FC = () => {
     // Render nodes list
     return (
       <div className="relative">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto bg-slate-950/50 rounded border border-slate-900">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto bg-[var(--bg-secondary)]/50 rounded border border-[var(--border-primary)]">
           <defs>
             <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
               <feGaussianBlur stdDeviation="4" result="blur" />
@@ -228,7 +229,7 @@ export const Criminals: React.FC = () => {
                   fontSize="6.5"
                   fontFamily="monospace"
                   textAnchor="middle"
-                  className="select-none bg-slate-950"
+                  className="select-none bg-[var(--bg-secondary)]"
                 >
                   {edge.relationship}
                 </text>
@@ -295,11 +296,11 @@ export const Criminals: React.FC = () => {
 
         {/* Hover overlay panel */}
         {hoveredNode && (
-          <div className="absolute top-2 left-2 bg-slate-950/90 border border-slate-800 p-2.5 rounded font-mono text-[9px] text-[#A8B4CC] max-w-xs pointer-events-none select-none">
-            <span className="text-white font-bold block uppercase">{hoveredNode.name}</span>
-            <span className="text-slate-500 uppercase block mt-0.5">CATEGORY: {hoveredNode.category}</span>
-            <span className="text-slate-500 uppercase block">CASES CONNECTED: {hoveredNode.casesCount}</span>
-            <div className="mt-1 border-t border-slate-900 pt-1 text-slate-300 italic">{hoveredNode.details}</div>
+          <div className="absolute top-2 left-2 bg-[var(--bg-secondary)]/90 border border-[var(--border-primary)] p-2.5 rounded font-mono text-[9px] text-[var(--text-secondary)] max-w-xs pointer-events-none select-none">
+            <span className="text-[var(--text-primary)] font-bold block uppercase">{hoveredNode.name}</span>
+            <span className="text-[var(--text-muted)] uppercase block mt-0.5">CATEGORY: {hoveredNode.category}</span>
+            <span className="text-[var(--text-muted)] uppercase block">CASES CONNECTED: {hoveredNode.casesCount}</span>
+            <div className="mt-1 border-t border-[var(--border-primary)] pt-1 text-[var(--text-secondary)] italic">{hoveredNode.details}</div>
           </div>
         )}
       </div>
@@ -310,13 +311,13 @@ export const Criminals: React.FC = () => {
     <div className="h-[84vh] flex flex-col gap-5 p-1 md:p-3 select-none">
       
       {/* Page Header banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/5 pb-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3">
         <div>
-          <h2 className="text-md font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-[#1E6FD9] animate-pulse" />
             Intelligence-Driven Criminal Dossiers
           </h2>
-          <p className="text-[9.5px] font-mono text-[#6A7A96] mt-0.5">
+          <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
             SECURE INTEL REGISTRY — MACHINE LEARNING RECIDIVISM RISKS & BIO-ASSOCIATIVE NETWORKS
           </p>
         </div>
@@ -325,25 +326,25 @@ export const Criminals: React.FC = () => {
       <div className="flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">
         
         {/* Left Search & Registry list drawer (Col: 4) */}
-        <div className="lg:col-span-4 bg-[#111D35]/30 border border-border-color p-4 rounded-card flex flex-col gap-4 overflow-hidden">
-          <div className="flex justify-between items-center border-b border-slate-900 pb-2 shrink-0">
-            <span className="text-[10px] font-mono font-bold text-[#E8EDF5] uppercase tracking-wider">Offender Indexes</span>
+        <div className="lg:col-span-4 bg-[var(--bg-tertiary)]/30 border border-border-color p-4 rounded-card flex flex-col gap-4 overflow-hidden">
+          <div className="flex justify-between items-center border-b border-[var(--border-primary)] pb-2 shrink-0">
+            <span className="text-[10px] font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider">Offender Indexes</span>
             <div className="w-44 flex items-center relative text-xs">
               <input
                 type="text"
                 placeholder="Search dossiers..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-7 pr-3 py-1 bg-slate-950/70 border border-border-color rounded text-white outline-none focus:border-[#1E6FD9] font-mono text-[10px]"
+                className="w-full pl-7 pr-3 py-1 bg-[var(--bg-secondary)]/70 border border-border-color rounded text-[var(--text-primary)] outline-none focus:border-[#1E6FD9] font-mono text-[10px]"
               />
-              <Search className="absolute left-2 w-3.5 h-3.5 text-[#6A7A96]" />
+              <Search className="absolute left-2 w-3.5 h-3.5 text-[var(--text-muted)]" />
             </div>
           </div>
 
           {/* List scroll panel */}
           <div className="flex-grow overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
             {loadingList ? (
-              <div className="py-8 text-center text-slate-500 font-mono text-[10px] uppercase">
+              <div className="py-8 text-center text-[var(--text-muted)] font-mono text-[10px] uppercase">
                 Synchronizing indexes...
               </div>
             ) : criminals.length > 0 ? (
@@ -354,12 +355,12 @@ export const Criminals: React.FC = () => {
                   className={`p-3 rounded text-left font-mono transition-all border flex justify-between items-center cursor-pointer ${
                     selectedId === item.id
                       ? 'bg-[#1E6FD9]/15 border-[#1E6FD9]/40 text-[#1E6FD9]'
-                      : 'bg-[#111D35]/50 border-slate-900 text-[#A8B4CC] hover:bg-slate-800/30'
+                      : 'bg-[var(--bg-tertiary)]/50 border-[var(--border-primary)] text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]/30'
                   }`}
                 >
                   <div className="min-w-0">
                     <span className="block font-bold text-[10.5px] truncate">{item.full_name}</span>
-                    <span className="text-[8px] text-[#6A7A96] block mt-0.5 truncate uppercase">
+                    <span className="text-[8px] text-[var(--text-muted)] block mt-0.5 truncate uppercase">
                       Alias: {item.aliases || 'No record'}
                     </span>
                   </div>
@@ -369,7 +370,7 @@ export const Criminals: React.FC = () => {
                 </button>
               ))
             ) : (
-              <div className="p-6 text-center text-[9.5px] font-mono text-[#6A7A96] uppercase border border-dashed border-slate-900 rounded mt-4">
+              <div className="p-6 text-center text-[9.5px] font-mono text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)] rounded mt-4">
                 No matching criminal records
               </div>
             )}
@@ -377,10 +378,10 @@ export const Criminals: React.FC = () => {
         </div>
 
         {/* Right Dossier Panel (Col: 8) */}
-        <div className="lg:col-span-8 bg-slate-950 border border-border-color p-5 rounded-card flex flex-col gap-5 overflow-y-auto custom-scrollbar">
+        <div className="lg:col-span-8 bg-[var(--bg-secondary)] border border-border-color p-5 rounded-card flex flex-col gap-5 overflow-y-auto custom-scrollbar">
           
           {loadingDetails ? (
-            <div className="h-full w-full flex flex-col items-center justify-center text-slate-500 font-mono text-xs uppercase space-y-2">
+            <div className="h-full w-full flex flex-col items-center justify-center text-[var(--text-muted)] font-mono text-xs uppercase space-y-2">
               <div className="w-6 h-6 rounded-full border border-[#1E6FD9] border-t-transparent animate-spin" />
               <span>Decryption in progress...</span>
             </div>
@@ -388,8 +389,8 @@ export const Criminals: React.FC = () => {
             <div className="space-y-6">
               
               {/* Offender Identity banner */}
-              <div className="p-4 bg-slate-900/40 border border-slate-900 rounded flex flex-col md:flex-row gap-4 items-center md:items-start select-none">
-                <div className="w-20 h-24 bg-slate-950 border border-[#1E6FD9]/30 rounded flex items-center justify-center text-[#1E6FD9] relative shrink-0 overflow-hidden">
+              <div className="p-4 bg-[var(--bg-tertiary)]/40 border border-[var(--border-primary)] rounded flex flex-col md:flex-row gap-4 items-center md:items-start select-none">
+                <div className="w-20 h-24 bg-[var(--bg-secondary)] border border-[#1E6FD9]/30 rounded flex items-center justify-center text-[#1E6FD9] relative shrink-0 overflow-hidden">
                   <Fingerprint className="w-10 h-10 animate-pulse text-[#1E6FD9]/80" />
                   <div className="absolute inset-0 border border-dashed border-[#1E6FD9]/20 pointer-events-none" />
                 </div>
@@ -397,28 +398,40 @@ export const Criminals: React.FC = () => {
                 <div className="flex-1 w-full text-center md:text-left">
                   <div className="flex flex-col md:flex-row md:justify-between items-center md:items-start gap-2">
                     <div>
-                      <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">{criminalDetails.full_name}</h3>
-                      <span className="text-[9.5px] text-[#A8B4CC] font-mono block mt-1 uppercase">
+                      <h3 className="text-sm font-extrabold text-[var(--text-primary)] uppercase tracking-wider">{criminalDetails.full_name}</h3>
+                      <span className="text-[9.5px] text-[var(--text-secondary)] font-mono block mt-1 uppercase">
                         Aliases: {criminalDetails.aliases || 'No documented aliases'}
                       </span>
                     </div>
-                    <span className={`text-[8.5px] px-2 py-0.5 rounded border uppercase font-bold tracking-wider ${getStatusColor(criminalDetails.status)}`}>
-                      {criminalDetails.status.replace('_', ' ')}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent('open-ai-assistant', {
+                            detail: { query: `Tell me about the criminal ${criminalDetails.full_name}. What is their status, risk level, network connections, and linked cases?` }
+                          }));
+                        }}
+                        className="flex items-center gap-1 text-[10px] bg-[#1E6FD9]/15 text-[#1E6FD9] px-2 py-1 rounded border border-[#1E6FD9]/30 hover:bg-[#1E6FD9]/30 transition-colors cursor-pointer"
+                      >
+                        <Sparkles className="w-3 h-3" /> Ask AI
+                      </button>
+                      <span className={`text-[8.5px] px-2 py-0.5 rounded border uppercase font-bold tracking-wider ${getStatusColor(criminalDetails.status)}`}>
+                        {criminalDetails.status.replace('_', ' ')}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mt-4 text-[9.5px] font-mono text-left">
-                    <div className="p-2 bg-slate-950/60 border border-slate-900 rounded">
-                      <span className="text-slate-500 uppercase text-[7.5px] block">Birth date</span>
-                      <span className="text-white block mt-0.5">{criminalDetails.date_of_birth || 'UNKNOWN'}</span>
+                    <div className="p-2 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] rounded">
+                      <span className="text-[var(--text-muted)] uppercase text-[7.5px] block">Birth date</span>
+                      <span className="text-[var(--text-primary)] block mt-0.5">{criminalDetails.date_of_birth || 'UNKNOWN'}</span>
                     </div>
-                    <div className="p-2 bg-slate-950/60 border border-slate-900 rounded">
-                      <span className="text-slate-500 uppercase text-[7.5px] block">Gender</span>
-                      <span className="text-white block mt-0.5 uppercase">{criminalDetails.gender || 'UNKNOWN'}</span>
+                    <div className="p-2 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] rounded">
+                      <span className="text-[var(--text-muted)] uppercase text-[7.5px] block">Gender</span>
+                      <span className="text-[var(--text-primary)] block mt-0.5 uppercase">{criminalDetails.gender || 'UNKNOWN'}</span>
                     </div>
-                    <div className="p-2 bg-slate-950/60 border border-slate-900 rounded col-span-2">
-                      <span className="text-slate-500 uppercase text-[7.5px] block">identifying marks</span>
-                      <span className="text-white block mt-0.5 truncate">{criminalDetails.identifying_marks || 'NONE RECORDED'}</span>
+                    <div className="p-2 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] rounded col-span-2">
+                      <span className="text-[var(--text-muted)] uppercase text-[7.5px] block">identifying marks</span>
+                      <span className="text-[var(--text-primary)] block mt-0.5 truncate">{criminalDetails.identifying_marks || 'NONE RECORDED'}</span>
                     </div>
                   </div>
                 </div>
@@ -426,19 +439,19 @@ export const Criminals: React.FC = () => {
 
               {/* Bio summary & Address */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
-                <div className="p-3.5 bg-slate-950 border border-slate-900 rounded flex flex-col gap-1.5 text-left">
+                <div className="p-3.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded flex flex-col gap-1.5 text-left">
                   <span className="text-[#1E6FD9] uppercase font-bold text-[8.5px] tracking-wider flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5" /> Modus Operandi summary
                   </span>
-                  <p className="text-[#A8B4CC] leading-relaxed text-[10px] bg-slate-900/10 p-1.5 border border-slate-900/40 rounded">
+                  <p className="text-[var(--text-secondary)] leading-relaxed text-[10px] bg-[var(--bg-tertiary)]/10 p-1.5 border border-[var(--border-primary)]/40 rounded">
                     {criminalDetails.mo_summary || 'No recorded MO summaries for linked incidents.'}
                   </p>
                 </div>
-                <div className="p-3.5 bg-slate-950 border border-slate-900 rounded flex flex-col gap-1.5 text-left">
+                <div className="p-3.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded flex flex-col gap-1.5 text-left">
                   <span className="text-[#1E6FD9] uppercase font-bold text-[8.5px] tracking-wider flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5" /> Registered Residence Address
                   </span>
-                  <p className="text-[#A8B4CC] leading-relaxed text-[10px] bg-slate-900/10 p-1.5 border border-slate-900/40 rounded">
+                  <p className="text-[var(--text-secondary)] leading-relaxed text-[10px] bg-[var(--bg-tertiary)]/10 p-1.5 border border-[var(--border-primary)]/40 rounded">
                     {criminalDetails.address || 'No registered legal residence address reported.'}
                   </p>
                 </div>
@@ -449,12 +462,12 @@ export const Criminals: React.FC = () => {
                 
                 {/* AI Risk Score Widget */}
                 {criminalDetails.ai_risk && (
-                  <div className="p-4 bg-slate-950 border border-slate-900 rounded flex flex-col gap-3 text-left">
-                    <div className="flex justify-between items-center border-b border-slate-900 pb-2">
+                  <div className="p-4 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded flex flex-col gap-3 text-left">
+                    <div className="flex justify-between items-center border-b border-[var(--border-primary)] pb-2">
                       <span className="text-[#1E6FD9] font-mono font-bold text-[8.5px] tracking-wider uppercase flex items-center gap-1.5">
                         <Activity className="w-3.5 h-3.5" /> AI Risk Profile Scorer
                       </span>
-                      <span className="text-[7.5px] font-mono font-bold text-[#6A7A96] uppercase">
+                      <span className="text-[7.5px] font-mono font-bold text-[var(--text-muted)] uppercase">
                         CONFIDENCE: {Math.round((criminalDetails.ai_risk.confidence || 0.72) * 100)}%
                       </span>
                     </div>
@@ -476,7 +489,7 @@ export const Criminals: React.FC = () => {
                             strokeLinecap="round"
                           />
                         </svg>
-                        <span className="absolute font-mono font-bold text-xs text-white">
+                        <span className="absolute font-mono font-bold text-xs text-[var(--text-primary)]">
                           {criminalDetails.ai_risk.risk_score}%
                         </span>
                       </div>
@@ -485,10 +498,14 @@ export const Criminals: React.FC = () => {
                         <span className={`inline-block text-[8px] px-1.5 py-0.5 border rounded font-bold uppercase ${getRiskBandColor(criminalDetails.ai_risk.risk_band)}`}>
                           {criminalDetails.ai_risk.risk_band || 'MEDIUM'}
                         </span>
-                        <div className="mt-2 text-[8px] text-slate-500 uppercase font-bold">Top risk factors:</div>
-                        <ul className="list-disc pl-3 text-[9px] text-[#A8B4CC] mt-1 space-y-0.5">
-                          {criminalDetails.ai_risk.top_factors?.map((f: string, i: number) => (
-                            <li key={i}>{f}</li>
+                        <div className="mt-2 text-[8px] text-[var(--text-muted)] uppercase font-bold">Top risk factors:</div>
+                        <ul className="list-disc pl-3 text-[9px] text-[var(--text-secondary)] mt-1 space-y-0.5">
+                          {criminalDetails.ai_risk.top_factors?.map((f: any, i: number) => (
+                            <li key={i}>
+                              {typeof f === 'object' && f !== null 
+                                ? `${f.feature || ''} (contribution: ${typeof f.contribution === 'number' ? f.contribution.toFixed(1) : f.contribution})`
+                                : f}
+                            </li>
                           )) || <li>No immediate anomalies flagged</li>}
                         </ul>
                       </div>
@@ -498,8 +515,8 @@ export const Criminals: React.FC = () => {
 
                 {/* Repeat Offender Widget */}
                 {criminalDetails.ai_repeat && (
-                  <div className="p-4 bg-slate-950 border border-slate-900 rounded flex flex-col gap-3 text-left">
-                    <div className="flex justify-between items-center border-b border-slate-900 pb-2">
+                  <div className="p-4 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded flex flex-col gap-3 text-left">
+                    <div className="flex justify-between items-center border-b border-[var(--border-primary)] pb-2">
                       <span className="text-[#1E6FD9] font-mono font-bold text-[8.5px] tracking-wider uppercase flex items-center gap-1.5">
                         <TrendingUp className="w-3.5 h-3.5" /> Recidivism indexer
                       </span>
@@ -511,13 +528,13 @@ export const Criminals: React.FC = () => {
                     </div>
 
                     <div className="flex-grow flex flex-col justify-between font-mono">
-                      <div className="flex justify-between text-[10px] text-slate-400">
+                      <div className="flex justify-between text-[10px] text-[var(--text-muted)]">
                         <span>Re-offense Probability:</span>
-                        <span className="font-bold text-white">
+                        <span className="font-bold text-[var(--text-primary)]">
                           {Math.round((criminalDetails.ai_repeat.probability || 0.3) * 100)}%
                         </span>
                       </div>
-                      <div className="w-full bg-[#111D35] h-1.5 rounded-full overflow-hidden mt-1.5">
+                      <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden mt-1.5">
                         <div 
                           className={`h-full rounded-full ${criminalDetails.ai_repeat.will_reoffend ? 'bg-[#C94A2A]' : 'bg-[#0E9E78]'}`}
                           style={{ width: `${(criminalDetails.ai_repeat.probability || 0.3) * 100}%` }}
@@ -525,13 +542,13 @@ export const Criminals: React.FC = () => {
                       </div>
 
                       <div className="mt-3">
-                        <span className="text-[8px] text-slate-500 uppercase font-bold block">Analysis triggers:</span>
+                        <span className="text-[8px] text-[var(--text-muted)] uppercase font-bold block">Analysis triggers:</span>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {criminalDetails.ai_repeat.risk_factors?.map((f: string, i: number) => (
-                            <span key={i} className="text-[8px] bg-slate-900 border border-slate-800 text-slate-400 px-1.5 py-0.5 rounded">
-                              {f}
+                          {criminalDetails.ai_repeat.risk_factors?.map((f: any, i: number) => (
+                            <span key={i} className="text-[8px] bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">
+                              {typeof f === 'object' && f !== null ? f.feature : f}
                             </span>
-                          )) || <span className="text-[8px] text-slate-600 italic">No triggers registered</span>}
+                          )) || <span className="text-[8px] text-[var(--text-secondary)] italic">No triggers registered</span>}
                         </div>
                       </div>
                     </div>
@@ -542,8 +559,8 @@ export const Criminals: React.FC = () => {
 
               {/* Similar Offenders Recommendations */}
               {criminalDetails.ai_similar?.similar?.length > 0 && (
-                <div className="p-4 bg-slate-950 border border-slate-900 rounded text-left select-none">
-                  <span className="text-[#1E6FD9] font-mono font-bold text-[8.5px] tracking-wider uppercase block border-b border-slate-900 pb-2">
+                <div className="p-4 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-left select-none">
+                  <span className="text-[#1E6FD9] font-mono font-bold text-[8.5px] tracking-wider uppercase block border-b border-[var(--border-primary)] pb-2">
                     <Users className="w-3.5 h-3.5 inline mr-1.5" /> Behaviourally similar offenders
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
@@ -551,14 +568,14 @@ export const Criminals: React.FC = () => {
                       <button
                         key={sim.criminal_id}
                         onClick={() => handleSelectCriminal(sim.criminal_id)}
-                        className="p-2.5 bg-slate-900/50 hover:bg-[#1E6FD9]/5 border border-slate-900 hover:border-[#1E6FD9]/30 rounded font-mono text-left cursor-pointer transition-all flex flex-col justify-between"
+                        className="p-2.5 bg-[var(--bg-tertiary)]/50 hover:bg-[#1E6FD9]/5 border border-[var(--border-primary)] hover:border-[#1E6FD9]/30 rounded font-mono text-left cursor-pointer transition-all flex flex-col justify-between"
                       >
-                        <span className="text-[10px] text-white font-bold block truncate">{sim.name}</span>
+                        <span className="text-[10px] text-[var(--text-primary)] font-bold block truncate">{sim.name}</span>
                         <div className="flex justify-between items-center mt-2.5">
                           <span className="text-[8px] text-[#0E9E78] font-bold">
                             {Math.round((sim.similarity || 0.6) * 100)}% Match
                           </span>
-                          <ArrowRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-[#1E6FD9]" />
+                          <ArrowRight className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover:text-[#1E6FD9]" />
                         </div>
                       </button>
                     ))}
@@ -567,16 +584,16 @@ export const Criminals: React.FC = () => {
               )}
 
               {/* Related Cases Section */}
-              <div className="p-4 bg-slate-950 border border-slate-900 rounded text-left">
-                <span className="text-[#1E6FD9] font-mono font-bold text-[8.5px] tracking-wider uppercase block border-b border-slate-900 pb-2">
+              <div className="p-4 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-left">
+                <span className="text-[#1E6FD9] font-mono font-bold text-[8.5px] tracking-wider uppercase block border-b border-[var(--border-primary)] pb-2">
                   <FileText className="w-3.5 h-3.5 inline mr-1.5" /> Associated Case history (FIR Links)
                 </span>
                 
                 <div className="mt-3 overflow-x-auto">
                   {criminalDetails.firs?.length > 0 ? (
-                    <table className="w-full font-mono text-[9px] text-[#A8B4CC]">
+                    <table className="w-full font-mono text-[9px] text-[var(--text-secondary)]">
                       <thead>
-                        <tr className="border-b border-slate-900 text-slate-500">
+                        <tr className="border-b border-[var(--border-primary)] text-[var(--text-muted)]">
                           <th className="py-2 text-left">FIR No</th>
                           <th className="py-2 text-left">Complainant</th>
                           <th className="py-2 text-left">BNS/IPC sections</th>
@@ -586,10 +603,10 @@ export const Criminals: React.FC = () => {
                       </thead>
                       <tbody>
                         {criminalDetails.firs.map((fir: any) => (
-                          <tr key={fir.id} className="border-b border-slate-900/40 hover:bg-slate-900/20">
-                            <td className="py-2 text-white font-bold">{fir.fir_number}</td>
+                          <tr key={fir.id} className="border-b border-[var(--border-primary)]/40 hover:bg-[var(--bg-tertiary)]/20">
+                            <td className="py-2 text-[var(--text-primary)] font-bold">{fir.fir_number}</td>
                             <td className="py-2">{fir.complainant_name}</td>
-                            <td className="py-2 text-slate-400">{fir.sections || 'N/A'}</td>
+                            <td className="py-2 text-[var(--text-muted)]">{fir.sections || 'N/A'}</td>
                             <td className="py-2">{fir.filed_at ? new Date(fir.filed_at).toLocaleDateString() : 'N/A'}</td>
                             <td className="py-2 text-right">
                               <button 
@@ -610,7 +627,7 @@ export const Criminals: React.FC = () => {
                       </tbody>
                     </table>
                   ) : (
-                    <div className="py-4 text-center text-slate-600 text-[9px] uppercase border border-dashed border-slate-900 rounded">
+                    <div className="py-4 text-center text-[var(--text-secondary)] text-[9px] uppercase border border-dashed border-[var(--border-primary)] rounded">
                       No linked case registry items found.
                     </div>
                   )}
@@ -618,12 +635,12 @@ export const Criminals: React.FC = () => {
               </div>
 
               {/* Relationship Viewer Section */}
-              <div className="p-4 bg-slate-950 border border-slate-900 rounded text-left">
-                <div className="flex justify-between items-center border-b border-slate-900 pb-2">
+              <div className="p-4 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-left">
+                <div className="flex justify-between items-center border-b border-[var(--border-primary)] pb-2">
                   <span className="text-[#1E6FD9] font-mono font-bold text-[8.5px] tracking-wider uppercase">
                     <Activity className="w-3.5 h-3.5 inline mr-1.5" /> Associate & Scene Network Diagram
                   </span>
-                  <div className="flex gap-2.5 text-[7px] font-mono text-slate-500 uppercase select-none">
+                  <div className="flex gap-2.5 text-[7px] font-mono text-[var(--text-muted)] uppercase select-none">
                     <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#C94A2A]" /> Subject</span>
                     <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#6C43CC]" /> Suspect</span>
                     <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#0E9E78]" /> Victim</span>
@@ -632,7 +649,7 @@ export const Criminals: React.FC = () => {
                 </div>
                 <div className="mt-3">
                   {renderRelationshipGraph()}
-                  <span className="text-[7.5px] text-slate-600 font-mono block mt-1.5 uppercase italic text-center">
+                  <span className="text-[7.5px] text-[var(--text-secondary)] font-mono block mt-1.5 uppercase italic text-center">
                     Interact: Hover nodes to read dossier metadata; click suspect or victim nodes to jump profile
                   </span>
                 </div>
@@ -640,7 +657,7 @@ export const Criminals: React.FC = () => {
 
             </div>
           ) : (
-            <div className="h-full flex items-center justify-center text-slate-600 font-mono text-[9.5px] uppercase">
+            <div className="h-full flex items-center justify-center text-[var(--text-secondary)] font-mono text-[9.5px] uppercase">
               No profile highlights selected.
             </div>
           )}

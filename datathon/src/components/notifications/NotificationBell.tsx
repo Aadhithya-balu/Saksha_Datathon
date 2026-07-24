@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, BellDot, ExternalLink, CheckCheck, X, AlertTriangle, Info, AlertCircle, ShieldAlert } from 'lucide-react';
+import { Bell, BellDot, ExternalLink, CheckCheck, X, AlertTriangle, Info, AlertCircle } from 'lucide-react';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useAppStore } from '../../store/appStore';
+import { Badge } from '../ui/Badge';
 
 interface NotificationBellProps {
   onViewAll?: () => void;
@@ -9,6 +11,7 @@ interface NotificationBellProps {
 export const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll }) => {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { setActiveTab } = useAppStore();
 
   const {
     counts,
@@ -29,7 +32,6 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll })
     return () => stopPolling();
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -47,27 +49,27 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll })
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case 'critical': return <AlertTriangle className="w-3.5 h-3.5 text-[#C94A2A]" />;
-      case 'high': return <AlertCircle className="w-3.5 h-3.5 text-[#D4820A]" />;
-      case 'medium': return <Info className="w-3.5 h-3.5 text-[#1E6FD9]" />;
-      default: return <Info className="w-3.5 h-3.5 text-[#6A7A96]" />;
+      case 'critical': return <AlertTriangle className="w-3.5 h-3.5 text-[var(--accent-coral)]" />;
+      case 'high': return <AlertCircle className="w-3.5 h-3.5 text-[var(--accent-amber)]" />;
+      case 'medium': return <Info className="w-3.5 h-3.5 text-[var(--accent-blue)]" />;
+      default: return <Info className="w-3.5 h-3.5 text-[var(--text-muted)]" />;
     }
   };
 
   const getSeverityBorder = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'border-l-[#C94A2A]';
-      case 'high': return 'border-l-[#D4820A]';
-      case 'medium': return 'border-l-[#1E6FD9]';
-      default: return 'border-l-[#6A7A96]';
+      case 'critical': return 'border-l-[var(--accent-coral)]';
+      case 'high': return 'border-l-[var(--accent-amber)]';
+      case 'medium': return 'border-l-[var(--accent-blue)]';
+      default: return 'border-l-[var(--text-muted)]';
     }
   };
 
   const getTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       case_update: 'Case Update',
-      evidence_update: 'Evidence Update',
-      officer_update: 'Officer Update',
+      evidence_update: 'Evidence',
+      officer_update: 'Officer',
       ai_alert: 'AI Alert',
       crime_alert: 'Crime Alert',
       system_health: 'System',
@@ -75,54 +77,53 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll })
     return labels[type] || type;
   };
 
+  const handleViewAll = () => {
+    setActiveTab('notifications');
+    setOpen(false);
+  };
+
   return (
     <div ref={dropdownRef} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 hover:bg-white/5 border border-border-color rounded-lg text-[#A8B4CC] hover:text-white cursor-pointer transition-all group"
+        className="relative p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
         title="Notifications"
       >
         {counts.unread > 0 ? (
-          <BellDot className="w-4.5 h-4.5 text-[#1E6FD9] group-hover:text-white transition-colors" />
+          <BellDot className="w-[18px] h-[18px] text-[var(--accent-blue)]" />
         ) : (
-          <Bell className="w-4.5 h-4.5 group-hover:text-white transition-colors" />
+          <Bell className="w-[18px] h-[18px]" />
         )}
-        
-        {/* Badge */}
         {counts.unread > 0 && (
-          <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-[#C94A2A] rounded-full text-[7px] font-bold text-white flex items-center justify-center border border-[#0a0e1a] shadow-[0_0_8px_rgba(201,74,42,0.6)]">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-[var(--accent-coral)] rounded-full text-[10px] font-bold text-[var(--text-primary)] flex items-center justify-center px-1">
             {counts.unread > 99 ? '99+' : counts.unread}
           </span>
         )}
       </button>
 
-      {/* Dropdown Panel */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 md:w-96 bg-secondary-bg border border-border-color rounded-xl shadow-2xl shadow-black/50 overflow-hidden z-50 animate-[fadeIn_0.15s_ease-out]">
+        <div className="absolute right-0 top-full mt-2 w-80 md:w-96 bg-[var(--bg-elevated)] border border-[var(--border-primary)] rounded-xl shadow-sk-xl overflow-hidden sk-fade-in" style={{ zIndex: 300 }}>
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border-color">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-secondary)]">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono font-bold text-white uppercase tracking-wider">Notifications</span>
+              <span className="text-sm font-semibold text-[var(--text-primary)]">Notifications</span>
               {counts.critical > 0 && (
-                <span className="px-1.5 py-0.5 bg-[#C94A2A]/10 border border-[#C94A2A]/20 rounded text-[7.5px] text-[#C94A2A] font-bold font-mono animate-pulse">
-                  {counts.critical} CRITICAL
-                </span>
+                <Badge variant="coral" size="xs" pulse>{counts.critical} Critical</Badge>
               )}
             </div>
             <div className="flex items-center gap-1">
               {counts.unread > 0 && (
                 <button
                   onClick={() => { markAllRead(); setOpen(false); }}
-                  className="p-1 hover:bg-[#1E6FD9]/10 rounded text-[#1E6FD9] text-[8px] font-mono uppercase flex items-center gap-1 cursor-pointer"
+                  className="p-1.5 rounded-md text-[var(--accent-blue)] hover:bg-[var(--accent-blue-subtle)] transition-colors cursor-pointer"
                   title="Mark all as read"
                 >
-                  <CheckCheck className="w-3 h-3" />
-                  <span className="hidden md:inline">Mark Read</span>
+                  <CheckCheck className="w-3.5 h-3.5" />
                 </button>
               )}
               <button
                 onClick={() => setOpen(false)}
-                className="p-1 hover:bg-white/5 rounded text-[#6A7A96] cursor-pointer"
+                className="p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -130,16 +131,16 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll })
           </div>
 
           {/* List */}
-          <div className="max-h-72 overflow-y-auto custom-scrollbar">
+          <div className="max-h-72 overflow-y-auto">
             {loadingRecent ? (
               <div className="flex items-center justify-center py-8">
-                <div className="w-5 h-5 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin" />
+                <div className="w-5 h-5 rounded-full border-2 border-[var(--accent-blue)] border-t-transparent animate-spin" />
               </div>
             ) : recentNotifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center px-4">
-                <Bell className="w-8 h-8 text-[#6A7A96] mb-2 opacity-40" />
-                <p className="text-[9px] font-mono text-[#6A7A96] uppercase">No new notifications</p>
-                <p className="text-[7.5px] font-mono text-[#6A7A96]/60 mt-1">System is operating normally</p>
+                <Bell className="w-8 h-8 text-[var(--text-disabled)] mb-2" />
+                <p className="text-sm text-[var(--text-muted)]">No new notifications</p>
+                <p className="text-xs text-[var(--text-disabled)] mt-1">System is operating normally</p>
               </div>
             ) : (
               recentNotifications.map((notif) => (
@@ -147,30 +148,28 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll })
                   key={notif.id}
                   onClick={() => handleNotificationClick(notif.id)}
                   className={`w-full text-left px-4 py-3 border-l-[3px] ${getSeverityBorder(notif.severity)} ${
-                    notif.is_read ? 'bg-transparent hover:bg-white/[0.02]' : 'bg-[#1E6FD9]/[0.03] hover:bg-[#1E6FD9]/[0.06]'
-                  } transition-colors border-b border-white/[0.03] cursor-pointer group`}
+                    notif.is_read
+                      ? 'hover:bg-[var(--bg-tertiary)]/30'
+                      : 'bg-[var(--accent-blue-subtle)]/50 hover:bg-[var(--accent-blue-subtle)]'
+                  } transition-colors border-b border-[var(--border-secondary)]/50 cursor-pointer`}
                 >
                   <div className="flex items-start gap-2.5">
-                    <div className="mt-0.5 shrink-0">
-                      {getSeverityIcon(notif.severity)}
-                    </div>
+                    <div className="mt-0.5 shrink-0">{getSeverityIcon(notif.severity)}</div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-[9px] font-mono font-bold text-white truncate">
+                        <span className="text-[13px] font-medium text-[var(--text-primary)] truncate">
                           {notif.title}
                         </span>
                         {!notif.is_read && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#1E6FD9] shrink-0 animate-pulse" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-blue)] shrink-0" />
                         )}
                       </div>
-                      <p className="text-[8.5px] font-mono text-[#A8B4CC] line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-[var(--text-secondary)] line-clamp-2 leading-relaxed">
                         {notif.message}
                       </p>
                       <div className="flex items-center gap-2 mt-1.5">
-                        <span className="text-[7.5px] font-mono text-[#6A7A96] uppercase px-1.5 py-0.5 bg-white/[0.03] rounded">
-                          {getTypeLabel(notif.notification_type)}
-                        </span>
-                        <span className="text-[7.5px] font-mono text-[#6A7A96]">
+                        <Badge variant="default" size="xs">{getTypeLabel(notif.notification_type)}</Badge>
+                        <span className="text-[10px] font-mono text-[var(--text-muted)]">
                           {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
@@ -182,13 +181,13 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll })
           </div>
 
           {/* Footer */}
-          <div className="border-t border-border-color px-4 py-2.5">
+          <div className="border-t border-[var(--border-secondary)] px-4 py-2.5">
             <button
-              onClick={() => { onViewAll?.(); setOpen(false); }}
-              className="w-full flex items-center justify-center gap-1.5 text-[9px] font-mono text-[#1E6FD9] hover:text-white transition-colors uppercase tracking-wider font-bold cursor-pointer"
+              onClick={handleViewAll}
+              className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-[var(--accent-blue)] hover:text-[var(--accent-blue-light)] transition-colors cursor-pointer"
             >
               <ExternalLink className="w-3 h-3" />
-              View Notification Center
+              View All Notifications
             </button>
           </div>
         </div>
@@ -198,4 +197,3 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll })
 };
 
 export default NotificationBell;
-

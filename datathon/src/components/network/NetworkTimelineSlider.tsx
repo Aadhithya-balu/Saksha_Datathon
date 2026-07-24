@@ -21,22 +21,22 @@ export const NetworkTimelineSlider: React.FC<NetworkTimelineSliderProps> = ({ on
   };
 
   return (
-    <div className="bg-[#050912] p-3 rounded-card border border-white/10 font-mono flex flex-col gap-2">
+    <div className="bg-[var(--bg-primary)] p-3 rounded-card border border-[var(--border-secondary)] font-mono flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-bold text-white uppercase">
-          <Calendar className="w-4 h-4 text-[#1E6FD9]" />
+        <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)] uppercase">
+          <Calendar className="w-4 h-4 text-[var(--accent-blue)]" />
           <span>Network Relationship Timeline scrubber</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsPlaying(!isPlaying)}
-            className="p-1.5 bg-[#111D35] hover:bg-[#1E6FD9]/20 border border-white/10 rounded-btn text-white text-xs cursor-pointer"
+            className="p-1.5 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/20 border border-[var(--border-secondary)] rounded-btn text-[var(--text-primary)] text-xs cursor-pointer"
           >
             {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
           </button>
           <button
             onClick={() => setStep(12)}
-            className="p-1.5 bg-[#111D35] hover:bg-white/10 border border-white/10 rounded-btn text-[#8A99AD] hover:text-white text-xs cursor-pointer"
+            className="p-1.5 bg-[var(--bg-tertiary)] hover:bg-white/10 border border-[var(--border-secondary)] rounded-btn text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -44,14 +44,14 @@ export const NetworkTimelineSlider: React.FC<NetworkTimelineSliderProps> = ({ on
       </div>
 
       <div className="flex items-center gap-3">
-        <Clock className="w-3.5 h-3.5 text-[#6A7A96]" />
+        <Clock className="w-3.5 h-3.5 text-[var(--text-muted)]" />
         <input
           type="range"
           min={1}
           max={12}
           value={step}
           onChange={handleSliderChange}
-          className="flex-1 accent-[#1E6FD9] cursor-pointer"
+          className="flex-1 accent-[var(--accent-blue)] cursor-pointer"
         />
         <span className="text-xs font-bold text-[#60A5FA] min-w-[60px] text-right uppercase">
           {months[step - 1] || 'Dec 25'}

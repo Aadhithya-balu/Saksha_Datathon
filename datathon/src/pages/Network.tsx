@@ -67,16 +67,16 @@ export const Network: React.FC = () => {
     }
   };
   return (
-    <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none bg-[#060b13]">
+    <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none bg-[var(--bg-primary)]">
       
       {/* Title Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/5 pb-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3">
         <div>
-          <h2 className="text-md font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
             <NetIcon className="w-5 h-5 text-[#6C43CC] animate-pulse" />
             Crime Association Net Analysis
           </h2>
-          <p className="text-[9.5px] font-mono text-[#6A7A96] mt-0.5">
+          <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
             THREE.JS FORCE-DIRECTED SUSPECT CORRELATIONS & INTERSTATE NETWORK DOSSIERS
           </p>
           {loadError && <p className="mt-1 text-[9px] font-mono text-amber-400 uppercase tracking-wider">{loadError}</p>}
@@ -86,7 +86,7 @@ export const Network: React.FC = () => {
         <div className="flex items-center gap-2 text-[9px] font-mono uppercase">
           <button
             onClick={handleExportMatrix}
-            className="px-2.5 py-1.5 bg-[#111D35] hover:bg-[#1E6FD9]/15 border border-[#1e6fd9]/25 hover:border-[#1E6FD9]/50 text-[#A8B4CC] hover:text-white rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
+            className="px-2.5 py-1.5 bg-[var(--bg-tertiary)] hover:bg-[#1E6FD9]/15 border border-[#1e6fd9]/25 hover:border-[#1E6FD9]/50 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
           >
             <Share2 className="w-3.5 h-3.5" />
             Share Link Matrix
@@ -101,7 +101,7 @@ export const Network: React.FC = () => {
           {graphData ? (
             <CriminalGraph3D onNodeSelect={setSelectedNode} graphData={graphData} />
           ) : (
-            <div className="h-full flex items-center justify-center bg-[#080E1B] rounded-card border border-border-color text-[10px] font-mono text-[#6A7A96] uppercase tracking-wider">
+            <div className="h-full flex items-center justify-center bg-[var(--bg-surface)] rounded-card border border-border-color text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider">
               {loadError ? 'Backend network unavailable' : 'Loading backend network telemetry...'}
             </div>
           )}
@@ -115,8 +115,8 @@ export const Network: React.FC = () => {
               onClose={() => setSelectedNode(null)} 
             />
           ) : (
-            <div className="h-full flex flex-col items-center justify-center p-6 text-center text-xs font-mono text-[#6A7A96] uppercase border border-dashed border-slate-800/40 rounded-card">
-              <Layers className="w-10 h-10 mb-3 text-slate-800" />
+            <div className="h-full flex flex-col items-center justify-center p-6 text-center text-xs font-mono text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)]/40 rounded-card">
+              <Layers className="w-10 h-10 mb-3 text-[var(--text-disabled)]" />
               <span>{graphData ? 'Select suspect node pin inside 3D relations workspace to unlock dossiers telemetry' : 'Loading backend network telemetry...'}</span>
             </div>
           )}

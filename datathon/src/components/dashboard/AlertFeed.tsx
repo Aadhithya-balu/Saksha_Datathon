@@ -233,20 +233,20 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ onAlertClick, limit = 5 })
       {/* Feed Header */}
       <div className="flex justify-between items-center select-none mb-1">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#C94A2A] animate-ping" />
-          <h4 className="text-[11px] font-mono uppercase tracking-widest text-[#E8EDF5] text-glow-coral">
+          <span className="w-2 h-2 rounded-full bg-[var(--accent-coral)] animate-ping" />
+          <h4 className="text-[11px] font-mono uppercase tracking-widest text-[var(--text-primary)] text-glow-coral">
             Critical Anomaly Feed
           </h4>
         </div>
-        <span className="px-2 py-0.5 bg-[#C94A2A]/10 text-[#C94A2A] rounded-full text-[9px] font-bold font-mono border border-[#C94A2A]/20">
+        <span className="px-2 py-0.5 bg-[var(--accent-coral)]/10 text-[var(--accent-coral)] rounded-full text-[9px] font-bold font-mono border border-[var(--accent-coral)]/20">
           {alerts.filter(a => a.status === 'PENDING').length} PENDING UNRESOLVED
         </span>
       </div>
 
       {/* 3D WEBGL ALERTS RADAR VISUALIZATION */}
       {activeAlerts.length > 0 && (
-        <div className="w-full bg-[#0a1220]/80 border border-white/5 p-2.5 rounded-lg flex flex-col justify-between select-none relative font-mono overflow-hidden">
-          <span className="text-[8px] text-[#A8B4CC] uppercase font-bold tracking-widest">
+        <div className="w-full bg-[var(--bg-secondary)]/80 border border-[var(--border-primary)] p-2.5 rounded-lg flex flex-col justify-between select-none relative font-mono overflow-hidden">
+          <span className="text-[8px] text-[var(--text-secondary)] uppercase font-bold tracking-widest">
             3D Holographic Threat Radar
           </span>
           <div className="w-full relative flex justify-center items-center cursor-grab active:cursor-grabbing" style={{ height: '140px' }}>
@@ -261,23 +261,23 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ onAlertClick, limit = 5 })
                   top: `${Math.min(hovered3DAlert.y - 10, 80)}px`
                 }}
               >
-                <span className="text-[9px] text-white font-extrabold truncate">{hovered3DAlert.firNumber}</span>
-                <span className="text-[8px] text-slate-400 mt-0.5">{hovered3DAlert.station}</span>
-                <div className="flex justify-between items-center mt-1 border-t border-white/5 pt-1">
-                  <span className="text-[7.5px] text-slate-400">SCORE:</span>
+                <span className="text-[9px] text-[var(--text-primary)] font-extrabold truncate">{hovered3DAlert.firNumber}</span>
+                <span className="text-[8px] text-[var(--text-muted)] mt-0.5">{hovered3DAlert.station}</span>
+                <div className="flex justify-between items-center mt-1 border-t border-[var(--border-primary)] pt-1">
+                  <span className="text-[7.5px] text-[var(--text-muted)]">SCORE:</span>
                   <span className="text-[10px] font-bold" style={{ color: hovered3DAlert.color }}>{hovered3DAlert.anomalyScore}%</span>
                 </div>
               </div>
             ) : (
-              <div className="absolute top-1.5 right-1.5 bg-slate-950/70 border border-white/5 p-1.5 rounded text-[7.5px] text-[#A8B4CC] flex flex-col gap-0.5 select-none pointer-events-none">
-                <div className="flex items-center gap-1 font-bold text-white uppercase">Threat Keys</div>
-                <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#C94A2A]" /> HIGH</div>
-                <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#D4820A]" /> WATCH</div>
-                <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#1E6FD9]" /> LOW</div>
+              <div className="absolute top-1.5 right-1.5 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] p-1.5 rounded text-[7.5px] text-[var(--text-secondary)] flex flex-col gap-0.5 select-none pointer-events-none">
+                <div className="flex items-center gap-1 font-bold text-[var(--text-primary)] uppercase">Threat Keys</div>
+                <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-coral)]" /> HIGH</div>
+                <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-amber)]" /> WATCH</div>
+                <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-blue)]" /> LOW</div>
               </div>
             )}
           </div>
-          <span className="text-[7.5px] text-slate-500 uppercase mt-1 select-none">
+          <span className="text-[7.5px] text-[var(--text-muted)] uppercase mt-1 select-none">
             Y-Axis: Threat severity • Rotation represents temporal beat sequence
           </span>
         </div>
@@ -292,10 +292,10 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ onAlertClick, limit = 5 })
             
             // Pulsing border styles
             const borderClass = isHigh 
-              ? 'border-l-[3.5px] border-l-[#C94A2A] pulse-border-red' 
+              ? 'border-l-[3.5px] border-l-[var(--accent-coral)] pulse-border-red' 
               : isWatch 
-              ? 'border-l-[3.5px] border-l-[#D4820A] pulse-border-amber' 
-              : 'border-l-[3.5px] border-l-[#1E6FD9]';
+              ? 'border-l-[3.5px] border-l-[var(--accent-amber)] pulse-border-amber' 
+              : 'border-l-[3.5px] border-l-[var(--accent-blue)]';
 
             return (
               <motion.div
@@ -311,37 +311,37 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ onAlertClick, limit = 5 })
                   delay: index * 0.05 
                 }}
                 onClick={() => onAlertClick?.(alert)}
-                className={`p-3.5 bg-slate-950/40 border border-border-color hover:border-[#1E6FD9]/30 rounded-card cursor-pointer flex flex-col gap-2 text-left relative overflow-hidden transition-all duration-300 ${borderClass}`}
+                className={`p-3.5 bg-[var(--bg-secondary)]/40 border border-border-color hover:border-[var(--accent-blue)]/30 rounded-card cursor-pointer flex flex-col gap-2 text-left relative overflow-hidden transition-all duration-300 ${borderClass}`}
               >
                 {/* Top card row */}
                 <div className="flex justify-between items-start">
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-mono text-[#E8EDF5] font-bold">
+                    <span className="text-[10px] font-mono text-[var(--text-primary)] font-bold">
                       {alert.firNumber}
                     </span>
-                    <span className="text-[8px] font-mono text-[#6A7A96] uppercase mt-0.5">
+                    <span className="text-[8px] font-mono text-[var(--text-muted)] uppercase mt-0.5">
                       {alert.station} • {alert.district}
                     </span>
                   </div>
 
                   <span className={`px-2 py-0.5 rounded text-[8.5px] font-mono font-bold ${
                     isHigh 
-                      ? 'bg-[#C94A2A]/10 text-[#C94A2A] border border-[#C94A2A]/20' 
+                      ? 'bg-[var(--accent-coral)]/10 text-[var(--accent-coral)] border border-[var(--accent-coral)]/20' 
                       : isWatch 
-                      ? 'bg-[#D4820A]/10 text-[#D4820A] border border-[#D4820A]/20' 
-                      : 'bg-[#1E6FD9]/10 text-[#1E6FD9] border border-[#1E6FD9]/20'
+                      ? 'bg-[var(--accent-amber)]/10 text-[var(--accent-amber)] border border-[var(--accent-amber)]/20' 
+                      : 'bg-[var(--accent-blue)]/10 text-[var(--accent-blue)] border border-[var(--accent-blue)]/20'
                   }`}>
                     {alert.severity} SCORE: {alert.anomalyScore}%
                   </span>
                 </div>
 
                 {/* Details Section */}
-                <p className="text-[10.5px] text-[#A8B4CC] leading-relaxed line-clamp-2">
+                <p className="text-[10.5px] text-[var(--text-secondary)] leading-relaxed line-clamp-2">
                   {alert.offenceDetails}
                 </p>
 
                 {/* Footer status markers */}
-                <div className="flex justify-between items-center mt-1 border-t border-slate-900 pt-2 text-[9px] font-mono">
+                <div className="flex justify-between items-center mt-1 border-t border-[var(--border-primary)] pt-2 text-[9px] font-mono">
                   <div className="flex items-center gap-1.5">
                     {alert.status === 'PENDING' ? (
                       <span className="text-red-400 flex items-center gap-1">
@@ -349,19 +349,19 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ onAlertClick, limit = 5 })
                         UNRESOLVED
                       </span>
                     ) : alert.status === 'REVIEWED' ? (
-                      <span className="text-[#0E9E78] flex items-center gap-1">
+                      <span className="text-[var(--accent-teal)] flex items-center gap-1">
                         <Eye className="w-3 h-3" />
                         UNDER INVESTIGATION
                       </span>
                     ) : (
-                      <span className="text-[#6C43CC] flex items-center gap-1">
+                      <span className="text-[var(--accent-purple)] flex items-center gap-1">
                         <ShieldAlert className="w-3 h-3" />
                         ESCALATED TO SP
                       </span>
                     )}
                   </div>
                   
-                  <span className="text-[#6A7A96]">
+                  <span className="text-[var(--text-muted)]">
                     {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} IST
                   </span>
                 </div>
@@ -371,7 +371,7 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ onAlertClick, limit = 5 })
         </AnimatePresence>
         
         {activeAlerts.length === 0 && (
-          <div className="p-8 text-center text-xs font-mono text-[#6A7A96] uppercase select-none border border-dashed border-border-color/30 rounded-card">
+          <div className="p-8 text-center text-xs font-mono text-[var(--text-muted)] uppercase select-none border border-dashed border-border-color/30 rounded-card">
             No Active Anomalies Detected
           </div>
         )}

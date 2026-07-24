@@ -25,15 +25,15 @@ export const WeatherCorrelationChart: React.FC = () => {
   const activeDetail = CORRELATION_DATA.find(d => d.factor === selectedFactor) || CORRELATION_DATA[0];
 
   return (
-    <div className="w-full bg-[#0a1220]/80 border border-white/5 p-4 rounded-lg flex flex-col justify-between select-none font-mono">
+    <div className="w-full bg-[var(--bg-secondary)]/80 border border-[var(--border-primary)] p-4 rounded-lg flex flex-col justify-between select-none font-mono">
       
       {/* Title block */}
       <div className="flex justify-between items-center mb-3">
         <div>
-          <h4 className="text-[11.5px] font-bold text-white uppercase tracking-wider">
+          <h4 className="text-[11.5px] font-bold text-[var(--text-primary)] uppercase tracking-wider">
             Weather & Seasonal Crime Correlation
           </h4>
-          <span className="text-[8px] text-slate-500 uppercase">AI Multi-factor Environmental Probability Mapping</span>
+          <span className="text-[8px] text-[var(--text-muted)] uppercase">AI Multi-factor Environmental Probability Mapping</span>
         </div>
       </div>
 
@@ -90,13 +90,13 @@ export const WeatherCorrelationChart: React.FC = () => {
         </div>
 
         {/* Right Details (4 cols) */}
-        <div className="md:col-span-4 p-3 bg-slate-950/50 border border-slate-900 rounded-lg flex flex-col gap-2.5 text-[9px] text-left">
-          <span className="text-[#6A7A96] uppercase text-[8px] font-bold block">
+        <div className="md:col-span-4 p-3 bg-[var(--bg-secondary)]/50 border border-[var(--border-primary)] rounded-lg flex flex-col gap-2.5 text-[9px] text-left">
+          <span className="text-[var(--text-muted)] uppercase text-[8px] font-bold block">
             Environmental Risk Detail
           </span>
 
           <div>
-            <span className="text-white font-extrabold block uppercase tracking-wide">
+            <span className="text-[var(--text-primary)] font-extrabold block uppercase tracking-wide">
               {activeDetail.factor} Correlation
             </span>
             <span className="text-red-400 font-bold block mt-0.5 text-[10.5px]">
@@ -104,12 +104,12 @@ export const WeatherCorrelationChart: React.FC = () => {
             </span>
           </div>
 
-          <div className="border-t border-slate-900 pt-2 text-[#A8B4CC]">
-            <span className="text-[8px] text-slate-500 block uppercase">Primary Crime Spikes</span>
-            <span className="text-white font-semibold mt-0.5 block">{activeDetail.crimeType}</span>
+          <div className="border-t border-[var(--border-primary)] pt-2 text-[var(--text-secondary)]">
+            <span className="text-[8px] text-[var(--text-muted)] block uppercase">Primary Crime Spikes</span>
+            <span className="text-[var(--text-primary)] font-semibold mt-0.5 block">{activeDetail.crimeType}</span>
           </div>
 
-          <p className="text-[8px] text-slate-500 leading-normal uppercase">
+          <p className="text-[8px] text-[var(--text-muted)] leading-normal uppercase">
             Correlation index computed over 5-year historical weather patterns.
           </p>
         </div>

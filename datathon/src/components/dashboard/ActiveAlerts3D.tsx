@@ -184,16 +184,16 @@ export const ActiveAlerts3D: React.FC<ActiveAlerts3DProps> = ({ alertRows = [], 
     window.addEventListener('mouseup', handleMouseUp);
 
     let animationFrameId: number;
+    const startTime = performance.now();
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
+      const elapsed = (performance.now() - startTime) / 1000;
       if (!isDragging && hoveredAlert === null) {
-        // Slow idle oscillation swing
-        scene.rotation.y = Math.sin(clock.getElapsedTime() * 0.1) * 0.25;
+        scene.rotation.y = Math.sin(elapsed * 0.1) * 0.25;
       }
       renderer.render(scene, camera);
     };
-    
-    const clock = new THREE.Clock();
+
     animate();
 
     const resizeObserver = new ResizeObserver((entries) => {
@@ -258,7 +258,7 @@ export const ActiveAlerts3D: React.FC<ActiveAlerts3DProps> = ({ alertRows = [], 
                     <span className={`${colorClass} text-[10.5px]`}>{alert.score}%</span>
                     
                     {/* Sector name at the bottom of the bar */}
-                    <span className="text-[#E8EDF5] uppercase tracking-wider text-[8.5px] mt-12 block text-center truncate w-full">
+                    <span className="text-[var(--text-primary)] uppercase tracking-wider text-[8.5px] mt-12 block text-center truncate w-full">
                       {alert.shortLabel}
                     </span>
                   </div>
@@ -276,30 +276,30 @@ export const ActiveAlerts3D: React.FC<ActiveAlerts3DProps> = ({ alertRows = [], 
                   top: `${Math.min(hoveredAlert.y - 10, 80)}px`
                 }}
               >
-                <span className="text-[9.5px] text-white font-extrabold uppercase leading-snug tracking-wide truncate max-w-[150px]">{hoveredAlert.label}</span>
-                <div className="flex justify-between items-center mt-1 border-t border-white/5 pt-1">
-                  <span className="text-[7.5px] text-slate-400">THREAT SCORE:</span>
+                <span className="text-[9.5px] text-[var(--text-primary)] font-extrabold uppercase leading-snug tracking-wide truncate max-w-[150px]">{hoveredAlert.label}</span>
+                <div className="flex justify-between items-center mt-1 border-t border-[var(--border-primary)] pt-1">
+                  <span className="text-[7.5px] text-[var(--text-muted)]">THREAT SCORE:</span>
                   <span className="text-[10.5px] font-bold" style={{ color: hoveredAlert.color }}>{hoveredAlert.score}%</span>
                 </div>
               </div>
             )}
           </>
         ) : (
-          <div className="p-4 text-center text-xs text-[#6A7A96] uppercase font-semibold">
+          <div className="p-4 text-center text-xs text-[var(--text-muted)] uppercase font-semibold">
             No Pending Active Alerts
           </div>
         )}
       </div>
 
       {/* Guide Legend bottom bar */}
-      <div className="flex justify-between text-[8px] text-[#A8B4CC] font-bold uppercase tracking-widest pt-2 border-t border-slate-900 select-none px-1">
+      <div className="flex justify-between text-[8px] text-[var(--text-secondary)] font-bold uppercase tracking-widest pt-2 border-t border-[var(--border-primary)] select-none px-1">
         <span className="flex items-center gap-1">
-          <AlertCircle className="w-3.5 h-3.5 text-[#C94A2A]" />
+          <AlertCircle className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
           Drag to rotate chart • Hover for full labels
         </span>
-        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#C94A2A]" /> HIGH (&gt;90%)</span>
-        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#D4820A]" /> MED</span>
-        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#1E6FD9]" /> LOW</span>
+        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-coral)]" /> HIGH (&gt;90%)</span>
+        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-amber)]" /> MED</span>
+        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-blue)]" /> LOW</span>
       </div>
     </div>
   );

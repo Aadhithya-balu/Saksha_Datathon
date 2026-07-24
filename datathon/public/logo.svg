@@ -1,0 +1,84 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+
+    <linearGradient id="eyeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Shield -->
+  <path
+    d="M256 48
+       L400 110
+       V235
+       C400 340 330 425 256 464
+       C182 425 112 340 112 235
+       V110
+       Z"
+    fill="url(#shieldGrad)"
+  />
+
+  <!-- Eye -->
+  <path
+    d="M160 250
+    C195 190 317 190 352 250
+    C317 310 195 310 160 250"
+    fill="white"
+  />
+
+  <!-- Iris -->
+  <circle
+    cx="256"
+    cy="250"
+    r="42"
+    fill="url(#eyeGrad)"
+  />
+
+  <!-- AI Core -->
+  <circle
+    cx="256"
+    cy="250"
+    r="15"
+    fill="#0F172A"
+  />
+
+  <!-- Circuit Lines -->
+  <line x1="256" y1="145" x2="256" y2="195"
+        stroke="white"
+        stroke-width="6"
+        stroke-linecap="round"/>
+
+  <line x1="170" y1="250" x2="214" y2="250"
+        stroke="white"
+        stroke-width="6"
+        stroke-linecap="round"/>
+
+  <line x1="298" y1="250" x2="342" y2="250"
+        stroke="white"
+        stroke-width="6"
+        stroke-linecap="round"/>
+
+  <line x1="220" y1="330" x2="245" y2="290"
+        stroke="white"
+        stroke-width="6"
+        stroke-linecap="round"/>
+
+  <line x1="292" y1="290" x2="317" y2="330"
+        stroke="white"
+        stroke-width="6"
+        stroke-linecap="round"/>
+
+  <!-- Circuit Nodes -->
+  <circle cx="256" cy="145" r="8" fill="#38BDF8"/>
+  <circle cx="170" cy="250" r="8" fill="#38BDF8"/>
+  <circle cx="342" cy="250" r="8" fill="#38BDF8"/>
+  <circle cx="220" cy="330" r="8" fill="#38BDF8"/>
+  <circle cx="317" cy="330" r="8" fill="#38BDF8"/>
+
+</svg>
