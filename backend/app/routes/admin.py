@@ -51,18 +51,22 @@ DEFAULT_ROLE_PERMISSIONS = {
 class SystemSetting(Base):
     __tablename__ = "system_settings"
 
-    key: Mapped[str] = mapped_column(String(80), primary_key=True)
-    value: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
-    updated_by_id: Mapped[uuid.UUID | None] = mapped_column(String(36), nullable=True)
-    updated_at: Mapped[datetime | None] = mapped_column(String(40), nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
 
 class RolePermission(Base):
     __tablename__ = "role_permissions"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    role_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-    permission: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    role_id: Mapped[uuid.UUID] = mapped_column(nullable=False, index=True)
+    permission: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    resource: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
 
 class AdminUserOut(BaseModel):
@@ -164,7 +168,7 @@ def _validate_permissions(permissions: list[str]) -> list[str]:
 
 def _get_permissions(db: Session, role_id: uuid.UUID, role_name: str) -> list[str]:
     _ensure_admin_tables()
-    persisted = db.query(RolePermission.permission).filter(RolePermission.role_id == str(role_id)).all()
+    persisted = db.query(RolePermission.permission).filter(RolePermission.role_id == role_id).all()
     if persisted:
         return sorted(row[0] for row in persisted)
     return DEFAULT_ROLE_PERMISSIONS.get(role_name, [])
@@ -172,9 +176,9 @@ def _get_permissions(db: Session, role_id: uuid.UUID, role_name: str) -> list[st
 
 def _set_permissions(db: Session, role: Role, permissions: list[str]) -> None:
     _ensure_admin_tables()
-    db.query(RolePermission).filter(RolePermission.role_id == str(role.id)).delete()
+    db.query(RolePermission).filter(RolePermission.role_id == role.id).delete()
     for permission in _validate_permissions(permissions):
-        db.add(RolePermission(id=str(uuid.uuid4()), role_id=str(role.id), permission=permission))
+        db.add(RolePermission(role_id=role.id, permission=permission, resource=permission.split(":")[0] if ":" in permission else permission))
 
 
 def _safe_settings(payload: SettingsPayload) -> dict[str, Any]:
@@ -454,21 +458,28 @@ def export_audit_logs(db: Session = Depends(get_db), current_user: User = Depend
 @router.get("/settings")
 def get_settings(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     _ensure_admin_tables()
+    import json as _json
     row = db.query(SystemSetting).filter(SystemSetting.key == "platform").first()
-    return row.value if row else SettingsPayload().model_dump()
+    if row and row.value:
+        try:
+            return _json.loads(row.value)
+        except Exception:
+            return SettingsPayload().model_dump()
+    return SettingsPayload().model_dump()
 
 
 @router.put("/settings")
 def save_settings(payload: SettingsPayload, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     _ensure_admin_tables()
+    import json as _json
     value = _safe_settings(payload)
     row = db.query(SystemSetting).filter(SystemSetting.key == "platform").first()
     if not row:
-        row = SystemSetting(key="platform", value=value)
-    row.value = value
-    row.updated_by_id = str(current_user.id)
-    row.updated_at = datetime.utcnow().isoformat()
+        row = SystemSetting(key="platform", value=_json.dumps(value))
+    else:
+        row.value = _json.dumps(value)
+    row.updated_at = datetime.utcnow()
     db.add(row)
     audit_service.log_action(db, current_user, "SETTINGS_UPDATE", "SystemSettings", "platform", ip_address=_client_ip(request))
     db.commit()
-    return row.value
+    return value
