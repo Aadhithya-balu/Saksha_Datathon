@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # --- LLM ---
+    LLM_PROVIDER: str = "local"  # "gemini" | "openai" | "local"
+    LLM_MODEL: str = "gemini-2.0-flash"
+    GEMINI_API_KEY: str | None = None
+    OPENAI_API_KEY: str | None = None
+
     # --- CORS ---
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
 

@@ -22,6 +22,7 @@ import OfficersPage from './pages/Officers';
 import EvidencePage from './pages/Evidence';
 import InvestigationPage from './pages/Investigation';
 import NotificationsPage from './pages/Notifications';
+import GlobalAIAssistant from './components/ai/GlobalAIAssistant';
 
 function App() {
   const { isAuthenticated, user, isHydrating, initializeSession } = useAuthStore();
@@ -246,6 +247,9 @@ function App() {
           <span>STAMP CODE: 2026-SCRB-KSP</span>
         </footer>
       </div>
+
+      {/* Global AI Assistant - always accessible */}
+      <GlobalAIAssistant />
 
     </div>
   );

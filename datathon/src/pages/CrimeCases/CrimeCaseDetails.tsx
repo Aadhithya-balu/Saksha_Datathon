@@ -204,12 +204,24 @@ const CrimeCaseDetails: React.FC<CrimeCaseDetailsProps> = ({
         >
           <ArrowLeft className="w-4 h-4" /> Back to Dossier List
         </button>
-        <button
-          onClick={onEdit}
-          className="px-4 py-1.5 border border-border-color hover:border-[#1E6FD9]/40 hover:bg-[#1E6FD9]/10 rounded font-mono text-xs uppercase text-[#A8B4CC] hover:text-white transition-all cursor-pointer"
-        >
-          Modify Dossier
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('open-ai-assistant', {
+                detail: { query: `Tell me about case ${caseData.case_number}. What is the status, priority, and key details?` }
+              }));
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E6FD9]/15 border border-[#1E6FD9]/30 hover:bg-[#1E6FD9]/25 hover:border-[#1E6FD9]/50 rounded font-mono text-[10px] uppercase text-[#1E6FD9] transition-all cursor-pointer"
+          >
+            <Sparkles className="w-3 h-3" /> Ask AI
+          </button>
+          <button
+            onClick={onEdit}
+            className="px-4 py-1.5 border border-border-color hover:border-[#1E6FD9]/40 hover:bg-[#1E6FD9]/10 rounded font-mono text-xs uppercase text-[#A8B4CC] hover:text-white transition-all cursor-pointer"
+          >
+            Modify Dossier
+          </button>
+        </div>
       </div>
 
       {/* Case Overview Panel */}

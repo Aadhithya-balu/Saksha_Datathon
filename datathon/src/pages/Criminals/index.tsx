@@ -17,7 +17,8 @@ import {
   FileText, 
   TrendingUp, 
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  Sparkles
 } from 'lucide-react';
 
 interface CriminalSummary {
@@ -402,9 +403,21 @@ export const Criminals: React.FC = () => {
                         Aliases: {criminalDetails.aliases || 'No documented aliases'}
                       </span>
                     </div>
-                    <span className={`text-[8.5px] px-2 py-0.5 rounded border uppercase font-bold tracking-wider ${getStatusColor(criminalDetails.status)}`}>
-                      {criminalDetails.status.replace('_', ' ')}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent('open-ai-assistant', {
+                            detail: { query: `Tell me about the criminal ${criminalDetails.full_name}. What is their status, risk level, network connections, and linked cases?` }
+                          }));
+                        }}
+                        className="flex items-center gap-1 text-[10px] bg-[#1E6FD9]/15 text-[#1E6FD9] px-2 py-1 rounded border border-[#1E6FD9]/30 hover:bg-[#1E6FD9]/30 transition-colors cursor-pointer"
+                      >
+                        <Sparkles className="w-3 h-3" /> Ask AI
+                      </button>
+                      <span className={`text-[8.5px] px-2 py-0.5 rounded border uppercase font-bold tracking-wider ${getStatusColor(criminalDetails.status)}`}>
+                        {criminalDetails.status.replace('_', ' ')}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mt-4 text-[9.5px] font-mono text-left">

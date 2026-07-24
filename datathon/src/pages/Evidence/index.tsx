@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRBAC } from '../../hooks/useRBAC';
-import { Search, Plus, Filter, HardDrive, FileText, UploadCloud, Cpu, Download } from 'lucide-react';
+import { Search, Plus, Filter, HardDrive, FileText, UploadCloud, Cpu, Download, Sparkles } from 'lucide-react';
 import { apiRequest } from '../../services/api';
 
 interface Evidence {
@@ -422,11 +422,23 @@ const EvidencePage: React.FC = () => {
                 <div className="bg-[#080E1B] p-4 rounded-lg border border-border-color">
                   <h3 className="text-[#6C43CC] font-mono text-xs uppercase font-bold mb-3 border-b border-border-color pb-2 flex justify-between items-center">
                     AI Summary & Analysis
-                    {(isSCRB || isInspector || isIO || isForensic) && (
-                      <button onClick={() => void generateAISummary(evidenceDetail.id)} className="flex items-center gap-1 text-[10px] bg-[#6C43CC]/20 text-[#6C43CC] px-2 py-1 rounded hover:bg-[#6C43CC]/40 transition-colors">
-                        <Cpu className="w-3 h-3" /> Generate Analysis
+                    <div className="flex items-center gap-2">
+                      {(isSCRB || isInspector || isIO || isForensic) && (
+                        <button onClick={() => void generateAISummary(evidenceDetail.id)} className="flex items-center gap-1 text-[10px] bg-[#6C43CC]/20 text-[#6C43CC] px-2 py-1 rounded hover:bg-[#6C43CC]/40 transition-colors">
+                          <Cpu className="w-3 h-3" /> Generate Analysis
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent('open-ai-assistant', {
+                            detail: { query: `Tell me about evidence ${evidenceDetail.title} (ID: ${evidenceDetail.id}). What is the type, status, and associated case details?` }
+                          }));
+                        }}
+                        className="flex items-center gap-1 text-[10px] bg-[#1E6FD9]/15 text-[#1E6FD9] px-2 py-1 rounded hover:bg-[#1E6FD9]/30 transition-colors"
+                      >
+                        <Sparkles className="w-3 h-3" /> Ask AI
                       </button>
-                    )}
+                    </div>
                   </h3>
                   
                   {evidenceDetail.ai_summaries && evidenceDetail.ai_summaries.length > 0 ? (

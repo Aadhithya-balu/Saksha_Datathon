@@ -563,6 +563,66 @@ export async function chatQuery(message: string, sessionId?: string) {
   });
 }
 
+export interface ChatStreamChunk {
+  type: 'status' | 'token' | 'final' | 'error';
+  content: any;
+}
+
+export async function* chatQueryStream(
+  message: string,
+  sessionId?: string,
+): AsyncGenerator<ChatStreamChunk, void, unknown> {
+  const { accessToken: token } = getStoredTokens();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}/ai/chat`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ message, session_id: sessionId ?? null, stream: true }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Chat API error ${response.status}: ${errText}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('Response body is not readable');
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        const chunk: ChatStreamChunk = JSON.parse(trimmed);
+        yield chunk;
+      } catch {
+        // skip malformed lines
+      }
+    }
+  }
+
+  if (buffer.trim()) {
+    try {
+      const chunk: ChatStreamChunk = JSON.parse(buffer.trim());
+      yield chunk;
+    } catch {
+      // ignore
+    }
+  }
+}
+
 export async function listCrimes(page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<CrimeCaseRecord>>(`/crimes${buildQueryString({ page, page_size: pageSize })}`);
 }
