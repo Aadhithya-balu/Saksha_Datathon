@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRBAC } from '../../hooks/useRBAC';
 import { Search, Plus, Filter, HardDrive, FileText, UploadCloud, Cpu, Download } from 'lucide-react';
-import { API_BASE_URL, getStoredTokens } from '../../services/api';
+import { apiRequest } from '../../services/api';
 
 interface Evidence {
   id: string;
@@ -32,40 +32,15 @@ const EvidencePage: React.FC = () => {
   const [evidenceDetail, setEvidenceDetail] = useState<any>(null);
   const [assigneeId, setAssigneeId] = useState('');
 
-  const getErrorMessage = (data: any, fallback: string): string => {
-    if (!data) return fallback;
-    if (data?.error?.message) return String(data.error.message);
-    const detail = data?.detail;
-    if (!detail) return fallback;
-    if (typeof detail === 'string') return detail;
-    if (Array.isArray(detail)) {
-      return detail.map((err: any) => {
-        const field = err.loc && err.loc.length > 1 ? err.loc.slice(1).join('.') : '';
-        return `${field ? `Field '${field}': ` : ''}${err.msg || 'Invalid value'}`;
-      }).join('; ');
-    }
-    if (typeof detail === 'object') return JSON.stringify(detail);
-    return String(detail);
-  };
-
   const fetchEvidence = async () => {
     try {
       setLoading(true);
-      const { accessToken } = getStoredTokens();
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
-      const res = await fetch(`${API_BASE_URL}/evidence?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setEvidenceList(data.results || []);
-        setError(null);
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(getErrorMessage(data, 'Failed to fetch evidence'));
-      }
+      const data = await apiRequest<{ results: Evidence[] }>(`/evidence?${params.toString()}`);
+      setEvidenceList(data.results || []);
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch evidence');
     } finally {
@@ -80,14 +55,8 @@ const EvidencePage: React.FC = () => {
   useEffect(() => {
     const fetchCases = async () => {
       try {
-        const { accessToken } = getStoredTokens();
-        const res = await fetch(`${API_BASE_URL}/crime-cases?page_size=100`, {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setCases(data.results || []);
-        }
+        const data = await apiRequest<{ results: any[] }>(`/crime-cases?page_size=100`);
+        setCases(data.results || []);
       } catch (e) {
         console.error(e);
       }
@@ -102,24 +71,22 @@ const EvidencePage: React.FC = () => {
     }
 
     try {
-      const { accessToken } = getStoredTokens();
-      const payload = {
-        ...currentEvidence
-      };
-      const res = await fetch(`${API_BASE_URL}/evidence`, {
+      // Normalize optional fields
+      const payload = { ...currentEvidence };
+      Object.keys(payload).forEach(key => {
+        if (payload[key as keyof typeof payload] === '') {
+          payload[key as keyof typeof payload] = null;
+        }
+      });
+      
+      await apiRequest(`/evidence`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify(payload)
       });
       
-      if (res.ok) {
-        setIsFormOpen(false);
-        setError(null);
-        void fetchEvidence();
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(getErrorMessage(data, 'Failed to create evidence'));
-      }
+      setIsFormOpen(false);
+      setError(null);
+      void fetchEvidence();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create evidence');
     }
@@ -127,23 +94,16 @@ const EvidencePage: React.FC = () => {
 
   const handleUpload = async (id: string, file: File) => {
     try {
-      const { accessToken } = getStoredTokens();
       const formData = new FormData();
       formData.append("file", file);
       
-      const res = await fetch(`${API_BASE_URL}/evidence/${id}/upload`, {
+      await apiRequest(`/evidence/${id}/upload`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` },
         body: formData
       });
       
-      if (res.ok) {
-        setError(null);
-        void openDetail(id);
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(getErrorMessage(data, 'Failed to upload file'));
-      }
+      setError(null);
+      void openDetail(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to upload file');
     }
@@ -151,13 +111,18 @@ const EvidencePage: React.FC = () => {
 
   const downloadFile = async (id: string) => {
     try {
-      const { accessToken } = getStoredTokens();
+      // apiRequest assumes JSON response, so we still use fetch for blob download
+      const { accessToken, API_BASE_URL } = await import('../../services/api').then(m => ({ 
+        accessToken: m.getStoredTokens().accessToken, 
+        API_BASE_URL: m.API_BASE_URL 
+      }));
       const res = await fetch(`${API_BASE_URL}/evidence/${id}/download`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(getErrorMessage(data, 'Failed to download file'));
+        let msg = res.statusText;
+        try { const d = await res.json(); msg = d.detail || d.message || msg; } catch {}
+        throw new Error(msg || 'Failed to download file');
       }
       const blob = await res.blob();
       const disposition = res.headers.get('Content-Disposition') ?? '';
@@ -176,18 +141,9 @@ const EvidencePage: React.FC = () => {
 
   const generateAISummary = async (id: string) => {
     try {
-      const { accessToken } = getStoredTokens();
-      const res = await fetch(`${API_BASE_URL}/evidence/${id}/summary`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      if (res.ok) {
-        setError(null);
-        void openDetail(id);
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(getErrorMessage(data, 'Failed to generate AI summary'));
-      }
+      await apiRequest(`/evidence/${id}/summary`, { method: 'POST' });
+      setError(null);
+      void openDetail(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to generate AI summary');
     }
@@ -200,20 +156,13 @@ const EvidencePage: React.FC = () => {
     }
 
     try {
-      const { accessToken } = getStoredTokens();
-      const res = await fetch(`${API_BASE_URL}/evidence/${evidenceId}/assign?assigned_to=${encodeURIComponent(assigneeId.trim())}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` }
+      await apiRequest(`/evidence/${evidenceId}/assign?assigned_to=${encodeURIComponent(assigneeId.trim())}`, {
+        method: 'POST'
       });
-      if (res.ok) {
-        setAssigneeId('');
-        setError(null);
-        void openDetail(evidenceId);
-        void fetchEvidence();
-      } else {
-        const err = await res.json().catch(() => null);
-        setError(getErrorMessage(err, 'Failed to assign evidence'));
-      }
+      setAssigneeId('');
+      setError(null);
+      void openDetail(evidenceId);
+      void fetchEvidence();
     } catch(e) {
       setError(e instanceof Error ? e.message : 'Failed to assign evidence');
     }
@@ -221,19 +170,12 @@ const EvidencePage: React.FC = () => {
 
   const handleAssignmentAction = async (evidenceId: string, assignmentId: string, action: 'accept' | 'complete' | 'return' | 'reject') => {
     try {
-      const { accessToken } = getStoredTokens();
-      const res = await fetch(`${API_BASE_URL}/evidence/${evidenceId}/assignments/${assignmentId}/${action}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` }
+      await apiRequest(`/evidence/${evidenceId}/assignments/${assignmentId}/${action}`, {
+        method: 'POST'
       });
-      if (res.ok) {
-        setError(null);
-        void openDetail(evidenceId);
-        void fetchEvidence();
-      } else {
-        const err = await res.json().catch(() => null);
-        setError(getErrorMessage(err, 'Failed to update assignment'));
-      }
+      setError(null);
+      void openDetail(evidenceId);
+      void fetchEvidence();
     } catch(e) {
       setError(e instanceof Error ? e.message : 'Failed to update assignment');
     }
@@ -241,19 +183,10 @@ const EvidencePage: React.FC = () => {
 
   const openDetail = async (id: string) => {
     try {
-      const { accessToken } = getStoredTokens();
-      const res = await fetch(`${API_BASE_URL}/evidence/${id}`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setEvidenceDetail(data);
-        setIsDetailOpen(true);
-        setError(null);
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(getErrorMessage(data, 'Failed to open evidence'));
-      }
+      const data = await apiRequest(`/evidence/${id}`);
+      setEvidenceDetail(data);
+      setIsDetailOpen(true);
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to open evidence');
     }

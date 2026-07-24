@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { API_BASE_URL, getStoredTokens } from '../services/api';
+import { apiRequest } from '../services/api';
 import {
   ExportButton,
   ReportCards,
@@ -23,23 +23,7 @@ const buildQuery = (filters: ReportFiltersValue) => {
   return params.toString();
 };
 
-const authedFetch = async (path: string, options: RequestInit = {}) => {
-  const { accessToken } = getStoredTokens();
-  const headers = new Headers(options.headers ?? {});
-  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
-  if (!response.ok) {
-    let message = response.statusText;
-    try {
-      const body = await response.json();
-      message = body?.error?.message ?? body?.detail ?? message;
-    } catch {
-      message = await response.text();
-    }
-    throw new Error(message || 'Request failed');
-  }
-  return response;
-};
+
 
 export const Reports: React.FC = () => {
   const [filters, setFilters] = useState<ReportFiltersValue>({
@@ -63,11 +47,11 @@ export const Reports: React.FC = () => {
     setError(null);
     try {
       const [statsResponse, previewResponse] = await Promise.all([
-        authedFetch('/reports/statistics/summary'),
-        authedFetch(`/reports/${filters.reportType}?${query}`),
+        apiRequest<Record<string, number>>('/reports/statistics/summary'),
+        apiRequest<ReportPreviewData>(`/reports/${filters.reportType}?${query}`),
       ]);
-      setStats(await statsResponse.json());
-      setPreview(await previewResponse.json());
+      setStats(statsResponse);
+      setPreview(previewResponse);
     } catch (err) {
       setPreview(null);
       setError(err instanceof Error ? err.message : 'Failed to load report');
@@ -88,8 +72,15 @@ export const Reports: React.FC = () => {
     setExporting(format);
     setError(null);
     try {
-      await authedFetch(`/reports/${filters.reportType}/generate?export_format=${format}&${query}`, { method: 'POST' });
-      const response = await authedFetch(`/reports/${filters.reportType}/export/${format}?${query}`);
+      await apiRequest(`/reports/${filters.reportType}/generate?export_format=${format}&${query}`, { method: 'POST' });
+      const { accessToken, API_BASE_URL } = await import('../services/api').then(m => ({ 
+        accessToken: m.getStoredTokens().accessToken, 
+        API_BASE_URL: m.API_BASE_URL 
+      }));
+      const response = await fetch(`${API_BASE_URL}/reports/${filters.reportType}/export/${format}?${query}`, {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined
+      });
+      if (!response.ok) throw new Error('Failed to download report');
       const blob = await response.blob();
       const disposition = response.headers.get('Content-Disposition') ?? '';
       const match = disposition.match(/filename="([^"]+)"/);

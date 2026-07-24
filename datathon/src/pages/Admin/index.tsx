@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Download, RefreshCw, Search } from 'lucide-react';
-import { API_BASE_URL, getStoredTokens } from '../../services/api';
+import { apiRequest } from '../../services/api';
 import {
   AuditTable,
   ConfirmationDialog,
@@ -15,24 +15,7 @@ import {
 
 type Tab = 'users' | 'roles' | 'audit' | 'settings';
 
-const authed = async (path: string, options: RequestInit = {}) => {
-  const { accessToken } = getStoredTokens();
-  const headers = new Headers(options.headers ?? {});
-  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
-  if (options.body) headers.set('Content-Type', 'application/json');
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
-  if (!response.ok) {
-    let message = response.statusText;
-    try {
-      const body = await response.json();
-      message = body?.error?.message ?? body?.detail ?? message;
-    } catch {
-      message = await response.text();
-    }
-    throw new Error(message);
-  }
-  return response;
-};
+
 
 const emptyUser: Partial<AdminUser> & { password?: string } = { is_active: true };
 
@@ -57,17 +40,17 @@ export const Admin: React.FC = () => {
     setError(null);
     try {
       const [usersResponse, rolesResponse, permissionsResponse, auditResponse, settingsResponse] = await Promise.all([
-        authed(`/admin/users?${userQuery}`),
-        authed('/admin/roles'),
-        authed('/admin/permissions'),
-        authed('/admin/audit-logs?page_size=50'),
-        authed('/admin/settings'),
+        apiRequest<{ results: AdminUser[] }>(`/admin/users?${userQuery}`),
+        apiRequest<{ results: AdminRole[] }>('/admin/roles'),
+        apiRequest<{ permissions: string[] }>('/admin/permissions'),
+        apiRequest<{ results: AuditRow[] }>('/admin/audit-logs?page_size=50'),
+        apiRequest<Record<string, any>>('/admin/settings'),
       ]);
-      setUsers((await usersResponse.json()).results);
-      setRoles((await rolesResponse.json()).results);
-      setPermissions((await permissionsResponse.json()).permissions);
-      setAuditRows((await auditResponse.json()).results);
-      setSettings(await settingsResponse.json());
+      setUsers(usersResponse.results);
+      setRoles(rolesResponse.results);
+      setPermissions(permissionsResponse.permissions);
+      setAuditRows(auditResponse.results);
+      setSettings(settingsResponse);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load admin data');
     } finally {
@@ -83,11 +66,16 @@ export const Admin: React.FC = () => {
     setError(null);
     try {
       const payload = { ...userDraft };
+      Object.keys(payload).forEach(key => {
+        if (payload[key as keyof typeof payload] === '') {
+          payload[key as keyof typeof payload] = null;
+        }
+      });
       if (!payload.role_id) throw new Error('Select a role');
       if (payload.id) {
-        await authed(`/admin/users/${payload.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        await apiRequest(`/admin/users/${payload.id}`, { method: 'PUT', body: JSON.stringify(payload) });
       } else {
-        await authed('/admin/users', { method: 'POST', body: JSON.stringify(payload) });
+        await apiRequest('/admin/users', { method: 'POST', body: JSON.stringify(payload) });
       }
       setUserDraft(emptyUser);
       setMessage('User saved');
@@ -98,14 +86,14 @@ export const Admin: React.FC = () => {
   };
 
   const toggleUser = async (user: AdminUser) => {
-    await authed(`/admin/users/${user.id}/${user.is_active ? 'deactivate' : 'activate'}`, { method: 'POST' });
+    await apiRequest(`/admin/users/${user.id}/${user.is_active ? 'deactivate' : 'activate'}`, { method: 'POST' });
     setMessage(user.is_active ? 'User deactivated' : 'User activated');
     await loadAll();
   };
 
   const deleteUser = async () => {
     if (!confirmUser) return;
-    await authed(`/admin/users/${confirmUser.id}`, { method: 'DELETE' });
+    await apiRequest(`/admin/users/${confirmUser.id}`, { method: 'DELETE' });
     setConfirmUser(null);
     setMessage('User soft deleted');
     await loadAll();
@@ -113,7 +101,7 @@ export const Admin: React.FC = () => {
 
   const saveRole = async (role: AdminRole) => {
     try {
-      await authed(`/admin/roles/${role.id}`, { method: 'PUT', body: JSON.stringify(role) });
+      await apiRequest(`/admin/roles/${role.id}`, { method: 'PUT', body: JSON.stringify(role) });
       setMessage('Role permissions saved');
       await loadAll();
     } catch (err) {
@@ -123,8 +111,8 @@ export const Admin: React.FC = () => {
 
   const saveSettings = async () => {
     try {
-      const response = await authed('/admin/settings', { method: 'PUT', body: JSON.stringify(settings) });
-      setSettings(await response.json());
+      const response = await apiRequest<Record<string, any>>('/admin/settings', { method: 'PUT', body: JSON.stringify(settings) });
+      setSettings(response);
       setMessage('Settings saved');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
@@ -132,14 +120,29 @@ export const Admin: React.FC = () => {
   };
 
   const exportAudit = async () => {
-    const response = await authed('/admin/audit-logs/export');
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'saksha_audit_logs.csv';
-    anchor.click();
-    URL.revokeObjectURL(url);
+    try {
+      const { accessToken, API_BASE_URL } = await import('../../services/api').then(m => ({ 
+        accessToken: m.getStoredTokens().accessToken, 
+        API_BASE_URL: m.API_BASE_URL 
+      }));
+      const response = await fetch(`${API_BASE_URL}/admin/audit-logs/export`, {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined
+      });
+      if (!response.ok) {
+        let msg = response.statusText;
+        try { const d = await response.json(); msg = d.detail || d.message || msg; } catch {}
+        throw new Error(msg || 'Failed to export audit logs');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'saksha_audit_logs.csv';
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to export audit logs');
+    }
   };
 
   return (
