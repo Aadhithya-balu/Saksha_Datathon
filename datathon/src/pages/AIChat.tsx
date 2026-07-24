@@ -602,7 +602,7 @@ export const AIChat: React.FC = () => {
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask SAKSHA AI to analyze crime files, query offender connections..."
-                className="flex-grow bg-transparent outline-none border-none text-[var(--text-primary)] text-[11px] font-mono resize-none max-h-24 py-1.5 placeholder-slate-600 custom-scrollbar"
+                className="flex-grow bg-transparent outline-none border-none text-[var(--text-primary)] text-[11px] font-mono resize-none max-h-24 py-1.5 placeholder:text-[var(--text-muted)] custom-scrollbar"
                 rows={1}
               />
 
