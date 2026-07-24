@@ -9,6 +9,7 @@ import ForecastChart from '../components/charts/ForecastChart';
 import { useAuthStore } from '../store/authStore';
 import { useAuditStore } from '../store/auditStore';
 import { downloadSecureDossier } from '../utils/downloader';
+import { ExportMenu } from '../components/reports';
 import {
   getAnomalies,
   getCategoryBreakdown,
@@ -211,6 +212,29 @@ export const Overview: React.FC = () => {
     setEndDate('');
   };
 
+  const handleExportOverview = (format: 'pdf' | 'docx' | 'txt' | 'csv') => {
+    const officerName = user?.name || 'Inspector System';
+    const badgeId = user?.badgeId || 'SCRB-7740';
+    
+    addLog(
+      officerName,
+      badgeId,
+      'EXPORT',
+      `Exported Overview Telemetry Dossier in ${format.toUpperCase()}`
+    );
+
+    downloadSecureDossier('General Dashboard Telemetry', {
+      totalCrimeCases: summary ? summary.total_crimes : 11,
+      openCases: summary ? summary.open_crimes : 11,
+      totalRegisteredFirs: summary ? summary.total_firs : 11,
+      totalTrackedOffenders: summary ? summary.total_criminals : 5,
+      caseResolutionRate: summary ? `${summary.resolution_rate_percent}%` : '0%',
+      activeHotspotsCount: hotspots.length > 0 ? hotspots.length : 3,
+      onDutyOfficers: officerStats ? officerStats.on_duty : 2,
+      threatLevel: riskPrediction ? riskPrediction.threat_level : 'Medium'
+    }, `CONFIDENTIAL-REPORT-${badgeId}`, format);
+  };
+
   const handleQuickAction = (actionName: string) => {
     const officerName = user?.name || 'Inspector System';
     const badgeId = user?.badgeId || 'SCRB-7740';
@@ -262,14 +286,14 @@ export const Overview: React.FC = () => {
 
       case 'Generate Report':
         downloadSecureDossier('General Dashboard Telemetry', {
-          totalCrimes: '12,543 (▲ 8.6% vs Apr 2024)',
-          solvedCrimes: '7,892 (▲ 12.4% vs Apr 2024)',
-          activeCases: '4,651 (▼ 5.3% vs Apr 2024)',
-          crimeHotspots: '32 Active Nodes',
-          highRiskAreas: '17 Monitored Districts',
-          missingPersons: '287 Active Cases',
-          repeatOffenders: '153 Under Surveillance',
-          topPredictiveSector: 'Whitefield (91% threat score)'
+          totalCrimeCases: summary ? summary.total_crimes : 11,
+          openCases: summary ? summary.open_crimes : 11,
+          totalRegisteredFirs: summary ? summary.total_firs : 11,
+          totalTrackedOffenders: summary ? summary.total_criminals : 5,
+          caseResolutionRate: summary ? `${summary.resolution_rate_percent}%` : '0%',
+          activeHotspotsCount: hotspots.length > 0 ? hotspots.length : 3,
+          onDutyOfficers: officerStats ? officerStats.on_duty : 2,
+          threatLevel: riskPrediction ? riskPrediction.threat_level : 'Medium'
         }, `CONFIDENTIAL-REPORT-${badgeId}`);
         break;
 
@@ -419,6 +443,10 @@ export const Overview: React.FC = () => {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
+
+          <div className="mt-2.5">
+            <ExportMenu onExport={(format) => handleExportOverview(format)} />
+          </div>
 
           {user && (
             <div className="flex items-center gap-2 pl-3 border-l border-border-color select-none">
