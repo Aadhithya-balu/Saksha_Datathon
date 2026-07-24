@@ -67,6 +67,29 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
   const [currentGraphData, setCurrentGraphData] = useState(resolvedGraphData);
   const [hasError, setHasError] = useState(false);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const { width, height } = entry.contentRect;
+        setDimensions({
+          width: width || 600,
+          height: height || 400
+        });
+      }
+    });
+    
+    resizeObserver.observe(containerRef.current);
+    
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     setCurrentGraphData(resolvedGraphData);
   }, [resolvedGraphData]);
@@ -164,7 +187,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
       </div>
 
       {/* GRAPH VIEWPORT */}
-      <div className="flex-1 w-full relative">
+      <div ref={containerRef} className="flex-1 w-full relative">
         {hasError ? (
           <GraphFallback onNodeSelect={onNodeSelect} />
         ) : (
@@ -172,6 +195,8 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
             <ForceGraph3D
               ref={fgRef}
               graphData={currentGraphData}
+              width={dimensions.width}
+              height={dimensions.height}
               backgroundColor="#080E1B"
               showNavInfo={false}
               nodeLabel="name"

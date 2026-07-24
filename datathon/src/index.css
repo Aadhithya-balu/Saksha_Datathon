@@ -279,15 +279,75 @@ html {
 .text-3xl { font-size: 2.1rem !important; }
 
 /* Fix custom colors in text labels to use theme variables */
-.text-\[\#6A7A96\] {
+.text-\[\#6A7A96\],
+.text-\[\#6a7a96\] {
   color: var(--muted-text) !important;
 }
-.text-\[\#A8B4CC\] {
+.text-\[\#A8B4CC\],
+.text-\[\#a8b4cc\] {
   color: var(--secondary-text) !important;
 }
-.text-\[\#E8EDF5\] {
+.text-\[\#E8EDF5\],
+.text-\[\#e8edf5\] {
   color: var(--primary-text) !important;
 }
+
+/* Light mode overrides for hardcoded backgrounds, borders, and colors */
+[data-theme="light"] .bg-\[\#060b13\],
+[data-theme="light"] .bg-\[\#060B13\],
+[data-theme="light"] .bg-\[\#080E1B\],
+[data-theme="light"] .bg-\[\#080e1b\] {
+  background-color: var(--primary-bg) !important;
+}
+[data-theme="light"] .bg-\[\#0a1220\],
+[data-theme="light"] .bg-\[\#0A1220\],
+[data-theme="light"] .bg-\[\#0a1220\]\/45,
+[data-theme="light"] .bg-\[\#0A1220\]\/45,
+[data-theme="light"] .bg-\[\#0a1220\]\/80,
+[data-theme="light"] .bg-\[\#0A1220\]\/80 {
+  background-color: var(--secondary-bg) !important;
+}
+[data-theme="light"] .bg-slate-950,
+[data-theme="light"] .bg-slate-950\/20,
+[data-theme="light"] .bg-slate-950\/40,
+[data-theme="light"] .bg-slate-950\/70 {
+  background-color: var(--secondary-bg) !important;
+  opacity: 1 !important;
+}
+[data-theme="light"] .bg-slate-900 {
+  background-color: var(--primary-bg) !important;
+}
+[data-theme="light"] .bg-\[\#111d35\]\/40,
+[data-theme="light"] .bg-\[\#111D35\]\/40,
+[data-theme="light"] .bg-\[\#111d35\]\/30,
+[data-theme="light"] .bg-\[\#111D35\]\/30,
+[data-theme="light"] .bg-\[\#111D35\],
+[data-theme="light"] .bg-\[\#111d35\] {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+[data-theme="light"] .border-slate-900,
+[data-theme="light"] .border-slate-800,
+[data-theme="light"] .border-slate-800\/40,
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/10 {
+  border-color: var(--border-color) !important;
+}
+[data-theme="light"] .text-slate-500,
+[data-theme="light"] .text-slate-600 {
+  color: var(--muted-text) !important;
+}
+
+/* Height responsiveness override on mobile screens */
+@media (max-width: 1023px) {
+  .h-\[80vh\],
+  .h-\[84vh\],
+  .h-\[85vh\],
+  .h-\[90vh\] {
+    height: auto !important;
+    min-height: 80vh !important;
+  }
+}
+
 
 /* Dynamic shifting background mesh for Login Page */
 @keyframes meshShift {

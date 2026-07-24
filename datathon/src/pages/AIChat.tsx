@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useAuditStore } from '../store/auditStore';
-import { chatQuery, type ChatQueryResponse } from '../services/api';
+import { chatQuery, type ChatQueryResponse, type ChatCitation } from '../services/api';
+import { MarkdownRenderer } from '../components/chat/MarkdownRenderer';
+import { CitationBadge } from '../components/chat/CitationBadge';
 import { 
   Send, Trash2, Copy, Paperclip, Sparkles, 
   MessageSquare, Plus, FileText, Check, ShieldAlert,
@@ -14,6 +16,7 @@ interface Message {
   text: string;
   timestamp: Date;
   sources?: string[];
+  citations?: ChatCitation[];
 }
 
 interface ChatSession {
@@ -113,7 +116,8 @@ export const AIChat: React.FC = () => {
         sender: 'ai',
         text: result.answer,
         timestamp: new Date(),
-        sources: result.sources || []
+        sources: result.sources || [],
+        citations: result.citations || []
       };
 
       setSessions(prev => prev.map(s => {
@@ -327,26 +331,34 @@ export const AIChat: React.FC = () => {
                     }`}>
                       
                       {/* Text details / Markdown-like layout */}
-                      <div className="whitespace-pre-wrap">{msg.text}</div>
+                      {isUser ? (
+                        <div className="whitespace-pre-wrap">{msg.text}</div>
+                      ) : (
+                        <MarkdownRenderer content={msg.text} />
+                      )}
 
                       {/* AI Response References / Source Cards */}
-                      {msg.sources && msg.sources.length > 0 && (
-                        <div className="mt-4 pt-3 border-t border-slate-900 select-none">
-                          <span className="text-[8.5px] font-bold text-[#0E9E78] uppercase tracking-widest block mb-2">
-                            Intelligence References (Sources)
-                          </span>
-                          <div className="flex flex-wrap gap-2">
-                            {msg.sources.map((src, sIdx) => (
-                              <div 
-                                key={sIdx}
-                                className="px-2.5 py-1 bg-slate-950/60 border border-slate-900 rounded text-[8px] text-[#A8B4CC] flex items-center gap-1 font-mono hover:border-slate-800 transition-colors"
-                              >
-                                <FileText className="w-3 h-3 text-[#0E9E78]" />
-                                <span>{src}</span>
-                              </div>
-                            ))}
+                      {!isUser && msg.citations && msg.citations.length > 0 ? (
+                        <CitationBadge citations={msg.citations} />
+                      ) : (
+                        msg.sources && msg.sources.length > 0 && (
+                          <div className="mt-4 pt-3 border-t border-slate-900 select-none">
+                            <span className="text-[8.5px] font-bold text-[#0E9E78] uppercase tracking-widest block mb-2">
+                              Intelligence References (Sources)
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              {msg.sources.map((src, sIdx) => (
+                                <div 
+                                  key={sIdx}
+                                  className="px-2.5 py-1 bg-slate-950/60 border border-slate-900 rounded text-[8px] text-[#A8B4CC] flex items-center gap-1 font-mono hover:border-slate-800 transition-colors"
+                                >
+                                  <FileText className="w-3 h-3 text-[#0E9E78]" />
+                                  <span>{src}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )
                       )}
 
                       {/* Action buttons (Only for AI bubble) */}

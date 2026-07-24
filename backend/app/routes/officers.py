@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, require_roles
+from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, ROLE_POLICYMAKER, require_roles
 from app.database.postgres import get_db
 from app.models.fir import FIR
 from app.models.officer import Officer
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/officers", tags=["Officers"])
 officer_crud = BaseCRUDService(Officer)
 
 
-@router.get("", response_model=PaginatedResponse[OfficerOut], dependencies=[Depends(require_roles(ROLE_ADMIN))])
+@router.get("", response_model=PaginatedResponse[OfficerOut], dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, ROLE_POLICYMAKER))])
 def list_officers(
     search: str | None = None,
     district: str | None = None,
@@ -58,12 +58,12 @@ def list_officers(
     )
 
 
-@router.get("/{officer_id}", response_model=OfficerOut, dependencies=[Depends(require_roles(ROLE_ADMIN))])
+@router.get("/{officer_id}", response_model=OfficerOut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, ROLE_POLICYMAKER))])
 def get_officer(officer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return officer_crud.get(db, officer_id)
 
 
-@router.get("/{officer_id}/performance", response_model=OfficerPerformance, dependencies=[Depends(require_roles(ROLE_ADMIN))])
+@router.get("/{officer_id}/performance", response_model=OfficerPerformance, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, ROLE_POLICYMAKER))])
 def officer_performance(officer_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     officer_crud.get(db, officer_id)
     firs = db.query(FIR).filter(FIR.investigating_officer_id == officer_id).all()

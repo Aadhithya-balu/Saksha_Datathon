@@ -148,20 +148,32 @@ export interface AnomaliesResponse {
   anomalies: AnomalyRecord[];
 }
 
+export type NetworkNodeCategory = 'suspect' | 'offender' | 'case' | 'location' | 'victim' | 'gang' | 'vehicle' | 'weapon';
+
 export interface NetworkNode {
   id: string;
   name: string;
-  category: 'suspect' | 'offender' | 'location' | 'victim';
+  category: NetworkNodeCategory;
   riskScore: number;
   details: string;
   casesCount: number;
-  phone?: string;
+  phone?: string | null;
+  gangAffiliation?: string | null;
+  status?: string | null;
+  district?: string | null;
+  date?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  extra?: Record<string, any>;
 }
 
 export interface NetworkEdge {
   source: string;
   target: string;
   relationship: string;
+  weight?: number;
+  first_seen?: string | null;
+  last_seen?: string | null;
 }
 
 export interface NetworkResponse {
@@ -169,11 +181,89 @@ export interface NetworkResponse {
   edges: NetworkEdge[];
 }
 
+export interface NetworkGraphResponse {
+  nodes: NetworkNode[];
+  edges: NetworkEdge[];
+  total_nodes: number;
+  total_edges: number;
+  is_neo4j_backed: boolean;
+}
+
+export interface GangHierarchyMember {
+  id: string;
+  name: string;
+  role: string;
+  rank_level: number;
+  riskScore: number;
+  status: string;
+  casesCount: number;
+}
+
+export interface GangNetworkSummary {
+  gang_id: string;
+  name: string;
+  leader_name: string;
+  leader_id?: string | null;
+  active_members: number;
+  risk_level: string;
+  territory: string;
+  primary_racket: string;
+  members: GangHierarchyMember[];
+  relationships: NetworkEdge[];
+}
+
+export interface ShortestPathResult {
+  found: boolean;
+  distance: number;
+  path_nodes: NetworkNode[];
+  path_edges: NetworkEdge[];
+  explanation: string;
+}
+
+export interface CentralityMetric {
+  node_id: string;
+  node_name: string;
+  category: string;
+  degree_centrality: number;
+  betweenness_score: number;
+  is_bridge_node: boolean;
+  riskScore: number;
+}
+
+export interface LinkAnalysisData {
+  graph_density: number;
+  total_clusters: number;
+  top_broker_nodes: CentralityMetric[];
+  high_impact_nodes: CentralityMetric[];
+  bridge_nodes: CentralityMetric[];
+}
+
+export interface AIGraphInsightData {
+  id: string;
+  insight_type: string;
+  title: string;
+  description: string;
+  threat_level: string;
+  target_node_ids: string[];
+  recommendation: string;
+  timestamp: string;
+}
+
+export interface ChatCitation {
+  source: string;
+  title: string;
+  score: number;
+}
+
 export interface ChatQueryResponse {
   answer: string;
   data: Array<Record<string, unknown>>;
   sources: string[];
   chart_suggestion: string | null;
+  citations?: ChatCitation[];
+  summary?: string;
+  entities?: string[];
+  classification?: string;
 }
 
 export interface ReportRecord {
@@ -422,6 +512,37 @@ export async function getAnomalies() {
 
 export async function getNetworkPerson(personId: string, depth = 1) {
   return apiRequest<NetworkResponse>(`/ai/network/person/${encodeURIComponent(personId)}${buildQueryString({ depth })}`);
+}
+
+export async function getFullNetworkGraph(categoryFilter?: string, minRisk?: number) {
+  return apiRequest<NetworkGraphResponse>(`/network/graph${buildQueryString({ category_filter: categoryFilter, min_risk: minRisk })}`);
+}
+
+export async function getGangNetworks() {
+  return apiRequest<GangNetworkSummary[]>('/network/gangs');
+}
+
+export async function calculateShortestPath(sourceId: string, targetId: string, maxDepth = 5) {
+  return apiRequest<ShortestPathResult>('/network/shortest-path', {
+    method: 'POST',
+    body: JSON.stringify({ source_id: sourceId, target_id: targetId, max_depth: maxDepth }),
+  });
+}
+
+export async function getLinkAnalysis() {
+  return apiRequest<LinkAnalysisData>('/network/link-analysis', {
+    method: 'POST',
+  });
+}
+
+export async function getAIGraphInsights() {
+  return apiRequest<AIGraphInsightData[]>('/network/insights');
+}
+
+export async function triggerNeo4jSync() {
+  return apiRequest<{ status: string; message: string; neo4j_active: boolean }>('/network/sync-neo4j', {
+    method: 'POST',
+  });
 }
 
 export async function chatQuery(message: string, sessionId?: string) {

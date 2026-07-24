@@ -383,19 +383,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div
       className={`h-screen flex flex-col justify-between bg-secondary-bg border-r border-border-color transition-all duration-300 z-40 select-none ${
-        collapsed ? 'w-16' : 'w-64'
-      }`}
+        collapsed 
+          ? 'w-16 max-md:-translate-x-full max-md:w-0 max-md:border-none' 
+          : 'w-64 max-md:w-64 max-md:translate-x-0'
+      } max-md:fixed max-md:top-0 max-md:bottom-0 max-md:left-0`}
     >
       {/* Top Banner logo */}
-      <div className="flex items-center justify-between p-4 border-b border-border-color">
+      <div className={`flex border-b border-border-color p-4 ${collapsed ? 'flex-col items-center gap-2' : 'items-center justify-between'}`}>
         <div className="flex items-center gap-2.5 overflow-hidden">
           <div className="p-1 bg-[#1E6FD9]/15 rounded text-[#1E6FD9] shrink-0">
             <ShieldCheck className="w-6 h-6" />
           </div>
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="font-mono font-bold text-xs uppercase tracking-wider text-[#E8EDF5]">KSP INTEL</span>
-              <span className="text-[8px] font-mono text-[#0E9E78] uppercase font-semibold">UNIT SECURE</span>
+              <span className="font-mono font-bold text-sm uppercase tracking-wider text-[#E8EDF5]">SAKSHA</span>
+              <span className="text-[8px] font-mono text-[#0E9E78] uppercase font-semibold">KSP INTEL SECURE</span>
             </div>
           )}
         </div>
@@ -408,7 +410,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Nav List */}
-      <div className="flex-1 py-6 flex flex-col gap-1.5 px-3 overflow-y-auto">
+      <div className={`flex-1 py-6 flex flex-col gap-1.5 overflow-y-auto ${collapsed ? 'px-2' : 'px-3'}`}>
         {navItems.map((item) => {
           const isAllowed = checkPermission(item.path);
           const isActive = activeTab === item.id;
@@ -419,8 +421,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`relative flex items-center gap-3.5 p-3 rounded-btn text-xs font-mono font-medium transition-all duration-200 group cursor-pointer ${
+              onClick={() => {
+                setActiveTab(item.id);
+                // Close sidebar on mobile after selecting a tab
+                if (window.innerWidth < 768) {
+                  setCollapsed(true);
+                }
+              }}
+              className={`relative flex items-center rounded-btn text-xs font-mono font-medium transition-all duration-200 group cursor-pointer ${
+                collapsed ? 'justify-center p-2.5 px-0' : 'gap-3.5 p-3'
+              } ${
                 isActive
                   ? 'bg-[#1E6FD9]/10 text-white border border-[#1E6FD9]/20 shadow-glow-blue'
                   : 'text-[#A8B4CC] hover:text-white hover:bg-white/5 border border-transparent hover:translate-y-[-2px]'
@@ -442,7 +452,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Footer Profile info */}
       {user && (
-        <div className="p-3 border-t border-border-color bg-slate-950/20 flex flex-col gap-3">
+        <div className={`p-3 border-t border-border-color bg-slate-950/20 flex flex-col gap-3 ${collapsed ? 'items-center' : ''}`}>
           <div className="flex items-center gap-2.5 overflow-hidden">
             <div className="w-8 h-8 rounded-full bg-[#1E6FD9]/15 border border-[#1E6FD9]/30 flex items-center justify-center text-[#1E6FD9] shrink-0 font-bold font-mono text-xs">
               {user.name.split(' ').pop()?.charAt(0) || <User className="w-4 h-4" />}

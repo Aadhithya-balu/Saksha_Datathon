@@ -487,8 +487,12 @@ export const Criminals: React.FC = () => {
                         </span>
                         <div className="mt-2 text-[8px] text-slate-500 uppercase font-bold">Top risk factors:</div>
                         <ul className="list-disc pl-3 text-[9px] text-[#A8B4CC] mt-1 space-y-0.5">
-                          {criminalDetails.ai_risk.top_factors?.map((f: string, i: number) => (
-                            <li key={i}>{f}</li>
+                          {criminalDetails.ai_risk.top_factors?.map((f: any, i: number) => (
+                            <li key={i}>
+                              {typeof f === 'object' && f !== null 
+                                ? `${f.feature || ''} (contribution: ${typeof f.contribution === 'number' ? f.contribution.toFixed(1) : f.contribution})`
+                                : f}
+                            </li>
                           )) || <li>No immediate anomalies flagged</li>}
                         </ul>
                       </div>
@@ -527,9 +531,9 @@ export const Criminals: React.FC = () => {
                       <div className="mt-3">
                         <span className="text-[8px] text-slate-500 uppercase font-bold block">Analysis triggers:</span>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {criminalDetails.ai_repeat.risk_factors?.map((f: string, i: number) => (
+                          {criminalDetails.ai_repeat.risk_factors?.map((f: any, i: number) => (
                             <span key={i} className="text-[8px] bg-slate-900 border border-slate-800 text-slate-400 px-1.5 py-0.5 rounded">
-                              {f}
+                              {typeof f === 'object' && f !== null ? f.feature : f}
                             </span>
                           )) || <span className="text-[8px] text-slate-600 italic">No triggers registered</span>}
                         </div>

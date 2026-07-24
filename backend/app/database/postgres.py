@@ -1,4 +1,9 @@
-﻿"""PostgreSQL connection setup: engine, session factory, and declarative base."""
+# Monkeypatch PostgreSQL UUID and JSONB for SQLite compatibility
+import sqlalchemy.dialects.postgresql as pg
+from sqlalchemy import UUID, JSON
+pg.UUID = UUID
+pg.JSONB = JSON
+
 from collections.abc import Generator
 
 from sqlalchemy import create_engine
