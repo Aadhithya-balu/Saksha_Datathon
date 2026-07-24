@@ -15,7 +15,6 @@ from app.auth.dependencies import get_current_user
 from app.database.postgres import get_db
 from app.models.user import User
 from app.services.investigation_service import get_investigation
-from app.routes.ai_chat import _assistant_response
 
 router = APIRouter(prefix="/investigation", tags=["Investigation"])
 
@@ -192,7 +191,7 @@ def get_investigation_history(
 
 
 @router.post("/chat")
-def investigation_chat(
+async def investigation_chat(
     payload: InvestigationChatRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -206,7 +205,6 @@ def investigation_chat(
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    # Build a contextual message including case details
     case = data.case
     context_message = (
         f"Case {case.case_number} ({case.status}, priority: {case.priority}, "
@@ -216,5 +214,9 @@ def investigation_chat(
         f"User question: {payload.message}"
     )
 
-    return _assistant_response(db, context_message)
+    from app.ai.chat.orchestrator import ChatOrchestrator
+    from app.routes.ai_chat import _build_response
+    orchestrator = ChatOrchestrator()
+    result = orchestrator.process_message_sync(context_message, payload.session_id, db)
+    return _build_response(result)
 

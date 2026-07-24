@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useAuditStore } from '../store/auditStore';
-import { chatQuery, type ChatQueryResponse, type ChatCitation } from '../services/api';
+import { chatQuery, chatQueryStream, type ChatQueryResponse, type ChatCitation } from '../services/api';
 import { MarkdownRenderer } from '../components/chat/MarkdownRenderer';
 import { CitationBadge } from '../components/chat/CitationBadge';
 import { 
   Send, Trash2, Copy, Paperclip, Sparkles, 
   MessageSquare, Plus, FileText, Check, ShieldAlert,
-  ArrowRight, CornerDownLeft, ShieldCheck
+  ArrowRight, CornerDownLeft, ShieldCheck, RefreshCw,
+  Search, Database, Brain, Zap, ChevronRight
 } from 'lucide-react';
 
 interface Message {
@@ -17,6 +18,7 @@ interface Message {
   timestamp: Date;
   sources?: string[];
   citations?: ChatCitation[];
+  followUpSuggestions?: string[];
 }
 
 interface ChatSession {
@@ -24,6 +26,51 @@ interface ChatSession {
   title: string;
   messages: Message[];
 }
+
+const FOLLOW_UP_MAP: Record<string, string[]> = {
+  case_details: [
+    "Show me the FIR linked to this case",
+    "Who are the suspects in this case?",
+    "What is the investigation progress?",
+    "Show related cases"
+  ],
+  fir_lookup: [
+    "Show full FIR details",
+    "Who is the complainant?",
+    "What sections are charged?",
+    "Show linked case details"
+  ],
+  criminal_history: [
+    "Show criminal network connections",
+    "What are their known aliases?",
+    "Find similar offenders",
+    "Assess criminal risk score"
+  ],
+  crime_statistics: [
+    "Show district-wise breakdown",
+    "Show category-wise trends",
+    "Compare with previous period",
+    "Identify crime hotspots"
+  ],
+  hotspot_analysis: [
+    "Predict future hotspots",
+    "Show crime trend forecast",
+    "Compare hotspot districts",
+    "Show related anomalies"
+  ],
+  predictions: [
+    "Show risk assessment details",
+    "Forecast for next 6 months",
+    "Compare risk across districts",
+    "Show hotspot predictions"
+  ],
+  dashboard_analytics: [
+    "Show recent anomalies",
+    "Show offender dossiers",
+    "Show active notifications",
+    "Crime trend analysis"
+  ],
+};
 
 export const AIChat: React.FC = () => {
   const { user } = useAuthStore();
@@ -53,18 +100,18 @@ export const AIChat: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [attachedFile, setAttachedFile] = useState<{ name: string; size: string } | null>(null);
+  const [streamStatus, setStreamStatus] = useState<string>('');
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0];
 
-  // Save sessions to localStorage
   useEffect(() => {
     localStorage.setItem('saksha_chat_sessions', JSON.stringify(sessions));
   }, [sessions]);
 
-  // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeSession?.messages, isLoading]);
@@ -84,11 +131,9 @@ export const AIChat: React.FC = () => {
       timestamp: new Date()
     };
 
-    // Update active session messages
     const updatedSessions = sessions.map(s => {
       if (s.id === activeSessionId) {
         const newMsgs = [...s.messages, userMessage];
-        // Auto update title if it's the first message
         const newTitle = s.messages.length === 0 
           ? (messageText.slice(0, 26) + (messageText.length > 26 ? '...' : '')) 
           : s.title;
@@ -101,36 +146,73 @@ export const AIChat: React.FC = () => {
     setInputMessage('');
     setAttachedFile(null);
     setIsLoading(true);
+    setStreamStatus('Analyzing query intent...');
 
-    // Log the audit event
     if (user) {
       addLog(user.name, user.badgeId, 'REVIEW', `Queried AI Copilot: ${messageText.slice(0, 60)}`);
     }
 
-    try {
-      // Call actual backend chatQuery API
-      const result: ChatQueryResponse = await chatQuery(messageText);
+    const aiMessageId = `msg-${Date.now()}-ai`;
+    let accumulatedAnswer = '';
+    let finalData: any = null;
 
-      const aiMessage: Message = {
-        id: `msg-${Date.now()}-ai`,
-        sender: 'ai',
-        text: result.answer,
-        timestamp: new Date(),
-        sources: result.sources || [],
-        citations: result.citations || []
-      };
+    try {
+      for await (const chunk of chatQueryStream(queryText)) {
+        if (chunk.type === 'status') {
+          setStreamStatus(chunk.content);
+        } else if (chunk.type === 'token') {
+          accumulatedAnswer += chunk.content;
+          setSessions(prev => prev.map(s => {
+            if (s.id === activeSessionId) {
+              const msgs = s.messages.map(m =>
+                m.id === aiMessageId ? { ...m, text: accumulatedAnswer } : m
+              );
+              const exists = msgs.some(m => m.id === aiMessageId);
+              if (!exists) {
+                msgs.push({
+                  id: aiMessageId,
+                  sender: 'ai',
+                  text: accumulatedAnswer,
+                  timestamp: new Date(),
+                });
+              }
+              return { ...s, messages: msgs };
+            }
+            return s;
+          }));
+        } else if (chunk.type === 'final') {
+          finalData = chunk.content;
+        }
+      }
+
+      const classification = finalData?.classification || 'general';
+      const followUps = FOLLOW_UP_MAP[classification] || FOLLOW_UP_MAP['dashboard_analytics'];
 
       setSessions(prev => prev.map(s => {
         if (s.id === activeSessionId) {
-          return { ...s, messages: [...s.messages, aiMessage] };
+          const msgs = s.messages.map(m => {
+            if (m.id === aiMessageId) {
+              return {
+                ...m,
+                text: finalData?.answer || accumulatedAnswer,
+                sources: finalData?.sources || [],
+                citations: finalData?.citations || [],
+                followUpSuggestions: followUps,
+              };
+            }
+            return m;
+          });
+          return { ...s, messages: msgs };
         }
         return s;
       }));
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Chat error:', err);
+      const detail = err?.message || 'Unknown error';
       const errorMessage: Message = {
-        id: `msg-${Date.now()}-ai`,
+        id: aiMessageId,
         sender: 'ai',
-        text: "Error: Failed to obtain response from SAKSHA AI Engine. Please check backend service connectivity.",
+        text: `Error: Failed to obtain response from SAKSHA AI Engine.\n\nDetails: ${detail}\n\nEnsure the backend is running on port 8000 (npm run dev:backend).`,
         timestamp: new Date()
       };
       setSessions(prev => prev.map(s => {
@@ -141,7 +223,24 @@ export const AIChat: React.FC = () => {
       }));
     } finally {
       setIsLoading(false);
+      setStreamStatus('');
     }
+  };
+
+  const handleRetry = async (lastUserMessage: string) => {
+    setSessions(prev => prev.map(s => {
+      if (s.id === activeSessionId) {
+        return { ...s, messages: s.messages.filter(m => m.sender !== 'ai') };
+      }
+      return s;
+    }));
+    await handleSendMessage(lastUserMessage);
+  };
+
+  const handleFollowUpClick = (suggestion: string) => {
+    setInputMessage(suggestion);
+    inputRef.current?.focus();
+    setTimeout(() => handleSendMessage(suggestion), 50);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -191,7 +290,6 @@ export const AIChat: React.FC = () => {
   };
 
   const handleAttachMockFile = () => {
-    // Simulate attaching evidence document
     setAttachedFile({
       name: 'EVIDENCE-RECORD-FIR-789.pdf',
       size: '2.4 MB'
@@ -199,11 +297,21 @@ export const AIChat: React.FC = () => {
   };
 
   const suggestedPrompts = [
-    { text: "Analyze cybercrime trends in Bengaluru Urban", query: "Can you analyze recent cybercrime trends in Bengaluru Urban and identify the key hotspot sectors?" },
-    { text: "Find open cases for Whitefield Station", query: "List all open crime cases currently registered under Whitefield Police Station." },
-    { text: "Identify key suspect network nodes", query: "Can you show me the primary suspect nodes and their connections for Devaraja Police Limit?" },
-    { text: "Summarize anomalies and alerts", query: "Explain the active security anomalies and threat scores detected in the last audit cycle." }
+    { text: "Show case CR-2026-BLR-9629", icon: FileText, category: "Case Lookup", query: "Tell me about case CR-2026-BLR-9629" },
+    { text: "Crime statistics overview", icon: Zap, category: "Analytics", query: "Show me the current crime statistics and trends across Karnataka" },
+    { text: "Find criminal Ramu Swamy", icon: Search, category: "Criminal", query: "Tell me about the criminal Ramu Swamy and his network" },
+    { text: "Show FIR 2026/001", icon: ShieldAlert, category: "FIR", query: "Show me FIR 2026/001 details and linked suspects" },
+    { text: "Identify crime hotspots", icon: Database, category: "Hotspots", query: "What are the current crime hotspots in Karnataka?" },
+    { text: "Predict district risk", icon: Brain, category: "Predictions", query: "What is the risk assessment for Bengaluru Urban district?" },
   ];
+
+  const getStepIcon = (status: string) => {
+    if (status.includes('intent') || status.includes('Analyzing')) return <Search className="w-3 h-3" />;
+    if (status.includes('Querying') || status.includes('backend')) return <Database className="w-3 h-3" />;
+    if (status.includes('Generating') || status.includes('response')) return <Brain className="w-3 h-3" />;
+    if (status.includes('Intent:')) return <Zap className="w-3 h-3" />;
+    return <ChevronRight className="w-3 h-3" />;
+  };
 
   return (
     <div className="h-[80vh] flex border border-border-color rounded-card bg-[#0a1220]/45 overflow-hidden font-sans">
@@ -212,7 +320,6 @@ export const AIChat: React.FC = () => {
       <div className="w-64 border-r border-border-color flex flex-col justify-between bg-slate-950/40 select-none">
         <div className="p-4 flex flex-col gap-3.5 overflow-hidden flex-grow">
           
-          {/* New Chat Button */}
           <button 
             onClick={handleCreateNewChat}
             className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#1E6FD9] hover:bg-[#1E6FD9]/85 text-white font-mono text-[10.5px] font-bold uppercase rounded-btn transition-colors cursor-pointer"
@@ -221,13 +328,13 @@ export const AIChat: React.FC = () => {
             <span>New Investigation</span>
           </button>
 
-          {/* Session List */}
           <div className="flex-grow overflow-y-auto flex flex-col gap-1.5 custom-scrollbar pr-1">
             <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest block mb-1">
               Active Briefing Files
             </span>
             {sessions.map(s => {
               const isActive = s.id === activeSessionId;
+              const msgCount = s.messages.length;
               return (
                 <div 
                   key={s.id}
@@ -240,7 +347,10 @@ export const AIChat: React.FC = () => {
                 >
                   <div className="flex items-center gap-2 truncate">
                     <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{s.title}</span>
+                    <div className="flex flex-col truncate">
+                      <span className="truncate">{s.title}</span>
+                      <span className="text-[8px] text-slate-600">{msgCount} message{msgCount !== 1 ? 's' : ''}</span>
+                    </div>
                   </div>
                   <button 
                     onClick={(e) => handleDeleteSession(s.id, e)}
@@ -255,7 +365,6 @@ export const AIChat: React.FC = () => {
           </div>
         </div>
 
-        {/* Clear All Bottom bar */}
         <div className="p-3 border-t border-border-color flex justify-center bg-slate-950/20">
           <button 
             onClick={handleClearAllChats}
@@ -270,12 +379,10 @@ export const AIChat: React.FC = () => {
       {/* 2. MAIN CHAT WORKSPACE */}
       <div className="flex-1 flex flex-col justify-between bg-transparent overflow-hidden">
         
-        {/* Chat Feed viewport */}
         <div className="flex-grow overflow-y-auto p-5 space-y-5 custom-scrollbar">
           {activeSession.messages.length === 0 ? (
             <div className="h-full flex flex-col justify-center items-center max-w-2xl mx-auto space-y-6 select-none pt-8">
               
-              {/* Logo / Copilot Emblem */}
               <div className="w-16 h-16 rounded-2xl bg-[#1E6FD9]/15 border border-[#1E6FD9]/30 flex items-center justify-center text-[#1E6FD9] shadow-glow-blue animate-pulse">
                 <Sparkles className="w-9 h-9" />
               </div>
@@ -287,32 +394,43 @@ export const AIChat: React.FC = () => {
                 <p className="text-[11px] font-mono text-[#6A7A96] mt-1.5 uppercase tracking-widest">
                   Secure Law Enforcement Intelligence Assistant
                 </p>
+                <p className="text-[9px] font-mono text-slate-600 mt-3 max-w-md leading-relaxed">
+                  Ask about cases, criminals, FIRs, crime statistics, hotspots, predictions, or network analysis. 
+                  Data is sourced directly from the Saksha database.
+                </p>
               </div>
 
-              {/* Grid of Suggested Prompts */}
-              <div className="grid grid-cols-2 gap-3.5 w-full mt-4">
-                {suggestedPrompts.map((p, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      setInputMessage(p.query);
-                      inputRef.current?.focus();
-                    }}
-                    className="p-3.5 bg-slate-950/40 border border-slate-900 rounded-card text-left text-[11px] text-[#A8B4CC] hover:text-white hover:border-[#1E6FD9]/45 hover:bg-slate-900/20 transition-all flex flex-col justify-between group cursor-pointer h-24"
-                  >
-                    <span className="font-bold text-white mb-2">{p.text}</span>
-                    <span className="flex items-center justify-between w-full text-[9.5px] text-slate-500 font-mono">
-                      Query template
-                      <ArrowRight className="w-3.5 h-3.5 text-slate-600 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </button>
-                ))}
+              <div className="grid grid-cols-3 gap-3 w-full mt-4">
+                {suggestedPrompts.map((p, idx) => {
+                  const Icon = p.icon;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => handleSendMessage(p.query)}
+                      disabled={isLoading}
+                      className="p-3 bg-slate-950/40 border border-slate-900 rounded-card text-left text-[10px] text-[#A8B4CC] hover:text-white hover:border-[#1E6FD9]/45 hover:bg-slate-900/20 transition-all flex flex-col justify-between group cursor-pointer h-24 disabled:opacity-50"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <Icon className="w-3.5 h-3.5 text-[#1E6FD9]" />
+                        <span className="text-[8px] text-slate-500 uppercase font-bold">{p.category}</span>
+                      </div>
+                      <span className="font-bold text-white text-[11px]">{p.text}</span>
+                      <span className="flex items-center justify-between w-full text-[9px] text-slate-600 font-mono mt-auto">
+                        Run query
+                        <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : (
             <div className="space-y-4 max-w-4xl mx-auto">
-              {activeSession.messages.map((msg) => {
+              {activeSession.messages.map((msg, msgIdx) => {
                 const isUser = msg.sender === 'user';
+                const isLastAIMessage = !isUser && msgIdx === activeSession.messages.length - 1;
+                const lastUserMsg = activeSession.messages.slice(0, msgIdx).reverse().find(m => m.sender === 'user');
+                
                 return (
                   <div 
                     key={msg.id}
@@ -320,7 +438,7 @@ export const AIChat: React.FC = () => {
                   >
                     <div className="flex items-center gap-2 font-mono text-[9px] text-slate-500 select-none">
                       <span>{isUser ? 'INVESTIGATOR' : 'SAKSHA CORE AI'}</span>
-                      <span>•</span>
+                      <span>·</span>
                       <span>{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
 
@@ -330,14 +448,12 @@ export const AIChat: React.FC = () => {
                         : 'bg-[#111D35]/35 border-slate-900 text-[#A8B4CC] shadow-md relative group'
                     }`}>
                       
-                      {/* Text details / Markdown-like layout */}
                       {isUser ? (
                         <div className="whitespace-pre-wrap">{msg.text}</div>
                       ) : (
                         <MarkdownRenderer content={msg.text} />
                       )}
 
-                      {/* AI Response References / Source Cards */}
                       {!isUser && msg.citations && msg.citations.length > 0 ? (
                         <CitationBadge citations={msg.citations} />
                       ) : (
@@ -361,7 +477,6 @@ export const AIChat: React.FC = () => {
                         )
                       )}
 
-                      {/* Action buttons (Only for AI bubble) */}
                       {!isUser && (
                         <button
                           onClick={() => handleCopyText(msg.text, msg.id)}
@@ -372,27 +487,82 @@ export const AIChat: React.FC = () => {
                         </button>
                       )}
                     </div>
+
+                    {!isUser && isLastAIMessage && !isLoading && (
+                      <div className="flex items-center gap-2 mt-1 ml-1">
+                        {lastUserMsg && (
+                          <button
+                            onClick={() => handleRetry(lastUserMsg.text)}
+                            className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-950/50 border border-slate-900 rounded text-[9px] font-mono text-slate-500 hover:text-white hover:border-slate-700 transition-all cursor-pointer"
+                            title="Regenerate response"
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                            <span>Regenerate</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {!isUser && msg.followUpSuggestions && msg.followUpSuggestions.length > 0 && isLastAIMessage && !isLoading && (
+                      <div className="flex flex-wrap gap-2 mt-2 ml-1 max-w-[85%]">
+                        <span className="text-[8px] font-mono text-slate-600 uppercase self-center mr-1">Follow up:</span>
+                        {msg.followUpSuggestions.map((suggestion, sIdx) => (
+                          <button
+                            key={sIdx}
+                            onClick={() => handleFollowUpClick(suggestion)}
+                            disabled={isLoading}
+                            className="px-3 py-1.5 bg-[#1E6FD9]/10 border border-[#1E6FD9]/25 rounded-btn text-[9.5px] font-mono text-[#A8B4CC] hover:text-white hover:border-[#1E6FD9]/50 hover:bg-[#1E6FD9]/15 transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           )}
 
-          {/* Streaming loader */}
           {isLoading && (
             <div className="flex flex-col gap-1.5 items-start max-w-4xl mx-auto">
               <div className="font-mono text-[9px] text-slate-500 uppercase">
-                SAKSHA CORE AI • Querying Models
+                SAKSHA CORE AI
               </div>
-              <div className="p-4 bg-[#111D35]/35 border border-slate-900 rounded-card flex items-center gap-3">
-                <div className="flex space-x-1.5">
-                  <div className="w-2 h-2 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="p-4 bg-[#111D35]/35 border border-slate-900 rounded-card">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex space-x-1.5">
+                    <div className="w-2 h-2 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 bg-[#1E6FD9] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
+                    {getStepIcon(streamStatus)}
+                    <span className="uppercase tracking-widest">
+                      {streamStatus || 'Querying backend services...'}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                  Scanning crime records...
-                </span>
+                <div className="flex flex-wrap gap-3 mt-2">
+                  {['Analyzing', 'Querying', 'Generating'].map((step, idx) => {
+                    const isDone = streamStatus.includes('Generating') || 
+                                   (streamStatus.includes('Retrieved') && idx < 2) ||
+                                   (streamStatus.includes('Intent') && idx === 0);
+                    const isCurrent = (idx === 0 && streamStatus.includes('Analyzing')) ||
+                                     (idx === 1 && (streamStatus.includes('Querying') || streamStatus.includes('Intent') || streamStatus.includes('Retrieved'))) ||
+                                     (idx === 2 && streamStatus.includes('Generating'));
+                    return (
+                      <div key={step} className={`flex items-center gap-1 text-[8px] font-mono uppercase ${
+                        isCurrent ? 'text-[#1E6FD9]' : isDone ? 'text-[#0E9E78]' : 'text-slate-700'
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          isCurrent ? 'bg-[#1E6FD9] animate-pulse' : isDone ? 'bg-[#0E9E78]' : 'bg-slate-700'
+                        }`} />
+                        <span>{step}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -400,11 +570,9 @@ export const AIChat: React.FC = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Chat input bar */}
         <div className="p-4 border-t border-border-color bg-slate-950/20">
           <div className="max-w-4xl mx-auto flex flex-col gap-2 relative">
             
-            {/* Attachment Badge */}
             {attachedFile && (
               <div className="self-start flex items-center gap-1.5 px-2 py-0.5 bg-[#0E9E78]/15 border border-[#0E9E78]/40 text-[#0E9E78] text-[9.5px] font-mono rounded">
                 <Paperclip className="w-3 h-3" />
@@ -413,14 +581,13 @@ export const AIChat: React.FC = () => {
                   onClick={() => setAttachedFile(null)} 
                   className="text-red-400 font-bold ml-1 hover:text-red-500 transition-colors"
                 >
-                  ×
+                  x
                 </button>
               </div>
             )}
 
             <div className="flex items-end gap-2.5 bg-slate-950/70 border border-slate-900 focus-within:border-[#1E6FD9]/45 rounded-card p-2">
               
-              {/* Attach File Button */}
               <button
                 onClick={handleAttachMockFile}
                 className="p-2 text-slate-500 hover:text-[#0E9E78] rounded transition-colors shrink-0 cursor-pointer"
@@ -429,7 +596,6 @@ export const AIChat: React.FC = () => {
                 <Paperclip className="w-4 h-4" />
               </button>
 
-              {/* Text Input area */}
               <textarea
                 ref={inputRef}
                 value={inputMessage}
@@ -440,7 +606,6 @@ export const AIChat: React.FC = () => {
                 rows={1}
               />
 
-              {/* Send Button */}
               <button
                 onClick={() => handleSendMessage()}
                 disabled={isLoading}
