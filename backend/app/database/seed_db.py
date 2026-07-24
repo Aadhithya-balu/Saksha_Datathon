@@ -14,6 +14,7 @@ from app.models.officer import Officer
 from app.models.role import Role
 from app.models.user import User
 from app.models.victim import Victim
+from app.models.chain_of_custody import ChainOfCustody
 
 ROLES = ["admin", "crime_analyst", "investigator", "policymaker"]
 
@@ -330,16 +331,83 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
 
         evidence_exists = db.query(Evidence).filter(Evidence.case_id == crime.id).first()
         if not evidence_exists:
-            db.add(
-                Evidence(
-                    case_id=crime.id,
-                    title=f"Evidence for {case_number}",
-                    evidence_type="digital" if "Cyber" in category_name else "document",
-                    description=f"Primary evidence packet for {case_number}",
-                    created_by=investigator.badge_number if investigator else "SCRB",
-                    status="Pending",
-                )
+            # Determine evidence type and description based on category
+            if "Cyber" in category_name:
+                ev_type = "digital"
+                ev_title = f"Digital Forensics — {case_number}"
+                ev_desc = f"Digital evidence including device images, network logs, and transaction records for {case_number}. Captured during initial response on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+            elif "Narcotics" in category_name or "Smuggling" in category_name:
+                ev_type = "physical"
+                ev_title = f"Narcotics Seizure Kit — {case_number}"
+                ev_desc = f"Physical evidence including seized substances, packaging materials, and transport vehicle documentation for {case_number}. Collected at scene on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+            elif "Theft" in category_name or "Burglar" in category_name:
+                ev_type = "physical"
+                ev_title = f"Burglary Evidence Packet — {case_number}"
+                ev_desc = f"Physical evidence including tool marks, fingerprints, and stolen property inventory for {case_number}. Secured from crime scene on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+            elif "Assault" in category_name:
+                ev_type = "document"
+                ev_title = f"Assault Case Documentation — {case_number}"
+                ev_desc = f"Medical reports, witness statements, and scene photographs for assault case {case_number}. Compiled on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+            elif "Mining" in category_name:
+                ev_type = "document"
+                ev_title = f"Mining Violation Records — {case_number}"
+                ev_desc = f"Satellite imagery, transit manifests, and forged permits for illegal mining case {case_number}. Documented on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+            elif "Domestic" in category_name:
+                ev_type = "document"
+                ev_title = f"DV Case Evidence — {case_number}"
+                ev_desc = f"Medical examination reports, complaint statements, and photographic evidence for {case_number}. Filed on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+            else:
+                ev_type = "document"
+                ev_title = f"Case Evidence — {case_number}"
+                ev_desc = f"Supporting documentation and evidence for {case_number}. Collected on {crime.occurred_at.strftime('%Y-%m-%d') if crime.occurred_at else 'N/A'}."
+
+            ev_status = "Analyzed" if status == "closed" else "Under Analysis" if progress > 30 else "Pending"
+            badge = investigator.badge_number if investigator else "SCRB"
+            officer_name = investigator.name if investigator else "SCRB Analyst"
+
+            evidence = Evidence(
+                case_id=crime.id,
+                title=ev_title,
+                evidence_type=ev_type,
+                description=ev_desc,
+                created_by=officer_name,
+                status=ev_status,
+                storage_path=f"/evidence/{crime.id}/{ev_type}_packet",
             )
+            db.add(evidence)
+            db.flush()
+
+            # Chain of custody: registration
+            db.add(ChainOfCustody(
+                evidence_id=evidence.id,
+                from_user=investigator.user_id if investigator else None,
+                to_user=investigator.user_id if investigator else None,
+                action="Evidence Registered",
+                location=locations[station].address if station in locations else "Unknown",
+                remarks=f"Evidence logged for case {case_number}",
+            ))
+
+            # Chain of custody: analysis started (if evidence is under analysis or beyond)
+            if progress > 30:
+                db.add(ChainOfCustody(
+                    evidence_id=evidence.id,
+                    from_user=investigator.user_id if investigator else None,
+                    to_user=investigator.user_id if investigator else None,
+                    action="Forensic Analysis Initiated",
+                    location="Forensic Lab",
+                    remarks="Evidence submitted for forensic examination",
+                ))
+
+            # Chain of custody: analyzed (if case is closed)
+            if status == "closed":
+                db.add(ChainOfCustody(
+                    evidence_id=evidence.id,
+                    from_user=investigator.user_id if investigator else None,
+                    to_user=investigator.user_id if investigator else None,
+                    action="Analysis Completed",
+                    location="Forensic Lab",
+                    remarks="Forensic analysis complete — results filed with charge sheet",
+                ))
 
 
 def _seed_notifications(db, user_objs):

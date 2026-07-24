@@ -23,6 +23,7 @@ from app.models.officer import Officer
 from app.models.user import User
 from app.models.victim import Victim
 from app.models.investigation_note import InvestigationNote
+from app.models.chain_of_custody import ChainOfCustody
 
 
 
@@ -259,7 +260,7 @@ def _build_timeline(case: CrimeCase, firs: list[FIR], evidence: list[Evidence], 
         events.append(InvestigationTimelineEvent(
             timestamp=ev.created_at.isoformat() if ev.created_at else "",
             event=f"Evidence Collected: {ev.evidence_type}",
-            actor=ev.collected_by,
+            actor=ev.created_by,
             category="evidence",
         ))
 
@@ -400,18 +401,29 @@ def get_investigation(db: Session, case_id: uuid.UUID) -> InvestigationData:
         ))
 
     # ── Evidence list ──
-    evidence_list = [
-        InvestigationEvidence(
+    evidence_list = []
+    for ev in all_evidence:
+        custody_records = (
+            db.query(ChainOfCustody)
+            .filter(ChainOfCustody.evidence_id == ev.id)
+            .order_by(ChainOfCustody.timestamp.asc())
+            .all()
+        )
+        chain_summary = None
+        if custody_records:
+            chain_summary = " → ".join(
+                f"{c.action} ({c.timestamp.strftime('%Y-%m-%d') if c.timestamp else 'N/A'})"
+                for c in custody_records
+            )
+        evidence_list.append(InvestigationEvidence(
             id=str(ev.id),
             evidence_type=ev.evidence_type,
             description=ev.description,
-            file_url=ev.file_url,
-            collected_by=ev.collected_by,
-            chain_of_custody=ev.chain_of_custody,
+            file_url=ev.storage_path,
+            collected_by=ev.created_by,
+            chain_of_custody=chain_summary,
             created_at=ev.created_at.isoformat() if ev.created_at else "",
-        )
-        for ev in all_evidence
-    ]
+        ))
 
     # ── Audit History ──
     audit_logs = (

@@ -982,3 +982,8 @@ connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection re
 2026-07-24 22:14:38.712 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
 2026-07-24 22:14:38.900 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
 2026-07-24 22:55:49.593 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-24 23:05:00.775 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-24 23:05:03.220 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-24 23:05:03.265 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
+2026-07-24 23:05:03.318 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-24 23:06:37.963 | INFO     | app.main:lifespan:73 - Shutdown complete
