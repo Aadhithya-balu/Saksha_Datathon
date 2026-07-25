@@ -113,7 +113,7 @@ def save_upload_file(upload_file: UploadFile, evidence_id: uuid.UUID) -> str:
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to save uploaded file")
             
     return str(file_path)
 

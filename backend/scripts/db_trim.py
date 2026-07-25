@@ -5,16 +5,9 @@ sample of 5 000 CrimeCase rows and cascading to all children.
 Run once:  py -3.12 scripts/db_trim.py
 """
 import os, sys, time, json, csv
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from _db_config import CONN
 import psycopg2
-
-CONN = dict(
-    host='aws-0-ap-northeast-1.pooler.supabase.com',
-    port=6543,
-    dbname='postgres',
-    user='postgres.tqaegfrnnddfqshwdkvh',
-    password='datathon2026',
-    sslmode='require',
-)
 
 BACKUP_DIR = os.path.join(os.path.dirname(__file__), '..', 'backups')
 os.makedirs(BACKUP_DIR, exist_ok=True)

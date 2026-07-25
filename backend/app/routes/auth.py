@@ -1,6 +1,8 @@
 """Authentication routes."""
+import time
+from collections import defaultdict
 from sqlalchemy.exc import SQLAlchemyError
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -15,9 +17,32 @@ from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+# Simple in-memory rate limiter: {ip: [(timestamp, ...)]}
+_login_attempts: dict[str, list[float]] = defaultdict(list)
+_REFRESH_WINDOW = 60  # seconds
+_MAX_LOGIN_ATTEMPTS = 10
+_MAX_REFRESH_ATTEMPTS = 30
+
+
+def _rate_limit(ip: str, max_attempts: int, window: int, store: dict) -> None:
+    if settings.APP_ENV == "test" or settings.DATABASE_URL and settings.DATABASE_URL.startswith("sqlite"):
+        return  # skip rate limiting in test/SQLite mode
+    now = time.time()
+    store[ip] = [t for t in store[ip] if now - t < window]
+    if len(store[ip]) >= max_attempts:
+        retry_after = int(store[ip][0] + window - now) + 1
+        raise AppException(
+            f"Too many requests. Try again in {retry_after}s.",
+            code="RATE_LIMITED",
+            status_code=429,
+        )
+    store[ip].append(now)
+
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(ip, _MAX_LOGIN_ATTEMPTS, _REFRESH_WINDOW, _login_attempts)
     try:
         user = auth_service.authenticate_user(db, payload.username, payload.password)
         tokens = auth_service.issue_tokens(user)
@@ -33,7 +58,9 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
+def refresh(payload: RefreshRequest, request: Request, db: Session = Depends(get_db)):
+    ip = request.client.host if request.client else "unknown"
+    _rate_limit(ip, _MAX_REFRESH_ATTEMPTS, _REFRESH_WINDOW, _login_attempts)
     tokens = auth_service.refresh_access_token(db, payload.refresh_token)
     return TokenResponse(**tokens, expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
 

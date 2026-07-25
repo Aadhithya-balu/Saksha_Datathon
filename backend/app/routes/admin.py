@@ -4,13 +4,14 @@ from __future__ import annotations
 import csv
 import io
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import JSON, Boolean, String, Text, asc, desc, or_
+from sqlalchemy import JSON, Boolean, ForeignKey, String, Text, asc, desc, or_
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -63,7 +64,7 @@ class RolePermission(Base):
     __tablename__ = "role_permissions"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    role_id: Mapped[uuid.UUID] = mapped_column(nullable=False, index=True)
+    role_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE"), nullable=False, index=True)
     permission: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     resource: Mapped[str] = mapped_column(String(100), nullable=False)
     created_at: Mapped[datetime | None] = mapped_column(nullable=True)
@@ -478,7 +479,7 @@ def save_settings(payload: SettingsPayload, request: Request, db: Session = Depe
         row = SystemSetting(key="platform", value=_json.dumps(value))
     else:
         row.value = _json.dumps(value)
-    row.updated_at = datetime.utcnow()
+    row.updated_at = datetime.now(timezone.utc)
     db.add(row)
     audit_service.log_action(db, current_user, "SETTINGS_UPDATE", "SystemSettings", "platform", ip_address=_client_ip(request))
     db.commit()

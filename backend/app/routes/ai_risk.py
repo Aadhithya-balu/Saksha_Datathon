@@ -117,8 +117,8 @@ def get_risk_scores(
             model_version=info.get("version", "rule-based"),
             grid_predictions=results,
         )
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Risk prediction service unavailable.")
 
 
 @router.post("/risk-scores", response_model=RiskScoresResponse, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
@@ -130,8 +130,8 @@ def predict_risk_scores(
     """Compute district risk scores from submitted crime records."""
     try:
         results = predict_risk(payload.records)
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Risk score computation failed. Ensure records contain required fields.")
 
     info = get_model_info()
     return RiskScoresResponse(
@@ -150,8 +150,8 @@ def predict_crime_forecast(
     """Forecast next-month crime counts per district."""
     try:
         results = predict_forecast(payload.records)
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Forecast computation failed. Ensure records contain required fields.")
     return ForecastResponse(
         forecasts=[ForecastItem(**r) for r in results],
         total=len(results),
@@ -162,8 +162,8 @@ def predict_crime_forecast(
 def risk_model_info(current_user: User = Depends(get_current_user)):
     try:
         return get_model_info()
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Risk model info unavailable.")
 
 
 @router.get("/health")
@@ -176,5 +176,5 @@ def risk_health():
             "forecast_model": info.get("forecast_model_loaded"),
             "version": info.get("version"),
         }
-    except Exception as exc:
-        return {"status": "unavailable", "detail": str(exc)}
+    except Exception:
+        return {"status": "unavailable", "detail": "Models not loaded"}

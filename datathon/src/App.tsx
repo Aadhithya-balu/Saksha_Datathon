@@ -13,7 +13,6 @@ import Predictions from './pages/Predictions';
 import Anomalies from './pages/Anomalies';
 import Offenders from './pages/Offenders';
 import Reports from './pages/Reports';
-import Admin from './pages/Admin';
 import AIChat from './pages/AIChat';
 import CrimeCases from './pages/CrimeCases';
 import RoleGuard from './components/layout/RoleGuard';
@@ -28,6 +27,8 @@ import SociologicalPage from './pages/Sociological';
 import StrategicPage from './pages/Strategic';
 import GlobalAIAssistant from './components/ai/GlobalAIAssistant';
 import DocsPage from './pages/Docs';
+import SettingsHelp from './pages/SettingsHelp';
+import Admin from './pages/Admin';
 
 function App() {
   const { isAuthenticated, user, isHydrating, initializeSession } = useAuthStore();
@@ -78,6 +79,7 @@ function App() {
       victims: 'Victims Registry',
       reports: 'Reports Center',
       settings_help: 'Settings',
+      admin: 'Admin Panel',
       ai_chat: 'AI Assistant',
       officers: 'Officer Management',
       evidence: 'Evidence Handling',
@@ -122,15 +124,16 @@ function App() {
       case 'criminals': return <RoleGuard path="/offenders"><Criminals /></RoleGuard>;
       case 'victims': return <RoleGuard path="/offenders"><Victims /></RoleGuard>;
       case 'reports': return <RoleGuard path="/reports"><Reports /></RoleGuard>;
-      case 'settings_help': return <RoleGuard path="/admin"><Admin /></RoleGuard>;
+      case 'settings_help': return <RoleGuard path="/settings"><SettingsHelp /></RoleGuard>;
+      case 'admin': return <RoleGuard path="/admin"><Admin /></RoleGuard>;
       case 'crime_cases': return <RoleGuard path="/crime-cases"><CrimeCases /></RoleGuard>;
       case 'investigation': return <RoleGuard path="/crime-cases"><InvestigationPage /></RoleGuard>;
       case 'ai_chat': return <RoleGuard path="/ai-chat"><AIChat /></RoleGuard>;
       case 'officers': return <RoleGuard path="/officers"><OfficersPage /></RoleGuard>;
       case 'evidence': return <RoleGuard path="/evidence"><EvidencePage /></RoleGuard>;
-      case 'notifications': return <RoleGuard path="/dashboard"><NotificationsPage /></RoleGuard>;
-      case 'sociological': return <RoleGuard path="/dashboard"><SociologicalPage /></RoleGuard>;
-      case 'strategic': return <RoleGuard path="/dashboard"><StrategicPage /></RoleGuard>;
+      case 'notifications': return <RoleGuard path="/notifications"><NotificationsPage /></RoleGuard>;
+      case 'sociological': return <RoleGuard path="/sociological"><SociologicalPage /></RoleGuard>;
+      case 'strategic': return <RoleGuard path="/strategic"><StrategicPage /></RoleGuard>;
       case 'docs': return <DocsPage />;
       default: return <Overview />;
     }

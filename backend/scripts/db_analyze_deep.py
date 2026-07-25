@@ -1,14 +1,8 @@
 """Deep analysis of historical tables for trimming strategy."""
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from _db_config import CONN
 import psycopg2
-
-CONN = dict(
-    host='aws-0-ap-northeast-1.pooler.supabase.com',
-    port=6543,
-    dbname='postgres',
-    user='postgres.tqaegfrnnddfqshwdkvh',
-    password='datathon2026',
-    sslmode='require',
-)
 
 def main():
     conn = psycopg2.connect(**CONN)

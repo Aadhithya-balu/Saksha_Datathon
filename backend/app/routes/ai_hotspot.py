@@ -60,8 +60,8 @@ def hotspot_predict(
 ):
     try:
         results = predict(payload.records)
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Hotspot prediction failed. Ensure records contain required fields.")
     return HotspotPredictResponse(predictions=results, total=len(results))
 
 
@@ -73,8 +73,8 @@ def hotspot_predict_batch(
     """Alias of /predict – accepts larger record batches."""
     try:
         results = predict(payload.records)
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Hotspot prediction failed. Ensure records contain required fields.")
     return HotspotPredictResponse(predictions=results, total=len(results))
 
 
@@ -82,8 +82,8 @@ def hotspot_predict_batch(
 def hotspot_model_info(current_user: User = Depends(get_current_user)):
     try:
         return get_model_info()
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+    except FileNotFoundError:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Hotspot model not available.")
 
 
 @router.get("/health")
@@ -91,5 +91,5 @@ def hotspot_health():
     try:
         info = get_model_info()
         return {"status": "ok", "model": info.get("model_name"), "version": info.get("version")}
-    except Exception as exc:
-        return {"status": "unavailable", "detail": str(exc)}
+    except Exception:
+        return {"status": "unavailable", "detail": "Model not loaded"}

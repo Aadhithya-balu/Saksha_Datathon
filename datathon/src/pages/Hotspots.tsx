@@ -14,6 +14,7 @@ export const Hotspots: React.FC = () => {
   const [hotspots, setHotspots] = useState<HotspotPoint[]>([]);
   const [districtMetrics, setDistrictMetrics] = useState<Record<string, DistrictInfo>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -25,10 +26,11 @@ export const Hotspots: React.FC = () => {
           setDistrictMetrics(buildDistrictMetrics(districtResponse, riskResponse, hotspotResponse.hotspots));
         }
       })
-      .catch(() => {
+      .catch((err) => {
         if (isMounted) {
           setHotspots([]);
           setDistrictMetrics({});
+          setError('Failed to load hotspot data. Please try again.');
         }
       })
       .finally(() => {
@@ -89,6 +91,33 @@ export const Hotspots: React.FC = () => {
           </div>
         </div>
         <PageSkeleton />
+      </div>
+    );
+  }
+
+  if (error && hotspots.length === 0) {
+    return (
+      <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none bg-[var(--bg-primary)]">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3">
+          <div>
+            <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
+              <Compass className="w-4 h-4 text-[#1E6FD9]" />
+              District Hotspot Analysis Map
+            </h2>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-3">
+            <div className="w-12 h-12 rounded-xl bg-[var(--accent-coral-subtle)] border border-[var(--accent-coral)]/20 flex items-center justify-center mx-auto">
+              <Compass className="w-6 h-6 text-[var(--accent-coral)]" />
+            </div>
+            <p className="text-sm text-[var(--text-secondary)]">{error}</p>
+            <button onClick={() => { setError(null); setLoading(true); window.location.reload(); }}
+              className="px-3 py-1.5 text-[10px] font-mono uppercase bg-[var(--accent-blue)]/10 hover:bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] border border-[var(--accent-blue)]/30 rounded-btn transition-colors cursor-pointer">
+              Retry
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

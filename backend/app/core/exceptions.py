@@ -56,7 +56,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     logging.getLogger("saksha").error("Unhandled exception: %s", traceback.format_exc())
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=_error_body("INTERNAL_SERVER_ERROR", str(exc), 500),
+        content=_error_body("INTERNAL_SERVER_ERROR", "An internal server error occurred. Please try again later.", 500),
     )
 
 

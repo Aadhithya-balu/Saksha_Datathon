@@ -1,6 +1,13 @@
 """
 SAKSHA Backend — FastAPI application entrypoint.
 """
+import warnings
+warnings.filterwarnings("ignore", message=".*sklearn.utils.parallel.delayed.*")
+warnings.filterwarnings("ignore", message=".*deprecated.*PyPDF2.*")
+warnings.filterwarnings("ignore", message=".*deprecated.*pypdf.*")
+warnings.filterwarnings("ignore", message=".*NumPy array shape.*")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="joblib")
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI

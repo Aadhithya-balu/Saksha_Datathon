@@ -11,7 +11,7 @@ from app.models.mixins import TimestampMixin, UUIDPKMixin
 class EvidenceTimeline(Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "evidence_timeline"
 
-    evidence_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("evidence.id", ondelete="CASCADE"), nullable=False)
+    evidence_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("evidence.id", ondelete="CASCADE"), nullable=False, index=True)
     evidence: Mapped["Evidence"] = relationship()
 
     action: Mapped[str] = mapped_column(String(100), nullable=False)

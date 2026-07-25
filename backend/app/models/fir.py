@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,11 +15,11 @@ class FIR(Base, UUIDPKMixin, TimestampMixin):
 
     fir_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
 
-    crime_case_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crime_cases.id"), nullable=False)
+    crime_case_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crime_cases.id", ondelete="CASCADE"), nullable=False, index=True)
     crime_case: Mapped["CrimeCase"] = relationship(back_populates="firs")
 
     investigating_officer_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("officers.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("officers.id", ondelete="SET NULL"), nullable=True, index=True
     )
     investigating_officer: Mapped["Officer | None"] = relationship(back_populates="firs")
 
@@ -38,9 +38,10 @@ class FIR(Base, UUIDPKMixin, TimestampMixin):
 class FIRCriminalLink(Base, UUIDPKMixin):
     """Many-to-many join: which criminals/suspects are named in a given FIR."""
     __tablename__ = "fir_criminal_links"
+    __table_args__ = (UniqueConstraint("fir_id", "criminal_id", name="uq_fir_criminal"),)
 
-    fir_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("firs.id"), nullable=False)
-    criminal_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("criminals.id"), nullable=False)
+    fir_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("firs.id", ondelete="CASCADE"), nullable=False, index=True)
+    criminal_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("criminals.id", ondelete="CASCADE"), nullable=False, index=True)
     role: Mapped[str | None] = mapped_column(String(50), nullable=True)  # accused/suspect/absconding
 
     fir: Mapped["FIR"] = relationship(back_populates="criminal_links")
@@ -50,9 +51,10 @@ class FIRCriminalLink(Base, UUIDPKMixin):
 class FIRVictimLink(Base, UUIDPKMixin):
     """Many-to-many join: which victims are named in a given FIR."""
     __tablename__ = "fir_victim_links"
+    __table_args__ = (UniqueConstraint("fir_id", "victim_id", name="uq_fir_victim"),)
 
-    fir_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("firs.id"), nullable=False)
-    victim_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("victims.id"), nullable=False)
+    fir_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("firs.id", ondelete="CASCADE"), nullable=False, index=True)
+    victim_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("victims.id", ondelete="CASCADE"), nullable=False, index=True)
 
     fir: Mapped["FIR"] = relationship(back_populates="victim_links")
     victim: Mapped["Victim"] = relationship(back_populates="fir_links")

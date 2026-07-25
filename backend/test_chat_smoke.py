@@ -11,10 +11,14 @@ from app.auth.dependencies import get_current_user
 from app.database.postgres import Base, engine
 
 
+class DummyRole:
+    name = "admin"
+
 class DummyUser:
     id = "00000000-0000-0000-0000-000000000001"
     username = "testuser"
     email = "test@saksha.gov"
+    role = DummyRole()
 
 
 Base.metadata.create_all(bind=engine)

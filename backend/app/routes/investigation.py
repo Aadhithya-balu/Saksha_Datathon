@@ -147,8 +147,8 @@ def get_investigation_dashboard(
     """Retrieve the full unified investigation interface for a crime case."""
     try:
         data = get_investigation(db, case_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Crime case not found.")
 
     case_dict = data.case.__dict__.copy()
     if case_dict.get("assigned_officer"):
@@ -174,8 +174,8 @@ def get_investigation_timeline(
     """Retrieve the investigation timeline for a crime case."""
     try:
         data = get_investigation(db, case_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Crime case not found.")
 
     return [TimelineEventOut(**t.__dict__) for t in data.timeline]
 
@@ -189,8 +189,8 @@ def get_investigation_history(
     """Retrieve the audit history for a crime case investigation."""
     try:
         data = get_investigation(db, case_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Crime case not found.")
 
     return [HistoryEntryOut(**h.__dict__) for h in data.history]
 
@@ -207,8 +207,8 @@ async def investigation_chat(
     """
     try:
         data = get_investigation(db, payload.case_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Crime case not found.")
 
     case = data.case
     context_message = (
@@ -222,6 +222,7 @@ async def investigation_chat(
     from app.ai.chat.orchestrator import ChatOrchestrator
     from app.routes.ai_chat import _build_response
     orchestrator = ChatOrchestrator()
-    result = orchestrator.process_message_sync(context_message, payload.session_id, db)
+    user_sid = f"user:{current_user.username}:{payload.session_id or 'default'}"
+    result = orchestrator.process_message_sync(context_message, user_sid, db)
     return _build_response(result)
 

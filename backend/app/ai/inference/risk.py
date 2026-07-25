@@ -31,7 +31,7 @@ from app.ai.features.risk.feature_engineering import (
 
 logger = logging.getLogger(__name__)
 
-MODEL_DIR = Path(__file__).resolve().parents[1] / "models" / "risk"
+MODEL_DIR = Path(__file__).resolve().parents[2] / "models" / "risk"
 
 
 # ---------------------------------------------------------------------------

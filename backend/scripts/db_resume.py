@@ -1,16 +1,12 @@
-import psycopg2, time, sys, os
+import sys, os, time
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from _db_config import CONN
+import psycopg2
 
 BACKUP_DIR = os.path.join(os.path.dirname(__file__), '..', 'backups')
 
 def connect():
-    return psycopg2.connect(
-        host='aws-0-ap-northeast-1.pooler.supabase.com',
-        port=6543, dbname='postgres',
-        user='postgres.tqaegfrnnddfqshwdkvh',
-        password='datathon2026', sslmode='require',
-        connect_timeout=10,
-        keepalives=1, keepalives_idle=5, keepalives_interval=5, keepalives_count=3
-    )
+    return psycopg2.connect(**CONN, keepalives=1, keepalives_idle=5, keepalives_interval=5, keepalives_count=3)
 
 def q(t):
     return f'"{t}"'

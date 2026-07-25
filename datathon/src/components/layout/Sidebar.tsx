@@ -93,6 +93,7 @@ const navGroups: NavGroup[] = [
       { id: 'ai_chat', label: 'AI Assistant', path: '/ai-chat', icon: <MessageSquare className="w-[18px] h-[18px]" /> },
       { id: 'docs', label: 'Documentation', path: '/docs', icon: <BookOpen className="w-[18px] h-[18px]" /> },
       { id: 'settings_help', label: 'Settings', path: '/settings', icon: <Settings className="w-[18px] h-[18px]" /> },
+      { id: 'admin', label: 'Admin Panel', path: '/admin', icon: <ShieldAlert className="w-[18px] h-[18px]" /> },
     ],
   },
 ];
@@ -113,6 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     ...group,
     items: group.items.filter(item => {
       if (item.id === 'settings_help') return isAdmin;
+      if (item.id === 'admin') return isAdmin;
       return true;
     }),
   })).filter(group => group.items.length > 0);

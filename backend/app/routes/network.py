@@ -105,7 +105,7 @@ def get_ai_graph_insights(
     return network_service.generate_ai_graph_insights(db)
 
 
-@router.post("/sync-neo4j")
+@router.post("/sync-neo4j", dependencies=[Depends(require_roles("admin", "crime_analyst"))])
 def sync_neo4j_database(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),

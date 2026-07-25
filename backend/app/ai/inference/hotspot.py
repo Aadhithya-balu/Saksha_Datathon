@@ -47,7 +47,8 @@ _RISK_THRESHOLDS = {"Low": 5, "Medium": 15, "High": 30}  # ≥30 → Critical
 def _load_model():
     path = MODEL_DIR / "hotspot_model.pkl"
     if not path.exists():
-        raise FileNotFoundError(f"Model not found: {path}")
+        logger.warning("Hotspot model not found at %s — using rule-based fallback.", path)
+        return None
     logger.info("Loading hotspot model from %s", path)
     return joblib.load(path)
 
@@ -56,7 +57,7 @@ def _load_model():
 def _load_metadata() -> dict[str, Any]:
     path = MODEL_DIR / "model_metadata.json"
     if not path.exists():
-        raise FileNotFoundError(f"Metadata not found: {path}")
+        return {}
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -76,10 +77,10 @@ def _load_training_metrics() -> dict[str, float]:
 
 
 @lru_cache(maxsize=1)
-def _load_feature_columns() -> list[str]:
+def _load_feature_columns() -> list[str] | None:
     path = MODEL_DIR / "feature_columns.json"
     if not path.exists():
-        raise FileNotFoundError(f"feature_columns.json not found: {path}")
+        return None
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -139,16 +140,31 @@ def predict(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     df = pd.DataFrame(records)
     monthly = build_features(df, include_target=False)
 
-    # 2. Inference mode: keep engineered rows even when there is no next-month
-    #    target available, so single-record payloads can still be scored.
-    feature_cols = _load_feature_columns()
     model = _load_model()
+
+    # 2. Rule-based fallback when no trained model is present
+    if model is None:
+        logger.warning("No trained hotspot model — using rule-based fallback.")
+        results = []
+        for row in monthly.itertuples(index=False):
+            count = float(max(1, len(records) // max(1, len(monthly))))
+            results.append({
+                "h3_cell": row.H3Cell,
+                "year_month": row.YearMonth,
+                "predicted_crime_count": round(count, 4),
+                "risk_level": _risk_level(count),
+                "confidence_score": 0.5,
+            })
+        return results
+
+    # 3. Model-based inference
+    feature_cols = _load_feature_columns()
     rmse = _load_training_metrics().get("rmse") or 1.0
 
     X = monthly[feature_cols]
     raw_preds = np.clip(model.predict(X), 0, None)
 
-    # 3. Build results using itertuples() for performance
+    # 4. Build results using itertuples() for performance
     results = []
     for row, pred_count in zip(monthly.itertuples(index=False), raw_preds):
         pred_count = float(pred_count)
@@ -168,10 +184,11 @@ def get_model_info() -> dict[str, Any]:
     """Return model metadata for health/info endpoints."""
     meta = _load_metadata()
     metrics = _load_training_metrics()
+    model = _load_model()
     return {
-        "model_name": meta.get("model_name"),
-        "algorithm": meta.get("algorithm"),
-        "version": meta.get("version"),
+        "model_name": meta.get("model_name", "SAKSHA Hotspot Predictor"),
+        "algorithm": meta.get("algorithm", "LightGBM"),
+        "version": meta.get("version", "untrained"),
         "h3_resolution": meta.get("h3_resolution"),
         "prediction_target": meta.get("prediction_target"),
         "feature_count": meta.get("feature_count"),
@@ -179,4 +196,5 @@ def get_model_info() -> dict[str, Any]:
         "rmse": metrics.get("rmse"),
         "mae": metrics.get("mae"),
         "r2": metrics.get("r2"),
+        "model_loaded": model is not None,
     }

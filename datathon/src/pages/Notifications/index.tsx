@@ -35,8 +35,6 @@ const NotificationsPage: React.FC = () => {
     fetchNotifications(1);
     fetchCounts();
     fetchDashboard();
-    startPolling(15000);
-    return () => stopPolling();
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));

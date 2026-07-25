@@ -12,7 +12,7 @@ from app.models.mixins import TimestampMixin, UUIDPKMixin
 class Evidence(Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "evidence"
 
-    case_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crime_cases.id"), nullable=False)
+    case_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crime_cases.id", ondelete="CASCADE"), nullable=False, index=True)
     crime_case: Mapped["CrimeCase"] = relationship(back_populates="evidence")
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -21,7 +21,7 @@ class Evidence(Base, UUIDPKMixin, TimestampMixin):
     status: Mapped[str] = mapped_column(String(50), default="Pending")
     
     created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    assigned_to: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    assigned_to: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     
     storage_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     

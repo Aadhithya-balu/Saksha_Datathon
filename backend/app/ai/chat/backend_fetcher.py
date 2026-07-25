@@ -1,7 +1,7 @@
 """Backend fetcher — executes query plans against PostgreSQL, Neo4j, and ML services."""
 from __future__ import annotations
 
-import traceback
+import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from typing import Any
@@ -71,10 +71,9 @@ class BackendFetcher:
                 content="Unknown service", success=False,
             )
         except Exception as exc:
-            tb = traceback.format_exc()
             return BackendResult(
                 source=call.service, data_type=call.method,
-                content="", success=False, error=f"{exc}\n{tb}",
+                content="", success=False, error="Service call failed",
             )
 
     def _exec_postgres(self, call: BackendCall, db: Session) -> BackendResult:
@@ -546,11 +545,10 @@ class BackendFetcher:
             parts.append(f"Category: {case.category.name}")
         if hasattr(case, "location") and case.location:
             loc = case.location
-            loc_str = loc.name if hasattr(loc, "name") else str(loc)
-            district = getattr(loc, "district", "")
-            if district:
-                loc_str += f", {district}"
-            parts.append(f"Location: {loc_str}")
+            station = getattr(loc, "station", "") or ""
+            district = getattr(loc, "district", "") or ""
+            loc_parts = [p for p in [station, district] if p]
+            parts.append(f"Location: {', '.join(loc_parts) if loc_parts else 'Unknown'}")
         if case.occurred_at:
             parts.append(f"Occurred: {case.occurred_at.strftime('%Y-%m-%d %H:%M') if case.occurred_at else 'N/A'}")
         if case.reported_at:

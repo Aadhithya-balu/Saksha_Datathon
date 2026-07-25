@@ -1,6 +1,6 @@
 """Notification model — stores inter-station communication notifications for the platform."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -14,12 +14,12 @@ class Notification(Base, UUIDPKMixin):
     __tablename__ = "notifications"
 
     user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
     )
     user: Mapped["User"] = relationship(back_populates="notifications", foreign_keys=[user_id])
 
     sender_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     sender: Mapped["User | None"] = relationship(foreign_keys=[sender_id])
 
@@ -58,7 +58,7 @@ class Notification(Base, UUIDPKMixin):
     is_broadcast: Mapped[bool] = mapped_column(Boolean, default=False)
 
     parent_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
+        UUID(as_uuid=True), ForeignKey("notifications.id", ondelete="SET NULL"), nullable=True
     )
 
     attachment_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -73,7 +73,7 @@ class Notification(Base, UUIDPKMixin):
     def mark_read(self) -> None:
         self.is_read = True
         self.status = "read"
-        self.read_at = datetime.now()
+        self.read_at = datetime.now(timezone.utc)
 
     def mark_dismissed(self) -> None:
         self.is_dismissed = True
@@ -81,11 +81,11 @@ class Notification(Base, UUIDPKMixin):
 
     def mark_acknowledged(self) -> None:
         self.status = "acknowledged"
-        self.acknowledged_at = datetime.now()
+        self.acknowledged_at = datetime.now(timezone.utc)
 
     def mark_resolved(self) -> None:
         self.status = "resolved"
-        self.resolved_at = datetime.now()
+        self.resolved_at = datetime.now(timezone.utc)
 
     def to_dict(self) -> dict:
         return {

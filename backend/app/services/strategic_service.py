@@ -6,7 +6,7 @@ and deployment recommendations into a unified strategic intelligence view.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import func
@@ -25,7 +25,7 @@ from app.models.notification import Notification
 
 def get_strategic_briefing(db: Session) -> dict[str, Any]:
     """Generate a comprehensive strategic intelligence briefing."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     thirty_days_ago = now - timedelta(days=30)
     seven_days_ago = now - timedelta(days=7)
 
@@ -215,13 +215,13 @@ def get_resource_allocation(db: Session) -> dict[str, Any]:
     return {
         "allocations": allocations,
         "total_districts": len(allocations),
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
 def get_daily_intelligence_summary(db: Session) -> dict[str, Any]:
     """Generate a daily intelligence summary for the command dashboard."""
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     today_start = datetime.combine(today, datetime.min.time())
     yesterday_start = today_start - timedelta(days=1)
 
@@ -281,7 +281,7 @@ def _get_district_risk_factors(db: Session, district: str) -> dict[str, Any]:
         .filter(Location.district == district, CrimeCase.priority == "high")
         .count()
     )
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     recent = (
         db.query(CrimeCase)
         .join(Location, CrimeCase.location_id == Location.id)
@@ -313,7 +313,7 @@ def _get_district_risk_factors(db: Session, district: str) -> dict[str, Any]:
 
 def _detect_emerging_trends(db: Session) -> list[dict[str, Any]]:
     """Detect emerging crime trends by comparing recent vs historical patterns."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     thirty_days_ago = now - timedelta(days=30)
     sixty_days_ago = now - timedelta(days=60)
 

@@ -307,10 +307,31 @@ def _generate_txt(title: str, filters: dict, headers: list[str], rows: list[dict
 
 
 def _generate_pdf(title: str, filters: dict, headers: list[str], rows: list[dict]) -> bytes:
-    def to_latin1(text):
-        return str(text).encode('latin-1', 'replace').decode('latin-1')
+    import os as _os
+    _font_name = "helvetica"
+    _unicode_font = None
 
-    safe_title = to_latin1(title)
+    # Try to add a Unicode-capable TTF font for non-Latin scripts
+    for candidate in [
+        _os.path.join(_os.path.dirname(__file__), "..", "..", "fonts", "NotoSans-Regular.ttf"),
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "C:\\Windows\\Fonts\\arial.ttf",
+    ]:
+        if _os.path.isfile(candidate):
+            try:
+                _unicode_font = "NotoSans"
+                _font_name = "NotoSans"
+            except Exception:
+                _font_name = "helvetica"
+            break
+
+    def safe_text(text):
+        """Encode text safely — strip non-printable chars, keep Unicode if font supports it."""
+        s = str(text).strip()
+        # Remove control characters
+        s = ''.join(c for c in s if c.isprintable() or c in ('\n', '\t'))
+        return s
 
     class ReportPDF(FPDF):
         def header(self):
@@ -319,7 +340,7 @@ def _generate_pdf(title: str, filters: dict, headers: list[str], rows: list[dict
             self.cell(0, 8, "SAKSHA Police Intelligence & Analytics Platform", align="C", new_x="LMARGIN", new_y="NEXT")
             self.set_font("helvetica", "B", 11)
             self.set_text_color(30, 111, 217)
-            self.cell(0, 6, safe_title, align="C", new_x="LMARGIN", new_y="NEXT")
+            self.cell(0, 6, safe_text(title), align="C", new_x="LMARGIN", new_y="NEXT")
             self.set_draw_color(200, 210, 225)
             self.line(10, self.get_y() + 2, self.w - 10, self.get_y() + 2)
             self.ln(6)
@@ -345,30 +366,65 @@ def _generate_pdf(title: str, filters: dict, headers: list[str], rows: list[dict
     pdf.set_font("helvetica", "", 9)
     pdf.set_text_color(71, 85, 105)
     pdf.cell(0, 5, f"Generated At: {generated}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 5, to_latin1(f"Applied Filters: {filter_str}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 5, safe_text(f"Applied Filters: {filter_str}"), new_x="LMARGIN", new_y="NEXT")
     pdf.cell(0, 5, f"Total Records: {len(rows)}", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)
 
     if headers and rows:
-        formatted_headers = [to_latin1(h.replace("_", " ").title()) for h in headers]
+        formatted_headers = [safe_text(h.replace("_", " ").title()) for h in headers]
         
         pdf.set_font("helvetica", "", 8)
         pdf.set_text_color(15, 23, 42)
 
-        with pdf.table(
-            first_row_as_headings=True,
-            line_height=5,
-            padding=2
-        ) as table:
-            header_row = table.row()
-            for h in formatted_headers:
-                header_row.cell(h)
+        _MAX_CHARS_PER_CELL = 400
 
+        try:
+            with pdf.table(
+                first_row_as_headings=True,
+                line_height=5,
+                padding=2
+            ) as table:
+                header_row = table.row()
+                for h in formatted_headers:
+                    header_row.cell(h)
+
+                for row in rows:
+                    r_row = table.row()
+                    for h in headers:
+                        val = safe_text(row.get(h))
+                        if len(val) > _MAX_CHARS_PER_CELL:
+                            val = val[:_MAX_CHARS_PER_CELL] + "..."
+                        r_row.cell(val)
+        except ValueError:
+            pdf.set_font("helvetica", "B", 8)
+            pdf.set_text_color(15, 23, 42)
+            for h in formatted_headers:
+                pdf.cell(50, 6, h, border=1)
+            pdf.ln()
+            pdf.set_font("helvetica", "", 7)
             for row in rows:
-                r_row = table.row()
+                max_lines = 1
                 for h in headers:
-                    val = _clean_text(row.get(h))
-                    r_row.cell(to_latin1(val))
+                    val = safe_text(row.get(h))
+                    if len(val) > 80:
+                        val = val[:80] + "..."
+                    lines_count = max(1, (len(val) // 25) + 1)
+                    max_lines = max(max_lines, lines_count)
+                row_h = max(6, min(max_lines * 4, 40))
+                y_before = pdf.get_y()
+                if y_before + row_h > pdf.h - 20:
+                    pdf.add_page()
+                    pdf.set_font("helvetica", "B", 8)
+                    for fh in formatted_headers:
+                        pdf.cell(50, 6, fh, border=1)
+                    pdf.ln()
+                    pdf.set_font("helvetica", "", 7)
+                for h in headers:
+                    val = safe_text(row.get(h))
+                    if len(val) > 80:
+                        val = val[:80] + "..."
+                    pdf.cell(50, row_h, val, border=1)
+                pdf.ln()
     else:
         pdf.set_font("helvetica", "I", 9)
         pdf.cell(0, 8, "No records found matching the requested criteria.", new_x="LMARGIN", new_y="NEXT")

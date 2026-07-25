@@ -14,10 +14,10 @@ class CrimeCase(Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "crime_cases"
 
     case_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
-    category_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crime_categories.id"), nullable=False)
+    category_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crime_categories.id", ondelete="RESTRICT"), nullable=False, index=True)
     category: Mapped["CrimeCategory"] = relationship(back_populates="crimes")
 
-    location_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("locations.id"), nullable=False)
+    location_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("locations.id", ondelete="RESTRICT"), nullable=False, index=True)
     location: Mapped["Location"] = relationship(back_populates="crimes")
 
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
@@ -28,7 +28,7 @@ class CrimeCase(Base, UUIDPKMixin, TimestampMixin):
 
     priority: Mapped[str | None] = mapped_column(String(30), default="medium")
     progress: Mapped[int | None] = mapped_column(Integer, default=10)
-    assigned_officer_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("officers.id"), nullable=True)
+    assigned_officer_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("officers.id", ondelete="SET NULL"), nullable=True, index=True)
     assigned_officer: Mapped["Officer"] = relationship()
 
     firs: Mapped[list["FIR"]] = relationship(back_populates="crime_case")

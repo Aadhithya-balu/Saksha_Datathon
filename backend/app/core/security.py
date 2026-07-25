@@ -33,7 +33,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     except ValueError:
         return False
     computed_digest = hashlib.sha256((salt + plain_password).encode("utf-8")).hexdigest()
-    return computed_digest == stored_digest
+    import hmac
+    return hmac.compare_digest(computed_digest, stored_digest)
 
 
 def create_token(data: dict, expires_delta: timedelta, token_type: str = "access") -> str:
