@@ -44,7 +44,7 @@ export const DISTRICT_COORDS: Record<string, { lat: number; lng: number; zoom: n
   'Dharwad': { lat: 15.4589, lng: 75.0078, zoom: 11 },
   'Ballari': { lat: 15.1394, lng: 76.9214, zoom: 11 },
   'Hassan': { lat: 13.0641, lng: 76.1030, zoom: 11 },
-  'Mangaluru': { lat: 12.9141, lng: 74.8560, zoom: 11.5 },
+  'Dakshina Kannada': { lat: 12.9141, lng: 74.8560, zoom: 11.5 },
 };
 
 export const useMapStore = create<MapState>((set) => ({
@@ -71,7 +71,7 @@ export const useMapStore = create<MapState>((set) => ({
     'Dharwad': { name: 'Dharwad', crimeCount: 480, riskScore: 58, beatRatio: 70, topCrimeType: 'Attempted Theft', weeklyTrend: 'stable' },
     'Ballari': { name: 'Ballari', crimeCount: 610, riskScore: 69, beatRatio: 48, topCrimeType: 'Illegal Mining Violations', weeklyTrend: 'up' },
     'Hassan': { name: 'Hassan', crimeCount: 310, riskScore: 42, beatRatio: 63, topCrimeType: 'Domestic Violence', weeklyTrend: 'down' },
-    'Mangaluru': { name: 'Mangaluru', crimeCount: 570, riskScore: 66, beatRatio: 78, topCrimeType: 'Narcotics Smuggling Services', weeklyTrend: 'stable' },
+    'Dakshina Kannada': { name: 'Dakshina Kannada', crimeCount: 570, riskScore: 66, beatRatio: 78, topCrimeType: 'Narcotics Smuggling Services', weeklyTrend: 'stable' },
   },
 
   setViewState: (viewState) => set({ viewState }),
