@@ -1882,3 +1882,16 @@ connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection re
 2026-07-25 12:32:09.498 | INFO     | app.main:lifespan:77 - PostgreSQL connection OK
 2026-07-25 12:32:09.499 | INFO     | app.main:lifespan:83 - Neo4j will be verified lazily on first use
 2026-07-25 12:38:52.082 | INFO     | app.main:lifespan:88 - Shutdown complete
+2026-07-25 13:27:27.457 | WARNING  | app.database.postgres:<module>:56 - PostgreSQL unreachable — falling back to local SQLite database
+2026-07-25 13:27:38.599 | INFO     | app.main:lifespan:71 - Starting SAKSHA Backend in development mode
+2026-07-25 13:27:39.882 | WARNING  | app.main:_migrate_notifications_table:65 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 13:27:39.885 | INFO     | app.main:lifespan:77 - PostgreSQL connection OK
+2026-07-25 13:27:39.894 | INFO     | app.main:lifespan:83 - Neo4j will be verified lazily on first use
+2026-07-25 13:27:58.013 | INFO     | app.main:lifespan:88 - Shutdown complete
+2026-07-25 13:28:20.109 | INFO     | app.main:lifespan:71 - Starting SAKSHA Backend in development mode
+2026-07-25 13:28:22.813 | INFO     | app.main:_migrate_notifications_table:63 - Notifications table migration complete
+2026-07-25 13:28:22.814 | INFO     | app.main:lifespan:77 - PostgreSQL connection OK
+2026-07-25 13:28:22.814 | INFO     | app.main:lifespan:83 - Neo4j will be verified lazily on first use
+2026-07-25 14:02:58.493 | INFO     | app.main:lifespan:88 - Shutdown complete
