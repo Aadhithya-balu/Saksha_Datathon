@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
+from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
 from app.models.user import User
 
@@ -33,7 +33,7 @@ from app.ai.inference.criminal import (
     score_criminal_risk,
 )
 
-router = APIRouter(prefix="/ai/criminal", tags=["Criminal Intelligence"])
+router = APIRouter(prefix="/ai/criminal", tags=["Criminal Intelligence"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
 
 def _check_error(result: dict[str, Any], criminal_id: str) -> None:

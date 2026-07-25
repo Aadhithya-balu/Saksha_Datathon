@@ -11,10 +11,11 @@ from sqlalchemy.orm import Session
 
 from app.ai.chat.orchestrator import ChatOrchestrator
 from app.auth.dependencies import get_current_user
+from app.auth.rbac import ALL_ROLES, require_roles
 from app.database.postgres import get_db
 from app.models.user import User
 
-router = APIRouter(prefix="/ai/chat", tags=["AI Chat"])
+router = APIRouter(prefix="/ai/chat", tags=["AI Chat"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
 _orchestrator = ChatOrchestrator()
 

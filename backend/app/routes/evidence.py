@@ -9,7 +9,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, ROLE_INVESTIGATOR, ROLE_INSPECTOR, ROLE_FORENSIC, ROLE_CRIME_ANALYST, require_roles
+from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_INVESTIGATOR, ROLE_INSPECTOR, ROLE_FORENSIC, ROLE_CRIME_ANALYST, require_roles
 from app.database.postgres import get_db
 from app.models.evidence import Evidence
 from app.models.evidence_metadata import EvidenceMetadata
@@ -28,7 +28,7 @@ from app.services import audit_service
 from app.services.base_service import BaseCRUDService
 from app.services.evidence_service import save_upload_file, extract_metadata, add_timeline_event, generate_ai_summary
 
-router = APIRouter(prefix="/evidence", tags=["Evidence"])
+router = APIRouter(prefix="/evidence", tags=["Evidence"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 evidence_crud = BaseCRUDService(Evidence)
 
 

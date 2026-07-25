@@ -5,11 +5,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.auth.rbac import ALL_ROLES, require_roles
 from app.database.postgres import get_db
 from app.models.user import User
 from app.services.dashboard import dashboard_service
 
-router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+router = APIRouter(prefix="/dashboard", tags=["Dashboard"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
 
 @router.get("/summary")

@@ -16,10 +16,16 @@ from app.services.chat.chat_service import InvestigationChatService
 from app.main import app
 
 
+class DummyRole:
+    name = "crime_analyst"
+
+
 class DummyUser:
     id = "00000000-0000-0000-0000-000000000001"
     username = "testuser"
     email = "test@saksha.gov"
+    role = DummyRole()
+    badge_id = "TEST-0001"
 
 
 def mock_user():

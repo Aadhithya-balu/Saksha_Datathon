@@ -163,8 +163,12 @@ export const GlobalAIAssistant: React.FC = () => {
     }
   };
 
-  const handleCopyText = (text: string, msgId: string) => {
-    void navigator.clipboard.writeText(text);
+  const handleCopyText = async (text: string, msgId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // clipboard API unavailable (e.g. non-HTTPS) — silently ignore
+    }
     setCopiedId(msgId);
     setTimeout(() => setCopiedId(null), 2000);
   };

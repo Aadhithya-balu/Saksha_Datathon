@@ -12,12 +12,12 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
+from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.models.user import User
 
 from app.ai.inference.anomaly import run_anomaly_inference
 
-router = APIRouter(prefix="/ai", tags=["Crime Anomaly Detection"])
+router = APIRouter(prefix="/ai", tags=["Crime Anomaly Detection"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
 
 class AnomalyDetectRequest(BaseModel):

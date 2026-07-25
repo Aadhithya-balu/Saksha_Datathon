@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, ArrowLeft, Layers } from 'lucide-react';
+import { Search, ArrowLeft, Layers, Activity } from 'lucide-react';
 import { getInvestigation, getCrimeCases } from '../../services/api';
 import type { InvestigationData, CrimeCaseDetailRecord } from '../../services/api';
 import InvestigationDashboard from '../../components/investigation/InvestigationDashboard';

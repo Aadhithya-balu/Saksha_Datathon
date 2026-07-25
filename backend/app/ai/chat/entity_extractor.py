@@ -76,7 +76,7 @@ class EntityExtractor:
     """Extracts structured entities from natural language crime queries."""
 
     _CASE_RE = re.compile(r"CR-\d{4}-[A-Z]{2,4}-\d+", re.I)
-    _FIR_RE = re.compile(r"(?:FIR\s*)?(\d{4}/\d{3,})", re.I)
+    _FIR_RE = re.compile(r"(?:FIR[-\s]*)?(\d{3,4}/[A-Z]{0,4}/?\d{3,4})", re.I)
     _FIR_PREFIX_RE = re.compile(r"\bFIR\b", re.I)
     _VEHICLE_RE = re.compile(r"\b(KA[\s-]?\d{2}[\s-]?[A-Z]{1,2}[\s-]?\d{4})\b", re.I)
     _PHONE_RE = re.compile(r"(\+91\s*\d{5}[\s-]\d{5}|\+91\s*\d{10}|\b\d{10}\b)")

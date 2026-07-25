@@ -190,7 +190,7 @@ class IntentRouter:
         scores: dict[Intent, float] = {}
 
         has_case_id = bool(re.search(r"CR-\d{4}-[A-Z]{2,4}-\d+", message, re.I))
-        has_fir_number = bool(re.search(r"FIR\s*\d{4}/\d+", message, re.I))
+        has_fir_number = bool(re.search(r"FIR[-\s]*\d{3,4}/[A-Z]{0,4}/?\d{3,4}", message, re.I))
 
         for intent, rules in _INTENT_RULES.items():
             score = 0.0

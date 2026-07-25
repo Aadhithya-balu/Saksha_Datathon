@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models.audit_log import AuditLog
 from app.models.crime import CrimeCase
@@ -299,11 +299,11 @@ def get_investigation(db: Session, case_id: uuid.UUID) -> InvestigationData:
             joinedload(CrimeCase.category),
             joinedload(CrimeCase.location),
             joinedload(CrimeCase.assigned_officer).joinedload(Officer.user),
-            joinedload(CrimeCase.firs)
-            .joinedload(FIR.criminal_links)
+            selectinload(CrimeCase.firs)
+            .selectinload(FIR.criminal_links)
             .joinedload(FIRCriminalLink.criminal),
-            joinedload(CrimeCase.firs)
-            .joinedload(FIR.victim_links)
+            selectinload(CrimeCase.firs)
+            .selectinload(FIR.victim_links)
             .joinedload(FIRVictimLink.victim),
             joinedload(CrimeCase.evidence),
         )

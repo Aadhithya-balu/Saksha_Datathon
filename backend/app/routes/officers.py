@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, ROLE_POLICYMAKER, require_roles
+from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, ROLE_POLICYMAKER, require_roles
 from app.database.postgres import get_db
 from app.models.fir import FIR
 from app.models.officer import Officer
@@ -17,7 +17,7 @@ from app.schemas.officer import OfficerCreate, OfficerOut, OfficerPerformance, O
 from app.services import audit_service
 from app.services.base_service import BaseCRUDService
 
-router = APIRouter(prefix="/officers", tags=["Officers"])
+router = APIRouter(prefix="/officers", tags=["Officers"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 officer_crud = BaseCRUDService(Officer)
 
 

@@ -8,7 +8,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, ROLE_INVESTIGATOR, require_roles
+from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
 from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
 from app.models.crime import CrimeCase
@@ -19,7 +19,7 @@ from app.schemas.fir import FIRCreate, FIROut, FIRUpdate, FIRDetailOut
 from app.services import audit_service
 from app.services.base_service import BaseCRUDService
 
-router = APIRouter(prefix="/firs", tags=["FIRs"])
+router = APIRouter(prefix="/firs", tags=["FIRs"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 fir_crud = BaseCRUDService(FIR)
 
 

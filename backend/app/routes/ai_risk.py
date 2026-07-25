@@ -22,12 +22,12 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.ai.inference.risk import get_model_info, predict_forecast, predict_risk
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
+from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
 from app.models.crime import CrimeCase
 from app.models.user import User
 
-router = APIRouter(prefix="/ai/predictions", tags=["District Risk Prediction"])
+router = APIRouter(prefix="/ai/predictions", tags=["District Risk Prediction"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
 
 # ---------------------------------------------------------------------------

@@ -6,15 +6,17 @@ pg.JSONB = JSON
 
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.core.config import settings
+from app.core.logging_config import configure_logging, logger
+
+configure_logging()
 
 
-def _engine_options() -> dict:
-    url = make_url(settings.DATABASE_URL)
+def _engine_options(url) -> dict:
     if url.drivername.startswith("sqlite"):
         return {"connect_args": {"check_same_thread": False}, "echo": settings.debug_enabled}
 
@@ -34,7 +36,27 @@ def _engine_options() -> dict:
     }
 
 
-engine = create_engine(settings.DATABASE_URL, **_engine_options())
+def _create_engine(url=None):
+    target_url = url or settings.DATABASE_URL
+    return create_engine(target_url, **_engine_options(make_url(target_url)))
+
+
+def _try_connect(eng) -> bool:
+    try:
+        with eng.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False
+
+
+engine = _create_engine()
+
+if not settings.DATABASE_URL.startswith("sqlite") and not _try_connect(engine):
+    logger.warning("PostgreSQL unreachable — falling back to local SQLite database")
+    engine.dispose()
+    settings.DATABASE_URL = "sqlite:///./saksha.db"
+    engine = _create_engine("sqlite:///./saksha.db")
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

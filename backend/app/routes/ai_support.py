@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
+from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
 from app.models.user import User
 from app.services.analytics_service import (
@@ -16,7 +16,7 @@ from app.services.analytics_service import (
     offender_dossiers,
 )
 
-router = APIRouter(prefix="/ai", tags=["AI Integration Support"])
+router = APIRouter(prefix="/ai", tags=["AI Integration Support"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
 
 class ChatQueryRequest(BaseModel):
