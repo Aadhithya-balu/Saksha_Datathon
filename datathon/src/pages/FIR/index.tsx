@@ -31,6 +31,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { ExportMenu } from "../../components/reports";
+import { TableSkeleton, CardSkeleton } from "../../components/ui/Skeleton";
 
 const DISTRICTS = [
   "Bengaluru Urban",
@@ -378,11 +379,14 @@ export const FIRPage: React.FC = () => {
             {/* List scroll view */}
             <div className="flex-grow overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
               {isLoadingList ? (
-                <div className="flex flex-col items-center justify-center p-12 space-y-3">
-                  <div className="w-6 h-6 rounded-full border border-[var(--border-secondary)] border-t-[#1E6FD9] animate-spin" />
-                  <span className="text-[9px] uppercase tracking-wider text-[var(--text-muted)]">
-                    Reading registry...
-                  </span>
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="p-3 rounded-md border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/40 space-y-2">
+                      <div className="sk-skeleton rounded-sm h-3.5 w-2/3" />
+                      <div className="sk-skeleton rounded-sm h-2.5 w-1/2" />
+                      <div className="sk-skeleton rounded-sm h-2 w-1/3" />
+                    </div>
+                  ))}
                 </div>
               ) : firs.length > 0 ? (
                 firs.map((item) => (
@@ -443,11 +447,8 @@ export const FIRPage: React.FC = () => {
             </div>
           ) : isLoadingDetail ? (
             /* Loading Detail */
-            <div className="flex-grow flex flex-col items-center justify-center space-y-4">
-              <div className="w-8 h-8 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin" />
-              <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase">
-                Syncing Case Telemetry...
-              </span>
+            <div className="flex-grow p-4">
+              <CardSkeleton />
             </div>
           ) : selectedFir ? (
             /* Detailed View */

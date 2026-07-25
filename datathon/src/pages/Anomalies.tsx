@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import type { CrimeAlert } from '../store/alertStore';
 import { getAnomalies } from '../services/api';
 import { useAuthStore } from '../store/authStore';
-import { Eye, ShieldAlert, CheckCircle, Search, Filter, Calendar, MapPin, HardDrive } from 'lucide-react';
+import { Eye, ShieldAlert, CheckCircle, Search, Filter, Calendar, MapPin, HardDrive, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TableSkeleton } from '../components/ui/Skeleton';
 
 export const Anomalies: React.FC = () => {
   const [alerts, setAlerts] = useState<CrimeAlert[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuthStore();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,6 +48,9 @@ export const Anomalies: React.FC = () => {
         setAlerts([]);
         setSelectedAlertId(null);
         setLoadError(error instanceof Error ? error.message : 'Failed to load anomalies');
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
       });
     return () => {
       isMounted = false;
@@ -132,6 +137,16 @@ export const Anomalies: React.FC = () => {
       </div>
 
       {/* Main Split Grid layout */}
+      {loading ? (
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div className="lg:col-span-5">
+            <TableSkeleton rows={6} cols={3} />
+          </div>
+          <div className="lg:col-span-7">
+            <TableSkeleton rows={4} cols={2} />
+          </div>
+        </div>
+      ) : (
       <div className="flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">
         
         {/* Left Side: Filtered incident listings list (5 cols on lg) */}
@@ -290,6 +305,7 @@ export const Anomalies: React.FC = () => {
         </div>
 
       </div>
+      )}
 
     </div>
   );

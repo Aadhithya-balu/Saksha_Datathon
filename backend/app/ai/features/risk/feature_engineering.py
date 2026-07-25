@@ -37,6 +37,9 @@ RISK_FEATURE_COLUMNS: List[str] = [
     "unique_categories",
     "month_sin",
     "month_cos",
+    "season_summer",
+    "season_monsoon",
+    "season_post_monsoon",
     "lag_1",
     "lag_3",
     "rolling_mean_3",
@@ -49,6 +52,9 @@ FORECAST_FEATURE_COLUMNS: List[str] = [
     "month_sin",
     "month_cos",
     "quarter",
+    "season_summer",
+    "season_monsoon",
+    "season_post_monsoon",
     "lag_1",
     "lag_2",
     "lag_3",
@@ -112,6 +118,14 @@ def _aggregate_monthly(df: pd.DataFrame) -> pd.DataFrame:
     monthly["month_sin"] = np.sin(2 * np.pi * monthly["month"] / 12)
     monthly["month_cos"] = np.cos(2 * np.pi * monthly["month"] / 12)
     monthly["quarter"] = ((monthly["month"] - 1) // 3) + 1
+
+    _SEASON_MONTHS = {
+        "summer": {3, 4, 5},
+        "monsoon": {6, 7, 8, 9},
+        "post_monsoon": {10, 11},
+    }
+    for col, months in _SEASON_MONTHS.items():
+        monthly[f"season_{col}"] = monthly["month"].isin(months).astype(int)
 
     return monthly
 

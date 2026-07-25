@@ -24,6 +24,19 @@ from app.models.victim import Victim
 
 SEVERITY_WEIGHT = {"low": 0.8, "medium": 1.0, "high": 1.25, None: 1.0}
 
+SEASON_MAP = {
+    1: "Winter", 2: "Winter", 3: "Summer",
+    4: "Summer", 5: "Summer", 6: "Monsoon",
+    7: "Monsoon", 8: "Monsoon", 9: "Monsoon",
+    10: "Post-Monsoon", 11: "Post-Monsoon", 12: "Winter",
+}
+
+SEASON_ORDER = ["Summer", "Monsoon", "Post-Monsoon", "Winter"]
+
+
+def get_season(month: int) -> str:
+    return SEASON_MAP.get(month, "Unknown")
+
 
 @dataclass(frozen=True)
 class DistrictAggregate:
@@ -332,6 +345,49 @@ def chat_answer(db: Session, message: str) -> dict[str, Any]:
         "data": [{"query": message, "summary": summary, "top_districts": districts, "top_categories": categories}],
         "sources": ["crime_cases", "firs", "criminals", "locations", "crime_categories"],
         "chart_suggestion": "bar" if districts else None,
+    }
+
+
+def season_breakdown(db: Session) -> dict[str, Any]:
+    rows = db.query(CrimeCase.occurred_at).all()
+    season_counts: Counter[str] = Counter()
+    season_by_district: dict[str, Counter[str]] = defaultdict(Counter)
+    total = 0
+
+    for (occurred_at,) in rows:
+        if not occurred_at:
+            continue
+        season = get_season(occurred_at.month)
+        season_counts[season] += 1
+        total += 1
+
+    cases_with_location = (
+        db.query(CrimeCase.occurred_at, Location.district)
+        .join(Location, CrimeCase.location_id == Location.id)
+        .all()
+    )
+    for occurred_at, district in cases_with_location:
+        if occurred_at and district:
+            season_by_district[get_season(occurred_at.month)][district] += 1
+
+    result = []
+    for season in SEASON_ORDER:
+        count = season_counts.get(season, 0)
+        pct = round((count / total) * 100, 1) if total else 0.0
+        top_district = ""
+        if season_by_district[season]:
+            top_district = season_by_district[season].most_common(1)[0][0]
+        result.append({
+            "season": season,
+            "count": count,
+            "percentage": pct,
+            "top_district": top_district,
+        })
+
+    return {
+        "seasons": result,
+        "total_cases": total,
+        "karnataka_climate_note": "Karnataka seasons: Summer (Mar-May), Monsoon (Jun-Sep), Post-Monsoon (Oct-Nov), Winter (Dec-Feb)",
     }
 
 

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useAuditStore } from "../store/auditStore";
 import { useAuthStore } from "../store/authStore";
-import { ShieldAlert, Terminal, Search, UserMinus } from "lucide-react";
+import { ShieldAlert, Terminal, Search, UserMinus, Loader2 } from "lucide-react";
 import { downloadSecureDossier } from "../utils/downloader";
 import { getOffenderDossiers, type OffenderDossier } from "../services/api";
 
 import { ExportMenu } from "../components/reports";
+import { PageSkeleton } from "../components/ui/Skeleton";
 
 export const Offenders: React.FC = () => {
   const { logs, addLog, clearLogs } = useAuditStore();
@@ -17,6 +18,7 @@ export const Offenders: React.FC = () => {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -36,6 +38,9 @@ export const Offenders: React.FC = () => {
             ? error.message
             : "Failed to load offender dossier records",
         );
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
       });
 
     return () => {
@@ -90,6 +95,10 @@ export const Offenders: React.FC = () => {
           )}
         </div>
       </div>
+
+      {loading ? (
+        <PageSkeleton />
+      ) : (
 
       <div className="flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">
         <div className="lg:col-span-7 bg-[var(--bg-tertiary)]/30 border border-border-color p-5 rounded-card flex flex-col justify-between overflow-hidden">
@@ -303,6 +312,7 @@ export const Offenders: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

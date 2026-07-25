@@ -17,6 +17,7 @@ import {
   ArrowRight,
   ExternalLink
 } from 'lucide-react';
+import { CardSkeleton } from '../../components/ui/Skeleton';
 
 interface VictimSummary {
   id: string;
@@ -311,8 +312,16 @@ export const Victims: React.FC = () => {
           {/* List scroll panel */}
           <div className="flex-grow overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
             {loadingList ? (
-              <div className="py-8 text-center text-[var(--text-muted)] font-mono text-[10px] uppercase">
-                Synchronizing indexes...
+              <div className="flex flex-col gap-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="p-3 rounded border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/50 flex justify-between items-center">
+                    <div className="space-y-1.5">
+                      <div className="sk-skeleton rounded-sm h-3 w-24" />
+                      <div className="sk-skeleton rounded-sm h-2 w-16" />
+                    </div>
+                    <div className="sk-skeleton rounded h-3 w-10" />
+                  </div>
+                ))}
               </div>
             ) : victims.length > 0 ? (
               victims.map((item) => (
@@ -348,9 +357,8 @@ export const Victims: React.FC = () => {
         <div className="lg:col-span-8 bg-[var(--bg-secondary)] border border-border-color p-5 rounded-card flex flex-col gap-5 overflow-y-auto custom-scrollbar">
           
           {loadingDetails ? (
-            <div className="h-full w-full flex flex-col items-center justify-center text-[var(--text-muted)] font-mono text-xs uppercase space-y-2">
-              <div className="w-6 h-6 rounded-full border border-[#0E9E78] border-t-transparent animate-spin" />
-              <span>Decrypting dossier files...</span>
+            <div className="h-full w-full flex items-center justify-center">
+              <CardSkeleton />
             </div>
           ) : victimDetails ? (
             <div className="space-y-6">

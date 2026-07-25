@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRBAC } from '../../hooks/useRBAC';
 import { Search, Plus, Filter, ShieldCheck, Mail, Phone, Edit, Trash2 } from 'lucide-react';
 import { apiRequest } from '../../services/api';
+import { CardSkeleton } from '../../components/ui/Skeleton';
 
 interface Officer {
   id: string;
@@ -150,8 +151,10 @@ const OfficersPage: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto custom-scrollbar">
         {loading ? (
-          <div className="w-full h-full flex justify-center items-center">
-            <div className="w-8 h-8 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

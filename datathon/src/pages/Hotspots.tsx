@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import KarnatakaMap from '../components/map/KarnatakaMap';
-import { Compass, Download, ShieldAlert } from 'lucide-react';
+import { Compass, Download, Loader2 } from 'lucide-react';
 import { downloadSecureDossier } from '../utils/downloader';
 import { useAuditStore } from '../store/auditStore';
 import { useAuthStore } from '../store/authStore';
 import { getDistrictComparison, getHotspots, getRiskScores, type DistrictComparisonPoint, type HotspotPoint, type RiskScoresResponse } from '../services/api';
 import type { DistrictInfo } from '../store/mapStore';
+import { PageSkeleton } from '../components/ui/Skeleton';
 
 export const Hotspots: React.FC = () => {
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
   const [hotspots, setHotspots] = useState<HotspotPoint[]>([]);
   const [districtMetrics, setDistrictMetrics] = useState<Record<string, DistrictInfo>>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -28,6 +30,9 @@ export const Hotspots: React.FC = () => {
           setHotspots([]);
           setDistrictMetrics({});
         }
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
       });
 
     return () => {
@@ -69,6 +74,25 @@ export const Hotspots: React.FC = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none bg-[var(--bg-primary)]">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3">
+          <div>
+            <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
+              <Compass className="w-4 h-4 text-[#1E6FD9] animate-pulse" />
+              District Hotspot Analysis Map
+            </h2>
+            <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
+              Loading geospatial telemetry...
+            </p>
+          </div>
+        </div>
+        <PageSkeleton />
+      </div>
+    );
+  }
+
   return (
     <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none bg-[var(--bg-primary)]">
       
@@ -80,7 +104,7 @@ export const Hotspots: React.FC = () => {
             District Hotspot Analysis Map
           </h2>
           <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
-            GEOSPATIAL INCIDENT GRID OVERLAY â€” MAPBOX DUST COORDS & DECK.GL SCATTER PLOTS
+            GEOSPATIAL INCIDENT GRID OVERLAY — MAPBOX DUST COORDS & DECK.GL SCATTER PLOTS
           </p>
         </div>
 
@@ -100,7 +124,7 @@ export const Hotspots: React.FC = () => {
           <div key={`${hotspot.name}-${hotspot.district_id}`} className="bg-[var(--bg-secondary)]/80 border border-[var(--border-muted)] rounded-lg p-3 flex items-start justify-between gap-3">
             <div>
               <p className="text-[var(--text-primary)] font-semibold uppercase tracking-wide">{hotspot.name}</p>
-              <p className="text-[var(--text-muted)] mt-1">{hotspot.district_id} â€¢ {hotspot.category}</p>
+              <p className="text-[var(--text-muted)] mt-1">{hotspot.district_id} • {hotspot.category}</p>
             </div>
             <div className={`font-bold ${hotspot.score >= 80 ? 'text-[#C94A2A]' : hotspot.score >= 70 ? 'text-[#D4820A]' : 'text-[#0E9E78]'}`}>
               {hotspot.score}%

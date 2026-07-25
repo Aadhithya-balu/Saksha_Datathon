@@ -147,3 +147,11 @@ def risk_prediction(
 ):
     return dashboard_service.get_risk_prediction(db)
 
+
+@router.get("/season-breakdown")
+def season_breakdown(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return dashboard_service.get_season_breakdown(db)
+
