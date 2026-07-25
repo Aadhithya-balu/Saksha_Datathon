@@ -16,8 +16,18 @@ from app.database.postgres import Base, engine
 import app.models  # ensure models are registered
 
 
+_migration_done = False
+
+
 def _migrate_notifications_table():
-    """Add new columns to the notifications table if they don't exist."""
+    """Add new columns to the notifications table if they don't exist.
+    Uses a flag to ensure this only runs once per process lifetime,
+    avoiding repeated ALTER TABLE statements on every startup.
+    """
+    global _migration_done
+    if _migration_done:
+        return
+
     new_columns = [
         ("sender_id", "UUID REFERENCES users(id)"),
         ("subject", "VARCHAR(500) NOT NULL DEFAULT ''"),
@@ -39,16 +49,21 @@ def _migrate_notifications_table():
             ))
             existing = {row[0] for row in result}
 
+            alter_needed = False
             for col_name, col_def in new_columns:
                 if col_name not in existing:
+                    alter_needed = True
                     try:
                         conn.execute(text(f"ALTER TABLE notifications ADD COLUMN {col_name} {col_def}"))
                     except Exception:
                         pass
-            conn.commit()
+            if alter_needed:
+                conn.commit()
+        _migration_done = True
         logger.info("Notifications table migration complete")
     except Exception as exc:
         logger.warning(f"Notifications table migration skipped: {exc}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -63,11 +78,9 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.error(f"PostgreSQL connection failed: {exc}")
 
-
-    if verify_neo4j_connectivity():
-        logger.info("Neo4j connection OK")
-    else:
-        logger.warning("Neo4j connection could not be verified")
+    # Neo4j connectivity is verified lazily on first use, not at startup.
+    # This avoids blocking server readiness on a remote Neo4j Aura connection.
+    logger.info("Neo4j will be verified lazily on first use")
 
     yield
 

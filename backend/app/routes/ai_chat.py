@@ -9,7 +9,6 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.ai.chat.orchestrator import ChatOrchestrator
 from app.auth.dependencies import get_current_user
 from app.auth.rbac import ALL_ROLES, require_roles
 from app.database.postgres import get_db
@@ -17,7 +16,15 @@ from app.models.user import User
 
 router = APIRouter(prefix="/ai/chat", tags=["AI Chat"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
-_orchestrator = ChatOrchestrator()
+_orchestrator = None
+
+
+def _get_orchestrator():
+    global _orchestrator
+    if _orchestrator is None:
+        from app.ai.chat.orchestrator import ChatOrchestrator
+        _orchestrator = ChatOrchestrator()
+    return _orchestrator
 
 
 class ChatRequest(BaseModel):
@@ -50,15 +57,16 @@ async def chat(
     current_user: User = Depends(get_current_user),
 ):
     del current_user
+    orch = _get_orchestrator()
     if payload.stream:
         async def event_stream() -> AsyncIterator[bytes]:
-            async for chunk in _orchestrator.process_message(
+            async for chunk in orch.process_message(
                 payload.message, payload.session_id, db,
             ):
                 yield chunk
         return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 
-    result = _orchestrator.process_message_sync(payload.message, payload.session_id, db)
+    result = orch.process_message_sync(payload.message, payload.session_id, db)
     return _build_response(result)
 
 
@@ -70,7 +78,7 @@ async def chat_query(
 ):
     del current_user
     try:
-        result = _orchestrator.process_message_sync(payload.message, payload.session_id, db)
+        result = _get_orchestrator().process_message_sync(payload.message, payload.session_id, db)
         return _build_response(result)
     except Exception as exc:
         raise HTTPException(status_code=422, detail=str(exc))
@@ -84,7 +92,7 @@ async def investigation_chat(
 ):
     del current_user
     try:
-        result = _orchestrator.process_message_sync(payload.message, payload.session_id, db)
+        result = _get_orchestrator().process_message_sync(payload.message, payload.session_id, db)
         return _build_response(result)
     except Exception as exc:
         raise HTTPException(status_code=422, detail=str(exc))

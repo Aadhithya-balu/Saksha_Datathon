@@ -104,7 +104,7 @@ export const Overview: React.FC = () => {
     void loadDropdownOptions();
   }, []);
 
-  // Fetch filtered dashboard stats on filter change
+  // Fetch filtered dashboard stats on filter change — staged for faster perceived load
   useEffect(() => {
     let isMounted = true;
     const loadFilteredDashboard = async () => {
@@ -120,22 +120,20 @@ export const Overview: React.FC = () => {
           date_to: endDate ? new Date(endDate).toISOString() : undefined,
         };
 
-        const [
-          summaryResult,
-          trendResult,
-          categoryResult,
-          riskResult,
-          hotspotResult,
-          anomalyResult,
-          officerStatsResult,
-          evidenceStatsResult,
-          recentIncidentsResult,
-          forecastResult,
-          riskPredictionResult
-        ] = await Promise.all([
+        // STAGE 1: Critical data — summary, trends, categories (renders the page skeleton → content)
+        const [summaryResult, trendResult, categoryResult] = await Promise.all([
           getDashboardSummary(filters),
           getCrimeTrends(filters),
           getCategoryBreakdown(filters),
+        ]);
+
+        if (!isMounted) return;
+        setSummary(summaryResult);
+        setTrends(trendResult);
+        setCategories(categoryResult);
+
+        // STAGE 2: Secondary data — everything else fires in parallel, renders as it arrives
+        Promise.all([
           getRiskScores(undefined, filters.district),
           getHotspots(filters.district),
           getAnomalies(),
@@ -143,24 +141,21 @@ export const Overview: React.FC = () => {
           getEvidenceStats(),
           getRecentIncidents(),
           getForecast(),
-          getRiskPrediction()
-        ]);
+          getRiskPrediction(),
+        ]).then(([riskResult, hotspotResult, anomalyResult, officerStatsResult, evidenceStatsResult, recentIncidentsResult, forecastResult, riskPredictionResult]) => {
+          if (!isMounted) return;
+          setRiskScores(riskResult);
+          setHotspots(hotspotResult.hotspots);
+          setAnomalies(anomalyResult.anomalies);
+          setOfficerStats(officerStatsResult);
+          setEvidenceStats(evidenceStatsResult);
+          setRecentIncidents(recentIncidentsResult);
+          setForecastData(forecastResult);
+          setRiskPrediction(riskPredictionResult);
+        }).catch(() => {
+          // Secondary data failures are non-fatal — page already shows critical data
+        });
 
-        if (!isMounted) return;
-
-        setSummary(summaryResult);
-        setTrends(trendResult);
-        setCategories(categoryResult);
-        setRiskScores(riskResult);
-        setHotspots(hotspotResult.hotspots);
-        setAnomalies(anomalyResult.anomalies);
-        
-        setOfficerStats(officerStatsResult);
-        setEvidenceStats(evidenceStatsResult);
-        setRecentIncidents(recentIncidentsResult);
-        setForecastData(forecastResult);
-        setRiskPrediction(riskPredictionResult);
-        
         setError(null);
       } catch (loadError) {
         if (isMounted) {
