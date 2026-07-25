@@ -383,6 +383,12 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, inc
     headers,
   });
 
+  if (response.status === 401 && !path.startsWith('/auth/')) {
+    clearStoredTokens();
+    window.dispatchEvent(new CustomEvent('auth:session-expired'));
+    throw new Error('Session expired. Please log in again.');
+  }
+
   if (!response.ok) {
     throw new Error(await readErrorMessage(response));
   }
