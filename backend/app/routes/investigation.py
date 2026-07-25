@@ -150,9 +150,13 @@ def get_investigation_dashboard(
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
+    case_dict = data.case.__dict__.copy()
+    if case_dict.get("assigned_officer"):
+        case_dict["assigned_officer"] = case_dict["assigned_officer"].__dict__
+
     return InvestigationResponse(
-        case=CaseOut(**data.case.__dict__),
-        firs=[FIRSummaryOut(**f.__dict__) for f in data.firs],
+        case=CaseOut(**case_dict),
+        firs=[FIRSummaryOut(**{**f.__dict__, "criminals": f.criminals, "victims": f.victims}) for f in data.firs],
         criminals=[CriminalOut(**c.__dict__) for c in data.criminals],
         evidence=[EvidenceOut(**e.__dict__) for e in data.evidence],
         timeline=[TimelineEventOut(**t.__dict__) for t in data.timeline],
