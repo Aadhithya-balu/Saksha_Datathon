@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = None
 
     # --- CORS ---
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    ALLOWED_ORIGINS: str = "https://saksha-datathon-csbcweuf.onslate.in,http://localhost:3000,http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=(ROOT_DIR / ".env", BACKEND_DIR / ".env"), env_file_encoding="utf-8", extra="ignore")
 
