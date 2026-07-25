@@ -283,8 +283,12 @@ export const AIChat: React.FC = () => {
     localStorage.removeItem('saksha_chat_sessions');
   };
 
-  const handleCopyText = (text: string, msgId: string) => {
-    void navigator.clipboard.writeText(text);
+  const handleCopyText = async (text: string, msgId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // clipboard API unavailable (e.g. non-HTTPS) — silently ignore
+    }
     setCopiedId(msgId);
     setTimeout(() => setCopiedId(null), 2000);
   };
@@ -297,10 +301,10 @@ export const AIChat: React.FC = () => {
   };
 
   const suggestedPrompts = [
-    { text: "Show case CR-2026-BLR-9629", icon: FileText, category: "Case Lookup", query: "Tell me about case CR-2026-BLR-9629" },
+    { text: "Show case CR-2026-MYS-001", icon: FileText, category: "Case Lookup", query: "Tell me about case CR-2026-MYS-001" },
     { text: "Crime statistics overview", icon: Zap, category: "Analytics", query: "Show me the current crime statistics and trends across Karnataka" },
     { text: "Find criminal Ramu Swamy", icon: Search, category: "Criminal", query: "Tell me about the criminal Ramu Swamy and his network" },
-    { text: "Show FIR 2026/001", icon: ShieldAlert, category: "FIR", query: "Show me FIR 2026/001 details and linked suspects" },
+    { text: "Show FIR-789/MYS/2026", icon: ShieldAlert, category: "FIR", query: "Show me FIR-789/MYS/2026 details and linked suspects" },
     { text: "Identify crime hotspots", icon: Database, category: "Hotspots", query: "What are the current crime hotspots in Karnataka?" },
     { text: "Predict district risk", icon: Brain, category: "Predictions", query: "What is the risk assessment for Bengaluru Urban district?" },
   ];

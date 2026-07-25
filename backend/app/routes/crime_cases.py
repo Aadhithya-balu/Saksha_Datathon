@@ -3,9 +3,9 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.auth.dependencies import get_current_user
 from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
@@ -101,7 +101,13 @@ def list_cases(
     current_user: User = Depends(get_current_user),
 ):
     """List crime cases from PostgreSQL with complete detail attributes."""
-    query = db.query(CrimeCase)
+    query = (
+        db.query(CrimeCase)
+        .options(
+            joinedload(CrimeCase.assigned_officer)
+            .joinedload(Officer.user),
+        )
+    )
     if status:
         query = query.filter(CrimeCase.status == status)
     if q:
@@ -231,7 +237,17 @@ def get_case(
     current_user: User = Depends(get_current_user),
 ):
     """Retrieve full details of a crime case, including linked FIRs, timeline and persisted investigation notes."""
-    case = crime_crud.get(db, case_id)
+    case = (
+        db.query(CrimeCase)
+        .options(
+            joinedload(CrimeCase.assigned_officer)
+            .joinedload(Officer.user),
+        )
+        .filter(CrimeCase.id == case_id)
+        .first()
+    )
+    if not case:
+        raise HTTPException(status_code=404, detail="Crime case not found")
 
     # 1. Fetch linked FIRs from existing table
     firs_list = db.query(FIR).filter(FIR.crime_case_id == case.id).all()

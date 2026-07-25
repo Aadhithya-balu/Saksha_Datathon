@@ -70,7 +70,7 @@ class FIRSummaryOut(BaseModel):
     status: str
     filed_at: str
     narrative: str | None
-    criminals: list[FIRVictimOut]
+    criminals: list[FIRCriminalOut]
     victims: list[FIRVictimOut]
 
 

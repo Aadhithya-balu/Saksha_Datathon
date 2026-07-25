@@ -1096,3 +1096,556 @@ connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection re
 2026-07-25 08:44:35.600 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
 2026-07-25 08:44:35.665 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
 2026-07-25 08:54:17.462 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 09:47:36.326 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 09:47:39.473 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 09:47:39.527 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
+2026-07-25 09:47:39.622 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 09:56:47.444 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 09:57:04.200 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 09:57:06.916 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 09:57:06.965 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
+2026-07-25 09:57:07.048 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 09:57:48.738 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 09:58:02.294 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 09:58:05.517 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 09:58:05.574 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
+2026-07-25 09:58:05.649 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 09:58:09.383 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 09:58:25.008 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 09:58:29.660 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 09:58:29.720 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
+2026-07-25 09:58:29.732 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 09:58:51.475 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 09:59:07.629 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 09:59:10.184 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 09:59:10.231 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
+2026-07-25 09:59:10.273 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 09:59:10.382 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 09:59:19.445 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 09:59:21.997 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 09:59:22.043 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
+2026-07-25 09:59:22.062 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 09:59:58.897 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:00:06.083 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:00:09.009 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 10:00:09.062 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
+2026-07-25 10:00:09.102 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:00:12.734 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:00:20.298 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:00:23.159 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 10:00:23.214 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
+2026-07-25 10:00:23.234 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:26.457 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:26.471 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:26.535 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:27.899 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:28.888 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:28.901 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:28.909 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:29.000 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:29.025 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:29.039 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:29.045 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:29.118 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:29.141 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:29.154 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:29.163 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:29.236 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:29.274 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:29.288 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:29.303 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:29.425 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:29.450 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:29.467 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:29.475 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:29.606 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:29.657 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:29.672 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:29.681 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:29.774 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:29.812 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:29.831 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:29.840 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:29.869 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:34.701 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:34.722 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:34.730 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:34.749 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:34.828 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:34.853 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:34.855 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:34.865 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:34.891 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:34.908 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:34.909 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:34.914 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:34.947 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:34.965 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:34.966 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:34.973 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:35.007 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:35.028 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:35.031 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:35.040 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:35.180 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:35.197 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:35.199 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:35.300 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:01:35.330 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:01:35.347 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:01:35.348 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:01:35.421 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:03:41.295 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:03:44.932 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 10:03:45.003 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
+2026-07-25 10:03:45.064 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:11:39.637 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:38.681 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:38.707 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:38.752 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:40.193 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:41.456 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:41.472 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:41.488 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:41.587 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:41.612 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:41.626 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:41.634 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:41.698 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:41.731 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:41.751 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:41.759 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:41.839 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:41.878 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:41.900 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:41.909 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:41.977 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:42.022 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:42.036 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:42.045 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:42.114 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:42.144 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:42.164 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:42.175 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:42.259 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:42.301 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:42.324 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:42.332 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:42.362 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:46.531 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:46.548 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:46.554 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:46.573 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:46.607 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:46.622 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:46.624 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:46.637 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:46.668 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:46.683 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:46.684 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:46.690 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:46.736 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:46.752 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:46.754 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:46.759 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:46.791 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:46.807 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:46.808 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:46.817 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:46.993 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:47.012 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:47.013 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:47.126 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:20:47.154 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:20:47.170 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:20:47.171 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:20:47.246 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:22:54.673 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:22:54.714 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:22:54.793 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:22:59.018 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:01.767 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:01.818 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:01.824 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:02.123 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:02.197 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:02.237 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:02.240 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:02.497 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:02.632 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:02.672 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:02.701 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:02.816 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:02.884 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:02.928 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:02.931 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:03.111 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:03.203 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:03.258 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:03.261 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:03.450 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:03.537 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:03.595 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:03.598 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:03.769 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:03.867 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:03.919 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:03.923 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:03.977 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:09.888 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:09.932 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:09.955 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:09.989 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:10.075 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:10.115 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:10.118 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:10.149 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:10.240 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:10.274 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:10.276 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:10.283 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:10.366 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:10.400 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:10.402 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:10.415 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:10.493 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:10.544 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:10.546 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:10.560 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:10.791 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:10.866 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:10.870 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:11.082 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:23:11.194 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:23:11.235 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:23:11.237 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:23:11.364 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:30:16.922 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:30:24.171 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 10:30:24.236 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
+2026-07-25 10:30:24.348 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:33:06.130 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:33:17.218 | ERROR    | app.main:lifespan:62 - PostgreSQL connection failed: (psycopg2.OperationalError) could not translate host name "db.rfctfhbuaigtrmtcegan.supabase.co" to address: Name or service not known
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:33:17.542 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:33:58.026 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:34:09.170 | INFO     | app.main:lifespan:54 - Starting SAKSHA Backend in development mode
+2026-07-25 10:34:13.203 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 10:34:13.277 | INFO     | app.main:lifespan:60 - PostgreSQL connection OK
+2026-07-25 10:34:13.362 | WARNING  | app.main:lifespan:68 - Neo4j connection could not be verified
+2026-07-25 10:36:07.571 | INFO     | app.main:lifespan:73 - Shutdown complete
+2026-07-25 10:42:21.073 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:23.083 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 10:42:23.160 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:23.217 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:51.789 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:51.809 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:51.810 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:51.855 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:53.417 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:54.648 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:54.672 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:54.673 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:54.677 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:54.772 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:54.811 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:54.837 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:54.838 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:54.840 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:54.945 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:54.973 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:54.985 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:54.986 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:54.987 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:55.051 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:55.084 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:55.097 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:55.097 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:55.098 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:55.142 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:55.168 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:55.182 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:55.183 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:55.184 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:55.263 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:55.290 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:55.303 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:55.304 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:55.305 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:55.414 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:55.441 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:55.454 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:55.454 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:55.455 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:55.474 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:59.077 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:59.096 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:59.097 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:59.172 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:59.198 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:59.252 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:59.269 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:59.269 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:59.271 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:59.285 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:59.319 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:59.335 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:59.335 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:59.336 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:59.342 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:59.382 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:59.399 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:59.400 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:59.401 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:59.408 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:59.441 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:59.459 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:59.460 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:59.462 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:59.472 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:59.579 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:59.598 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:59.598 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:59.599 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:59.721 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:42:59.767 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:42:59.783 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:42:59.783 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:42:59.785 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:42:59.850 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:17.741 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:17.759 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:17.759 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:17.883 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:17.928 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:19.274 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:19.293 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:19.294 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:19.295 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:19.395 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:19.429 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:19.450 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:19.450 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:19.452 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:19.526 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:19.557 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:19.572 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:19.572 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:19.573 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:19.663 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:19.699 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:19.722 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:19.723 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:19.725 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:19.814 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:19.853 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:19.882 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:19.882 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:19.884 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:19.966 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:20.009 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:20.035 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:20.036 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:20.038 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:20.100 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:20.135 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:20.157 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:20.158 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:20.160 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:20.190 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:24.426 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:24.458 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:24.458 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:24.467 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:24.494 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:24.553 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:24.583 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:24.585 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:24.586 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:24.608 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:24.667 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:24.697 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:24.698 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:24.699 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:24.707 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:24.790 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:24.828 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:24.829 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:24.832 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:24.842 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:24.903 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:24.944 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:24.944 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:24.946 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:24.960 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:25.166 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:25.199 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:25.200 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:25.202 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:25.367 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:44:25.412 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:44:25.441 | WARNING  | app.main:_migrate_notifications_table:51 - Notifications table migration skipped: (sqlite3.OperationalError) no such table: information_schema.columns
+[SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications']
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-25 10:44:25.442 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:44:25.443 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:44:25.555 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:45:10.579 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:45:16.046 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 10:45:16.116 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:45:16.201 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 10:46:15.380 | INFO     | app.main:lifespan:75 - Shutdown complete
+2026-07-25 10:50:36.560 | INFO     | app.main:lifespan:56 - Starting SAKSHA Backend in development mode
+2026-07-25 10:50:42.989 | INFO     | app.main:_migrate_notifications_table:49 - Notifications table migration complete
+2026-07-25 10:50:43.080 | INFO     | app.main:lifespan:62 - PostgreSQL connection OK
+2026-07-25 10:50:43.215 | WARNING  | app.main:lifespan:70 - Neo4j connection could not be verified
+2026-07-25 11:03:20.055 | INFO     | app.main:lifespan:75 - Shutdown complete

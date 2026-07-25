@@ -32,21 +32,23 @@ def _migrate_notifications_table():
         ("acknowledged_at", "TIMESTAMPTZ"),
         ("resolved_at", "TIMESTAMPTZ"),
     ]
-    with engine.connect() as conn:
-        # Get existing columns
-        result = conn.execute(text(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications'"
-        ))
-        existing = {row[0] for row in result}
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications'"
+            ))
+            existing = {row[0] for row in result}
 
-        for col_name, col_def in new_columns:
-            if col_name not in existing:
-                try:
-                    conn.execute(text(f"ALTER TABLE notifications ADD COLUMN {col_name} {col_def}"))
-                except Exception:
-                    pass
-        conn.commit()
-    logger.info("Notifications table migration complete")
+            for col_name, col_def in new_columns:
+                if col_name not in existing:
+                    try:
+                        conn.execute(text(f"ALTER TABLE notifications ADD COLUMN {col_name} {col_def}"))
+                    except Exception:
+                        pass
+            conn.commit()
+        logger.info("Notifications table migration complete")
+    except Exception as exc:
+        logger.warning(f"Notifications table migration skipped: {exc}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
