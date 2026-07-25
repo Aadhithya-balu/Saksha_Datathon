@@ -1,0 +1,53 @@
+{
+    "model_name": "SAKSHA District Risk & Forecast",
+    "risk_algorithm": "RandomForest",
+    "forecast_algorithm": "XGBoost",
+    "version": "20260725_021129",
+    "risk_features": [
+        "crime_count",
+        "night_crime_ratio",
+        "weekend_crime_ratio",
+        "unique_categories",
+        "month_sin",
+        "month_cos",
+        "season_summer",
+        "season_monsoon",
+        "season_post_monsoon",
+        "lag_1",
+        "lag_3",
+        "rolling_mean_3",
+        "rolling_std_3",
+        "yoy_growth"
+    ],
+    "forecast_features": [
+        "crime_count",
+        "month_sin",
+        "month_cos",
+        "quarter",
+        "season_summer",
+        "season_monsoon",
+        "season_post_monsoon",
+        "lag_1",
+        "lag_2",
+        "lag_3",
+        "lag_6",
+        "rolling_mean_3",
+        "rolling_mean_6",
+        "rolling_std_3",
+        "ema_3",
+        "growth_rate",
+        "momentum"
+    ],
+    "training_rows": 34,
+    "risk_metrics": {
+        "rmse": 0.7541109539812849,
+        "mae": 0.5667060915275199,
+        "r2": -0.07174935441590846
+    },
+    "forecast_metrics": {
+        "rmse": 0.7286042804780001,
+        "mae": 0.619047619047619,
+        "r2": -0.0004748338081670411
+    },
+    "trained_on": "2026-07-25T02:11:29.110779+00:00"
+}

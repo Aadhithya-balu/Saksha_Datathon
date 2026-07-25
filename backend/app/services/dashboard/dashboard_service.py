@@ -334,3 +334,49 @@ def get_risk_prediction(db: Session) -> dict[str, Any]:
         "confidence_score": confidence_score,
         "prediction_time": "Next 7 Days"
     }
+
+
+SEASON_MAP = {
+    1: "Winter", 2: "Winter", 3: "Summer",
+    4: "Summer", 5: "Summer", 6: "Monsoon",
+    7: "Monsoon", 8: "Monsoon", 9: "Monsoon",
+    10: "Post-Monsoon", 11: "Post-Monsoon", 12: "Winter",
+}
+SEASON_ORDER = ["Summer", "Monsoon", "Post-Monsoon", "Winter"]
+
+
+def get_season_breakdown(db: Session) -> dict[str, Any]:
+    from collections import defaultdict
+
+    rows = db.query(CrimeCase.occurred_at, Location.district).join(
+        Location, CrimeCase.location_id == Location.id
+    ).all()
+
+    season_counts: dict[str, int] = {s: 0 for s in SEASON_ORDER}
+    season_districts: dict[str, Counter[str]] = defaultdict(Counter)
+
+    for occurred_at, district in rows:
+        if not occurred_at:
+            continue
+        season = SEASON_MAP.get(occurred_at.month, "Unknown")
+        if season in season_counts:
+            season_counts[season] += 1
+            season_districts[season][district] += 1
+
+    total = sum(season_counts.values())
+    result = []
+    for season in SEASON_ORDER:
+        count = season_counts[season]
+        pct = round((count / total) * 100, 1) if total else 0.0
+        top_district = season_districts[season].most_common(1)[0][0] if season_districts[season] else ""
+        result.append({
+            "season": season,
+            "count": count,
+            "percentage": pct,
+            "top_district": top_district,
+        })
+
+    return {
+        "seasons": result,
+        "total_cases": total,
+    }

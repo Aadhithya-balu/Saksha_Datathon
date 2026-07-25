@@ -2,19 +2,36 @@ import React, { useEffect, useState } from 'react';
 import ForecastChart from '../components/charts/ForecastChart';
 import CorrelationChart from '../components/charts/CorrelationChart';
 import WeatherCorrelationChart from '../components/charts/WeatherCorrelationChart';
-import { Cpu, RefreshCw, BarChart2, ShieldAlert, Sparkles, TrendingUp } from 'lucide-react';
-import { getAnomalies, getRiskScores, getModelInfo, type AnomalyRecord, type RiskScoresResponse, type ModelInfo } from '../services/api';
+import { Cpu, RefreshCw, ShieldAlert, Sparkles, Sun, CloudRain, Wind, Snowflake } from 'lucide-react';
+import { getAnomalies, getRiskScores, getModelInfo, getSeasonBreakdown, type AnomalyRecord, type RiskScoresResponse, type ModelInfo, type SeasonData } from '../services/api';
+import { PageSkeleton } from '../components/ui/Skeleton';
+
+const SEASON_ICONS: Record<string, React.ReactNode> = {
+  Summer: <Sun className="w-4 h-4 text-amber-400" />,
+  Monsoon: <CloudRain className="w-4 h-4 text-blue-400" />,
+  'Post-Monsoon': <Wind className="w-4 h-4 text-purple-400" />,
+  Winter: <Snowflake className="w-4 h-4 text-cyan-400" />,
+};
+
+const SEASON_COLORS: Record<string, string> = {
+  Summer: 'bg-amber-500/20 border-amber-500/30 text-amber-400',
+  Monsoon: 'bg-blue-500/20 border-blue-500/30 text-blue-400',
+  'Post-Monsoon': 'bg-purple-500/20 border-purple-500/30 text-purple-400',
+  Winter: 'bg-cyan-500/20 border-cyan-500/30 text-cyan-400',
+};
 
 export const Predictions: React.FC = () => {
   const [riskScores, setRiskScores] = useState<RiskScoresResponse | null>(null);
   const [anomalies, setAnomalies] = useState<AnomalyRecord[]>([]);
   const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
+  const [seasons, setSeasons] = useState<SeasonData[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
-    void Promise.all([getRiskScores(), getAnomalies(), getModelInfo()])
-      .then(([riskResponse, anomalyResponse, modelResponse]) => {
+    void Promise.all([getRiskScores(), getAnomalies(), getModelInfo(), getSeasonBreakdown()])
+      .then(([riskResponse, anomalyResponse, modelResponse, seasonResponse]) => {
         if (!isMounted) {
           return;
         }
@@ -22,6 +39,7 @@ export const Predictions: React.FC = () => {
         setRiskScores(riskResponse);
         setAnomalies(anomalyResponse.anomalies);
         setModelInfo(modelResponse);
+        setSeasons(seasonResponse.seasons);
       })
       .catch(() => {
         if (isMounted) {
@@ -29,6 +47,9 @@ export const Predictions: React.FC = () => {
           setAnomalies([]);
           setModelInfo(null);
         }
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
       });
 
     return () => {
@@ -37,6 +58,25 @@ export const Predictions: React.FC = () => {
   }, []);
 
   const predictionRows = riskScores?.grid_predictions ?? [];
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6 p-1 md:p-3 select-none bg-[var(--bg-primary)]">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3">
+          <div>
+            <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
+              <Cpu className="w-5 h-5 text-[#0E9E78] animate-pulse" />
+              AI Crime Predictive Intelligence
+            </h2>
+            <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
+              Loading predictive models...
+            </p>
+          </div>
+        </div>
+        <PageSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-1 md:p-3 select-none bg-[var(--bg-primary)]">
@@ -74,6 +114,33 @@ export const Predictions: React.FC = () => {
       <div className="w-full">
         <WeatherCorrelationChart />
       </div>
+
+      {/* SEASONAL CRIME BREAKDOWN */}
+      {seasons.length > 0 && (
+        <div className="bg-secondary-bg/25 border border-border-color p-5 rounded-card">
+          <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-widest block border-b border-[var(--border-muted)] pb-2 mb-4">
+            Karnataka Seasonal Crime Intelligence
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {seasons.map((s) => (
+              <div key={s.season} className={`p-4 border rounded-card flex flex-col gap-2 ${SEASON_COLORS[s.season] || 'border-border-color'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase font-mono">{s.season}</span>
+                  {SEASON_ICONS[s.season]}
+                </div>
+                <span className="text-xl font-bold font-mono">{s.count}</span>
+                <div className="flex items-center justify-between text-[9px] font-mono">
+                  <span>{s.percentage}% of total</span>
+                  {s.top_district && <span className="truncate max-w-[100px]">Peak: {s.top_district}</span>}
+                </div>
+                <div className="w-full bg-black/20 h-1.5 rounded-full overflow-hidden mt-1">
+                  <div className="h-full rounded-full bg-current opacity-60" style={{ width: `${s.percentage}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* DETAILED STATS ROW */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">

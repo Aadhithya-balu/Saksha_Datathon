@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, AlertTriangle, ArrowLeft, Activity, Layers } from 'lucide-react';
+import { Search, ArrowLeft, Layers } from 'lucide-react';
 import { getInvestigation, getCrimeCases } from '../../services/api';
 import type { InvestigationData, CrimeCaseDetailRecord } from '../../services/api';
 import InvestigationDashboard from '../../components/investigation/InvestigationDashboard';
@@ -10,6 +10,7 @@ import LinkedCriminals from '../../components/investigation/LinkedCriminals';
 import LinkedEvidence from '../../components/investigation/LinkedEvidence';
 import AIRecommendations from '../../components/investigation/AIRecommendations';
 import AIChatPanel from '../../components/investigation/AIChatPanel';
+import { CardSkeleton, TableSkeleton } from '../../components/ui/Skeleton';
 
 type ViewState = 'list' | 'detail';
 
@@ -112,9 +113,10 @@ const InvestigationPage: React.FC = () => {
         {/* Case List */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-3">
-              <div className="w-8 h-8 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin" />
-              <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">Loading cases...</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
             </div>
           ) : cases.length === 0 ? (
             <div className="p-12 text-center text-[10px] text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)] rounded-lg">
@@ -163,9 +165,23 @@ const InvestigationPage: React.FC = () => {
   // ── Detail View ──
   if (loadingDetail || !investigationData) {
     return (
-      <div className="h-[84vh] flex flex-col items-center justify-center space-y-4">
-        <div className="w-10 h-10 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin" />
-        <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase">Loading investigation dashboard...</span>
+      <div className="min-h-[84vh] space-y-6 p-1 md:p-3">
+        <div className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-xs uppercase font-bold">
+          <ArrowLeft className="w-4 h-4" /> Back to Case List
+        </div>
+        <div className="space-y-4">
+          <CardSkeleton />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              <CardSkeleton />
+              <CardSkeleton />
+            </div>
+            <div className="space-y-4">
+              <CardSkeleton />
+              <CardSkeleton />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

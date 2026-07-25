@@ -1,5 +1,8 @@
 """Seed roles, operators, and an ER-shaped prototype crime dataset."""
+import random
 from datetime import date, datetime, timedelta
+from math import cos, sin
+from random import uniform
 
 from app.core.security import hash_password
 from app.database.postgres import SessionLocal
@@ -91,6 +94,53 @@ CRIMINALS = [
     ("Sayed Ibrahim", "Sayed", date(1985, 2, 22), "Male", "Tattoo on right wrist", "Port logistics support for synthetic drug consignments", "at_large"),
     ("Karthik Gowda", "Gowda", date(1988, 8, 3), "Male", "Thick moustache", "Forgery and property document intimidation", "arrested"),
     ("Mohsin Pasha", "Pasha", date(1987, 1, 19), "Male", "Burn mark on forearm", "Illegal mineral transport and forged transit slips", "at_large"),
+    # 55 additional synthetic criminals for meaningful ML training
+    ("Prasad Shenoy", "Prasad", date(1979, 6, 15), "Male", "Deep voice, tall build", "Cyber fraud via fake banking portals", "at_large"),
+    ("Naveen Reddy", "Navi", date(1992, 3, 20), "Male", "Slim build, clean shaven", "Phishing SMS campaigns targeting elderly", "at_large"),
+    ("Ravi Shankar Bhat", "Ravi Bhat", date(1981, 9, 8), "Male", "Gold chain, receding hairline", "Cash-in-transit robbery planning", "arrested"),
+    ("Imran Khan Pathan", "Imran", date(1986, 12, 1), "Male", "Beard, muscular build", "Interstate drug mule coordinator", "at_large"),
+    ("Deepak Sharma", "Deepu", date(1993, 7, 25), "Male", "Glasses, left ear piercing", "Online investment scam operator", "convicted"),
+    ("Suresh Babu", "Suresh Anna", date(1975, 1, 30), "Male", "Greying temples", "Land grab intimidation syndicate", "at_large"),
+    ("Manjunath Holla", "Manju", date(1983, 5, 14), "Male", "Stocky, red birthmark neck", "Stolen vehicle resale network", "at_large"),
+    ("Farhan Ahmed", "Farhan", date(1991, 8, 22), "Male", "Sharp features, short hair", "Cryptocurrency money laundering", "at_large"),
+    ("Girish Nayak", "Girish K", date(1984, 11, 3), "Male", "Wears thick spectacles", "Fake passport and visa racket", "arrested"),
+    ("Venkatesh Kulkarni", "Venky", date(1980, 2, 18), "Male", "Mustache, broad forehead", "Contract killing intermediary", "at_large"),
+    ("Yusuf Ali Khan", "Yusuf", date(1989, 4, 7), "Male", "Tattoo forearm, athletic build", "Smuggled electronics distribution", "at_large"),
+    ("Rajesh Pai", "Raju Pai", date(1977, 10, 21), "Male", "Widow's peak, stocky", "Money lending extortion operations", "at_large"),
+    ("Ashok Kamble", "Ashok", date(1994, 1, 12), "Male", "Earring, tattoo on neck", "ATM card skimming operations", "convicted"),
+    ("Irfan Hassan", "Irfan", date(1988, 6, 29), "Male", "Lean, scar on chin", "Harbor smuggling logistics", "at_large"),
+    ("Mahesh Jain", "Mahesh", date(1976, 3, 5), "Male", "Portly, thick glasses", "Property fraud and forged deeds", "arrested"),
+    ("Vijay Kumar S", "Vijay S", date(1990, 9, 16), "Male", "Clean shaven, athletic", "Bike theft ring operator", "at_large"),
+    ("Tanveer Alam", "Tanu", date(1987, 7, 2), "Male", "Tall, scar on forehead", "Fake currency distribution", "at_large"),
+    ("Satish Mudiraj", "Satish", date(1983, 12, 8), "Male", "Dark complexion, muscular", "Illegal quarry operations", "at_large"),
+    ("Rahul Deshpande", "Rahul D", date(1995, 2, 14), "Male", "Slim, ponytail", "Dark web drug marketplace admin", "at_large"),
+    ("Bharath Gowda", "Bharath", date(1982, 8, 26), "Male", "Round face, gold teeth", "Timber smuggling coordinator", "arrested"),
+    ("Javed Sheikh", "Javed", date(1991, 5, 19), "Male", "Tattoo chest, lean build", "Illegal mining transport driver", "at_large"),
+    ("Santosh Patil", "Santosh P", date(1985, 11, 11), "Male", "Short, thick mustache", "IPC fraud and cheating", "at_large"),
+    ("Arun Verma", "Arun V", date(1978, 4, 30), "Male", "Grey hair, spectacles", "Organized gambling den operator", "convicted"),
+    ("Khalid Mehmood", "Khalid", date(1986, 3, 12), "Male", "Beard, heavy build", "Narcotics retail distribution", "at_large"),
+    ("Pavan Kalyan R", "Pavan", date(1993, 10, 5), "Male", "Slim, clean shaven", "Cyber stalking and harassment", "at_large"),
+    ("Shiva Prasad M", "Shiva M", date(1980, 7, 18), "Male", "Muscular, tribal tattoo", "Counterfeit goods manufacturing", "arrested"),
+    ("Mohammed Ali", "Mohd Ali", date(1989, 1, 27), "Male", "Sharp nose, thin build", "Gold chain snatching gang leader", "at_large"),
+    ("Ganesh Haldipur", "Ganesh", date(1984, 5, 9), "Male", "Round face, dimple", "Illegal transport route management", "at_large"),
+    ("Rohit Shetty K", "Rohit K", date(1992, 11, 15), "Male", "Tall, sporty build", "Vehicle theft for parts", "arrested"),
+    ("Zubair Sheikh", "Zubair", date(1981, 9, 3), "Male", "Beard, glasses", "Interstate sand mining syndicate", "at_large"),
+    ("Nagendra Prasad", "Nagendra", date(1977, 6, 22), "Male", "Bald, strong jaw", "Extortion via threat calls", "at_large"),
+    ("Vasanth Kumar", "Vasu", date(1994, 4, 11), "Male", "Slim, earring", "ATM break-in specialist", "convicted"),
+    ("Hafeez Rehman", "Hafeez", date(1983, 12, 30), "Male", "Tall, broad build", "Smuggled gold transport", "at_large"),
+    ("Chandrashekar B", "Chandru B", date(1988, 2, 8), "Male", "Mustache, medium build", "Fake document printing ring", "at_large"),
+    ("Lokesh Biradar", "Lokesh", date(1990, 8, 17), "Male", "Scar on lip, stocky", "Illegal liquor distribution", "at_large"),
+    ("Sameer Patel", "Sameer", date(1986, 10, 25), "Male", "Glasses, short hair", "Hawala money transfer operator", "arrested"),
+    ("Rakesh Tiwari", "Rakesh T", date(1979, 3, 14), "Male", "Receding hairline, portly", "Land encroachment intimidation", "at_large"),
+    ("Yogesh Shetty", "Yogesh", date(1991, 7, 6), "Male", "Athletic, tattoo arm", "Smuggled electronics import", "at_large"),
+    ("Anil Kumar J", "Anil J", date(1985, 5, 23), "Male", "Thick mustache, medium build", "IPC assault repeat offender", "at_large"),
+    ("Zaheer Ahmed", "Zaheer", date(1982, 11, 19), "Male", "Beard, lean build", "Drug courier network coordinator", "at_large"),
+    ("Manoj Birajdar", "Manoj B", date(1993, 1, 7), "Male", "Short, muscular", "Illegal gambling enforcement", "convicted"),
+    ("Sunil Khot", "Sunil K", date(1987, 9, 28), "Male", "Glasses, medium height", "Fake call center scam", "at_large"),
+    ("Kiran Bhat", "Kiran", date(1980, 4, 16), "Male", "Portly, gold ring", "Timber transport forgery", "arrested"),
+    ("Tariq Hussain", "Tariq", date(1992, 6, 2), "Male", "Lean, sharp features", "Illegal mineral transport", "at_large"),
+    ("Vinayak Kulkarni", "Vinayak K", date(1984, 1, 25), "Male", "Tall, spectacles", "Cheque forgery operations", "at_large"),
+    ("Nasir Shaikh", "Nasir", date(1989, 8, 14), "Male", "Short, heavy build", "Fish export smuggling", "at_large"),
 ]
 
 VICTIMS = [
@@ -99,9 +149,31 @@ VICTIMS = [
     ("Asha Rao", "+91 98800 00003", "Mangaluru", "Female", 33, "Witnessed cargo handoff near harbor gate."),
     ("Prakash Jain", "+91 98800 00004", "Belagavi", "Male", 41, "Reported forged excise transport documents."),
     ("Latha Hegde", "+91 98800 00005", "Hassan", "Female", 29, "Filed domestic violence complaint with medical evidence."),
+    ("Sunita Devi", "+91 98800 00006", "Bengaluru Urban", "Female", 38, "Lost savings in online investment scam."),
+    ("Mohan Krishna", "+91 98800 00007", "Mysuru", "Male", 55, "Vehicle stolen from parking lot near market."),
+    ("Fathima Begum", "+91 98800 00008", "Mangaluru", "Female", 42, "Gold chain snatched at traffic signal."),
+    ("Rajendra Prasad", "+91 98800 00009", "Ballari", "Male", 48, "Land documents forged by fraudsters."),
+    ("Shobha Patil", "+91 98800 00010", "Belagavi", "Female", 35, "Received threatening calls for loan recovery."),
+    ("Nagaraj Shetty", "+91 98800 00011", "Tumkuru", "Male", 60, "Property encroachment with threat of violence."),
+    ("Meena Kumari", "+91 98800 00012", "Kalaburagi", "Female", 44, "Husband involved in domestic abuse."),
+    ("Pradeep Naik", "+91 98800 00013", "Dharwad", "Male", 37, "Shop broken into, cash and electronics stolen."),
+    ("Suma B", "+91 98800 00014", "Hassan", "Female", 28, "Stalked and harassed online via social media."),
+    ("Girijeshwar Rao", "+91 98800 00015", "Ballari", "Male", 50, "Illegal mining on ancestral land reported."),
+    ("Ayesha Parveen", "+91 98800 00016", "Mangaluru", "Female", 31, "Hawala transfer scam victim."),
+    ("Bharat Hegde", "+91 98800 00017", "Belagavi", "Male", 43, "ATM card cloned, account drained."),
+    ("Chitra K", "+91 98800 00018", "Mysuru", "Female", 39, "Fake police impersonator demanded bribe."),
+    ("Dinesh Rao", "+91 98800 00019", "Bengaluru Urban", "Male", 34, "Phishing email led to bank account compromise."),
+    ("Eshwarappa", "+91 98800 00020", "Tumkuru", "Male", 58, "Farmland encroached by mining operators."),
+    ("Farzana Banu", "+91 98800 00021", "Kalaburagi", "Female", 27, "Domestic violence with threats to children."),
+    ("Gopal Krishna", "+91 98800 00022", "Dharwad", "Male", 45, "Property dispute turned violent."),
+    ("Hema Malini", "+91 98800 00023", "Hassan", "Female", 52, "Jewellery stolen during house burglary."),
+    ("Irfan Ahmed", "+91 98800 00024", "Mangaluru", "Male", 30, "Assaulted during road rage incident."),
+    ("Jyothi Lingegowda", "+91 98800 00025", "Mysuru", "Female", 36, "Cyber fraud victim, lost retirement savings."),
 ]
 
+# Original 11 cases + 49 synthetic cases = 60 total for meaningful ML
 CASES = [
+    # Original 11 cases
     ("CR-2026-BNG-001", "Cyber Crime & Online Fraud", "Whitefield Police Station", -3, "open", "forged biometric login, micro-lending extortion", ["Vikram Yadav"], ["K. S. Narayanan"], "FIR-045/BNG/2026", "IPC 420, IT Act 66D", "high", 45),
     ("CR-2026-BNG-002", "Cyber Crime & Online Fraud", "KR Puram Police Station", -8, "open", "wallet mule routing, call spoofing", ["Vikram Yadav"], ["K. S. Narayanan"], "FIR-052/BNG/2026", "IPC 419, IT Act 66C", "medium", 25),
     ("CR-2026-MYS-001", "Theft & Burglaries", "Devaraja Police Station", -6, "open", "late night lock break, scooter reconnaissance", ["Ramu Swamy", "Karthik Gowda"], ["Dr. Vinay Murthy"], "FIR-789/MYS/2026", "IPC 379, 457", "high", 60),
@@ -114,6 +186,52 @@ CASES = [
     ("CR-2026-TMK-001", "Assault", "Town Police Station", -31, "closed", "industrial road altercation", [], [], "FIR-144/TMK/2026", "IPC 323", "medium", 100),
     ("CR-2026-DWD-001", "Theft & Burglaries", "Suburban Police Station", -35, "closed", "market yard attempted theft", ["Ramu Swamy"], [], "FIR-177/DWD/2026", "IPC 379", "low", 100),
 ]
+
+
+def _generate_synthetic_cases():
+    """Generate 49 additional synthetic cases spread across 12 months, 10 districts, 8 categories."""
+    rng = random.Random(42)
+    category_names = [c[0] for c in CATEGORIES]
+    station_map = {loc[2]: loc[1] for loc in LOCATIONS}
+    stations = list(station_map.keys())
+
+    criminal_names = [c[0] for c in CRIMINALS]
+    victim_names = [v[0] for v in VICTIMS]
+
+    statuses = ["open", "open", "open", "closed", "investigating"]
+    priorities = ["low", "medium", "medium", "high", "critical"]
+    now = datetime.now()
+    cases = []
+
+    for i in range(49):
+        cat = rng.choice(category_names)
+        station = rng.choice(stations)
+        district = station_map[station]
+        days_ago = rng.randint(1, 365)
+        status = rng.choice(statuses)
+        priority = rng.choice(priorities)
+        progress = rng.randint(0, 100) if status == "closed" else rng.randint(5, 80)
+        n_criminals = rng.choices([0, 1, 2, 3], weights=[30, 40, 20, 10])[0]
+        n_victims = rng.choices([0, 1, 2], weights=[40, 45, 15])[0]
+        selected_criminals = rng.sample([c for c in criminal_names if c not in ["Ramu Swamy", "Vikram Yadav", "Sayed Ibrahim", "Karthik Gowda", "Mohsin Pasha"]], min(n_criminals, 55))
+        selected_victims = rng.sample(victim_names, min(n_victims, 25))
+
+        case_num = f"CR-2026-SYN-{i+1:03d}"
+        fir_num = f"FIR-{rng.randint(200,999)}/SYN/2026"
+        mo_options = [
+            "night operation, mask used", "vehicle reconnaissance, parked getaway bike",
+            "insider tip suspected", "repeated pattern across districts", "fake identity documents",
+            "coordinated group activity", "electronic surveillance evasion", "cash-only transactions",
+            "modified vehicle plates", "warehouse hideout used"
+        ]
+        mo_tags = ", ".join(rng.sample(mo_options, rng.randint(1, 3)))
+        sections = rng.choice(["IPC 379, 457", "IPC 420, IT Act 66D", "NDPS 21", "IPC 323, 324", "MMDR Act 21", "DV Act", "IPC 447, 506", "Excise Act 32"])
+
+        cases.append((case_num, cat, station, -days_ago, status, mo_tags, selected_criminals, selected_victims, fir_num, sections, priority, progress))
+    return cases
+
+
+ALL_CASES = CASES + _generate_synthetic_cases()
 
 
 DEMO_NOTIFICATIONS = [
@@ -272,7 +390,7 @@ def _seed_victims(db):
 def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers):
     investigator = officers.get("IO-3921") or next(iter(officers.values()), None)
     now = datetime.now()
-    for item in CASES:
+    for item in ALL_CASES:
         case_number, category_name, station, days, status, mo_tags, criminal_names, victim_names, fir_number, sections, priority, progress = item
         crime = db.query(CrimeCase).filter(CrimeCase.case_number == case_number).first()
         if not crime:

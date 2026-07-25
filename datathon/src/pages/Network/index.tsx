@@ -13,6 +13,7 @@ import { downloadSecureDossier } from '../../utils/downloader';
 import { useAuditStore } from '../../store/auditStore';
 import { useAuthStore } from '../../store/authStore';
 import { Network as NetIcon, Layers } from 'lucide-react';
+import { CardSkeleton } from '../../components/ui/Skeleton';
 
 export const NetworkPageWorkspace: React.FC = () => {
   const {
@@ -108,8 +109,12 @@ export const NetworkPageWorkspace: React.FC = () => {
               {graphData ? (
                 <CriminalGraph3D onNodeSelect={setSelectedNode} graphData={graphData} />
               ) : (
-                <div className="h-full flex items-center justify-center bg-[var(--bg-surface)] rounded-card border border-[var(--border-secondary)] text-xs text-[var(--text-muted)] uppercase">
-                  {loading ? 'Loading graph telemetry...' : error || 'Graph data unavailable'}
+                <div className="h-full flex items-center justify-center bg-[var(--bg-surface)] rounded-card border border-[var(--border-secondary)]">
+                  {loading ? (
+                    <div className="w-full p-6"><CardSkeleton /></div>
+                  ) : (
+                    <span className="text-xs text-[var(--text-muted)] uppercase">{error || 'Graph data unavailable'}</span>
+                  )}
                 </div>
               )}
             </div>

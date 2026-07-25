@@ -20,6 +20,7 @@ import {
   ExternalLink,
   Sparkles
 } from 'lucide-react';
+import { TableSkeleton, CardSkeleton } from '../../components/ui/Skeleton';
 
 interface CriminalSummary {
   id: string;
@@ -344,8 +345,16 @@ export const Criminals: React.FC = () => {
           {/* List scroll panel */}
           <div className="flex-grow overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
             {loadingList ? (
-              <div className="py-8 text-center text-[var(--text-muted)] font-mono text-[10px] uppercase">
-                Synchronizing indexes...
+              <div className="flex flex-col gap-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="p-3 rounded border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/50 flex justify-between items-center">
+                    <div className="space-y-1.5">
+                      <div className="sk-skeleton rounded-sm h-3 w-24" />
+                      <div className="sk-skeleton rounded-sm h-2 w-16" />
+                    </div>
+                    <div className="sk-skeleton rounded h-4 w-12" />
+                  </div>
+                ))}
               </div>
             ) : criminals.length > 0 ? (
               criminals.map((item) => (
@@ -381,9 +390,8 @@ export const Criminals: React.FC = () => {
         <div className="lg:col-span-8 bg-[var(--bg-secondary)] border border-border-color p-5 rounded-card flex flex-col gap-5 overflow-y-auto custom-scrollbar">
           
           {loadingDetails ? (
-            <div className="h-full w-full flex flex-col items-center justify-center text-[var(--text-muted)] font-mono text-xs uppercase space-y-2">
-              <div className="w-6 h-6 rounded-full border border-[#1E6FD9] border-t-transparent animate-spin" />
-              <span>Decryption in progress...</span>
+            <div className="h-full w-full flex items-center justify-center">
+              <CardSkeleton />
             </div>
           ) : criminalDetails ? (
             <div className="space-y-6">

@@ -13,6 +13,7 @@ import NotificationDetailModal from '../../components/notifications/Notification
 import ActivityFeed from '../../components/notifications/ActivityFeed';
 import SystemHealth from '../../components/notifications/SystemHealth';
 import LiveEventTimeline from '../../components/notifications/LiveEventTimeline';
+import { TableSkeleton } from '../../components/ui/Skeleton';
 
 type TabView = 'messages' | 'timeline' | 'activity' | 'health';
 
@@ -127,9 +128,8 @@ const NotificationsPage: React.FC = () => {
             {/* Notification List */}
             <div className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl overflow-hidden">
               {loading && notifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <div className="w-8 h-8 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin" />
-                  <p className="mt-3 text-[10px] font-mono text-[var(--text-muted)] uppercase">Loading messages...</p>
+                <div className="p-4">
+                  <TableSkeleton rows={5} cols={2} />
                 </div>
               ) : notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center px-4">

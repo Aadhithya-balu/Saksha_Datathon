@@ -55,7 +55,8 @@ JOIN crime_categories cat ON cc.category_id = cat.id
 def load_data() -> pd.DataFrame:
     try:
         engine = create_engine(settings.DATABASE_URL)
-        df = pd.read_sql(QUERY, engine)
+        with engine.connect() as conn:
+            df = pd.read_sql(QUERY, conn.connection)
         logger.info("Loaded %d crime records.", len(df))
         return df
     except Exception:

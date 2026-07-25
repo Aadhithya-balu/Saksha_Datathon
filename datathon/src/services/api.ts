@@ -1202,6 +1202,25 @@ export async function getModelInfo() {
   return apiRequest<ModelInfo>('/ai/predictions/model-info');
 }
 
+// ── Season Breakdown ────────────────────────────────────────────────────────
+
+export interface SeasonData {
+  season: string;
+  count: number;
+  percentage: number;
+  top_district: string;
+}
+
+export interface SeasonBreakdownResponse {
+  seasons: SeasonData[];
+  total_cases: number;
+  karnataka_climate_note?: string;
+}
+
+export async function getSeasonBreakdown() {
+  return apiRequest<SeasonBreakdownResponse>('/dashboard/season-breakdown');
+}
+
 // ── Sociological Insights ───────────────────────────────────────────────────
 
 export interface AgeGroupData {

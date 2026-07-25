@@ -626,6 +626,24 @@ input[type="week"] {
 /* bg-[#0A1220] = uppercase variant already handled, but ensure opacity variants */
 [data-theme="light"] .bg-\[\#0A1220\] { background-color: var(--bg-secondary) !important; }
 
+/* --- Tooltip & overlay backgrounds --- */
+[data-theme="light"] .bg-\[\#0c1424\] { background-color: var(--bg-elevated) !important; }
+[data-theme="light"] .bg-\[\#0a1122\] { background-color: var(--bg-primary) !important; }
+[data-theme="light"] .bg-\[\#0B1426\] { background-color: var(--bg-secondary) !important; }
+
+/* --- Tooltip borders --- */
+[data-theme="light"] .border-\[\#1a2744\] { border-color: var(--border-secondary) !important; }
+
+/* --- Priority badge dark backgrounds (Investigation page) --- */
+[data-theme="light"] .bg-red-950\/40 { background-color: rgba(220,38,38,0.08) !important; }
+[data-theme="light"] .bg-orange-950\/40 { background-color: rgba(249,115,22,0.08) !important; }
+[data-theme="light"] .bg-yellow-950\/40 { background-color: rgba(234,179,8,0.08) !important; }
+[data-theme="light"] .bg-green-950\/40 { background-color: rgba(34,197,94,0.08) !important; }
+[data-theme="light"] .border-red-900\/40 { border-color: rgba(220,38,38,0.2) !important; }
+[data-theme="light"] .border-orange-900\/40 { border-color: rgba(249,115,22,0.2) !important; }
+[data-theme="light"] .border-yellow-900\/40 { border-color: rgba(234,179,8,0.2) !important; }
+[data-theme="light"] .border-green-900\/40 { border-color: rgba(34,197,94,0.2) !important; }
+
 /* ============================================
    HEIGHT RESPONSIVENESS
    ============================================ */

@@ -45,6 +45,7 @@ import {
   UserMinus, Settings, Users, AlertCircle, FileText, PlusCircle, Bookmark, Compass as NavIcon,
   Clock, RefreshCw
 } from 'lucide-react';
+import { PageSkeleton } from '../components/ui/Skeleton';
 
 export const Overview: React.FC = () => {
   const { user } = useAuthStore();
@@ -318,6 +319,8 @@ export const Overview: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 select-none">
       
+      {loading && !summary && <PageSkeleton />}
+
       {/* BRANDING HEADER COMPOSITE ROW */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-[var(--border-primary)] pb-4">
         <div>
