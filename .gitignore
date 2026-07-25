@@ -30,3 +30,8 @@ htmlcov/
 *.db
 
 TODO.md
+
+# Logs
+*.log
+logs/
+backend/logs/
