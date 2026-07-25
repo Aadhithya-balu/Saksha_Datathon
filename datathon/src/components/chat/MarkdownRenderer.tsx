@@ -1,158 +1,159 @@
 import React from 'react';
+import {
+  AlertTriangle, Info, CheckCircle, XCircle, FileText
+} from 'lucide-react';
 
 interface MarkdownRendererProps {
   content: string;
   className?: string;
 }
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className = '' }) => {
-  if (!content) return null;
+type Block =
+  | { type: 'h1'; text: string }
+  | { type: 'h2'; text: string }
+  | { type: 'h3'; text: string }
+  | { type: 'code'; lang: string; lines: string[] }
+  | { type: 'table'; headers: string[]; rows: string[][] }
+  | { type: 'callout'; variant: 'info'|'warning'|'success'|'danger'|'note'; text: string }
+  | { type: 'quote'; text: string }
+  | { type: 'hr' }
+  | { type: 'ul'; items: string[] }
+  | { type: 'ol'; items: string[] }
+  | { type: 'p'; text: string }
+  | { type: 'br' };
 
-  // Split lines into blocks
-  const lines = content.split('\n');
-  const elements: React.ReactNode[] = [];
-  let inCodeBlock = false;
-  let codeBlockBuffer: string[] = [];
-  let codeLanguage = '';
+function parse(src: string): Block[] {
+  const lines = src.split('\n');
+  const out: Block[] = [];
+  let i = 0;
+  const peek = () => lines[i]?.trim() ?? '';
 
-  lines.forEach((line, index) => {
-    // Code block toggle
-    if (line.trim().startsWith('```')) {
-      if (inCodeBlock) {
-        // End code block
-        elements.push(
-          <div key={`code-${index}`} className="my-2 p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-xs font-mono overflow-x-auto text-emerald-400">
-            {codeLanguage && <div className="text-[9px] font-bold uppercase text-[var(--text-muted)] mb-1">{codeLanguage}</div>}
-            <pre className="whitespace-pre">{codeBlockBuffer.join('\n')}</pre>
-          </div>
-        );
-        codeBlockBuffer = [];
-        inCodeBlock = false;
-      } else {
-        // Start code block
-        inCodeBlock = true;
-        codeLanguage = line.trim().slice(3).trim();
-      }
-      return;
+  while (i < lines.length) {
+    const t = peek();
+    if (!t) { i++; out.push({ type: 'br' }); continue; }
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(t)) { i++; out.push({ type: 'hr' }); continue; }
+    if (t.startsWith('```')) {
+      const lang = t.slice(3).trim();
+      const cl: string[] = []; i++;
+      while (i < lines.length && !lines[i].trim().startsWith('```')) { cl.push(lines[i]); i++; }
+      i++; out.push({ type: 'code', lang, lines: cl }); continue;
     }
-
-    if (inCodeBlock) {
-      codeBlockBuffer.push(line);
-      return;
+    const hm = t.match(/^#{1,3}\s+(.*)/);
+    if (hm) {
+      const lvl = t.split(' ')[0].length;
+      out.push({ type: lvl === 1 ? 'h1' : lvl === 2 ? 'h2' : 'h3', text: hm[1] });
+      i++; continue;
     }
-
-    // Headings
-    if (line.startsWith('### ')) {
-      elements.push(
-        <h4 key={index} className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider mt-3 mb-1 font-mono">
-          {formatInline(line.slice(4))}
-        </h4>
-      );
-      return;
+    const cm = t.match(/^\[!(info|warning|success|danger|note)\]\s*(.*)/i);
+    if (cm) {
+      const vl = cm[1].toLowerCase() as Block['type'] extends { variant: infer V } ? V : never;
+      const buf = [cm[2] || '']; i++;
+      while (i < lines.length && lines[i].trim() && !lines[i].trim().startsWith('#') && !lines[i].trim().startsWith('[') && !lines[i].trim().startsWith('```')) { buf.push(lines[i].trim()); i++; }
+      out.push({ type: 'callout', variant: vl as any, text: buf.join(' ') }); continue;
     }
-    if (line.startsWith('## ')) {
-      elements.push(
-        <h3 key={index} className="text-sm font-extrabold text-[var(--text-primary)] uppercase tracking-wider mt-3 mb-1.5 font-mono">
-          {formatInline(line.slice(3))}
-        </h3>
-      );
-      return;
+    if (t.includes('|') && i + 1 < lines.length && lines[i + 1]?.trim().match(/^\|[\s\-:|]+\|$/)) {
+      const pr = (r: string) => r.split('|').map(c => c.trim()).filter((_, j, a) => j > 0 && j < a.length - 1);
+      const hdrs = pr(t); i += 2;
+      const rows: string[][] = [];
+      while (i < lines.length && lines[i].trim().includes('|')) { rows.push(pr(lines[i].trim())); i++; }
+      out.push({ type: 'table', headers: hdrs, rows }); continue;
     }
-    if (line.startsWith('# ')) {
-      elements.push(
-        <h2 key={index} className="text-base font-black text-[var(--text-primary)] uppercase tracking-widest mt-4 mb-2 font-mono border-b border-[var(--border-primary)] pb-1">
-          {formatInline(line.slice(2))}
-        </h2>
-      );
-      return;
+    if (t.startsWith('> ')) {
+      const buf = [t.slice(2)]; i++;
+      while (i < lines.length && lines[i].trim().startsWith('> ')) { buf.push(lines[i].trim().slice(2)); i++; }
+      out.push({ type: 'quote', text: buf.join(' ') }); continue;
     }
-
-    // Blockquote
-    if (line.startsWith('> ')) {
-      elements.push(
-        <blockquote key={index} className="my-1.5 pl-3 border-l-2 border-[var(--accent-blue)] text-[var(--text-secondary)] italic text-[11px]">
-          {formatInline(line.slice(2))}
-        </blockquote>
-      );
-      return;
+    if (t.startsWith('- ') || t.startsWith('* ')) {
+      const items: string[] = [];
+      while (i < lines.length && (lines[i].trim().startsWith('- ') || lines[i].trim().startsWith('* '))) { items.push(lines[i].trim().slice(2)); i++; }
+      out.push({ type: 'ul', items }); continue;
     }
-
-    // Bullet lists
-    if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-      const itemText = line.trim().slice(2);
-      elements.push(
-        <div key={index} className="flex items-start gap-2 my-0.5 pl-2 text-[11.5px] leading-relaxed">
-          <span className="text-[var(--accent-blue)] font-bold shrink-0">•</span>
-          <span>{formatInline(itemText)}</span>
-        </div>
-      );
-      return;
+    const nm = t.match(/^(\d+)\.\s+(.*)/);
+    if (nm) {
+      const items: string[] = [];
+      while (i < lines.length && lines[i].trim().match(/^\d+\.\s+/)) { items.push(lines[i].trim().replace(/^\d+\.\s+/, '')); i++; }
+      out.push({ type: 'ol', items }); continue;
     }
-
-    // Numbered lists
-    const numMatch = line.trim().match(/^(\d+)\.\s+(.*)/);
-    if (numMatch) {
-      elements.push(
-        <div key={index} className="flex items-start gap-2 my-0.5 pl-2 text-[11.5px] leading-relaxed">
-          <span className="text-[var(--accent-teal)] font-mono text-[10px] font-bold shrink-0">{numMatch[1]}.</span>
-          <span>{formatInline(numMatch[2])}</span>
-        </div>
-      );
-      return;
-    }
-
-    // Empty lines
-    if (!line.trim()) {
-      elements.push(<div key={index} className="h-2" />);
-      return;
-    }
-
-    // Regular paragraph line
-    elements.push(
-      <p key={index} className="my-1 text-[11.5px] leading-relaxed">
-        {formatInline(line)}
-      </p>
-    );
-  });
-
-  return <div className={`markdown-content font-mono ${className}`}>{elements}</div>;
-};
-
-// Simple inline formatting helper for bold, italic, and code snippets
-function formatInline(text: string): React.ReactNode {
-  const parts: React.ReactNode[] = [];
-  let remaining = text;
-  let keyIdx = 0;
-
-  while (remaining.length > 0) {
-    // Bold **text**
-    const boldMatch = remaining.match(/^(.*?)\*\*(.*?)\*\*(.*)/);
-    // Inline code `code`
-    const codeMatch = remaining.match(/^(.*?)`(.*?)`(.*)/);
-
-    if (boldMatch && (!codeMatch || boldMatch.index! <= codeMatch.index!)) {
-      if (boldMatch[1]) parts.push(boldMatch[1]);
-      parts.push(
-        <strong key={`b-${keyIdx++}`} className="font-bold text-[var(--text-primary)]">
-          {boldMatch[2]}
-        </strong>
-      );
-      remaining = boldMatch[3];
-    } else if (codeMatch) {
-      if (codeMatch[1]) parts.push(codeMatch[1]);
-      parts.push(
-        <code key={`c-${keyIdx++}`} className="px-1.5 py-0.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-[10.5px] font-mono text-[var(--accent-teal)]">
-          {codeMatch[2]}
-        </code>
-      );
-      remaining = codeMatch[3];
-    } else {
-      parts.push(remaining);
-      break;
-    }
+    const buf = [t]; i++;
+    while (i < lines.length && lines[i].trim() && !lines[i].trim().startsWith('#') && !lines[i].trim().startsWith('```') && !lines[i].trim().startsWith('> ') && !lines[i].trim().startsWith('- ') && !lines[i].trim().startsWith('* ') && !lines[i].trim().match(/^\d+\.\s+/) && !lines[i].trim().startsWith('[!') && !lines[i].trim().match(/^\|/) && !lines[i].trim().match(/^(-{3,}|\*{3,}|_{3,})$/)) { buf.push(lines[i].trim()); i++; }
+    out.push({ type: 'p', text: buf.join(' ') });
   }
+  return out;
+}
 
+function fmt(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  let rem = text; let k = 0;
+  while (rem.length > 0) {
+    const b = rem.match(/^(.*?)\*\*(.*?)\*\*(.*)/);
+    const c = rem.match(/^(.*?)`(.*?)`(.*)/);
+    if (b && (!c || b.index! <= c.index!)) {
+      if (b[1]) parts.push(b[1]);
+      parts.push(<strong key={k++} style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{b[2]}</strong>);
+      rem = b[3];
+    } else if (c) {
+      if (c[1]) parts.push(c[1]);
+      parts.push(<code key={k++} className="chat-md-code">{c[2]}</code>);
+      rem = c[3];
+    } else { parts.push(rem); break; }
+  }
   return <>{parts}</>;
 }
+
+const CALLOUT: Record<string, { icon: React.ElementType; cls: string; label: string }> = {
+  info:    { icon: Info,          cls: 'co-info',    label: 'Info' },
+  warning: { icon: AlertTriangle, cls: 'co-warn',    label: 'Warning' },
+  success: { icon: CheckCircle,   cls: 'co-ok',      label: 'Success' },
+  danger:  { icon: XCircle,       cls: 'co-danger',  label: 'Critical' },
+  note:    { icon: FileText,      cls: 'co-note',    label: 'Note' },
+};
+
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className = '' }) => {
+  if (!content) return null;
+  const blocks = parse(content);
+  const els: React.ReactNode[] = [];
+
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i]; const k = i;
+    switch (b.type) {
+      case 'br': els.push(<div key={k} style={{ height: 8 }} />); break;
+      case 'hr': els.push(<hr key={k} className="chat-md-hr" />); break;
+      case 'h1': els.push(<h2 key={k} className="chat-md-h1">{fmt(b.text)}</h2>); break;
+      case 'h2': els.push(<h3 key={k} className="chat-md-h2">{fmt(b.text)}</h3>); break;
+      case 'h3': els.push(<h4 key={k} className="chat-md-h3">{fmt(b.text)}</h4>); break;
+      case 'p': els.push(<p key={k} className="chat-md-p">{fmt(b.text)}</p>); break;
+      case 'quote': els.push(<blockquote key={k} className="chat-md-quote">{fmt(b.text)}</blockquote>); break;
+      case 'ul': els.push(<ul key={k} className="chat-md-ul">{b.items.map((it, j) => <li key={j}>{fmt(it)}</li>)}</ul>); break;
+      case 'ol': els.push(<ol key={k} className="chat-md-ol">{b.items.map((it, j) => <li key={j}>{fmt(it)}</li>)}</ol>); break;
+      case 'code':
+        els.push(
+          <div key={k} className="chat-md-codeblock">
+            {b.lang && <div className="chat-md-codelang">{b.lang}</div>}
+            <pre><code>{b.lines.join('\n')}</code></pre>
+          </div>
+        ); break;
+      case 'table':
+        els.push(
+          <div key={k} className="chat-md-tablewrap">
+            <table className="chat-md-table">
+              <thead><tr>{b.headers.map((h, j) => <th key={j}>{fmt(h)}</th>)}</tr></thead>
+              <tbody>{b.rows.map((r, ri) => <tr key={ri}>{r.map((c, ci) => <td key={ci}>{fmt(c)}</td>)}</tr>)}</tbody>
+            </table>
+          </div>
+        ); break;
+      case 'callout': {
+        const cfg = CALLOUT[b.variant] || CALLOUT.note;
+        const Ic = cfg.icon;
+        els.push(
+          <div key={k} className={`chat-md-callout ${cfg.cls}`}>
+            <Ic className="chat-md-callout-ic" />
+            <div><div className="chat-md-callout-lbl">{cfg.label}</div><div>{fmt(b.text)}</div></div>
+          </div>
+        ); break;
+      }
+    }
+  }
+  return <div className={`chat-md ${className}`}>{els}</div>;
+};
 
 export default MarkdownRenderer;
