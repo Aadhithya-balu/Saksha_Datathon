@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.auth.rbac import ALL_ROLES, require_roles
 from app.database.postgres import get_db
 from app.models.network import (
     AIGraphInsight,
@@ -20,7 +21,7 @@ from app.models.network import (
 from app.services.neo4j.client import sync_postgres_to_neo4j, is_neo4j_available
 from app.services.network import network_service
 
-router = APIRouter(prefix="/network", tags=["Network Graph Intelligence"])
+router = APIRouter(prefix="/network", tags=["Network Graph Intelligence"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
 
 @router.get("/graph", response_model=NetworkGraphResponse)

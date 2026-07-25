@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, ROLE_INVESTIGATOR, require_roles
+from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
 from app.models.victim import Victim
 from app.models.user import User
@@ -14,7 +14,7 @@ from app.schemas.victim import VictimCreate, VictimOut, VictimUpdate
 from app.services import audit_service
 from app.services.base_service import BaseCRUDService
 
-router = APIRouter(prefix="/victims", tags=["Victims"])
+router = APIRouter(prefix="/victims", tags=["Victims"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 victim_crud = BaseCRUDService(Victim)
 
 

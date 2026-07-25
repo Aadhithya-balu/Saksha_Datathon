@@ -20,10 +20,10 @@ from pydantic import BaseModel, Field
 
 from app.ai.inference.hotspot import get_model_info, predict
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
+from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.models.user import User
 
-router = APIRouter(prefix="/ai/hotspot", tags=["Crime Hotspot Prediction"])
+router = APIRouter(prefix="/ai/hotspot", tags=["Crime Hotspot Prediction"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
 
 # ---------------------------------------------------------------------------

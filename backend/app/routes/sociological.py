@@ -3,10 +3,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.auth.rbac import ALL_ROLES, require_roles
 from app.database.postgres import get_db
 from app.services import sociological_service
 
-router = APIRouter(prefix="/sociological", tags=["Sociological Insights"])
+router = APIRouter(prefix="/sociological", tags=["Sociological Insights"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
 
 @router.get("/demographics")

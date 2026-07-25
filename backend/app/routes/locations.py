@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, require_roles
+from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, require_roles
 from app.database.postgres import get_db
 from app.models.location import Location
 from app.models.user import User
@@ -14,7 +14,7 @@ from app.schemas.location import LocationCreate, LocationOut, LocationUpdate
 from app.services import audit_service
 from app.services.base_service import BaseCRUDService
 
-router = APIRouter(prefix="/locations", tags=["Locations"])
+router = APIRouter(prefix="/locations", tags=["Locations"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 location_crud = BaseCRUDService(Location)
 
 

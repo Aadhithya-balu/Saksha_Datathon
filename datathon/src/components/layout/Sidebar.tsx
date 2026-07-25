@@ -104,10 +104,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCollapsed,
 }) => {
   const { user } = useAuthStore();
-  const { checkPermission } = useRBAC();
+  const { checkPermission, isAdmin } = useRBAC();
   const { unread } = useNotificationStore((s) => s.counts);
   const mobileMenuOpen = useAppStore((s) => s.mobileMenuOpen);
   const setMobileMenuOpen = useAppStore((s) => s.setMobileMenuOpen);
+
+  const filteredNavGroups = navGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => {
+      if (item.id === 'settings_help') return isAdmin;
+      return true;
+    }),
+  })).filter(group => group.items.length > 0);
 
   const handleLogout = () => {
     useAuthStore.getState().logout();
@@ -168,7 +176,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Navigation Groups */}
         <nav className="flex-1 overflow-y-auto py-3 px-2">
-          {navGroups.map((group) => {
+          {filteredNavGroups.map((group) => {
             const allowedItems = group.items.filter((item) => checkPermission(item.path));
             if (allowedItems.length === 0) return null;
 

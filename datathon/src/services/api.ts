@@ -308,18 +308,20 @@ export const clearStoredTokens = () => {
 
 export const mapBackendRoleToUiRole = (role: string): UserRole => {
   switch (role) {
-    case 'investigator':
+    case 'admin':
+      return 'ADMIN';
     case 'crime_analyst':
+      return 'SCRB';
+    case 'investigator':
       return 'IO';
-    case 'policymaker':
-      return 'SP';
     case 'inspector':
       return 'INSPECTOR';
+    case 'policymaker':
+      return 'SP';
     case 'forensic':
       return 'FORENSIC';
     case 'viewer':
       return 'VIEWER';
-    case 'admin':
     default:
       return 'SCRB';
   }

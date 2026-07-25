@@ -6,21 +6,23 @@ export interface RoutePermission {
   moduleName: string;
 }
 
+export const ALL_UI_ROLES: UserRole[] = ['ADMIN', 'SCRB', 'IO', 'SP', 'INSPECTOR', 'FORENSIC', 'VIEWER'];
+
 export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
-  '/dashboard': { allowedRoles: ['SCRB', 'IO', 'SP', 'INSPECTOR', 'FORENSIC', 'VIEWER'], moduleName: 'Overview Dashboard' },
-  '/hotspots': { allowedRoles: ['SCRB', 'IO'], moduleName: 'Crime Hotspot Map' },
-  '/network': { allowedRoles: ['SCRB', 'IO'], moduleName: 'Criminal Network Analytics' },
-  '/predictions': { allowedRoles: ['SCRB', 'IO'], moduleName: 'Predictive Crime AI Engine' },
-  '/anomalies': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'Anomaly Detection Engine' },
-  '/offenders': { allowedRoles: ['SCRB', 'IO'], moduleName: 'Offender Registry' },
-  '/reports': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'Reports Center' },
-  '/settings': { allowedRoles: ['SCRB', 'IO', 'SP', 'INSPECTOR', 'FORENSIC', 'VIEWER'], moduleName: 'Settings & Operator Help' },
-  '/admin': { allowedRoles: ['SCRB'], moduleName: 'System Security Control Center' },
-  '/ai-chat': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'AI Chat Assistant' },
-  '/crime-cases': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'Crime Case Management' },
-  '/firs': { allowedRoles: ['SCRB', 'IO', 'SP'], moduleName: 'FIR Lifecycle Management' },
-  '/officers': { allowedRoles: ['SCRB'], moduleName: 'Officer Management' },
-  '/evidence': { allowedRoles: ['SCRB', 'IO', 'SP', 'INSPECTOR', 'FORENSIC', 'VIEWER'], moduleName: 'Evidence Handling' },
+  '/dashboard':    { allowedRoles: ALL_UI_ROLES, moduleName: 'Overview Dashboard' },
+  '/admin':        { allowedRoles: ['ADMIN'], moduleName: 'System Security Control Center' },
+  '/crime-cases':  { allowedRoles: ALL_UI_ROLES, moduleName: 'Crime Case Management' },
+  '/firs':         { allowedRoles: ALL_UI_ROLES, moduleName: 'FIR Lifecycle Management' },
+  '/offenders':    { allowedRoles: ALL_UI_ROLES, moduleName: 'Offender Registry' },
+  '/officers':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Officer Management' },
+  '/evidence':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Evidence Handling' },
+  '/hotspots':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Crime Hotspot Map' },
+  '/network':      { allowedRoles: ALL_UI_ROLES, moduleName: 'Criminal Network Analytics' },
+  '/predictions':  { allowedRoles: ALL_UI_ROLES, moduleName: 'Predictive Crime AI Engine' },
+  '/anomalies':    { allowedRoles: ALL_UI_ROLES, moduleName: 'Anomaly Detection Engine' },
+  '/reports':      { allowedRoles: ALL_UI_ROLES, moduleName: 'Reports Center' },
+  '/ai-chat':      { allowedRoles: ALL_UI_ROLES, moduleName: 'AI Chat Assistant' },
+  '/settings':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Settings & Operator Help' },
 };
 
 export const useRBAC = () => {
@@ -29,7 +31,7 @@ export const useRBAC = () => {
   const checkPermission = (path: string): boolean => {
     if (!user) return false;
     const rule = ROUTE_PERMISSIONS[path];
-    if (!rule) return true; // public path or not restricted
+    if (!rule) return true;
     return rule.allowedRoles.includes(user.role);
   };
 
@@ -42,6 +44,7 @@ export const useRBAC = () => {
     role: user?.role || null,
     checkPermission,
     getRequiredRoles,
+    isAdmin: user?.role === 'ADMIN',
     isSCRB: user?.role === 'SCRB',
     isIO: user?.role === 'IO',
     isSP: user?.role === 'SP',

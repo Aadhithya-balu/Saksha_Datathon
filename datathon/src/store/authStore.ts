@@ -10,7 +10,7 @@ import {
   setStoredTokens,
 } from '../services/api';
 
-export type UserRole = 'SCRB' | 'IO' | 'SP' | 'INSPECTOR' | 'FORENSIC' | 'VIEWER';
+export type UserRole = 'SCRB' | 'IO' | 'SP' | 'INSPECTOR' | 'FORENSIC' | 'VIEWER' | 'ADMIN';
 
 export interface UserSession {
   name: string;

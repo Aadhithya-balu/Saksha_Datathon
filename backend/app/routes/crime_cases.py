@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
+from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
 from app.models.crime import CrimeCase
 from app.models.fir import FIR
@@ -25,7 +25,7 @@ from app.schemas.officer import OfficerOut
 from app.services import audit_service
 from app.services.crime_service import crime_crud
 
-router = APIRouter(prefix="/crime-cases", tags=["Crime Case Management"])
+router = APIRouter(prefix="/crime-cases", tags=["Crime Case Management"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
 
 # --- Schemas ---
