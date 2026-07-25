@@ -66,7 +66,7 @@ export const useAuditStore = create<AuditStore>((set) => ({
       badgeId,
       actionType,
       details,
-      ipAddress: '10.144.12.' + (Math.floor(Math.random() * 254) + 1)
+      ipAddress: '10.0.' + (Math.floor(Math.random() * 254) + 1) + '.' + (Math.floor(Math.random() * 254) + 1)
     };
     return { logs: [newLog, ...state.logs] };
   }),

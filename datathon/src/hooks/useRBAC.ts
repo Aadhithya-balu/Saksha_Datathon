@@ -9,20 +9,24 @@ export interface RoutePermission {
 export const ALL_UI_ROLES: UserRole[] = ['ADMIN', 'SCRB', 'IO', 'SP', 'INSPECTOR', 'FORENSIC', 'VIEWER'];
 
 export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
-  '/dashboard':    { allowedRoles: ALL_UI_ROLES, moduleName: 'Overview Dashboard' },
-  '/admin':        { allowedRoles: ['ADMIN'], moduleName: 'System Security Control Center' },
-  '/crime-cases':  { allowedRoles: ALL_UI_ROLES, moduleName: 'Crime Case Management' },
-  '/firs':         { allowedRoles: ALL_UI_ROLES, moduleName: 'FIR Lifecycle Management' },
-  '/offenders':    { allowedRoles: ALL_UI_ROLES, moduleName: 'Offender Registry' },
-  '/officers':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Officer Management' },
-  '/evidence':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Evidence Handling' },
-  '/hotspots':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Crime Hotspot Map' },
-  '/network':      { allowedRoles: ALL_UI_ROLES, moduleName: 'Criminal Network Analytics' },
-  '/predictions':  { allowedRoles: ALL_UI_ROLES, moduleName: 'Predictive Crime AI Engine' },
-  '/anomalies':    { allowedRoles: ALL_UI_ROLES, moduleName: 'Anomaly Detection Engine' },
-  '/reports':      { allowedRoles: ALL_UI_ROLES, moduleName: 'Reports Center' },
-  '/ai-chat':      { allowedRoles: ALL_UI_ROLES, moduleName: 'AI Chat Assistant' },
-  '/settings':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Settings & Operator Help' },
+  '/dashboard':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Overview Dashboard' },
+  '/admin':         { allowedRoles: ['ADMIN'], moduleName: 'System Security Control Center' },
+  '/crime-cases':   { allowedRoles: ALL_UI_ROLES, moduleName: 'Crime Case Management' },
+  '/firs':          { allowedRoles: ALL_UI_ROLES, moduleName: 'FIR Lifecycle Management' },
+  '/offenders':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Offender Registry' },
+  '/officers':      { allowedRoles: ALL_UI_ROLES, moduleName: 'Officer Management' },
+  '/evidence':      { allowedRoles: ALL_UI_ROLES, moduleName: 'Evidence Handling' },
+  '/hotspots':      { allowedRoles: ALL_UI_ROLES, moduleName: 'Crime Hotspot Map' },
+  '/network':       { allowedRoles: ALL_UI_ROLES, moduleName: 'Criminal Network Analytics' },
+  '/predictions':   { allowedRoles: ALL_UI_ROLES, moduleName: 'Predictive Crime AI Engine' },
+  '/anomalies':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Anomaly Detection Engine' },
+  '/reports':       { allowedRoles: ALL_UI_ROLES, moduleName: 'Reports Center' },
+  '/ai-chat':       { allowedRoles: ALL_UI_ROLES, moduleName: 'AI Chat Assistant' },
+  '/settings':      { allowedRoles: ['ADMIN'], moduleName: 'Settings & Operator Help' },
+  '/notifications': { allowedRoles: ALL_UI_ROLES, moduleName: 'Intelligence Center' },
+  '/sociological':  { allowedRoles: ALL_UI_ROLES, moduleName: 'Sociological Intelligence' },
+  '/strategic':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Strategic Intelligence' },
+  '/docs':          { allowedRoles: ALL_UI_ROLES, moduleName: 'Documentation' },
 };
 
 export const useRBAC = () => {

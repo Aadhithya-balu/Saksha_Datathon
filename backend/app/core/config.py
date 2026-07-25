@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     NEO4J_PASSWORD: str = "neo4j"
 
     # --- JWT ---
-    JWT_SECRET_KEY: str = "super-secret-change-this-in-production"
+    JWT_SECRET_KEY: str = ""
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -60,6 +60,12 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "https://saksha-datathon-csbcweuf.onslate.in,http://localhost:3000,http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=(ROOT_DIR / ".env", BACKEND_DIR / ".env"), env_file_encoding="utf-8", extra="ignore")
+
+    @model_validator(mode="after")
+    def validate_jwt_secret(self):
+        if not self.JWT_SECRET_KEY:
+            raise ValueError("JWT_SECRET_KEY must be set in environment. Refusing to start with empty secret.")
+        return self
 
     @field_validator("DEBUG", "APP_DEBUG", mode="before")
     @classmethod

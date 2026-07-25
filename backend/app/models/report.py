@@ -14,7 +14,7 @@ class Report(Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "reports"
 
     template: Mapped[str] = mapped_column(String(100), nullable=False)
-    requested_by_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    requested_by_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
     requested_by: Mapped["User"] = relationship()
 
     district: Mapped[str | None] = mapped_column(String(100), nullable=True)

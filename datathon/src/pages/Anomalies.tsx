@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { CrimeAlert } from '../store/alertStore';
-import { getAnomalies } from '../services/api';
+import { getAnomalies, createNotification } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { Eye, ShieldAlert, CheckCircle, Search, Filter, Calendar, MapPin, HardDrive, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,6 +16,7 @@ export const Anomalies: React.FC = () => {
   const [selectedSeverity, setSelectedSeverity] = useState<'ALL' | 'HIGH' | 'WATCH'>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<'ALL' | 'PENDING' | 'REVIEWED' | 'ESCALATED'>('ALL');
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+  const [escalating, setEscalating] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -58,7 +59,29 @@ export const Anomalies: React.FC = () => {
   }, []);
 
   const reviewAlert = (id: string, reviewer: string) => setAlerts((current) => current.map((alert) => alert.id === id ? { ...alert, status: 'REVIEWED', assignedOfficer: reviewer } : alert));
-  const escalateAlert = (id: string, reviewer: string) => setAlerts((current) => current.map((alert) => alert.id === id ? { ...alert, status: 'ESCALATED', severity: 'HIGH', assignedOfficer: reviewer } : alert));
+
+  const escalateAlert = async (alert: CrimeAlert) => {
+    setEscalating(alert.id);
+    try {
+      await createNotification({
+        recipient_id: 'SP-0088',
+        subject: `Anomaly Escalation: ${alert.firNumber}`,
+        notification_type: 'escalation',
+        category: 'case_escalation',
+        title: `Anomaly Escalated to SP — ${alert.firNumber}`,
+        message: `An anomaly detected in ${alert.district} (${alert.station}) has been escalated for SP review.\n\nType: ${alert.crimeType}\nScore: ${alert.anomalyScore}%\nDetails: ${alert.offenceDetails}`,
+        priority: 'high',
+        severity: alert.severity === 'HIGH' ? 'critical' : 'high',
+        related_case_number: alert.firNumber,
+        related_fir_number: alert.firNumber,
+      });
+      setAlerts((current) => current.map((a) => a.id === alert.id ? { ...a, status: 'ESCALATED', severity: 'HIGH', assignedOfficer: user?.name || 'Inspector System' } : a));
+    } catch {
+      // silently fail — button remains functional for retry
+    } finally {
+      setEscalating(null);
+    }
+  };
 
   // Filter logic
   const filteredAlerts = alerts.filter(alert => {
@@ -286,11 +309,16 @@ export const Anomalies: React.FC = () => {
                 )}
                 {activeAlert.status !== 'ESCALATED' && (
                   <button
-                    onClick={() => escalateAlert(activeAlert.id, user?.name || 'Inspector System')}
-                    className="py-2.5 px-4 bg-[#C94A2A] hover:bg-[#C94A2A]/80 text-[var(--text-primary)] rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none flex items-center justify-center gap-1.5"
+                    onClick={() => escalateAlert(activeAlert)}
+                    disabled={escalating === activeAlert.id}
+                    className="py-2.5 px-4 bg-[#C94A2A] hover:bg-[#C94A2A]/80 text-[var(--text-primary)] rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <ShieldAlert className="w-3.5 h-3.5" />
-                    Escalate to SP
+                    {escalating === activeAlert.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                    )}
+                    {escalating === activeAlert.id ? 'Escalating...' : 'Escalate to SP'}
                   </button>
                 )}
               </div>

@@ -12,7 +12,7 @@ from app.models.mixins import TimestampMixin, UUIDPKMixin
 class EvidenceMetadata(Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "evidence_metadata"
 
-    evidence_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("evidence.id", ondelete="CASCADE"), nullable=False, unique=True)
+    evidence_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("evidence.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     evidence: Mapped["Evidence"] = relationship()
 
     filename: Mapped[str] = mapped_column(String(255), nullable=False)

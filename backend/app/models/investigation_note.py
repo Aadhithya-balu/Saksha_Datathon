@@ -16,7 +16,7 @@ class InvestigationNote(Base, UUIDPKMixin, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("crime_cases.id", ondelete="CASCADE"), nullable=False, index=True
     )
     officer_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("officers.id", ondelete="SET NULL"), nullable=True
+        UUID(as_uuid=True), ForeignKey("officers.id", ondelete="SET NULL"), nullable=True, index=True
     )
     officer_name: Mapped[str] = mapped_column(String(255), nullable=False)
     officer_badge: Mapped[str] = mapped_column(String(50), nullable=False)

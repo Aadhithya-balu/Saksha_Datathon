@@ -8,7 +8,7 @@ from app.ai.models.anomaly.model import AnomalyDetectorModel
 from app.ai.pipelines.anomaly.pipeline import AnomalyPipeline
 
 
-DEFAULT_MODEL_PATH = Path("./models/anomaly/anomaly_model.json")
+DEFAULT_MODEL_PATH = Path(__file__).resolve().parents[2] / "models" / "anomaly" / "anomaly_model.json"
 
 
 def _resolve_model_path(model_path: str | None) -> Path:

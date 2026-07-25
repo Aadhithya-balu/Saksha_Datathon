@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_current_user
@@ -49,6 +49,20 @@ def detect_anomalies(
     payload: AnomalyDetectRequest,
     current_user: User = Depends(get_current_user),
 ):
-    # current_user is required for auth consistency; anomaly logic itself is payload-only.
-    alerts = run_anomaly_inference(payload.events, model_path=payload.model_path)
-    return AnomalyDetectResponse(alerts=alerts)
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        model_path = None
+        if payload.model_path:
+            from pathlib import Path as _Path
+            resolved = _Path(payload.model_path).resolve()
+            if not str(resolved).endswith(".json") or ".." in str(resolved):
+                raise ValueError("Invalid model path")
+            model_path = str(resolved)
+        alerts = run_anomaly_inference(payload.events, model_path=model_path)
+        return AnomalyDetectResponse(alerts=alerts)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("Anomaly detection failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Anomaly detection service temporarily unavailable")

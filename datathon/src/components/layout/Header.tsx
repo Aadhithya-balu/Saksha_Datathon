@@ -30,6 +30,8 @@ const pageLabels: Record<string, string> = {
   crime_cases: 'Crime Cases',
   investigation: 'Investigation',
   notifications: 'Intelligence Center',
+  sociological: 'Sociological Intelligence',
+  strategic: 'Strategic Intelligence',
   offenders: 'Offender Registry',
   criminals: 'Criminal Dossiers',
   victims: 'Victims Registry',

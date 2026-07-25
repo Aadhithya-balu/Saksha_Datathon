@@ -13,7 +13,7 @@ from app.models.mixins import UUIDPKMixin
 class AuditLog(Base, UUIDPKMixin):
     __tablename__ = "audit_logs"
 
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
     user: Mapped["User"] = relationship(back_populates="audit_logs")
 
     action: Mapped[str] = mapped_column(String(50), nullable=False)  # CREATE/UPDATE/DELETE

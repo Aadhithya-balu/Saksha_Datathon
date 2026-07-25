@@ -255,7 +255,7 @@ def assign_evidence(
     audit_service.log_action(db, current_user, "ASSIGN", "Evidence", str(evidence_id), details=f"assigned_to={assigned_to}")
     return assignment
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 @router.post("/{evidence_id}/assignments/{assignment_id}/accept", response_model=EvidenceAssignmentOut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR, ROLE_FORENSIC, ROLE_CRIME_ANALYST))])
 def accept_assignment(evidence_id: uuid.UUID, assignment_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -266,7 +266,7 @@ def accept_assignment(evidence_id: uuid.UUID, assignment_id: uuid.UUID, db: Sess
     )
     
     assignment.status = "In Progress"
-    assignment.accepted_at = datetime.utcnow()
+    assignment.accepted_at = datetime.now(timezone.utc)
     evidence.status = "Under Analysis"
     _add_custody_record(db, evidence_id, current_user, "Assignment Accepted", from_user=assignment.assigned_by, to_user=assignment.assigned_to)
     
@@ -285,7 +285,7 @@ def complete_assignment(evidence_id: uuid.UUID, assignment_id: uuid.UUID, db: Se
     )
     
     assignment.status = "Completed"
-    assignment.completed_at = datetime.utcnow()
+    assignment.completed_at = datetime.now(timezone.utc)
     evidence.status = "Analyzed"
     _add_custody_record(db, evidence_id, current_user, "Assignment Completed", from_user=assignment.assigned_to, to_user=assignment.assigned_by)
     

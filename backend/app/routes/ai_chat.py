@@ -56,17 +56,17 @@ async def chat(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    del current_user
+    user_sid = f"user:{current_user.username}:{payload.session_id or 'default'}"
     orch = _get_orchestrator()
     if payload.stream:
         async def event_stream() -> AsyncIterator[bytes]:
             async for chunk in orch.process_message(
-                payload.message, payload.session_id, db,
+                payload.message, user_sid, db,
             ):
                 yield chunk
         return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 
-    result = orch.process_message_sync(payload.message, payload.session_id, db)
+    result = orch.process_message_sync(payload.message, user_sid, db)
     return _build_response(result)
 
 
@@ -76,12 +76,12 @@ async def chat_query(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    del current_user
+    user_sid = f"user:{current_user.username}:{payload.session_id or 'default'}"
     try:
-        result = _get_orchestrator().process_message_sync(payload.message, payload.session_id, db)
+        result = _get_orchestrator().process_message_sync(payload.message, user_sid, db)
         return _build_response(result)
-    except Exception as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=422, detail="Failed to process chat message.")
 
 
 @router.post("/investigation-chat", response_model=ChatResponse)
@@ -90,12 +90,12 @@ async def investigation_chat(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    del current_user
+    user_sid = f"user:{current_user.username}:{payload.session_id or 'default'}"
     try:
-        result = _get_orchestrator().process_message_sync(payload.message, payload.session_id, db)
+        result = _get_orchestrator().process_message_sync(payload.message, user_sid, db)
         return _build_response(result)
-    except Exception as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=422, detail="Failed to process investigation chat.")
 
 
 def _build_response(result: dict[str, Any]) -> ChatResponse:

@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useAuditStore } from "../store/auditStore";
 import { useAuthStore } from "../store/authStore";
-import { ShieldAlert, Terminal, Search, UserMinus, Loader2 } from "lucide-react";
+import { ShieldAlert, Terminal, Search, UserMinus } from "lucide-react";
 import { downloadSecureDossier } from "../utils/downloader";
 import { getOffenderDossiers, type OffenderDossier } from "../services/api";
 
 import { ExportMenu } from "../components/reports";
-import { PageSkeleton } from "../components/ui/Skeleton";
 
 export const Offenders: React.FC = () => {
   const { logs, addLog, clearLogs } = useAuditStore();
@@ -97,7 +96,66 @@ export const Offenders: React.FC = () => {
       </div>
 
       {loading ? (
-        <PageSkeleton />
+        <div className="flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* Left Panel Skeleton */}
+          <div className="lg:col-span-7 bg-[var(--bg-tertiary)]/30 border border-border-color p-5 rounded-card flex flex-col">
+            <div className="flex justify-between items-center border-b border-[var(--border-primary)] pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-[#C94A2A]/20 animate-pulse" />
+                <div className="h-3.5 bg-white/[0.06] rounded animate-pulse" style={{ width: 180 }} />
+              </div>
+              <div className="h-8 bg-white/[0.06] rounded animate-pulse" style={{ width: 192 }} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1">
+              <div className="md:col-span-4 flex flex-col gap-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="p-2.5 rounded border border-white/[0.06] bg-white/[0.02]" style={{ animationDelay: `${i * 80}ms` }}>
+                    <div className="h-3 bg-white/[0.08] rounded animate-pulse mb-1.5" style={{ width: `${65 + i * 5}%` }} />
+                    <div className="h-2.5 bg-white/[0.05] rounded animate-pulse" style={{ width: `${40 + i * 4}%`, animationDelay: `${i * 80 + 100}ms` }} />
+                  </div>
+                ))}
+              </div>
+              <div className="md:col-span-8 flex flex-col gap-3">
+                <div className="p-3 bg-[var(--bg-secondary)]/50 border border-white/[0.06] rounded flex gap-4">
+                  <div className="w-16 h-20 bg-white/[0.05] border border-white/[0.08] rounded shrink-0 animate-pulse" />
+                  <div className="flex-1 space-y-2.5 pt-1">
+                    <div className="h-3 bg-[#C94A2A]/15 rounded animate-pulse" style={{ width: 60 }} />
+                    <div className="h-4 bg-white/[0.08] rounded animate-pulse" style={{ width: '70%', animationDelay: 100 }} />
+                    <div className="h-3 bg-white/[0.05] rounded animate-pulse" style={{ width: '45%', animationDelay: 200 }} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="p-2.5 border border-white/[0.06] rounded bg-white/[0.02]">
+                      <div className="h-2 bg-white/[0.05] rounded animate-pulse mb-1.5" style={{ width: '50%' }} />
+                      <div className="h-3.5 bg-white/[0.08] rounded animate-pulse" style={{ width: '80%', animationDelay: `${i * 60 + 100}ms` }} />
+                    </div>
+                  ))}
+                </div>
+                <div className="h-14 bg-white/[0.03] border border-white/[0.06] rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel Skeleton */}
+          <div className="lg:col-span-5 bg-[var(--bg-secondary)] border border-border-color p-4 rounded-card flex flex-col">
+            <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3 mb-4">
+              <div className="w-4 h-4 rounded-full bg-[#0E9E78]/20 animate-pulse" />
+              <div className="h-3.5 bg-white/[0.06] rounded animate-pulse" style={{ width: 200 }} />
+            </div>
+            <div className="flex-1 space-y-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="border-b border-white/[0.04] pb-3" style={{ animationDelay: `${i * 70}ms` }}>
+                  <div className="flex justify-between mb-1.5">
+                    <div className="h-2 bg-white/[0.06] rounded animate-pulse" style={{ width: '40%' }} />
+                    <div className="h-2 bg-white/[0.04] rounded animate-pulse" style={{ width: 55, animationDelay: `${i * 70 + 50}ms` }} />
+                  </div>
+                  <div className="h-2.5 bg-white/[0.07] rounded animate-pulse" style={{ width: '88%', animationDelay: `${i * 70 + 100}ms` }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       ) : (
 
       <div className="flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">

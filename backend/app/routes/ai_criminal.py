@@ -119,8 +119,8 @@ def retrain(
     try:
         metrics = retrain_models(db)
         return {"status": "ok", "metrics": metrics}
-    except Exception as exc:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            detail="Model retraining failed. Please check server logs.",
         )

@@ -9,22 +9,12 @@ Usage:
 
 Input: backups/saksha_full_dump.sql
 """
-import psycopg2
 import os
 import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from _db_config import CONN
+import psycopg2
 import time
-
-# ============================================================
-# UPDATE THESE with your NEW Supabase project credentials
-# Get from: Supabase Dashboard > Settings > Database > Connection string > URI
-# ============================================================
-CONN = dict(
-    host='aws-0-ap-northeast-1.pooler.supabase.com',
-    port=6543, dbname='postgres',
-    user='postgres.tqaegfrnnddfqshwdkvh',
-    password='datathon2026', sslmode='require',
-    connect_timeout=15,
-)
 
 BACKUP_DIR = os.path.join(os.path.dirname(__file__), '..', 'backups')
 DUMP_FILE = os.path.join(BACKUP_DIR, 'saksha_full_dump.sql')

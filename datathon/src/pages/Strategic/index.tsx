@@ -22,6 +22,7 @@ export default function Strategic() {
   const [resources, setResources] = useState<ResourceAllocation | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<string>('command');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -38,6 +39,7 @@ export default function Strategic() {
       if (r.status === 'fulfilled') setResources(r.value);
     } catch (e) {
       console.error('Failed to load strategic data', e);
+      setLoadError('Failed to load strategic briefing data. Please try again.');
     }
     setLoading(false);
   }
@@ -47,6 +49,21 @@ export default function Strategic() {
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-blue)]" />
         <span className="ml-3 text-[var(--text-secondary)]">Generating strategic briefing...</span>
+      </div>
+    );
+  }
+
+  if (loadError && !briefing && !daily && !resources) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <div className="w-12 h-12 rounded-xl bg-[var(--accent-coral-subtle)] border border-[var(--accent-coral)]/20 flex items-center justify-center">
+          <Shield className="w-6 h-6 text-[var(--accent-coral)]" />
+        </div>
+        <p className="text-sm text-[var(--text-secondary)]">{loadError}</p>
+        <button onClick={() => { setLoadError(null); loadData(); }}
+          className="px-4 py-2 bg-[var(--accent-blue)] text-white rounded-lg text-sm hover:opacity-90 transition">
+          Retry
+        </button>
       </div>
     );
   }

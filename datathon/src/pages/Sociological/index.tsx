@@ -27,6 +27,7 @@ export default function Sociological() {
   const [offenderDemo, setOffenderDemo] = useState<OffenderDemographics | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedInsight, setExpandedInsight] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     loadAllData();
@@ -51,6 +52,7 @@ export default function Sociological() {
       if (o.status === 'fulfilled') setOffenderDemo(o.value);
     } catch (e) {
       console.error('Failed to load sociological data', e);
+      setLoadError('Failed to load sociological intelligence data. Please try again.');
     }
     setLoading(false);
   }
@@ -69,6 +71,21 @@ export default function Sociological() {
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-blue)]" />
         <span className="ml-3 text-[var(--text-secondary)]">Loading sociological intelligence...</span>
+      </div>
+    );
+  }
+
+  if (loadError && !demographics && !urbanRural && !socioeconomic) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <div className="w-12 h-12 rounded-xl bg-[var(--accent-coral-subtle)] border border-[var(--accent-coral)]/20 flex items-center justify-center">
+          <AlertTriangle className="w-6 h-6 text-[var(--accent-coral)]" />
+        </div>
+        <p className="text-sm text-[var(--text-secondary)]">{loadError}</p>
+        <button onClick={() => { setLoadError(null); loadAllData(); }}
+          className="px-4 py-2 bg-[var(--accent-blue)] text-white rounded-lg text-sm hover:opacity-90 transition">
+          Retry
+        </button>
       </div>
     );
   }
