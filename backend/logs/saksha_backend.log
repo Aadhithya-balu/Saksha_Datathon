@@ -1900,3 +1900,32 @@ connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection re
 2026-07-25 19:57:41.038 | INFO     | app.main:lifespan:77 - PostgreSQL connection OK
 2026-07-25 19:57:41.039 | INFO     | app.main:lifespan:83 - Neo4j will be verified lazily on first use
 2026-07-25 20:00:54.818 | INFO     | app.main:lifespan:88 - Shutdown complete
+2026-07-25 20:11:47.782 | INFO     | app.main:lifespan:71 - Starting SAKSHA Backend in development mode
+2026-07-25 20:11:48.749 | INFO     | app.main:_migrate_notifications_table:63 - Notifications table migration complete
+2026-07-25 20:11:48.750 | INFO     | app.main:lifespan:77 - PostgreSQL connection OK
+2026-07-25 20:11:48.750 | INFO     | app.main:lifespan:83 - Neo4j will be verified lazily on first use
+2026-07-25 20:30:52.389 | INFO     | app.main:lifespan:88 - Shutdown complete
+2026-07-25 20:30:58.483 | INFO     | app.main:lifespan:71 - Starting SAKSHA Backend in development mode
+2026-07-25 20:30:59.652 | INFO     | app.main:_migrate_notifications_table:63 - Notifications table migration complete
+2026-07-25 20:30:59.654 | INFO     | app.main:lifespan:77 - PostgreSQL connection OK
+2026-07-25 20:30:59.654 | INFO     | app.main:lifespan:83 - Neo4j will be verified lazily on first use
+2026-07-25 20:31:09.833 | INFO     | app.main:lifespan:88 - Shutdown complete
+2026-07-25 20:31:15.582 | INFO     | app.main:lifespan:71 - Starting SAKSHA Backend in development mode
+2026-07-25 20:31:16.563 | INFO     | app.main:_migrate_notifications_table:63 - Notifications table migration complete
+2026-07-25 20:31:16.565 | INFO     | app.main:lifespan:77 - PostgreSQL connection OK
+2026-07-25 20:31:16.566 | INFO     | app.main:lifespan:83 - Neo4j will be verified lazily on first use
+2026-07-25 20:32:24.917 | INFO     | app.main:lifespan:88 - Shutdown complete
+2026-07-25 20:32:30.718 | INFO     | app.main:lifespan:71 - Starting SAKSHA Backend in development mode
+2026-07-25 20:32:31.821 | INFO     | app.main:_migrate_notifications_table:63 - Notifications table migration complete
+2026-07-25 20:32:31.822 | INFO     | app.main:lifespan:77 - PostgreSQL connection OK
+2026-07-25 20:32:31.823 | INFO     | app.main:lifespan:83 - Neo4j will be verified lazily on first use
+2026-07-25 20:33:16.344 | INFO     | app.main:lifespan:88 - Shutdown complete
+2026-07-25 20:33:22.264 | INFO     | app.main:lifespan:71 - Starting SAKSHA Backend in development mode
+2026-07-25 20:33:23.323 | INFO     | app.main:_migrate_notifications_table:63 - Notifications table migration complete
+2026-07-25 20:33:23.324 | INFO     | app.main:lifespan:77 - PostgreSQL connection OK
+2026-07-25 20:33:23.324 | INFO     | app.main:lifespan:83 - Neo4j will be verified lazily on first use
+2026-07-25 20:42:43.695 | INFO     | app.main:lifespan:71 - Starting SAKSHA Backend in development mode
+2026-07-25 20:42:44.757 | INFO     | app.main:_migrate_notifications_table:63 - Notifications table migration complete
+2026-07-25 20:42:44.758 | INFO     | app.main:lifespan:77 - PostgreSQL connection OK
+2026-07-25 20:42:44.759 | INFO     | app.main:lifespan:83 - Neo4j will be verified lazily on first use
+2026-07-25 20:43:53.583 | INFO     | app.main:lifespan:88 - Shutdown complete

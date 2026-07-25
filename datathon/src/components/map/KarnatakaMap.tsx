@@ -46,7 +46,7 @@ const DISTRICT_BOUNDARIES: Record<string, [number, number][]> = {
   'Hassan': [
     [75.8, 13.3], [76.3, 13.2], [76.3, 12.7], [75.9, 12.6], [75.6, 12.9]
   ],
-  'Mangaluru': [
+  'Dakshina Kannada': [
     [74.7, 13.1], [75.4, 13.0], [75.4, 12.5], [74.8, 12.6], [74.6, 12.9]
   ]
 };
@@ -60,7 +60,7 @@ const getHotspotsForHour = (hour: number) => {
     { name: 'Kalaburagi Outskirts', lat: 17.3350, lng: 76.8380, weight: 72, type: 'Land disputes' },
     { name: 'Belagavi Checkpoint', lat: 15.8600, lng: 74.5100, weight: 62, type: 'Smuggling' },
     { name: 'Ballari Mines Sector B', lat: 15.1480, lng: 76.9250, weight: 80, type: 'Mineral Theft' },
-    { name: 'Mangaluru Harbor Port', lat: 12.9050, lng: 74.8350, weight: 68, type: 'Narcotics Transit' }
+    { name: 'Mangaluru Harbor Port', lat: 12.9050, lng: 74.8350, weight: 68, type: 'Narcotics Transit' },
   ];
 
   // Adjust hotspot weights depending on the hour (crime spikes late evening & night)

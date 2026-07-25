@@ -17,7 +17,7 @@ const CORRELATION_DATA: ScatterPoint[] = [
   { district: 'Dharwad', unemployment: 6.5, riskScore: 58, populationDensity: 412 },
   { district: 'Ballari', unemployment: 7.8, riskScore: 69, populationDensity: 300 },
   { district: 'Hassan', unemployment: 4.8, riskScore: 42, populationDensity: 260 },
-  { district: 'Mangaluru', unemployment: 5.0, riskScore: 66, populationDensity: 388 }
+  { district: 'Dakshina Kannada', unemployment: 5.0, riskScore: 66, populationDensity: 388 }
 ];
 
 export const CorrelationChart: React.FC = () => {
