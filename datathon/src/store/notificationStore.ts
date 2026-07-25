@@ -151,9 +151,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   sendNotification: async (payload) => {
     try {
       await createNotification(payload);
-      await get().fetchNotifications();
-      await get().fetchCounts();
-      await get().fetchDashboard();
+      await Promise.all([get().fetchNotifications(), get().fetchCounts(), get().fetchDashboard()]);
       return true;
     } catch (err: any) {
       set({ error: err?.message || 'Failed to send notification' });
@@ -200,8 +198,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
           n.id === notificationId ? { ...n, is_read: true, status: 'acknowledged', acknowledged_at: new Date().toISOString() } : n
         ),
       }));
-      await get().fetchCounts();
-      await get().fetchDashboard();
+      await Promise.all([get().fetchCounts(), get().fetchDashboard()]);
     } catch (err: any) {
       set({ error: err?.message || 'Failed to acknowledge notification' });
     }
@@ -215,8 +212,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
           n.id === notificationId ? { ...n, is_read: true, status: 'resolved', resolved_at: new Date().toISOString() } : n
         ),
       }));
-      await get().fetchCounts();
-      await get().fetchDashboard();
+      await Promise.all([get().fetchCounts(), get().fetchDashboard()]);
     } catch (err: any) {
       set({ error: err?.message || 'Failed to resolve notification' });
     }
@@ -229,8 +225,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         notifications: state.notifications.filter((n) => n.id !== notificationId),
         recentNotifications: state.recentNotifications.filter((n) => n.id !== notificationId),
       }));
-      await get().fetchCounts();
-      await get().fetchDashboard();
+      await Promise.all([get().fetchCounts(), get().fetchDashboard()]);
     } catch (err: any) {
       set({ error: err?.message || 'Failed to dismiss notification' });
     }
@@ -266,8 +261,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     if (existing) clearInterval(existing);
 
     const id = setInterval(async () => {
-      await get().fetchCounts();
-      await get().fetchRecent();
+      await Promise.all([get().fetchCounts(), get().fetchRecent()]);
     }, intervalMs);
 
     set({ pollIntervalId: id });

@@ -18,7 +18,7 @@ from app.core.config import settings
 from app.core.exceptions import UnauthorizedException
 from app.models.user import User
 
-SUPABASE_AUTH_TIMEOUT = 10  # seconds
+SUPABASE_AUTH_TIMEOUT = 3  # seconds — reduced from 10 to avoid blocking the event loop
 
 
 @dataclass
