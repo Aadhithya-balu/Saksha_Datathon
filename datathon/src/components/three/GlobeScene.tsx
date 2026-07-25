@@ -116,7 +116,7 @@ const GlobeInstance: React.FC = () => {
     let severity: 'high' | 'medium' | 'low' = 'low';
     if (name === 'Bengaluru Urban' || name === 'Kalaburagi' || name === 'Ballari') {
       severity = 'high';
-    } else if (name === 'Mysuru' || name === 'Belagavi' || name === 'Mangaluru' || name === 'Dharwad') {
+    } else if (name === 'Mysuru' || name === 'Belagavi' || name === 'Dakshina Kannada' || name === 'Dharwad') {
       severity = 'medium';
     }
     return { name, pos, severity };
@@ -126,7 +126,7 @@ const GlobeInstance: React.FC = () => {
   const connections = [
     { from: 'Bengaluru Urban', to: 'Kalaburagi', color: '#C94A2A' },
     { from: 'Bengaluru Urban', to: 'Belagavi', color: '#D4820A' },
-    { from: 'Bengaluru Urban', to: 'Mangaluru', color: '#1E6FD9' },
+    { from: 'Bengaluru Urban', to: 'Dakshina Kannada', color: '#1E6FD9' },
     { from: 'Mysuru', to: 'Ballari', color: '#6C43CC' }
   ];
 
