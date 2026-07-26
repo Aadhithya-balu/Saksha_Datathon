@@ -1,7 +1,12 @@
-const DEFAULT_API_BASE_URL = '/api/v1';
 import type { UserRole } from '../store/authStore';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL;
+const DEFAULT_API_BASE_URL = '/api/v1';
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.toString().trim();
+const normalizedConfiguredApiBaseUrl = configuredApiBaseUrl && configuredApiBaseUrl !== ''
+  ? configuredApiBaseUrl.replace(/\/+$/, '')
+  : undefined;
+
+export const API_BASE_URL = normalizedConfiguredApiBaseUrl ?? DEFAULT_API_BASE_URL;
 
 export let isEmulatorActive = false;
 

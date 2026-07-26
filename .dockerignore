@@ -1,0 +1,47 @@
+# Git
+.git
+.github
+
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/.mypy_cache
+**/.venv
+backend/.venv
+
+# Node
+datathon/node_modules
+datathon/npm-debug.log
+datathon/yarn.lock
+datathon/pnpm-lock.yaml
+
+# Build output
+datathon/dist
+build
+dist
+
+# IDE
+.vscode
+.idea
+
+# Environment
+.env
+backend/.env
+
+# Logs
+*.log
+logs
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.yml
+
+# Documentation (optional)
+README.md
+*.md
