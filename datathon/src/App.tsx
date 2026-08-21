@@ -29,11 +29,17 @@ import GlobalAIAssistant from './components/ai/GlobalAIAssistant';
 import DocsPage from './pages/Docs';
 import SettingsHelp from './pages/SettingsHelp';
 import Admin from './pages/Admin';
+import NotFound from './pages/NotFound';
 
 function App() {
   const { isAuthenticated, user, isHydrating, initializeSession } = useAuthStore();
   const { addLog } = useAuditStore();
   const { activeTab, setActiveTab, sidebarCollapsed, setSidebarCollapsed, theme } = useAppStore();
+  const basePath = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '') || '/';
+  const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
+  const isKnownPath = basePath === '/'
+    ? normalizedPath === '/' || normalizedPath === '/index.html'
+    : normalizedPath === basePath || normalizedPath === `${basePath}/index.html`;
 
   useEffect(() => {
     void initializeSession();
@@ -106,6 +112,10 @@ function App() {
         </div>
       </div>
     );
+  }
+
+  if (!isKnownPath) {
+    return <NotFound />;
   }
 
   if (!isAuthenticated) {
