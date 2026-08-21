@@ -90,7 +90,7 @@
 |  +-----------+  +-----------+  +---------------------------------+  |
 +--------------------------------------------------------------------+
                                   |
-                                  v (REST API /api/v1)
+                                  v (REST API /api/v2)
 +--------------------------------------------------------------------+
 |               React Frontend (TypeScript + Vite)                     |
 |  +----------+  +--------+  +--------+  +----------+  +-----------+  |
@@ -108,7 +108,7 @@
 ### Data Flow
 1. Crime data ingested into **Supabase PostgreSQL** (16 tables)
 2. Graph relationships stored in **Neo4j** (8 node types, 7 relationship types)
-3. **FastAPI** serves 59+ REST API endpoints under `/api/v1`
+3. **FastAPI** serves 59+ REST API endpoints under `/api/v2`
 4. **AI/ML Engine** trains models on-demand from DB, auto-loads artifacts on inference
 5. **React Frontend** consumes APIs via Vite dev proxy, renders dashboards/maps/graphs/charts
 6. **RAG Chat** provides conversational AI over case context with citations
@@ -288,57 +288,57 @@ Saksha_Datathon/
 
 ## API Endpoints (59+ Routes)
 
-### Authentication (`/api/v1/auth/`)
+### Authentication (`/api/v2/auth/`)
 - `POST /login` - JWT token generation
 - `POST /refresh` - Token refresh
 - `GET /me` - Current user profile
 - `POST /register` - New user registration (admin only)
 
-### Admin (`/api/v1/admin/`)
+### Admin (`/api/v2/admin/`)
 - Full CRUD for users, roles, audit logs, system settings, permissions (19 routes)
 
 ### Crime Management
-- `GET/POST /api/v1/criminals/` - Criminal list/create
-- `GET/PUT/DELETE /api/v1/criminals/{id}` - Criminal detail/update/delete
-- `GET /api/v1/criminals/search` - Criminal search
-- `GET/POST /api/v1/victims/` - Victim list/create
-- `GET/POST /api/v1/firs/` - FIR list/create
-- `GET/POST /api/v1/officers/` - Officer list/create
-- `GET/POST /api/v1/crime-cases/` - Crime case list/create (12 routes total)
+- `GET/POST /api/v2/criminals/` - Criminal list/create
+- `GET/PUT/DELETE /api/v2/criminals/{id}` - Criminal detail/update/delete
+- `GET /api/v2/criminals/search` - Criminal search
+- `GET/POST /api/v2/victims/` - Victim list/create
+- `GET/POST /api/v2/firs/` - FIR list/create
+- `GET/POST /api/v2/officers/` - Officer list/create
+- `GET/POST /api/v2/crime-cases/` - Crime case list/create (12 routes total)
 
-### Evidence (`/api/v1/evidence/`)
+### Evidence (`/api/v2/evidence/`)
 - CRUD + upload, download, assign, accept, complete, return, reject, summary (11 routes)
 
-### Reports (`/api/v1/reports/`)
+### Reports (`/api/v2/reports/`)
 - list, statistics, preview, generate, export (CSV/PDF)
 
-### Notifications (`/api/v1/notifications/`)
+### Notifications (`/api/v2/notifications/`)
 - list, count, recent, read, read-all, dismiss, activity-feed, live-timeline (8 routes)
 
-### Investigation (`/api/v1/investigation/`)
+### Investigation (`/api/v2/investigation/`)
 - dashboard, timeline, history, chat
 
-### Dashboard Analytics (`/api/v1/dashboard/`)
+### Dashboard Analytics (`/api/v2/dashboard/`)
 - summary, trends, categories, districts, risk, hotspots, anomalies, offender-dossiers, network, chat
 
-### Network Analysis (`/api/v1/network/`)
+### Network Analysis (`/api/v2/network/`)
 - full graph, person graph, case graph, gangs, shortest-path, link-analysis, AI insights
 
 ### AI/ML Endpoints
-- `POST /api/v1/ai/chat` - Streaming RAG chat
-- `POST /api/v1/ai/hotspot/predict` - Hotspot prediction
-- `GET /api/v1/ai/hotspot/model-info` - Model metadata
-- `POST /api/v1/ai/risk/predict` - District risk scoring
-- `POST /api/v1/ai/risk/forecast` - Time-series forecasting
-- `POST /api/v1/ai/risk/train` - Retrain risk models
-- `POST /api/v1/ai/criminal/risk` - Criminal risk assessment
-- `POST /api/v1/ai/criminal/repeat-offender` - Repeat offender prediction
-- `POST /api/v1/ai/criminal/similar` - Similar offender matching
-- `POST /api/v1/ai/criminal/cluster` - Criminal clustering
-- `POST /api/v1/ai/criminal/recommendations` - Investigation recommendations
-- `POST /api/v1/ai/anomaly/detect` - Anomaly detection
+- `POST /api/v2/ai/chat` - Streaming RAG chat
+- `POST /api/v2/ai/hotspot/predict` - Hotspot prediction
+- `GET /api/v2/ai/hotspot/model-info` - Model metadata
+- `POST /api/v2/ai/risk/predict` - District risk scoring
+- `POST /api/v2/ai/risk/forecast` - Time-series forecasting
+- `POST /api/v2/ai/risk/train` - Retrain risk models
+- `POST /api/v2/ai/criminal/risk` - Criminal risk assessment
+- `POST /api/v2/ai/criminal/repeat-offender` - Repeat offender prediction
+- `POST /api/v2/ai/criminal/similar` - Similar offender matching
+- `POST /api/v2/ai/criminal/cluster` - Criminal clustering
+- `POST /api/v2/ai/criminal/recommendations` - Investigation recommendations
+- `POST /api/v2/ai/anomaly/detect` - Anomaly detection
 
-### MLOps (`/api/v1/mlops/`)
+### MLOps (`/api/v2/mlops/`)
 - register, promote, latest, models, retrain
 
 ---

@@ -1,4 +1,4 @@
-# SAKSHA DATATHON COMPLIANCE & ENHANCEMENT AUDIT — VERSION 1.1
+# SAKSHA DATATHON COMPLIANCE & ENHANCEMENT AUDIT — VERSION 2.1
 
 **Audit Date:** 2026-07-24 (Updated 2026-07-25)
 **Auditor:** Automated Codebase Analysis
@@ -207,7 +207,7 @@
 
 | # | Fix | File | Impact |
 |---|---|---|---|
-| 1 | Network routes registered in API router | `backend/app/api/v1.py` | 9 graph intelligence endpoints were unreachable; all network features now work end-to-end |
+| 1 | Network routes registered in API router | `backend/app/api/v2.py` | 9 graph intelligence endpoints were unreachable; all network features now work end-to-end |
 | 2 | Backend fetcher risk predict arguments fixed | `backend/app/ai/chat/backend_fetcher.py:361-374` | Added `occurred_at` and `category` fields required by risk inference |
 | 3 | Backend fetcher forecast arguments fixed | `backend/app/ai/chat/backend_fetcher.py:376-390` | Changed from positional args `(district, months)` to list of record dicts |
 | 4 | Backend fetcher hotspot predict arguments fixed | `backend/app/ai/chat/backend_fetcher.py:389-404` | Changed from wrong fields to required `CaseMasterID`, `IncidentFromDate`, etc. |
@@ -218,9 +218,9 @@
 
 | Change | File |
 |---|---|
-| Added `network` router import and include | `backend/app/api/v1.py` |
-| Added `sociological` router import and include | `backend/app/api/v1.py` |
-| Added `strategic` router import and include | `backend/app/api/v1.py` |
+| Added `network` router import and include | `backend/app/api/v2.py` |
+| Added `sociological` router import and include | `backend/app/api/v2.py` |
+| Added `strategic` router import and include | `backend/app/api/v2.py` |
 
 ---
 
@@ -245,12 +245,12 @@
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/v1/sociological/demographics` | Victim age group and gender distribution |
-| GET | `/api/v1/sociological/urban-rural` | Urban vs rural crime classification |
-| GET | `/api/v1/sociological/socioeconomic` | Socio-economic correlation by district |
-| GET | `/api/v1/sociological/population-correlation` | Crime rate vs population density scatter |
-| GET | `/api/v1/sociological/temporal-demographics` | Crime by hour, day of week, month |
-| GET | `/api/v1/sociological/offender-demographics` | Offender age, gender, status analysis |
+| GET | `/api/v2/sociological/demographics` | Victim age group and gender distribution |
+| GET | `/api/v2/sociological/urban-rural` | Urban vs rural crime classification |
+| GET | `/api/v2/sociological/socioeconomic` | Socio-economic correlation by district |
+| GET | `/api/v2/sociological/population-correlation` | Crime rate vs population density scatter |
+| GET | `/api/v2/sociological/temporal-demographics` | Crime by hour, day of week, month |
+| GET | `/api/v2/sociological/offender-demographics` | Offender age, gender, status analysis |
 
 **Features:**
 - Victim age group bar charts (0-18, 19-25, 26-35, 36-50, 51-65, 65+)
@@ -288,11 +288,11 @@
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/v1/strategic/briefing` | Comprehensive strategic intelligence briefing |
-| GET | `/api/v1/strategic/high-risk-districts` | District risk ranking with factors |
-| GET | `/api/v1/strategic/emerging-trends` | 30-day trend comparison |
-| GET | `/api/v1/strategic/resource-allocation` | Deployment recommendations by district |
-| GET | `/api/v1/strategic/daily-summary` | Daily intelligence summary |
+| GET | `/api/v2/strategic/briefing` | Comprehensive strategic intelligence briefing |
+| GET | `/api/v2/strategic/high-risk-districts` | District risk ranking with factors |
+| GET | `/api/v2/strategic/emerging-trends` | 30-day trend comparison |
+| GET | `/api/v2/strategic/resource-allocation` | Deployment recommendations by district |
+| GET | `/api/v2/strategic/daily-summary` | Daily intelligence summary |
 
 **Features:**
 - Daily Intelligence Summary banner with today/yesterday comparison
@@ -321,18 +321,18 @@
 
 ## 5. REMAINING OPTIONAL ENHANCEMENTS
 
-| # | Enhancement | Priority | Effort | Notes | Status (v1.1) |
+| # | Enhancement | Priority | Effort | Notes | Status (v2.1) |
 |---|---|---|---|---|---|
 | 1 | WebSocket real-time notifications | Medium | High | Currently polling-based | **Still Pending** |
-| 2 | Light mode visual audit | Low | Medium | CSS variables exist, needs visual verification | **DONE** (v1.1) |
-| 3 | Skeleton loading for all pages | Low | Medium | Skeleton component exists but not universal | **DONE** (v1.1) |
+| 2 | Light mode visual audit | Low | Medium | CSS variables exist, needs visual verification | **DONE** (v2.1) |
+| 3 | Skeleton loading for all pages | Low | Medium | Skeleton component exists but not universal | **DONE** (v2.1) |
 | 4 | PDF export with external library | Low | Medium | Currently raw PDF spec | N/A — fpdf2 already in use |
-| 5 | Alembic database migrations | Low | Medium | Currently create_all() | **DONE** (v1.1) |
-| 6 | Risk/Forecast model training on production data | Medium | Low | Rule-based fallback active | **DONE** (v1.1) |
-| 7 | Criminal model retraining with larger dataset | Medium | Low | Currently trained on 5 criminals | **DONE** (v1.1) |
-| 8 | Season crime aggregation | Low | Low | Monthly data available, season needs grouping | **DONE** (v1.1) |
+| 5 | Alembic database migrations | Low | Medium | Currently create_all() | **DONE** (v2.1) |
+| 6 | Risk/Forecast model training on production data | Medium | Low | Rule-based fallback active | **DONE** (v2.1) |
+| 7 | Criminal model retraining with larger dataset | Medium | Low | Currently trained on 5 criminals | **DONE** (v2.1) |
+| 8 | Season crime aggregation | Low | Low | Monthly data available, season needs grouping | **DONE** (v2.1) |
 
-### v1.1 Remaining
+### v2.1 Remaining
 | # | Enhancement | Priority | Effort | Notes |
 |---|---|---|---|---|
 | 1 | WebSocket real-time notifications | Medium | High | Currently polling-based |
@@ -384,8 +384,8 @@
 | Similar offender search | Cosine similarity KNN | Trained (60 criminals) |
 | Criminal clustering | Mini k-means, 4 clusters | Trained (60 criminals) |
 | RAG chat | 12 intents, streaming, citations | Operational |
-| Risk model (RandomForest) | 11 features, district-month aggregation | **Trained** on 60 cases (v1.1) |
-| Forecast model (XGBoost) | 14 features, time-series lag + rolling | **Trained** on 60 cases (v1.1) |
+| Risk model (RandomForest) | 11 features, district-month aggregation | **Trained** on 60 cases (v2.1) |
+| Forecast model (XGBoost) | 14 features, time-series lag + rolling | **Trained** on 60 cases (v2.1) |
 | Anomaly detection | Z-score L2 with threshold optimization | Default model active |
 
 ---
@@ -417,24 +417,24 @@
 | Chat ML intents | FIXED | All 5 ML method calls now use correct signatures |
 | Sociological endpoints | NEW | 6 endpoints, compiles, registered |
 | Strategic endpoints | NEW | 5 endpoints, compiles, registered |
-| Criminal model retrain | **PASS** (v1.1) | 51 criminals with real features, 4 model artifacts |
-| Risk model train | **PASS** (v1.1) | RandomForest on 60 cases, artifacts saved |
-| Forecast model train | **PASS** (v1.1) | XGBoost on 60 cases, artifacts saved |
-| Seed data expansion | **PASS** (v1.1) | 60 criminals, 60 cases, 25 victims seeded to Supabase |
-| Season aggregation | **PASS** (v1.1) | Backend endpoint + frontend UI + feature engineering |
-| Alembic init | **PASS** (v1.1) | Baseline migration generated and stamped |
-| Light mode CSS audit | **PASS** (v1.1) | 4 missing overrides added, 0 issues remaining |
-| Skeleton loading | **PASS** (v1.1) | 13 pages wired to PageSkeleton/TableSkeleton/CardSkeleton |
+| Criminal model retrain | **PASS** (v2.1) | 51 criminals with real features, 4 model artifacts |
+| Risk model train | **PASS** (v2.1) | RandomForest on 60 cases, artifacts saved |
+| Forecast model train | **PASS** (v2.1) | XGBoost on 60 cases, artifacts saved |
+| Seed data expansion | **PASS** (v2.1) | 60 criminals, 60 cases, 25 victims seeded to Supabase |
+| Season aggregation | **PASS** (v2.1) | Backend endpoint + frontend UI + feature engineering |
+| Alembic init | **PASS** (v2.1) | Baseline migration generated and stamped |
+| Light mode CSS audit | **PASS** (v2.1) | 4 missing overrides added, 0 issues remaining |
+| Skeleton loading | **PASS** (v2.1) | 13 pages wired to PageSkeleton/TableSkeleton/CardSkeleton |
 
 ---
 
 ## CHANGE MANIFEST
 
-### v1.0 (2026-07-24)
+### v2.0 (2026-07-24)
 
 | # | File | Type | Lines Changed | Description |
 |---|---|---|---|---|
-| 1 | `backend/app/api/v1.py` | Modified | +12 | Added network, sociological, strategic router imports and includes |
+| 1 | `backend/app/api/v2.py` | Modified | +12 | Added network, sociological, strategic router imports and includes |
 | 2 | `backend/app/ai/chat/backend_fetcher.py` | Modified | +45/-20 | Fixed 5 ML method signatures for correct function calls |
 | 3 | `backend/app/services/sociological_service.py` | **New** | +340 | Sociological analysis service with Karnataka reference data |
 | 4 | `backend/app/routes/sociological.py` | **New** | +72 | 6 REST endpoints for sociological intelligence |
@@ -447,9 +447,9 @@
 | 11 | `datathon/src/components/layout/Sidebar.tsx` | Modified | +4 | Added Socio Intel + Strategic Intel nav items |
 | 12 | `datathon/src/components/ui/CommandPalette.tsx` | Modified | +4 | Added 2 new command entries |
 
-**v1.0 Summary: 6 new files, 6 modified files, 0 deleted files, 0 breaking changes.**
+**v2.0 Summary: 6 new files, 6 modified files, 0 deleted files, 0 breaking changes.**
 
-### v1.1 (2026-07-25)
+### v2.1 (2026-07-25)
 
 | # | File | Type | Lines Changed | Description |
 |---|---|---|---|---|
@@ -482,7 +482,7 @@
 | 39 | Model artifacts (criminal) | **New** | — | risk_scorer.json, repeat_offender.json, similarity.json, clustering.json |
 | 40 | Model artifacts (risk) | **New** | — | risk_model.pkl (177KB), forecast_model.pkl (4.7KB) |
 
-**v1.1 Summary: 5 new files, 20 modified files, model artifacts saved, expanded seed data.**
+**v2.1 Summary: 5 new files, 20 modified files, model artifacts saved, expanded seed data.**
 
 ---
 

@@ -14,7 +14,7 @@ async def create_dummy_image():
 async def main():
     image_path = await create_dummy_image()
     
-    async with httpx.AsyncClient(base_url="http://127.0.0.1:8000/api/v1") as client:
+    async with httpx.AsyncClient(base_url="http://127.0.0.1:8000/api/v2") as client:
         response = await client.post("/auth/login", json={"username": "admin", "password": "password123"})
         token = response.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}

@@ -4,7 +4,7 @@ import urllib.error
 import json
 import uuid
 
-API_URL = "http://127.0.0.1:8000/api/v1"
+API_URL = "http://127.0.0.1:8000/api/v2"
 TEST_USERS = [
     {"role": "Admin", "username": "admin", "password": "password"},
     {"role": "Investigator", "username": "IO-3921", "password": "123456"},

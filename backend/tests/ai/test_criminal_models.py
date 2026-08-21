@@ -328,7 +328,7 @@ class TestCriminalAPIEndpoints:
 
     def _get_token(self, client, username: str, password: str) -> str:
         resp = client.post(
-            "/api/v1/auth/login",
+            "/api/v2/auth/login",
             json={"username": username, "password": password},
         )
         assert resp.status_code == 200, resp.text
@@ -347,7 +347,7 @@ class TestCriminalAPIEndpoints:
         token = self._get_token(client, "testadmin", "TestPass1!")
 
         resp = client.get(
-            f"/api/v1/ai/criminal/{criminal.id}/risk",
+            f"/api/v2/ai/criminal/{criminal.id}/risk",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 200
@@ -368,7 +368,7 @@ class TestCriminalAPIEndpoints:
         token = self._get_token(client, "testadmin", "TestPass1!")
 
         resp = client.get(
-            f"/api/v1/ai/criminal/{criminal.id}/repeat-offender",
+            f"/api/v2/ai/criminal/{criminal.id}/repeat-offender",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 200
@@ -388,7 +388,7 @@ class TestCriminalAPIEndpoints:
         token = self._get_token(client, "testadmin", "TestPass1!")
 
         resp = client.get(
-            f"/api/v1/ai/criminal/{criminal.id}/similar?top_k=3",
+            f"/api/v2/ai/criminal/{criminal.id}/similar?top_k=3",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 200
@@ -408,7 +408,7 @@ class TestCriminalAPIEndpoints:
         token = self._get_token(client, "testadmin", "TestPass1!")
 
         resp = client.get(
-            f"/api/v1/ai/criminal/{criminal.id}/cluster",
+            f"/api/v2/ai/criminal/{criminal.id}/cluster",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 200
@@ -428,7 +428,7 @@ class TestCriminalAPIEndpoints:
         token = self._get_token(client, "testadmin", "TestPass1!")
 
         resp = client.get(
-            f"/api/v1/ai/criminal/{criminal.id}/recommendations",
+            f"/api/v2/ai/criminal/{criminal.id}/recommendations",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 200
@@ -468,7 +468,7 @@ class TestCriminalAPIEndpoints:
         fake_id = str(uuid.uuid4())
 
         resp = client.get(
-            f"/api/v1/ai/criminal/{fake_id}/risk",
+            f"/api/v2/ai/criminal/{fake_id}/risk",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 404
@@ -500,7 +500,7 @@ class TestCriminalAPIEndpoints:
 
         token = self._get_token(client, "inv_user", "TestPass1!")
         resp = client.post(
-            "/api/v1/ai/criminal/retrain",
+            "/api/v2/ai/criminal/retrain",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 403

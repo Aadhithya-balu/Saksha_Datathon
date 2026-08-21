@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # --- App ---
     APP_NAME: str = "SAKSHA Backend"
     APP_ENV: str = "development"
-    API_V1_PREFIX: str = "/api/v1"
+    API_V2_PREFIX: str = "/api/v2"
     APP_DEBUG: bool = True
     DEBUG: bool = True
 

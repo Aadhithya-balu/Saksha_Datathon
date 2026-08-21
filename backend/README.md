@@ -11,7 +11,7 @@ Core backend for the SAKSHA Crime Intelligence Platform — FastAPI + PostgreSQL
 ```
 backend/
 ├── app/
-│   ├── api/            # versioned router aggregator (v1.py)
+│   ├── api/            # versioned router aggregator (v2.py)
 │   ├── auth/           # JWT dependency + RBAC role checks
 │   ├── core/           # config, logging, security (hashing/JWT), exceptions
 │   ├── database/       # Postgres session + Neo4j driver + init/seed scripts
@@ -104,7 +104,7 @@ docker compose exec neo4j cypher-shell -u neo4j -p <password> -f /neo4j/schema.c
 
 ## Handoff to the AI/ML team
 
-`app/routes/ai_support.py` defines the exact contract (`/api/v1/ai/chat/query`, `/predictions/risk-scores`, `/predictions/anomalies`, `/hotspots`, `/network/person/{id}`) your teammates' models plug into. Each currently returns a clearly-marked stub. To wire in a real model:
+`app/routes/ai_support.py` defines the exact contract (`/api/v2/ai/chat/query`, `/predictions/risk-scores`, `/predictions/anomalies`, `/hotspots`, `/network/person/{id}`) your teammates' models plug into. Each currently returns a clearly-marked stub. To wire in a real model:
 
 1. Put the model/pipeline logic in a new `app/services/<name>_ai_service.py`.
 2. Import and call it from the matching function in `ai_support.py`, replacing the stub return.

@@ -14,7 +14,7 @@
 Saksha_Datathon/
 ├── backend/              FastAPI app (Python 3.12)
 │   ├── app/
-│   │   ├── api/v1.py     All routers aggregated here
+│   │   ├── api/v2.py     All routers aggregated here
 │   │   ├── auth/         JWT + RBAC
 │   │   ├── core/         config, security, exceptions, logging
 │   │   ├── database/     postgres.py, neo4j.py, init_db.py, seed_db.py
@@ -28,7 +28,7 @@ Saksha_Datathon/
 │   └── src/
 │       ├── pages/        One file per module page
 │       ├── components/   layout/, charts/, map/, network/, three/, auth/
-│       ├── services/api.ts  All fetch calls to /api/v1
+│       ├── services/api.ts  All fetch calls to /api/v2
 │       ├── store/        Zustand stores (auth, audit, map, alert)
 │       └── utils/
 ├── scripts/dev-all.js    Starts both backend + frontend
@@ -99,7 +99,7 @@ py -3.12 -m app.database.seed_db    # seeds demo data
 
 ---
 
-## API Endpoints (all under /api/v1)
+## API Endpoints (all under /api/v2)
 
 ### Auth
 - `POST /auth/login` — returns JWT access + refresh tokens

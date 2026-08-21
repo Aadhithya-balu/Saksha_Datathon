@@ -61,7 +61,7 @@ def test_chat_api_streaming_endpoint(client: TestClient):
     app.dependency_overrides[get_current_user] = mock_user
     try:
         response = client.post(
-            "/api/v1/ai/chat",
+            "/api/v2/ai/chat",
             json={"message": "Summarize top crime categories", "stream": True},
         )
         assert response.status_code == 200

@@ -164,7 +164,7 @@ function App() {
 
         {/* Footer */}
         <footer className="h-9 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]/50 px-6 flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)] select-none shrink-0 no-print">
-          <span>SAKSHA v1.0 &middot; Karnataka State Police</span>
+          <span>SAKSHA v2.0 &middot; Karnataka State Police</span>
           <span className="hidden sm:inline">CLASSIFIED &middot; STAMP: 2026-SCRB-KSP</span>
         </footer>
       </div>

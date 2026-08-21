@@ -35,7 +35,7 @@ def create_user():
 async def main():
     pass
     
-    async with httpx.AsyncClient(base_url="http://127.0.0.1:8000/api/v1") as client:
+    async with httpx.AsyncClient(base_url="http://127.0.0.1:8000/api/v2") as client:
         print("Logging in...")
         response = await client.post("/auth/login", json={"username": "admin", "password": "password123"})
         

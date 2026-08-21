@@ -23,7 +23,7 @@ def _seed_admin(db_session):
 
 def test_login_success(client, db_session):
     _seed_admin(db_session)
-    response = client.post("/api/v1/auth/login", json={"username": "testadmin", "password": "Password123!"})
+    response = client.post("/api/v2/auth/login", json={"username": "testadmin", "password": "Password123!"})
     assert response.status_code == 200
     body = response.json()
     assert "access_token" in body
@@ -32,10 +32,10 @@ def test_login_success(client, db_session):
 
 def test_login_wrong_password(client, db_session):
     _seed_admin(db_session)
-    response = client.post("/api/v1/auth/login", json={"username": "testadmin", "password": "wrong"})
+    response = client.post("/api/v2/auth/login", json={"username": "testadmin", "password": "wrong"})
     assert response.status_code == 401
 
 
 def test_me_requires_token(client):
-    response = client.get("/api/v1/auth/me")
+    response = client.get("/api/v2/auth/me")
     assert response.status_code == 401

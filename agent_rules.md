@@ -57,7 +57,7 @@ Unless explicitly required, avoid changing:
 
 If this issue requires changes to shared files such as:
 
-- backend/app/api/v1.py
+- backend/app/api/v2.py
 - datathon/src/services/api.ts
 - App.tsx
 - Navigation
