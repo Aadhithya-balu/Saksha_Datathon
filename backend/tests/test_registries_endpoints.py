@@ -51,7 +51,7 @@ def _seed_dbs(db: Session):
 
 def _get_token(client, username, password):
     resp = client.post(
-        "/api/v1/auth/login",
+        "/api/v2/auth/login",
         json={"username": username, "password": password},
     )
     assert resp.status_code == 200
@@ -63,20 +63,20 @@ def test_criminals_registry_endpoints(client: TestClient, db_session: Session):
     headers = {"Authorization": f"Bearer {token}"}
 
     # Test list criminals
-    resp = client.get("/api/v1/criminals", headers=headers)
+    resp = client.get("/api/v2/criminals", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] >= 1
     assert any(c["full_name"] == "John Doe Offender" for c in data["results"])
 
     # Test search criminals
-    resp = client.get("/api/v1/criminals?q=Johnny", headers=headers)
+    resp = client.get("/api/v2/criminals?q=Johnny", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert any(c["full_name"] == "John Doe Offender" for c in data["results"])
 
     # Test get criminal detail (intelligence enriched)
-    resp = client.get(f"/api/v1/criminals/{criminal.id}", headers=headers)
+    resp = client.get(f"/api/v2/criminals/{criminal.id}", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["full_name"] == "John Doe Offender"
@@ -91,20 +91,20 @@ def test_victims_registry_endpoints(client: TestClient, db_session: Session):
     headers = {"Authorization": f"Bearer {token}"}
 
     # Test list victims
-    resp = client.get("/api/v1/victims", headers=headers)
+    resp = client.get("/api/v2/victims", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] >= 1
     assert any(v["full_name"] == "Jane Doe Victim" for v in data["results"])
 
     # Test search victims
-    resp = client.get("/api/v1/victims?q=Street", headers=headers)
+    resp = client.get("/api/v2/victims?q=Street", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert any(v["full_name"] == "Jane Doe Victim" for v in data["results"])
 
     # Test get victim detail
-    resp = client.get(f"/api/v1/victims/{victim.id}", headers=headers)
+    resp = client.get(f"/api/v2/victims/{victim.id}", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["full_name"] == "Jane Doe Victim"

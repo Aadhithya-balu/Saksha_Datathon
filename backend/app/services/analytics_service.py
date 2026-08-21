@@ -161,7 +161,7 @@ def risk_scores(db: Session, district_id: str | None = None, window: str = "next
         "district_id": district_id,
         "window": window,
         "grid_predictions": sorted(predictions, key=lambda row: row["risk_score"], reverse=True),
-        "model_version": "rule-based-sql-v1",
+        "model_version": "rule-based-sql-v2",
     }
 
 

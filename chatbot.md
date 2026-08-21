@@ -22,7 +22,7 @@ User Query
     |
 React AIChat (streaming NDJSON consumer)
     |
-FastAPI POST /api/v1/ai/chat
+FastAPI POST /api/v2/ai/chat
     |
 +-----------------------------------+
 |       AI Orchestrator             |

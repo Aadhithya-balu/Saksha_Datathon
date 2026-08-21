@@ -1,6 +1,6 @@
 import type { UserRole } from '../store/authStore';
 
-const DEFAULT_API_BASE_URL = '/api/v1';
+const DEFAULT_API_BASE_URL = '/api/v2';
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.toString().trim();
 const normalizedConfiguredApiBaseUrl = configuredApiBaseUrl && configuredApiBaseUrl !== ''
   ? configuredApiBaseUrl.replace(/\/+$/, '')

@@ -1,7 +1,7 @@
 """
-API v1 router aggregator.
-All module routers are mounted here under settings.API_V1_PREFIX,
-giving a clean path for future v2 versioning without touching main.py.
+API v2 router aggregator.
+All module routers are mounted here under settings.API_V2_PREFIX,
+giving a clean path for future v3 versioning without touching main.py.
 """
 from fastapi import APIRouter
 

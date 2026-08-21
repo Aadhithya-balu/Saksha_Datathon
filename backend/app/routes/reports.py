@@ -488,7 +488,7 @@ def _create_report_record(db: Session, current_user: User, report_type: str, exp
         date_to=filters.get("date_to") or None,
         format=export_format,
         status="ready",
-        file_url=f"/api/v1/reports/{report_type}/export/{export_format}",
+        file_url=f"/api/v2/reports/{report_type}/export/{export_format}",
     )
     db.add(report)
     db.flush()
