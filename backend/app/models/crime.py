@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func, Integer
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,6 +12,10 @@ from app.models.mixins import TimestampMixin, UUIDPKMixin
 
 class CrimeCase(Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "crime_cases"
+    __table_args__ = (
+        # Real-time feeds order the newest cases by creation timestamp.
+        Index("ix_crime_cases_created_at", "created_at"),
+    )
 
     case_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     category_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crime_categories.id", ondelete="RESTRICT"), nullable=False, index=True)

@@ -1,8 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { getCrimeCases, deleteCrimeCase, getUnassignedOfficers } from '../../services/api';
+import {
+  getCrimeCases,
+  deleteCrimeCase,
+  getUnassignedOfficers,
+  getCrimeCategories,
+  getLocationsList,
+} from '../../services/api';
 import type { CrimeCaseDetailRecord, OfficerWithUserRecord } from '../../services/api';
 import { Search, Plus, Eye, Edit2, Trash2, ShieldAlert, CheckCircle, Clock } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useRealtimeStore } from '../../store/realtimeStore';
 
 interface CrimeCasesListProps {
   onSelectCase: (id: string) => void;
@@ -18,8 +25,13 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
   const user = useAuthStore((state) => state.user);
   const [cases, setCases] = useState<CrimeCaseDetailRecord[]>([]);
   const [officers, setOfficers] = useState<OfficerWithUserRecord[]>([]);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+  const [districts, setDistricts] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [districtFilter, setDistrictFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +39,11 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const response = await getCrimeCases(search || undefined, statusFilter || undefined);
+      const response = await getCrimeCases(search || undefined, statusFilter || undefined, 1, 20, {
+        category_id: categoryFilter || undefined,
+        district: districtFilter || undefined,
+        priority: priorityFilter || undefined,
+      });
       setCases(response.results);
     } catch (err: any) {
       setError(err?.message || 'Failed to fetch crime cases');
@@ -41,6 +57,46 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
     getUnassignedOfficers()
       .then(setOfficers)
       .catch((err) => console.error('Error fetching officers:', err));
+  }, [search, statusFilter, categoryFilter, districtFilter, priorityFilter]);
+
+  // Load filter dropdown options once
+  useEffect(() => {
+    getCrimeCategories()
+      .then(setCategories)
+      .catch(() => {});
+    getLocationsList()
+      .then((locations) =>
+        setDistricts(Array.from(new Set(locations.map((loc) => loc.district))).sort()),
+      )
+      .catch(() => {});
+  }, []);
+
+  // Real-time feed: newly created cases appear at the top instantly.
+  useEffect(() => {
+    useRealtimeStore.getState().connect();
+    const unsubscribe = useRealtimeStore.getState().onCaseCreated((liveCase) => {
+      if (search || (statusFilter && statusFilter !== liveCase.status)) return;
+      setCases((prev) => [
+        {
+          id: liveCase.id || '',
+          case_number: liveCase.case_number,
+          category_id: '',
+          location_id: '',
+          occurred_at: liveCase.time || new Date().toISOString(),
+          reported_at: new Date().toISOString(),
+          description: `Newly registered ${liveCase.crime_type} case at ${liveCase.location}`,
+          mo_tags: null,
+          status: liveCase.status,
+          priority: liveCase.priority,
+          progress: 0,
+        } as unknown as CrimeCaseDetailRecord,
+        ...prev.filter((c) => c.case_number !== liveCase.case_number),
+      ].slice(0, 20));
+    });
+    return () => {
+      unsubscribe();
+      useRealtimeStore.getState().disconnect();
+    };
   }, [search, statusFilter]);
 
   const handleDelete = async (id: string) => {
@@ -104,12 +160,12 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col md:flex-row gap-4">
+      <div className="flex flex-col md:flex-row gap-3">
         <div className="flex-1 relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
           <input
             type="text"
-            placeholder="SEARCH BY CASE NUMBER OR DESCRIPTION..."
+            placeholder="SEARCH BY CASE NUMBER (E.G. 5537), DESCRIPTION..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-secondary-bg border border-border-color rounded font-mono text-xs text-[var(--text-primary)] uppercase placeholder-[var(--text-muted)] focus:border-[#1E6FD9]/60 focus:outline-none"
@@ -118,7 +174,7 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-full md:w-60 px-3 py-2 bg-secondary-bg border border-border-color rounded font-mono text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[#1E6FD9]/60 focus:outline-none cursor-pointer"
+          className="w-full md:w-44 px-3 py-2 bg-secondary-bg border border-border-color rounded font-mono text-xs text-[var(--text-primary)] focus:border-[#1E6FD9]/60 focus:outline-none cursor-pointer"
         >
           <option value="">ALL STATUS LEVELS</option>
           <option value="open">OPEN</option>
@@ -128,6 +184,51 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
           <option value="charge sheet filed">CHARGE SHEET FILED</option>
           <option value="closed">CLOSED</option>
         </select>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="w-full md:w-48 px-3 py-2 bg-secondary-bg border border-border-color rounded font-mono text-xs text-[var(--text-primary)] focus:border-[#1E6FD9]/60 focus:outline-none cursor-pointer"
+        >
+          <option value="">ALL CATEGORIES</option>
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>{cat.name.toUpperCase()}</option>
+          ))}
+        </select>
+        <select
+          value={districtFilter}
+          onChange={(e) => setDistrictFilter(e.target.value)}
+          className="w-full md:w-44 px-3 py-2 bg-secondary-bg border border-border-color rounded font-mono text-xs text-[var(--text-primary)] focus:border-[#1E6FD9]/60 focus:outline-none cursor-pointer"
+        >
+          <option value="">ALL DISTRICTS</option>
+          {districts.map((dist) => (
+            <option key={dist} value={dist}>{dist.toUpperCase()}</option>
+          ))}
+        </select>
+        <select
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+          className="w-full md:w-40 px-3 py-2 bg-secondary-bg border border-border-color rounded font-mono text-xs text-[var(--text-primary)] focus:border-[#1E6FD9]/60 focus:outline-none cursor-pointer"
+        >
+          <option value="">ALL PRIORITIES</option>
+          <option value="low">LOW</option>
+          <option value="medium">MEDIUM</option>
+          <option value="high">HIGH</option>
+          <option value="critical">CRITICAL</option>
+        </select>
+        {(search || statusFilter || categoryFilter || districtFilter || priorityFilter) && (
+          <button
+            onClick={() => {
+              setSearch('');
+              setStatusFilter('');
+              setCategoryFilter('');
+              setDistrictFilter('');
+              setPriorityFilter('');
+            }}
+            className="px-4 py-2 bg-secondary-bg border border-border-color rounded font-mono text-xs text-[var(--text-muted)] hover:text-[#1E6FD9] hover:border-[#1E6FD9]/60 transition-colors uppercase cursor-pointer"
+          >
+            Reset
+          </button>
+        )}
       </div>
 
       {/* Main Grid View */}

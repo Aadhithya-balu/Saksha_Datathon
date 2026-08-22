@@ -17,6 +17,7 @@ from app.routes import (
     locations,
     notifications,
     officers,
+    realtime,
     reports,
     users,
     victims,
@@ -54,6 +55,7 @@ api_router.include_router(evidence.router)
 api_router.include_router(locations.router)
 api_router.include_router(reports.router)
 api_router.include_router(crime_cases.router)
+api_router.include_router(realtime.router)
 api_router.include_router(investigation.router)
 api_router.include_router(notifications.router)
 

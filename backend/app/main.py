@@ -72,6 +72,24 @@ def _migrate_notifications_table():
         logger.warning(f"Notifications table migration skipped: {exc}")
 
 
+def _ensure_realtime_indexes():
+    """Create indexes required for fast real-time case feeds if missing.
+
+    ``create_all`` only applies model indexes when a table is first created,
+    so existing deployments get the created_at index via idempotent DDL here.
+    """
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_crime_cases_created_at "
+                "ON crime_cases (created_at)"
+            ))
+            conn.commit()
+        logger.info("Real-time index check complete")
+    except Exception as exc:
+        logger.warning(f"Real-time index creation skipped: {exc}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
@@ -80,6 +98,7 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         _migrate_notifications_table()
+        _ensure_realtime_indexes()
         with engine.connect():
             logger.info("PostgreSQL connection OK")
     except Exception as exc:
