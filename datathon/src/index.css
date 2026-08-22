@@ -913,16 +913,340 @@ input[type="week"] {
   }
 }
 
-/* Login page mesh */
-@keyframes meshShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+/* ============================================================
+   SAKSHA SECURE ACCESS — LOGIN ENVIRONMENT v3
+   A dedicated full-viewport security portal identity.
+   The login experience is a fixed application surface (no page
+   scrolling at any screen size) with its own --lp-* design
+   tokens. Dark and light are two designed expressions of the
+   same SAKSHA identity — auth components inherit these tokens.
+   ============================================================ */
+
+.login-root {
+  position: relative;
+  min-height: 100dvh;
+  overflow-x: clip;
+  isolation: isolate;
+  background: var(--lp-bg);
+
+  /* ---- Dark identity (default) ---- */
+  --lp-bg: #05090f;
+  --lp-bg-soft: #0a1220;
+  --lp-surface: rgba(12, 21, 38, 0.86);
+  --lp-surface-2: rgba(18, 30, 54, 0.55);
+  --lp-surface-3: rgba(9, 16, 30, 0.6);
+  --lp-card: rgba(9, 16, 30, 0.82);
+  --lp-field: rgba(255, 255, 255, 0.045);
+  --lp-field-focus: rgba(47, 127, 224, 0.1);
+  --lp-border: rgba(101, 143, 208, 0.16);
+  --lp-border-strong: rgba(101, 143, 208, 0.36);
+  --lp-text: #e9eef7;
+  --lp-text-2: #a4b2ca;
+  --lp-text-3: #6b7a94;
+  --lp-accent: #2f7fe0;
+  --lp-accent-hi: #629df2;
+  --lp-accent-soft: rgba(47, 127, 224, 0.13);
+  --lp-teal: #3ac2a4;
+  --lp-green: #37c98e;
+  --lp-red: #e06055;
+  --lp-red-soft: rgba(224, 96, 85, 0.12);
+  --lp-green-soft: rgba(55, 201, 142, 0.11);
+  --lp-amber: #dfa23f;
+  --lp-amber-soft: rgba(223, 162, 63, 0.12);
+  --lp-grid-line: rgba(101, 143, 208, 0.055);
+  --lp-card-shadow: 0 24px 70px rgba(1, 4, 10, 0.55), 0 2px 8px rgba(1, 4, 10, 0.4);
+  --lp-inner-hi: rgba(255, 255, 255, 0.05);
+
+  color-scheme: dark;
 }
-.dynamic-login-mesh {
-  background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary), #0d0c1d, var(--bg-primary));
-  background-size: 400% 400%;
-  animation: meshShift 18s ease infinite;
+
+/* ---- Light identity — designed for daylight, never inverted ---- */
+[data-theme="light"] .login-root {
+  --lp-bg: #edf1f7;
+  --lp-bg-soft: #ffffff;
+  --lp-surface: rgba(255, 255, 255, 0.93);
+  --lp-surface-2: rgba(240, 244, 251, 0.88);
+  --lp-surface-3: rgba(255, 255, 255, 0.78);
+  --lp-card: rgba(255, 255, 255, 0.94);
+  --lp-field: rgba(13, 34, 66, 0.04);
+  --lp-field-focus: rgba(22, 96, 196, 0.09);
+  --lp-border: rgba(23, 62, 130, 0.17);
+  --lp-border-strong: rgba(23, 62, 130, 0.34);
+  --lp-text: #14213a;
+  --lp-text-2: #45566f;
+  --lp-text-3: #7d8ba1;
+  --lp-accent: #1660c4;
+  --lp-accent-hi: #2f7fe0;
+  --lp-accent-soft: rgba(22, 96, 196, 0.09);
+  --lp-teal: #0d8f76;
+  --lp-green: #12915f;
+  --lp-red: #c2453a;
+  --lp-red-soft: rgba(194, 69, 58, 0.1);
+  --lp-green-soft: rgba(18, 145, 95, 0.09);
+  --lp-amber: #b0781c;
+  --lp-amber-soft: rgba(176, 120, 28, 0.1);
+  --lp-grid-line: rgba(23, 62, 130, 0.08);
+  --lp-card-shadow: 0 20px 60px rgba(28, 48, 84, 0.16), 0 2px 6px rgba(28, 48, 84, 0.08);
+  --lp-inner-hi: rgba(255, 255, 255, 0.9);
+
+  color-scheme: light;
+}
+
+/* ---- Backdrop environment layers (low contrast, subconscious) ---- */
+.lp-grid-layer {
+  background-image:
+    linear-gradient(var(--lp-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--lp-grid-line) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 95% 85% at 50% 42%, black 20%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 95% 85% at 50% 42%, black 20%, transparent 78%);
+}
+
+.lp-glow-a {
+  background: radial-gradient(ellipse 55% 48% at 50% 38%, var(--lp-accent-soft), transparent 70%);
+}
+[data-theme="dark"] .lp-glow-a,
+.login-root .lp-glow-a {
+  opacity: 1;
+}
+
+.lp-vignette {
+  background: radial-gradient(ellipse at center, transparent 52%, rgba(1, 3, 8, 0.5) 100%);
+}
+[data-theme="light"] .lp-vignette {
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(35, 54, 88, 0.14) 100%);
+}
+
+/* Stylized Karnataka landmass silhouette */
+.lp-karnataka {
+  color: var(--lp-accent);
+  opacity: 0.07;
+}
+.lp-karnataka path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+}
+
+/* Entrance choreography */
+@keyframes lp-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.lp-enter {
+  animation: lp-fade-up 0.45s cubic-bezier(0.22, 0.9, 0.32, 1) both;
+}
+.lp-enter-d1 { animation-delay: 0.06s; }
+.lp-enter-d2 { animation-delay: 0.12s; }
+.lp-enter-d3 { animation-delay: 0.2s; }
+
+@keyframes lp-ring-pulse {
+  0% { transform: scale(1); opacity: 0.45; }
+  70% { transform: scale(1.45); opacity: 0; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
+.lp-logo-rings::before,
+.lp-logo-rings::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  border: 1px solid var(--lp-accent);
+  animation: lp-ring-pulse 3.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  pointer-events: none;
+}
+.lp-logo-rings::after { animation-delay: 1.6s; }
+[data-theme="light"] .lp-logo-rings::before,
+[data-theme="light"] .lp-logo-rings::after {
+  border-color: var(--lp-accent-hi);
+}
+
+@keyframes lp-dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+.lp-live-dot {
+  animation: lp-dot-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes lp-scan-sweep {
+  0% { top: 10%; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { top: 86%; opacity: 0; }
+}
+.lp-scanline {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--lp-teal), var(--lp-accent-hi), var(--lp-teal), transparent);
+  box-shadow: 0 0 14px var(--lp-accent);
+  animation: lp-scan-sweep 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes lp-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-7px); }
+  30% { transform: translateX(6px); }
+  45% { transform: translateX(-5px); }
+  60% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+}
+.lp-shake { animation: lp-shake 0.5s ease-in-out; }
+
+/* Login-scoped radius tokens (utility names not generated by
+   Tailwind config — defined here for auth components only) */
+.login-root .rounded-card { border-radius: 14px; }
+.login-root .rounded-btn { border-radius: 10px; }
+
+/* Visible keyboard focus across the portal */
+.login-root :focus-visible {
+  outline: 2px solid var(--lp-accent-hi);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---- Premium surface treatments ---- */
+
+/* Gradient brand title */
+.lp-gradient-title {
+  background: linear-gradient(115deg, var(--lp-text) 20%, var(--lp-accent-hi) 72%, var(--lp-teal) 105%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Refined text inputs — theme-aware fill, focus ring, placeholder */
+.lp-input {
+  width: 100%;
+  background: var(--lp-field);
+  border: 1px solid var(--lp-border);
+  color: var(--lp-text);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.lp-input::placeholder {
+  color: var(--lp-text-3);
+}
+.lp-input:focus {
+  outline: none;
+  border-color: var(--lp-accent-hi);
+  background: var(--lp-field-focus);
+  box-shadow: 0 0 0 3px var(--lp-accent-soft);
+}
+.lp-input:disabled {
+  opacity: 0.55;
+}
+
+/* Primary action buttons — light sweep on hover */
+.lp-primary-btn {
+  position: relative;
+  overflow: hidden;
+}
+.lp-primary-btn::after {
+  content: '';
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: -75%;
+  width: 45%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.65s cubic-bezier(0.3, 0.7, 0.4, 1);
+  pointer-events: none;
+}
+.lp-primary-btn:hover::after {
+  left: 135%;
+}
+[data-theme="light"] .lp-primary-btn::after {
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+}
+
+/* Tactile keypad keys */
+.lp-key {
+  background: var(--lp-surface-2);
+  border: 1px solid var(--lp-border);
+  color: var(--lp-text);
+  transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.login-root .lp-key:hover:not(:disabled) {
+  border-color: var(--lp-border-strong);
+  background: var(--lp-accent-soft);
+  transform: translateY(-1px);
+}
+.login-root .lp-key:active:not(:disabled) {
+  transform: translateY(0) scale(0.93);
+}
+.lp-key:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ---- Reduced motion: calm, static, fully usable ---- */
+@media (prefers-reduced-motion: reduce) {
+  .lp-enter,
+  .lp-enter-d1,
+  .lp-enter-d2,
+  .lp-enter-d3 { animation: none; }
+  .lp-logo-rings::before,
+  .lp-logo-rings::after,
+  .lp-live-dot,
+  .lp-scanline { animation: none !important; }
+  .lp-logo-rings::before,
+  .lp-logo-rings::after { display: none; }
+}
+
+/* ---- Secure Entry handoff overlay (rendered on document.body,
+        so it carries its own copy of the tokens it needs) ---- */
+@keyframes lp-fade-in-soft {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.lp-entry-root {
+  --lp-text: #e9eef7;
+  --lp-text-3: #6b7a94;
+  --lp-border: rgba(101, 143, 208, 0.18);
+  --lp-accent-hi: #629df2;
+  --lp-green: #37c98e;
+  --lp-surface: rgba(12, 21, 38, 0.96);
+
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse 60% 55% at 50% 42%, rgba(47, 127, 224, 0.12), transparent 70%), rgba(3, 6, 12, 0.94);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: lp-fade-in-soft 0.25s ease-out both;
+}
+[data-theme="light"] .lp-entry-root {
+  --lp-text: #14213a;
+  --lp-text-3: #7d8ba1;
+  --lp-border: rgba(23, 62, 130, 0.18);
+  --lp-accent-hi: #2f7fe0;
+  --lp-green: #12915f;
+  --lp-surface: rgba(255, 255, 255, 0.97);
+  background: radial-gradient(ellipse 60% 55% at 50% 42%, rgba(22, 96, 196, 0.08), transparent 70%), rgba(238, 242, 248, 0.95);
+}
+.lp-entry-root.lp-entry-leave {
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+.lp-entry-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 46px 28px;
+  border-radius: 18px;
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  box-shadow: 0 30px 80px rgba(1, 4, 10, 0.5);
+  text-align: center;
+  animation: lp-fade-up 0.45s cubic-bezier(0.22, 0.9, 0.32, 1) both;
 }
 
 /* Diagonal grid for chart backgrounds */
