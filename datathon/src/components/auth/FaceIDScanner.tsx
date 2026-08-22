@@ -1,11 +1,18 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { useFaceAuth } from '../../hooks/useFaceAuth';
-import { Eye, ShieldAlert, Cpu, CheckCircle2, Scan } from 'lucide-react';
+import { Eye, ShieldAlert, Loader2, CheckCircle2, ScanFace, RotateCcw } from 'lucide-react';
 
 interface FaceIDScannerProps {
   onVerifySuccess: () => void;
 }
+
+const CANVAS_COLORS = {
+  idle: 'rgba(88, 148, 232, 0.85)',
+  scanning: 'rgba(88, 148, 232, 0.9)',
+  success: '#2fb984',
+  failure: '#e06055',
+};
 
 export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess }) => {
   const {
@@ -15,24 +22,24 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
     scanSuccess,
     landmarks,
     startScanning,
-    resetScanner
+    resetScanner,
   } = useFaceAuth();
 
   const [hasCameraError, setHasCameraError] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const webcamRef = useRef<Webcam>(null);
 
-  // Trigger success callback after feedback animation delay
+  /* Trigger success callback after in-frame confirmation */
   useEffect(() => {
     if (scanSuccess === true) {
       const timer = setTimeout(() => {
         onVerifySuccess();
-      }, 1500);
+      }, 1400);
       return () => clearTimeout(timer);
     }
   }, [scanSuccess, onVerifySuccess]);
 
-  // Draw simple bounding grid overlay
+  /* Bounding-box + target overlay drawn over the camera feed */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -42,14 +49,17 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (landmarks.length > 0) {
-      const color = scanSuccess === true ? '#0E9E78' : scanSuccess === false ? '#C94A2A' : '#1E6FD9';
-      
-      // Draw a clean bounding face box
+      const color =
+        scanSuccess === true
+          ? CANVAS_COLORS.success
+          : scanSuccess === false
+            ? CANVAS_COLORS.failure
+            : CANVAS_COLORS.scanning;
+
       ctx.strokeStyle = color;
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
-      
-      // Find min/max landmarks to draw box
+      ctx.lineWidth = 1.25;
+      ctx.setLineDash([5, 4]);
+
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
       landmarks.forEach(([x, y]) => {
         if (x < minX) minX = x;
@@ -58,67 +68,90 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
         if (y > maxY) maxY = y;
       });
 
-      // Pad box slightly
-      const padding = 15;
+      const padding = 16;
       minX -= padding;
       maxX += padding;
       minY -= padding;
       maxY += padding;
-
       const width = maxX - minX;
       const height = maxY - minY;
 
       ctx.strokeRect(minX, minY, width, height);
       ctx.setLineDash([]);
-      
-      // Draw facial center target
+
+      /* Center reticle */
       ctx.beginPath();
-      ctx.arc(minX + width / 2, minY + height / 2, 4, 0, Math.PI * 2);
+      ctx.arc(minX + width / 2, minY + height / 2, 3.5, 0, Math.PI * 2);
       ctx.fillStyle = color;
       ctx.fill();
+
+      /* Tick marks on box edges */
+      ctx.beginPath();
+      ctx.moveTo(minX + width / 2 - 6, minY);
+      ctx.lineTo(minX + width / 2 + 6, minY);
+      ctx.moveTo(minX + width / 2 - 6, maxY);
+      ctx.lineTo(minX + width / 2 + 6, maxY);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.75;
+      ctx.stroke();
     }
   }, [landmarks, scanSuccess]);
 
+  const frameColor =
+    scanSuccess === true ? 'var(--lp-green)' : scanSuccess === false ? 'var(--lp-red)' : 'var(--lp-border-strong)';
+  const frameGlow =
+    scanSuccess === true
+      ? '0 0 0 1px rgba(47,185,132,0.35), 0 0 24px rgba(47,185,132,0.12)'
+      : scanSuccess === false
+        ? '0 0 0 1px rgba(224,96,85,0.35), 0 0 24px rgba(224,96,85,0.10)'
+        : 'none';
+
   return (
     <div className="flex flex-col items-center w-full">
-      
-      {/* 1. Camera preview placeholder / Scanner Frame */}
-      <div className={`relative w-72 h-72 rounded-2xl border flex items-center justify-center overflow-hidden transition-all duration-300 ${
-        scanSuccess === true ? 'border-[#0E9E78] bg-emerald-950/10 shadow-[0_0_20px_rgba(14,158,120,0.15)]' : 
-        scanSuccess === false ? 'border-[#C94A2A] bg-rose-950/10 shadow-[0_0_20px_rgba(201,74,42,0.15)] animate-shake' : 
-        'border-border-color bg-[var(--bg-secondary)]/45'
-      }`}>
-        
-        {/* Webcam stream */}
-        {!hasCameraError && !isModelLoading ? (
+      {/* Biometric viewport */}
+      <div
+        className="relative aspect-square w-[clamp(190px,32vh,250px)] overflow-hidden rounded-xl border transition-all duration-300"
+        style={{
+          borderColor: frameColor,
+          background: 'var(--lp-surface-3)',
+          boxShadow: frameGlow,
+          animation: scanSuccess === false ? 'lp-shake 0.4s ease-in-out' : undefined,
+        }}
+        role="img"
+        aria-label="Biometric face verification viewport"
+      >
+        {/* Camera stream */}
+        {!hasCameraError && !isModelLoading && (
           <Webcam
             ref={webcamRef}
             audio={false}
             screenshotFormat="image/jpeg"
             videoConstraints={{ width: 320, height: 320, facingMode: 'user' }}
             onUserMediaError={() => setHasCameraError(true)}
-            className="w-full h-full object-cover rounded-2xl position-absolute"
+            className="absolute inset-0 w-full h-full object-cover"
+            mirrored={false}
           />
-        ) : (
-          // Simulated Scanner Frame / Large illustration placeholder
-          <div className="w-full h-full flex flex-col items-center justify-center bg-[var(--bg-secondary)] relative">
-            <div className="text-[var(--text-disabled)] flex flex-col items-center justify-center space-y-3">
-              <Scan className="w-16 h-16 stroke-[1.2] text-[#1E6FD9]/30" />
-              <span className="text-[8px] font-mono uppercase tracking-widest text-[var(--text-muted)]">
-                Camera placeholder
-              </span>
-            </div>
+        )}
+
+        {/* Offline / calibration backdrop */}
+        {(hasCameraError || isModelLoading) && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+            <ScanFace
+              className="w-14 h-14 stroke-[1]"
+              style={{ color: hasCameraError ? 'var(--lp-text-3)' : 'var(--lp-accent-hi)', opacity: 0.5 }}
+            />
             {hasCameraError && (
-              <div className="absolute bottom-3 text-center z-20">
-                <span className="text-[8px] uppercase tracking-widest font-mono text-[#D4820A] bg-black/60 px-2 py-0.5 rounded">
-                  Camera offline - simulation active
-                </span>
-              </div>
+              <span
+                className="text-[8px] font-mono uppercase tracking-[0.18em]"
+                style={{ color: 'var(--lp-amber)' }}
+              >
+                Camera offline · simulation active
+              </span>
             )}
           </div>
         )}
 
-        {/* Canvas overlay */}
+        {/* Overlay canvas */}
         <canvas
           ref={canvasRef}
           width={320}
@@ -126,91 +159,134 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
           className="absolute inset-0 w-full h-full pointer-events-none z-20"
         />
 
-        {/* Dynamic laser scan bar */}
-        {isScanning && <div className="scan-line z-20" />}
+        {/* Sweep line while analyzing */}
+        {isScanning && <div className="lp-scanline z-20 rounded-none" aria-hidden="true" />}
 
-        {/* Corner Alignment brackets */}
-        <div className="absolute top-4 left-4 w-4 h-4 border-t border-l border-[#1E6FD9] z-20" />
-        <div className="absolute top-4 right-4 w-4 h-4 border-t border-r border-[#1E6FD9] z-20" />
-        <div className="absolute bottom-4 left-4 w-4 h-4 border-b border-l border-[#1E6FD9] z-20" />
-        <div className="absolute bottom-4 right-4 w-4 h-4 border-b border-r border-[#1E6FD9] z-20" />
+        {/* Alignment brackets */}
+        {(['top-2.5 left-2.5 border-t border-l',
+           'top-2.5 right-2.5 border-t border-r',
+           'bottom-2.5 left-2.5 border-b border-l',
+           'bottom-2.5 right-2.5 border-b border-r'] as const).map((pos) => (
+          <div
+            key={pos}
+            className={`absolute w-4 h-4 z-20 transition-colors duration-300 ${pos}`}
+            style={{ borderColor: scanSuccess === true ? 'var(--lp-green)' : scanSuccess === false ? 'var(--lp-red)' : 'var(--lp-accent-hi)' }}
+            aria-hidden="true"
+          />
+        ))}
 
-        {/* Loading overlay */}
+        {/* Module calibrating */}
         {isModelLoading && (
-          <div className="absolute inset-0 bg-[#0B1426] flex flex-col items-center justify-center gap-3 z-30 font-mono text-[9px] uppercase tracking-widest">
-            <Cpu className="w-6 h-6 text-[#1E6FD9] animate-spin" />
-            <span className="text-[var(--text-secondary)]">Loading AI biometrics...</span>
+          <div
+            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2.5"
+            style={{ background: 'var(--lp-surface-2)' }}
+          >
+            <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--lp-accent-hi)' }} />
+            <span className="font-mono text-[8.5px] uppercase tracking-[0.18em]" style={{ color: 'var(--lp-text-3)' }}>
+              Calibrating biometric module
+            </span>
           </div>
         )}
 
-        {/* Verification Success Overlay */}
+        {/* Verified overlay */}
         {scanSuccess === true && (
-          <div className="absolute inset-0 bg-emerald-950/80 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-2">
-            <CheckCircle2 className="w-12 h-12 text-[#0E9E78] animate-bounce" />
-            <span className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)]">
-              Face Match Verified
+          <div
+            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2"
+            style={{ background: 'color-mix(in srgb, var(--lp-green) 14%, rgba(4,10,18,0.82))' }}
+          >
+            <CheckCircle2 className="w-11 h-11" style={{ color: 'var(--lp-green)' }} strokeWidth={1.6} />
+            <span className="font-sans text-[13px] font-bold uppercase tracking-wide" style={{ color: 'var(--lp-text)' }}>
+              Identity Matched
             </span>
-            <span className="text-[8.5px] font-mono text-[var(--text-secondary)]">
+            <span className="font-mono text-[8.5px] uppercase tracking-[0.18em]" style={{ color: 'var(--lp-green)' }}>
               Clearance granted
             </span>
           </div>
         )}
 
-        {/* Verification Failure Overlay */}
+        {/* Rejected overlay */}
         {scanSuccess === false && (
-          <div className="absolute inset-0 bg-rose-950/80 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-2">
-            <ShieldAlert className="w-12 h-12 text-[#C94A2A] animate-ping" />
-            <span className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)]">
-              Identity Rejected
+          <div
+            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2"
+            style={{ background: 'color-mix(in srgb, var(--lp-red) 14%, rgba(4,10,18,0.84))' }}
+          >
+            <ShieldAlert className="w-11 h-11" style={{ color: 'var(--lp-red)' }} strokeWidth={1.6} />
+            <span className="font-sans text-[13px] font-bold uppercase tracking-wide" style={{ color: 'var(--lp-text)' }}>
+              Not Recognized
             </span>
-            <span className="text-[8.5px] font-mono text-[var(--text-secondary)]">
-              No matching record
+            <span className="font-mono text-[8.5px] uppercase tracking-[0.18em]" style={{ color: 'var(--lp-text-2)' }}>
+              No matching personnel record
             </span>
             <button
               onClick={resetScanner}
-              className="mt-3 px-3 py-1 bg-[#C94A2A] hover:bg-[#C94A2A]/80 text-[9.5px] font-mono text-[var(--text-primary)] rounded cursor-pointer transition-colors"
+              className="mt-2 px-3 py-1.5 rounded-md border flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-widest cursor-pointer transition-colors hover:bg-[color:var(--lp-accent-soft)]"
+              style={{
+                borderColor: 'var(--lp-border-strong)',
+                color: 'var(--lp-text)',
+                background: 'transparent',
+              }}
             >
-              Re-scan
+              <RotateCcw className="w-3 h-3" />
+              Retry Scan
             </button>
           </div>
         )}
       </div>
 
-      {/* 2. Control block & progress indicator */}
+      {/* Controls / progress */}
       {!isModelLoading && scanSuccess === null && (
-        <div className="mt-5 w-full flex flex-col items-center">
+        <div className="mt-5 w-[clamp(190px,32vh,250px)]">
           {isScanning ? (
-            <div className="w-72 font-mono">
-              <div className="flex justify-between text-[9px] text-[var(--text-secondary)] mb-1.5 uppercase">
-                <span>Analyzing facial landmarks...</span>
-                <span>{scanProgress}%</span>
+            <div aria-live="polite">
+              <div className="flex items-baseline justify-between mb-1.5">
+                <span className="font-sans text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--lp-text-3)' }}>
+                  Analyzing facial geometry
+                </span>
+                <span className="font-mono text-[9px]" style={{ color: 'var(--lp-accent-hi)' }}>
+                  {scanProgress}%
+                </span>
               </div>
-              <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden">
+              <div
+                className="w-full h-1 rounded-full overflow-hidden"
+                style={{ background: 'var(--lp-surface-3)' }}
+                role="progressbar"
+                aria-valuenow={scanProgress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
                 <div
-                  className="bg-[#0e9e78] h-full transition-all duration-100 shadow-glow-teal"
-                  style={{ width: `${scanProgress}%` }}
+                  className="h-full rounded-full transition-all duration-100"
+                  style={{
+                    width: `${scanProgress}%`,
+                    background: 'linear-gradient(90deg, var(--lp-accent), var(--lp-teal))',
+                  }}
                 />
               </div>
             </div>
           ) : (
             <button
               onClick={startScanning}
-              className="w-72 py-2.5 bg-[#1E6FD9] hover:bg-[#1E6FD9]/85 text-[var(--text-primary)] font-mono text-[10px] font-bold uppercase tracking-wider rounded-btn hover:translate-y-[-1px] transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="lp-primary-btn relative flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl font-sans text-xs font-bold uppercase tracking-[0.18em] transition-all duration-200"
+              style={{
+                background: 'linear-gradient(135deg, var(--lp-accent), #2467c2)',
+                color: '#f2f6fc',
+                boxShadow: '0 8px 24px rgba(31, 92, 179, 0.32)',
+              }}
             >
-              <Eye className="w-4 h-4" />
-              <span>Verify Face ID</span>
+              <Eye className="h-4 w-4" strokeWidth={2} />
+              Verify With Face ID
             </button>
           )}
         </div>
       )}
-      
-      <span className="text-[9px] font-mono text-[var(--text-muted)] mt-3 uppercase select-none text-center leading-relaxed">
-        This is a prototype so it accepts every face and directs to DSP
-      </span>
 
-      <span className="text-[8.5px] font-mono text-[var(--text-muted)] mt-1 uppercase select-none">
-        Cryptographic Face Authentication Protocol (V2)
-      </span>
+      {/* Honest capability disclosure */}
+      <p
+        className="mx-auto mt-4 inline-flex max-w-[280px] items-center gap-1.5 rounded-full border px-3 py-1 text-center font-mono text-[8px] uppercase tracking-[0.16em]"
+        style={{ borderColor: 'var(--lp-border)', background: 'var(--lp-surface-3)', color: 'var(--lp-text-3)' }}
+      >
+        Prototype · simulated verification · SCRB-7740
+      </p>
     </div>
   );
 };
