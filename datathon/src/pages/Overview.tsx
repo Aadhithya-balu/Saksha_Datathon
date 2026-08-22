@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import StatCard from '../components/dashboard/StatCard';
 import TrendChart from '../components/charts/TrendChart';
 import DonutChart from '../components/charts/DonutChart';
@@ -8,6 +8,8 @@ import { ActiveAlerts3D } from '../components/dashboard/ActiveAlerts3D';
 import ForecastChart from '../components/charts/ForecastChart';
 import { useAuthStore } from '../store/authStore';
 import { useAuditStore } from '../store/auditStore';
+import { useRealtimeStore } from '../store/realtimeStore';
+import { useNotificationStore } from '../store/notificationStore';
 import { downloadSecureDossier } from '../utils/downloader';
 import { ExportMenu } from '../components/reports';
 import {
@@ -82,6 +84,7 @@ export const Overview: React.FC = () => {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const realtimeStatus = useRealtimeStore((state) => state.status);
 
   // Fetch filter dropdown options once on mount
   useEffect(() => {
@@ -174,6 +177,53 @@ export const Overview: React.FC = () => {
       isMounted = false;
     };
   }, [selectedDistrict, selectedCategory, selectedOfficer, selectedPriority, selectedStatus, startDate, endDate]);
+
+  // Real-time case feed — SSE stream appends newly created cases without any
+  // page refresh. Optimistic local updates give sub-second feedback; a
+  // debounced authoritative refetch then reconciles with server truth.
+  const refreshCoreRef = useRef<() => void>(() => {});
+  const reconcileTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    refreshCoreRef.current = () => {
+      const filters = {
+        district: selectedDistrict || undefined,
+        category_id: selectedCategory || undefined,
+        officer_id: selectedOfficer || undefined,
+        priority: selectedPriority || undefined,
+        status: selectedStatus || undefined,
+        date_from: startDate ? new Date(startDate).toISOString() : undefined,
+        date_to: endDate ? new Date(endDate).toISOString() : undefined,
+      };
+      void getDashboardSummary(filters).then((result) => setSummary(result)).catch(() => {});
+      void getRecentIncidents().then((result) => setRecentIncidents(result)).catch(() => {});
+    };
+  });
+
+  useEffect(() => {
+    useRealtimeStore.getState().connect();
+    const unsubscribe = useRealtimeStore.getState().onCaseCreated((liveCase) => {
+      setRecentIncidents((prev) => [
+        liveCase,
+        ...prev.filter((incident) => incident.case_number !== liveCase.case_number),
+      ].slice(0, 8));
+      setSummary((prev) => prev ? {
+        ...prev,
+        total_crimes: prev.total_crimes + 1,
+        open_crimes: prev.open_crimes + (liveCase.status === 'open' ? 1 : 0),
+      } : prev);
+      void useNotificationStore.getState().fetchCounts();
+
+      if (reconcileTimer.current !== null) window.clearTimeout(reconcileTimer.current);
+      reconcileTimer.current = window.setTimeout(() => refreshCoreRef.current(), 600);
+    });
+
+    return () => {
+      unsubscribe();
+      if (reconcileTimer.current !== null) window.clearTimeout(reconcileTimer.current);
+      useRealtimeStore.getState().disconnect();
+    };
+  }, []);
 
   const totalCrimes = summary?.total_crimes ?? 0;
   const openCrimes = summary?.open_crimes ?? 0;
@@ -627,6 +677,27 @@ export const Overview: React.FC = () => {
           <h4 className="text-[11.5px] font-bold text-[var(--text-primary)] uppercase tracking-wider mb-3 flex items-center gap-2">
             <Clock className="w-4.5 h-4.5 text-[var(--accent-blue)]" />
             LIVE BEAT INCIDENT LOG (REAL-TIME CASES)
+            <span
+              className={`ml-auto flex items-center gap-1.5 text-[8px] font-bold uppercase ${
+                realtimeStatus === 'connected' ? 'text-emerald-400' : 'text-[var(--text-muted)]'
+              }`}
+              title={
+                realtimeStatus === 'connected'
+                  ? 'Real-time stream connected — new cases appear instantly'
+                  : `Real-time stream ${realtimeStatus}`
+              }
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  realtimeStatus === 'connected'
+                    ? 'bg-emerald-400 animate-pulse'
+                    : realtimeStatus === 'connecting'
+                      ? 'bg-amber-400 animate-pulse'
+                      : 'bg-[var(--border-secondary)]'
+                }`}
+              />
+              {realtimeStatus === 'connected' ? 'SSE Live' : realtimeStatus}
+            </span>
           </h4>
           <div className="flex-1 overflow-x-auto text-[10px]">
             <table className="w-full text-left border-collapse">

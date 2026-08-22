@@ -785,8 +785,28 @@ export interface FIRListQueryParams {
   page_size?: number;
 }
 
-export async function getCrimeCases(q?: string, status?: string, page = 1, pageSize = 20) {
-  return apiRequest<PaginatedResponse<CrimeCaseDetailRecord>>(`/crime-cases${buildQueryString({ q, status, page, page_size: pageSize })}`);
+export interface CrimeCaseListFilters {
+  category_id?: string;
+  district?: string;
+  priority?: string;
+}
+
+export async function getCrimeCases(
+  q?: string,
+  status?: string,
+  page = 1,
+  pageSize = 20,
+  filters?: CrimeCaseListFilters,
+) {
+  return apiRequest<PaginatedResponse<CrimeCaseDetailRecord>>(
+    `/crime-cases${buildQueryString({
+      q,
+      status,
+      page,
+      page_size: pageSize,
+      ...(filters ?? {}),
+    })}`,
+  );
 }
 
 export async function getCrimeCase(caseId: string) {

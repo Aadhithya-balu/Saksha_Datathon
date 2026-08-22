@@ -24,6 +24,7 @@ from app.schemas.fir import FIROut
 from app.schemas.officer import OfficerOut
 from app.services import audit_service
 from app.services.crime_service import crime_crud
+from app.services.realtime.bus import realtime_bus
 
 router = APIRouter(prefix="/crime-cases", tags=["Crime Case Management"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
@@ -95,23 +96,41 @@ class LocationSimpleOut(BaseModel):
 def list_cases(
     q: str | None = None,
     status: str | None = None,
+    category_id: uuid.UUID | None = None,
+    district: str | None = None,
+    priority: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List crime cases from PostgreSQL with complete detail attributes."""
+    """List crime cases from PostgreSQL with complete detail attributes.
+
+    Newest cases first. ``q`` matches anywhere in the case number (e.g.
+    ``5537`` finds ``CR-2026-BLR-5537``) or the description.
+    """
     query = (
         db.query(CrimeCase)
         .options(
             joinedload(CrimeCase.assigned_officer)
             .joinedload(Officer.user),
         )
+        .order_by(CrimeCase.reported_at.desc())
     )
     if status:
         query = query.filter(CrimeCase.status == status)
+    if category_id:
+        query = query.filter(CrimeCase.category_id == category_id)
+    if priority:
+        query = query.filter(CrimeCase.priority == priority)
+    if district:
+        query = query.join(Location, CrimeCase.location_id == Location.id).filter(
+            (Location.district == district) | (Location.station == district)
+        )
     if q:
-        query = query.filter(CrimeCase.description.ilike(f"%{q}%"))
+        query = query.filter(
+            (CrimeCase.case_number.ilike(f"%{q}%")) | (CrimeCase.description.ilike(f"%{q}%"))
+        )
 
     total = query.count()
     results = query.offset((page - 1) * page_size).limit(page_size).all()
@@ -359,6 +378,33 @@ def create_case(
     """Create a new crime case in PostgreSQL."""
     case = crime_crud.create(db, payload.model_dump())
     audit_service.log_action(db, current_user, "CREATE", "CrimeCase", str(case.id))
+
+    # Real-time push: refresh server defaults, then fan out to SSE subscribers.
+    # Payload mirrors GET /dashboard/recent-incidents items so clients can
+    # prepend it to the live incident log without a refetch.
+    try:
+        db.refresh(case)
+        category_name = case.category.name if case.category else "Unclassified"
+        location_label = (
+            (case.location.station or case.location.district) if case.location else "Unknown"
+        )
+        realtime_bus.publish(
+            "case_created",
+            {
+                "id": str(case.id),
+                "case_number": case.case_number,
+                "crime_type": category_name,
+                "location": location_label,
+                "time": case.occurred_at.isoformat() if case.occurred_at else None,
+                "status": case.status,
+                "priority": case.priority or "medium",
+                "reported_at": case.reported_at.isoformat() if case.reported_at else None,
+                "created_at": case.created_at.isoformat() if case.created_at else None,
+            },
+        )
+    except Exception:
+        pass
+
     return case
 
 
