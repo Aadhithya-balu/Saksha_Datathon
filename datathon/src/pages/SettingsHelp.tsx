@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useAuditStore } from '../store/auditStore';
-import { Settings, Info, Search, ShieldAlert, Phone, HelpCircle, Save, LifeBuoy } from 'lucide-react';
+import { Settings, Info, Search, Phone, Save, LifeBuoy } from 'lucide-react';
 
 interface IPCSect {
   section: string;

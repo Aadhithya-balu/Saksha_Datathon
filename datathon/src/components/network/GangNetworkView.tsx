@@ -1,6 +1,6 @@
 import React from 'react';
 import type { GangNetworkSummary, GangHierarchyMember } from '../../services/api';
-import { Users, ShieldAlert, Crosshair, MapPin, ArrowRight, UserCheck } from 'lucide-react';
+import { Users, Crosshair, MapPin, ArrowRight, UserCheck } from 'lucide-react';
 import type { GraphNode } from './CriminalGraph3D';
 
 interface GangNetworkViewProps {

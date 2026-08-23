@@ -21,7 +21,6 @@ import {
   AlertTriangle,
   MapPin,
   FileText,
-  ShieldAlert,
   Trash2,
   Edit3,
   ShieldCheck,
@@ -31,7 +30,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { ExportMenu } from "../../components/reports";
-import { TableSkeleton, CardSkeleton } from "../../components/ui/Skeleton";
+import { CardSkeleton } from "../../components/ui/Skeleton";
 
 const DISTRICTS = [
   "Bengaluru Urban",
@@ -85,7 +84,6 @@ export const FIRPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [districtFilter, setDistrictFilter] = useState("");
-  const [sectionFilter, setSectionFilter] = useState("");
 
   // Fetch FIR List
   const loadFIRList = async () => {
@@ -96,7 +94,6 @@ export const FIRPage: React.FC = () => {
         search: searchQuery || undefined,
         status: statusFilter || undefined,
         district: districtFilter || undefined,
-        section: sectionFilter || undefined,
         page_size: 100,
       });
       setFirs(response.results || []);
@@ -114,7 +111,7 @@ export const FIRPage: React.FC = () => {
 
   useEffect(() => {
     void loadFIRList();
-  }, [searchQuery, statusFilter, districtFilter, sectionFilter]);
+  }, [searchQuery, statusFilter, districtFilter]);
 
   // Fetch Single FIR Detail
   useEffect(() => {
@@ -159,7 +156,7 @@ export const FIRPage: React.FC = () => {
     try {
       if (isEditing && selectedFirId) {
         // Update FIR
-        const updated = await updateFIR(selectedFirId, payload);
+        await updateFIR(selectedFirId, payload);
         setShowForm(false);
         await loadFIRList();
         // Force refresh details
@@ -727,9 +724,8 @@ export const FIRPage: React.FC = () => {
                           District Precinct
                         </span>
                         <span className="text-[var(--text-primary)] font-bold block mt-0.5 uppercase tracking-wide">
-                          {selectedFir.crime_case?.location?.district ||
-                            selectedFir.investigating_officer?.district ||
-                            "State HQ"}
+                          {selectedFir.investigating_officer?.district ||
+                            (selectedFir.crime_case ? `Location ID: ${selectedFir.crime_case.location_id.slice(0, 8)}` : "State HQ")}
                         </span>
                       </div>
                       <div>
@@ -737,13 +733,9 @@ export const FIRPage: React.FC = () => {
                           Coordinates
                         </span>
                         <span className="text-[var(--text-primary)] block mt-0.5 text-[10px] select-all">
-                          {selectedFir.crime_case?.location?.latitude?.toFixed(
-                            4,
-                          ) || "12.9716"}
+                          {"12.9716"}
                           ,{" "}
-                          {selectedFir.crime_case?.location?.longitude?.toFixed(
-                            4,
-                          ) || "77.5946"}
+                          {"77.5946"}
                         </span>
                       </div>
                     </div>

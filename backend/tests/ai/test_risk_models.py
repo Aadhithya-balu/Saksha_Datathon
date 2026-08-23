@@ -10,7 +10,6 @@ Tests cover:
 
 from __future__ import annotations
 
-import json
 import tempfile
 from pathlib import Path
 
@@ -95,7 +94,7 @@ class TestFeatureEngineering:
 
 class TestDistrictRiskModel:
     def test_train_evaluate_predict(self, risk_feature_df):
-        sklearn = pytest.importorskip("sklearn", reason="scikit-learn not installed")
+        _sklearn = pytest.importorskip("sklearn", reason="scikit-learn not installed")  # noqa: F841 ensures skip when missing
         from app.ai.features.risk.feature_engineering import RISK_FEATURE_COLUMNS
         from app.ai.models.risk.risk_model import DistrictRiskModel
 
@@ -244,3 +243,4 @@ class TestInferenceFallback:
         assert isinstance(info, dict)
         assert "model_name" in info
         assert "risk_model_loaded" in info
+

@@ -198,11 +198,10 @@ def update_fir(fir_id: uuid.UUID, payload: FIRUpdate, db: Session = Depends(get_
 
 @router.delete("/{fir_id}", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR))])
 def delete_fir(fir_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    fir = fir_crud.get(db, fir_id)
-    
     db.query(FIRCriminalLink).filter(FIRCriminalLink.fir_id == fir_id).delete()
     db.query(FIRVictimLink).filter(FIRVictimLink.fir_id == fir_id).delete()
     
     fir_crud.delete(db, fir_id)
     audit_service.log_action(db, current_user, "DELETE", "FIR", str(fir_id))
     return {"message": "FIR deleted successfully"}
+

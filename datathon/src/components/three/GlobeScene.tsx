@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -43,7 +43,7 @@ const KARNATAKA_BORDER_PTS = [
 
 // Inner component for Globe logic, rotation, and mouse parallax
 const GlobeInstance: React.FC = () => {
-  const globeRef = useRef<THREE.Group>(null);
+  const globeRef = useRef<THREE.Points>(null);
   const laserRef = useRef<THREE.Mesh>(null);
   const sat1Ref = useRef<THREE.Mesh>(null);
   const sat2Ref = useRef<THREE.Mesh>(null);
@@ -108,7 +108,11 @@ const GlobeInstance: React.FC = () => {
   // Calculate boundary coordinates
   const borderPoints = KARNATAKA_BORDER_PTS.map((p) => latLonToSpherical(p.lat, p.lon, radius + 0.02));
   const borderCurve = new THREE.CatmullRomCurve3(borderPoints);
-  const borderGeometry = new THREE.BufferGeometry().setFromPoints(borderCurve.getPoints(100));
+  const borderLine = useMemo(() => {
+    const geometry = new THREE.BufferGeometry().setFromPoints(borderCurve.getPoints(100));
+    const material = new THREE.LineBasicMaterial({ color: '#0E9E78' });
+    return new THREE.Line(geometry, material);
+  }, []);
 
   // Region hotspots (with crime scores mapping)
   const hotspotsData = Object.entries(DISTRICT_COORDS).map(([name, coords]) => {
@@ -145,8 +149,9 @@ const GlobeInstance: React.FC = () => {
     const curve = new THREE.QuadraticBezierCurve3(p1, midPoint, p2);
     const points = curve.getPoints(40);
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    
-    return { geometry, color: conn.color, key: idx };
+    const material = new THREE.LineBasicMaterial({ color: conn.color, transparent: true, opacity: 0.7 });
+
+    return { line: new THREE.Line(geometry, material), key: idx };
   }).filter(Boolean);
 
   return (
@@ -221,15 +226,11 @@ const GlobeInstance: React.FC = () => {
       </mesh>
 
       {/* Glowing Karnataka Boundary spline */}
-      <line geometry={borderGeometry}>
-        <lineBasicMaterial color="#0E9E78" linewidth={3} />
-      </line>
+      <primitive object={borderLine} />
 
       {/* Glowing communication curves */}
       {connectionArcs.map((arc: any) => (
-        <line key={arc.key} geometry={arc.geometry}>
-          <lineBasicMaterial color={arc.color} transparent opacity={0.7} linewidth={2} />
-        </line>
+        <primitive key={arc.key} object={arc.line} />
       ))}
 
       {/* Pulsing Hotspot Nodes */}

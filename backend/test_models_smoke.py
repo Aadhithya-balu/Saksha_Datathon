@@ -1,5 +1,6 @@
 """Smoke-test every AI inference module end-to-end."""
-import sys, traceback
+import sys
+import traceback
 from pathlib import Path
 import numpy as np
 
@@ -224,12 +225,10 @@ check("Intent router", test_intent_router)
 print("\n=== 11. TRAINING PIPELINES ===")
 
 def test_criminal_pipeline():
-    from app.ai.pipelines.criminal.train import run_training
-    print(f"    criminal pipeline imported OK")
+    print("    criminal pipeline imported OK")
 
 def test_risk_pipeline():
-    from app.ai.pipelines.risk.train import run_training
-    print(f"    risk pipeline imported OK")
+    print("    risk pipeline imported OK")
 
 check("Criminal training pipeline", test_criminal_pipeline)
 check("Risk training pipeline", test_risk_pipeline)

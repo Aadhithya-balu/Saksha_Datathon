@@ -346,7 +346,6 @@ SEASON_ORDER = ["Summer", "Monsoon", "Post-Monsoon", "Winter"]
 
 
 def get_season_breakdown(db: Session) -> dict[str, Any]:
-    from collections import defaultdict
 
     rows = db.query(CrimeCase.occurred_at, Location.district).join(
         Location, CrimeCase.location_id == Location.id

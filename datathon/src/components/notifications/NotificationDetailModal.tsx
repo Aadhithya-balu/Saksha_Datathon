@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   X, User, Building, Clock, AlertTriangle, AlertCircle, Info, Tag,
-  FileText, CheckCircle, Archive, Reply, Radio,
+  FileText, CheckCircle, Archive, Radio,
 } from 'lucide-react';
 import { useNotificationStore } from '../../store/notificationStore';
 import type { NotificationRecord } from '../../services/api';

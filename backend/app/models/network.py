@@ -3,7 +3,6 @@ Pydantic schemas and data models for Graph-Based Criminal Intelligence,
 Neo4j Graph integration, Link Analysis, Gang Networks, and Path Analysis.
 """
 
-from datetime import datetime
 from enum import Enum
 from typing import Any
 from pydantic import BaseModel, Field

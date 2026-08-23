@@ -4,11 +4,7 @@ import { useNotificationStore } from '../../store/notificationStore';
 import { useAppStore } from '../../store/appStore';
 import { Badge } from '../ui/Badge';
 
-interface NotificationBellProps {
-  onViewAll?: () => void;
-}
-
-export const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll }) => {
+export const NotificationBell: React.FC = () => {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { setActiveTab } = useAppStore();

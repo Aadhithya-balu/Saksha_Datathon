@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion, type MotionProps } from 'framer-motion';
 
 interface SkeletonProps {
   className?: string;

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Shield, ShieldCheck, ShieldAlert, Activity, Clock, Database, Server, Wifi, RefreshCw } from 'lucide-react';
-import { getLiveTimeline } from '../../services/api';
 
 interface ServiceHealth {
   name: string;
@@ -23,7 +22,6 @@ interface SystemHealthProps {
 
 export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) => {
   const [services, setServices] = useState<ServiceHealth[]>(HEALTH_SERVICES);
-  const [recentEvents, setRecentEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [uptime] = useState(127.4); // Simulated uptime
   const [lastUpdated, setLastUpdated] = useState(new Date().toISOString());
@@ -36,13 +34,9 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
         ...s,
         status: Math.random() > 0.85 
           ? (['degraded', 'down'][Math.floor(Math.random() * 2)] as 'degraded' | 'down')
-          : 'healthy' as 'healthy',
+          : 'healthy' as const,
         latency: `${Math.floor(Math.random() * 40 + 2)}ms`,
       })));
-      
-      // Fetch recent system events
-      const events = await getLiveTimeline(undefined, 5);
-      setRecentEvents(events);
     } catch {
       // Keep current state
     } finally {

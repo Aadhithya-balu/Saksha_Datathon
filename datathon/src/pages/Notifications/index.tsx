@@ -12,7 +12,6 @@ import InformStationModal from '../../components/notifications/InformStationModa
 import NotificationDetailModal from '../../components/notifications/NotificationDetailModal';
 import ActivityFeed from '../../components/notifications/ActivityFeed';
 import SystemHealth from '../../components/notifications/SystemHealth';
-import LiveEventTimeline from '../../components/notifications/LiveEventTimeline';
 import { TableSkeleton } from '../../components/ui/Skeleton';
 
 type TabView = 'messages' | 'timeline' | 'activity' | 'health';
@@ -25,9 +24,8 @@ const NotificationsPage: React.FC = () => {
   const {
     notifications, total, page, pageSize, loading, error, counts,
     fetchNotifications, fetchCounts, fetchDashboard, markAllRead,
-    setPage, startPolling, stopPolling,
+    setPage,
     informModalOpen, setInformModalOpen,
-    filterCategory, filterPriority, filterStatus, filterSender,
     setFilter,
   } = useNotificationStore();
 

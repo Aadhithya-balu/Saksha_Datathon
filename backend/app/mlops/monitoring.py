@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .drift import DriftReport, compare_distributions
+from .drift import DriftReport
 
 
 @dataclass(frozen=True)

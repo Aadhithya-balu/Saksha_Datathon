@@ -1,5 +1,6 @@
 """Analyze PostgreSQL database storage for Saksha optimization."""
-import sys, os
+import sys
+import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from _db_config import CONN
 import psycopg2
@@ -23,8 +24,8 @@ def safe_size(cur, tname):
         cur.execute(f"SELECT pg_total_relation_size('public.\"{tname}\"')")
         total_bytes = cur.fetchone()[0]
         return total, table, idx, total_bytes or 0
-    except Exception as e:
-        return f"ERR", "ERR", "ERR", 0
+    except Exception:
+        return "ERR", "ERR", "ERR", 0
 
 def main():
     conn = psycopg2.connect(**CONN)

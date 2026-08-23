@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getCrimeCase, updateCrimeCase, getUnassignedOfficers } from '../../services/api';
-import type { OfficerWithUserRecord, CrimeCaseDetailRecord } from '../../services/api';
+import type { OfficerWithUserRecord } from '../../services/api';
 import { ArrowLeft, Save, AlertTriangle } from 'lucide-react';
 
 interface EditCrimeCaseProps {

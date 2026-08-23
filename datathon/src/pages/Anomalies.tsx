@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { CrimeAlert } from '../store/alertStore';
 import { getAnomalies, createNotification } from '../services/api';
 import { useAuthStore } from '../store/authStore';
-import { Eye, ShieldAlert, CheckCircle, Search, Filter, Calendar, MapPin, HardDrive, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ShieldAlert, CheckCircle, Search, MapPin, HardDrive, Loader2 } from 'lucide-react';
 import { TableSkeleton } from '../components/ui/Skeleton';
 
 export const Anomalies: React.FC = () => {
@@ -176,7 +175,6 @@ export const Anomalies: React.FC = () => {
         <div className="lg:col-span-5 h-full overflow-y-auto pr-1.5 custom-scrollbar flex flex-col gap-2.5">
           {filteredAlerts.map(alert => {
             const isHigh = alert.severity === 'HIGH';
-            const isWatch = alert.severity === 'WATCH';
             const isSelected = selectedAlertId === alert.id;
 
             return (

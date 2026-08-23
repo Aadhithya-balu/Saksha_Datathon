@@ -54,7 +54,7 @@ export const Offenders: React.FC = () => {
     const query = searchQuery.toLowerCase();
     return (
       item.name.toLowerCase().includes(query) ||
-      (item.crime_type || "").toLowerCase().includes(query) ||
+      item.mugshotDesc?.toLowerCase().includes(query) ||
       (item.alias || "").toLowerCase().includes(query)
     );
   });
@@ -120,8 +120,8 @@ export const Offenders: React.FC = () => {
                   <div className="w-16 h-20 bg-white/[0.05] border border-white/[0.08] rounded shrink-0 animate-pulse" />
                   <div className="flex-1 space-y-2.5 pt-1">
                     <div className="h-3 bg-[#C94A2A]/15 rounded animate-pulse" style={{ width: 60 }} />
-                    <div className="h-4 bg-white/[0.08] rounded animate-pulse" style={{ width: '70%', animationDelay: 100 }} />
-                    <div className="h-3 bg-white/[0.05] rounded animate-pulse" style={{ width: '45%', animationDelay: 200 }} />
+                    <div className="h-4 bg-white/[0.08] rounded animate-pulse" style={{ width: '70%', animationDelay: '100ms' }} />
+                    <div className="h-3 bg-white/[0.05] rounded animate-pulse" style={{ width: '45%', animationDelay: '200ms' }} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">

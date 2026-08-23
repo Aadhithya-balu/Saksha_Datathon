@@ -1,6 +1,6 @@
 import React from 'react';
 import type { AIGraphInsightData } from '../../services/api';
-import { Sparkles, ShieldAlert, CheckCircle, Crosshair, ArrowRight, Lightbulb } from 'lucide-react';
+import { Sparkles, ShieldAlert, Crosshair, Lightbulb } from 'lucide-react';
 import type { GraphNode } from './CriminalGraph3D';
 
 interface AIGraphInsightsModalProps {

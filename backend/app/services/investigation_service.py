@@ -9,7 +9,6 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
 
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -18,10 +17,7 @@ from app.models.crime import CrimeCase
 from app.models.criminal import Criminal
 from app.models.evidence import Evidence
 from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
-from app.models.location import Location
 from app.models.officer import Officer
-from app.models.user import User
-from app.models.victim import Victim
 from app.models.investigation_note import InvestigationNote
 from app.models.chain_of_custody import ChainOfCustody
 

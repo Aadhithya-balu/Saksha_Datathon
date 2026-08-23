@@ -10,17 +10,12 @@ import {
 } from '../../services/api';
 import type {
   CrimeCaseDetailRecord,
-  OfficerWithUserRecord,
-  InvestigationNote,
-  TimelineEvent,
-  AIRecommendation
+  OfficerWithUserRecord
 } from '../../services/api';
 import {
   ArrowLeft,
   Calendar,
   User,
-  Shield,
-  FileText,
   Clock,
   Sparkles,
   Link,
@@ -31,7 +26,6 @@ import {
   MapPin,
   Tag
 } from 'lucide-react';
-import { useAuthStore } from '../../store/authStore';
 
 interface CrimeCaseDetailsProps {
   caseId: string;
@@ -44,7 +38,6 @@ const CrimeCaseDetails: React.FC<CrimeCaseDetailsProps> = ({
   onBack,
   onEdit
 }) => {
-  const currentUser = useAuthStore((state) => state.user);
   const [caseData, setCaseData] = useState<CrimeCaseDetailRecord | null>(null);
   const [officers, setOfficers] = useState<OfficerWithUserRecord[]>([]);
   const [unlinkedFirs, setUnlinkedFirs] = useState<any[]>([]);

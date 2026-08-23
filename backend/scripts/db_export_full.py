@@ -41,7 +41,7 @@ def get_table_list(cur):
     return [r[0] for r in cur.fetchall()]
 
 def get_columns(cur, table):
-    cur.execute(f"""
+    cur.execute("""
         SELECT column_name, data_type, is_nullable, column_default,
                character_maximum_length, numeric_precision
         FROM information_schema.columns
@@ -51,7 +51,7 @@ def get_columns(cur, table):
     return cur.fetchall()
 
 def get_pk_columns(cur, table):
-    cur.execute(f"""
+    cur.execute("""
         SELECT kcu.column_name
         FROM information_schema.table_constraints tc
         JOIN information_schema.key_column_usage kcu
@@ -62,7 +62,7 @@ def get_pk_columns(cur, table):
     return [r[0] for r in cur.fetchall()]
 
 def get_fk_constraints(cur, table):
-    cur.execute(f"""
+    cur.execute("""
         SELECT tc.constraint_name, kcu.column_name,
                ccu.table_name AS foreign_table, ccu.column_name AS foreign_column
         FROM information_schema.table_constraints tc
@@ -75,7 +75,7 @@ def get_fk_constraints(cur, table):
     return cur.fetchall()
 
 def get_indexes(cur, table):
-    cur.execute(f"""
+    cur.execute("""
         SELECT indexname, indexdef
         FROM pg_indexes
         WHERE tablename = %s AND schemaname = 'public'
@@ -220,7 +220,7 @@ def main():
             try:
                 cur.execute(f'SELECT COUNT(*) FROM "{table}"')
                 total = cur.fetchone()[0]
-            except:
+            except Exception:
                 total = 0
 
             if total > 0:

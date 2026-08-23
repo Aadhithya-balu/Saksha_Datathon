@@ -3,7 +3,9 @@ Persistent reconnect script. Keeps trying every 30s.
 When connected, runs export, then trim, then verifies.
 Run with: py -3.12 scripts/db_auto_resume.py
 """
-import sys, os, time
+import sys
+import os
+import time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from _db_config import CONN
 import psycopg2
@@ -223,14 +225,14 @@ log("\nFinal row counts:")
 for t in HIST:
     try:
         log(f"  {t}: {count_rows(cur, t)}")
-    except:
+    except Exception:
         pass
 
 log("\nOperational tables:")
 for t in ['users','roles','crime_cases','criminals','victims','firs','notifications','officers','evidence']:
     try:
         log(f"  {t}: {count_rows(cur, t)}")
-    except:
+    except Exception:
         pass
 
 # FK integrity

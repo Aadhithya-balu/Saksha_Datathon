@@ -1,4 +1,5 @@
-import { useAuditStore, AuditLogEntry } from '../store/auditStore';
+import { useAuditStore } from '../store/auditStore';
+import type { AuditLogEntry } from '../store/auditStore';
 import { useAuthStore } from '../store/authStore';
 
 export const useAuditLog = () => {

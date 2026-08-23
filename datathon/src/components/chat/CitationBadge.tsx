@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, ShieldAlert, User, Database, ExternalLink, X, BookOpen } from 'lucide-react';
+import { FileText, ShieldAlert, User, Database, X, BookOpen } from 'lucide-react';
 import type { ChatCitation } from '../../services/api';
 
 interface CitationBadgeProps { citations: ChatCitation[]; }

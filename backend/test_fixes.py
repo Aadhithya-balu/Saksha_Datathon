@@ -1,6 +1,5 @@
 """Quick HTTP test: chat isolation + escalation notification."""
 import httpx
-import sys
 
 BASE = "http://127.0.0.1:8000/api/v2"
 OK = FAIL = 0
@@ -14,15 +13,20 @@ def t(name, method, url, payload=None, token=None):
         with httpx.Client(timeout=60, follow_redirects=True) as c:
             r = c.post(url, json=payload, headers=h) if method == "POST" else c.get(url, headers=h)
         if r.status_code < 400:
-            print(f"  [PASS] {name} ({r.status_code})"); OK += 1
+            print(f"  [PASS] {name} ({r.status_code})")
+            OK += 1
             try:
                 return r.json()
             except Exception:
                 return {}
         else:
-            print(f"  [FAIL] {name} ({r.status_code}): {r.text[:200]}"); FAIL += 1; return None
+            print(f"  [FAIL] {name} ({r.status_code}): {r.text[:200]}")
+            FAIL += 1
+            return None
     except Exception as e:
-        print(f"  [FAIL] {name}: {e}"); FAIL += 1; return None
+        print(f"  [FAIL] {name}: {e}")
+        FAIL += 1
+        return None
 
 # Login as two different users
 print("\n=== CHAT USER ISOLATION TEST ===")

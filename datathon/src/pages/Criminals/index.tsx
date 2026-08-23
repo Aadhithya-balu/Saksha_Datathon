@@ -9,7 +9,6 @@ import {
   Search, 
   ShieldAlert, 
   Activity, 
-  User, 
   MapPin, 
   Fingerprint, 
   AlertTriangle, 
@@ -20,7 +19,7 @@ import {
   ExternalLink,
   Sparkles
 } from 'lucide-react';
-import { TableSkeleton, CardSkeleton } from '../../components/ui/Skeleton';
+import { CardSkeleton } from '../../components/ui/Skeleton';
 
 interface CriminalSummary {
   id: string;
@@ -41,7 +40,6 @@ export const Criminals: React.FC = () => {
   const [loadingList, setLoadingList] = useState<boolean>(false);
   const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
   const [criminalDetails, setCriminalDetails] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
   const [hoveredNode, setHoveredNode] = useState<any>(null);
 
   // Load criminals on mount or search
@@ -64,11 +62,10 @@ export const Criminals: React.FC = () => {
         } else if (res.results && res.results.length > 0 && !selectedId) {
           setSelectedId(res.results[0].id);
         }
-        setError(null);
       })
       .catch((err) => {
         if (!isMounted) return;
-        setError(err.message || 'Failed to load criminal records');
+        console.error('Failed to load criminal records:', err.message);
       })
       .finally(() => {
         if (isMounted) setLoadingList(false);
@@ -176,8 +173,7 @@ export const Criminals: React.FC = () => {
     
     // Find the center node
     const centerNodeId = `criminal-${selectedId}`;
-    const centerNode = nodes.find((n: any) => n.id === centerNodeId) || { id: centerNodeId, name: criminalDetails.full_name, category: 'offender' };
-    
+
     // Place other nodes radially
     const perimeterNodes = nodes.filter((n: any) => n.id !== centerNodeId);
     const radius = 100;

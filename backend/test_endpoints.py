@@ -1,6 +1,5 @@
 """HTTP smoke tests for all live API endpoints."""
 import httpx
-import json
 import sys
 
 BASE = "http://127.0.0.1:8000/api/v2"

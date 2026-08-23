@@ -6,16 +6,13 @@ combined with Karnataka reference datasets.
 """
 from __future__ import annotations
 
-from collections import Counter, defaultdict
 from typing import Any
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.crime import CrimeCase
-from app.models.crime_category import CrimeCategory
 from app.models.criminal import Criminal
-from app.models.fir import FIR, FIRCriminalLink
 from app.models.location import Location
 from app.models.victim import Victim
 
@@ -200,7 +197,6 @@ def get_population_crime_correlation(db: Session) -> dict[str, Any]:
 
 def get_temporal_demographic_analysis(db: Session) -> dict[str, Any]:
     """Crime by hour of day and day of week patterns."""
-    from sqlalchemy import extract, case
 
     hour_buckets = {f"{h:02d}:00": 0 for h in range(24)}
     dow_buckets = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]

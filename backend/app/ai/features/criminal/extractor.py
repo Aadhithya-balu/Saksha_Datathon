@@ -14,10 +14,8 @@ import numpy as np
 from sqlalchemy.orm import Session
 
 from app.models.crime import CrimeCase
-from app.models.crime_category import CrimeCategory
 from app.models.criminal import Criminal
 from app.models.fir import FIR, FIRCriminalLink
-from app.models.location import Location
 
 # ── stable feature column order ──────────────────────────────────────────────
 FEATURE_NAMES: list[str] = [

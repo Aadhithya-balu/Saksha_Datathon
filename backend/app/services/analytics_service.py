@@ -8,7 +8,6 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from math import ceil
 from typing import Any
 
 from sqlalchemy import func
@@ -19,8 +18,6 @@ from app.models.crime_category import CrimeCategory
 from app.models.criminal import Criminal
 from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
 from app.models.location import Location
-from app.models.officer import Officer
-from app.models.victim import Victim
 
 SEVERITY_WEIGHT = {"low": 0.8, "medium": 1.0, "high": 1.25, None: 1.0}
 

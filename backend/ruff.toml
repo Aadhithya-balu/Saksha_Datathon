@@ -1,0 +1,26 @@
+# Ruff configuration for Saksha backend.
+# Default rule set (pyflakes + pycodestyle errors) - intentionally strict
+# baseline with a small set of *documented* framework-driven exceptions.
+target-version = "py312"
+line-length = 120
+
+[lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = [
+    # SQLAlchemy column expressions REQUIRE `== True/False` overloads;
+    # rewriting them with `is` breaks query semantics.
+    "E712",
+]
+
+[lint.per-file-ignores]
+# ORM models reference each other via quoted forward-refs ("User") that are
+# resolved at runtime by the SQLAlchemy registry, not by Python names.
+"app/models/**" = ["F821"]
+# Tests/scripts commonly mutate sys.path before importing the app package.
+"tests/**" = ["E402"]
+"scripts/**" = ["E402"]
+# These modules intentionally load .env / configure paths before app imports.
+"app/main.py" = ["E402"]
+"app/database/**" = ["E402"]
+# Mid-file imports kept deliberately to avoid circular route dependencies.
+"app/routes/evidence.py" = ["E402"]

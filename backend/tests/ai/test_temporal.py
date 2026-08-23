@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-import pytest
 
 from app.ai.chat.context_builder import ContextBuilder
 from app.ai.chat.backend_fetcher import BackendResult
@@ -21,7 +20,7 @@ from app.models.criminal import Criminal
 from app.models.fir import FIR
 from app.services.analytics_service import recent_activity
 
-from tests.ai.test_llm_generator import _collect_local, no_keys
+from tests.ai.test_llm_generator import _collect_local
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +139,7 @@ _DOSSIERS = (
 
 
 class TestLocalTemporalAnswers:
-    def _gen(self, monkeypatch) -> LLMGenerator:
+    def _gen(self, monkeypatch):
         from app.ai.chat.llm_generator import LLMGenerator
         monkeypatch.setattr(settings, "GROQ_API_KEY", None)
         monkeypatch.setattr(settings, "GEMINI_API_KEY", None)

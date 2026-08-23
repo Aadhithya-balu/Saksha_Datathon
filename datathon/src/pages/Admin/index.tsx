@@ -65,10 +65,10 @@ export const Admin: React.FC = () => {
   const saveUser = async () => {
     setError(null);
     try {
-      const payload = { ...userDraft };
+      const payload = { ...userDraft } as Record<string, unknown>;
       Object.keys(payload).forEach(key => {
-        if (payload[key as keyof typeof payload] === '') {
-          payload[key as keyof typeof payload] = null;
+        if (payload[key] === '') {
+          payload[key] = null;
         }
       });
       if (!payload.role_id) throw new Error('Select a role');
@@ -130,7 +130,7 @@ export const Admin: React.FC = () => {
       });
       if (!response.ok) {
         let msg = response.statusText;
-        try { const d = await response.json(); msg = d.detail || d.message || msg; } catch {}
+        try { const d = await response.json(); msg = d.detail || d.message || msg; } catch { /* non-JSON error body */ }
         throw new Error(msg || 'Failed to export audit logs');
       }
       const blob = await response.blob();

@@ -10,7 +10,7 @@ import LinkedCriminals from '../../components/investigation/LinkedCriminals';
 import LinkedEvidence from '../../components/investigation/LinkedEvidence';
 import AIRecommendations from '../../components/investigation/AIRecommendations';
 import AIChatPanel from '../../components/investigation/AIChatPanel';
-import { CardSkeleton, TableSkeleton } from '../../components/ui/Skeleton';
+import { CardSkeleton } from '../../components/ui/Skeleton';
 
 type ViewState = 'list' | 'detail';
 

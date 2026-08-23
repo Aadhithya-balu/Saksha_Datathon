@@ -7,15 +7,12 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("DEBUG", "false")
 os.environ.setdefault("APP_DEBUG", "false")
 
-import json
-import pytest
-from unittest.mock import MagicMock, patch
 
-from app.ai.chat.intent_router import IntentRouter, Intent, IntentResult
+from app.ai.chat.intent_router import IntentRouter, Intent
 from app.ai.chat.entity_extractor import EntityExtractor, ExtractedEntities
 from app.ai.chat.query_planner import QueryPlanner, QueryPlan, BackendCall
 from app.ai.chat.backend_fetcher import BackendFetcher, BackendResult
-from app.ai.chat.context_builder import ContextBuilder, BuiltContext
+from app.ai.chat.context_builder import ContextBuilder
 from app.ai.chat.response_validator import ResponseValidator
 from app.ai.chat.memory import ChatMemory, memory
 from app.ai.chat.orchestrator import ChatOrchestrator

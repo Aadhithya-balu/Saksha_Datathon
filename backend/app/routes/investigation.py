@@ -5,7 +5,6 @@ case progress, linked FIRs/criminals/evidence, AI recommendations, chat, and his
 from __future__ import annotations
 
 import uuid
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel

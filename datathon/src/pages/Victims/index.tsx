@@ -12,9 +12,7 @@ import {
   User, 
   MapPin, 
   FileText, 
-  Users, 
   Phone,
-  ArrowRight,
   ExternalLink
 } from 'lucide-react';
 import { CardSkeleton } from '../../components/ui/Skeleton';
@@ -38,7 +36,6 @@ export const Victims: React.FC = () => {
   const [loadingList, setLoadingList] = useState<boolean>(false);
   const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
   const [victimDetails, setVictimDetails] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
   const [hoveredNode, setHoveredNode] = useState<any>(null);
 
   // Load victims on mount or search
@@ -61,11 +58,10 @@ export const Victims: React.FC = () => {
         } else if (res.results && res.results.length > 0 && !selectedId) {
           setSelectedId(res.results[0].id);
         }
-        setError(null);
       })
       .catch((err) => {
         if (!isMounted) return;
-        setError(err.message || 'Failed to load victim records');
+        console.error('Failed to load victim records:', err.message);
       })
       .finally(() => {
         if (isMounted) setLoadingList(false);
@@ -143,8 +139,7 @@ export const Victims: React.FC = () => {
     
     // Find the center node (victim)
     const centerNodeId = `victim-${selectedId}`;
-    const centerNode = nodes.find((n: any) => n.id === centerNodeId) || { id: centerNodeId, name: victimDetails.full_name, category: 'victim' };
-    
+
     // Place other nodes radially
     const perimeterNodes = nodes.filter((n: any) => n.id !== centerNodeId);
     const radius = 100;

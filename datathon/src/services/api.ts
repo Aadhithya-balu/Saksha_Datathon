@@ -628,6 +628,14 @@ export async function chatQuery(message: string, sessionId?: string, options?: {
   });
 }
 
+/** Optional entity scoping for AI chat answers (selected via the chat UI). */
+export interface ChatContextOptions {
+  firId?: string;
+  criminalId?: string;
+  evidenceId?: string;
+  caseId?: string;
+}
+
 export interface ChatStreamChunk {
   type: 'status' | 'token' | 'final' | 'error' | 'meta' | 'notice';
   content: any;
@@ -848,9 +856,25 @@ export interface FIRDetailRecord extends FIRRecord {
   investigating_officer: OfficerRecord | null;
   criminals: CriminalRecord[];
   victims: VictimRecord[];
+  evidence: FIDEvidenceRecord[];
   attachments: Array<{ name: string; size: number }>;
   ai_risk_score: number;
   ai_analysis_reasons: string[];
+}
+
+/** Evidence item embedded in a FIR detail response (mirrors backend EvidenceOut). */
+export interface FIDEvidenceRecord {
+  id: string;
+  case_id: string;
+  title: string;
+  evidence_type: string;
+  description: string | null;
+  status: string;
+  created_by: string | null;
+  assigned_to: string | null;
+  storage_path: string | null;
+  created_at: string;
+  updated_at: string | null;
 }
 
 export interface OfficerRecord {

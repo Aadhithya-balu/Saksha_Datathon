@@ -157,7 +157,7 @@ export const useFaceAuth = () => {
   // Perform landmarks update loop during scanning
   useEffect(() => {
     let animationId: number;
-    let progressTimer: NodeJS.Timeout;
+    let progressTimer: ReturnType<typeof setInterval>;
 
     if (isScanning && !isModelLoading) {
       const startTime = Date.now();

@@ -43,8 +43,8 @@ export const FIRForm: React.FC<FIRFormProps> = ({ fir, onSubmit, onCancel }) => 
         const [crimesRes, officersRes, criminalsRes, victimsRes] = await Promise.all([
           listCrimes(1, 100),
           listOfficers(1, 100),
-          listCriminals(1, 100),
-          listVictims(1, 100)
+          listCriminals(undefined, 1, 100),
+          listVictims(undefined, 1, 100)
         ]);
 
         if (isMounted) {
@@ -89,7 +89,7 @@ export const FIRForm: React.FC<FIRFormProps> = ({ fir, onSubmit, onCancel }) => 
     }
 
     if (complainantContact.trim()) {
-      const contactClean = complainantContact.replace(/[\s\-]/g, '');
+      const contactClean = complainantContact.replace(/[\s-]/g, '');
       if (!/^(?:\+91)?\d{10}$/.test(contactClean)) {
         errors.complainant_contact = 'Must be a valid 10-digit Indian phone number';
       }
@@ -272,7 +272,7 @@ export const FIRForm: React.FC<FIRFormProps> = ({ fir, onSubmit, onCancel }) => 
           <label className="block text-[10px] text-[var(--text-muted)] uppercase font-semibold mb-1">FIR Status</label>
           <select
             value={status}
-            onChange={e => setStatus(e.target.value)}
+            onChange={e => setStatus(e.target.value as typeof status)}
             className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-border-color rounded text-[var(--text-primary)] outline-none focus:border-[var(--accent-blue)]"
           >
             <option value="registered">Registered</option>

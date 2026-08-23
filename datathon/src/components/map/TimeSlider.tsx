@@ -8,7 +8,7 @@ export const TimeSlider: React.FC = () => {
 
   // Play animation simulation: cycle hours
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval>;
     if (isPlaying) {
       timer = setInterval(() => {
         setTimeOfDay((timeOfDay + 1) % 24);

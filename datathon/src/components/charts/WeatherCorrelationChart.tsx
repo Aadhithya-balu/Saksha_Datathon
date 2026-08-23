@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { CloudRain, Sun, Calendar, Sparkles } from 'lucide-react';
 
 interface WeatherCorrelationData {
   factor: string;

@@ -27,7 +27,6 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  X,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -107,7 +106,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { user } = useAuthStore();
   const { checkPermission, isAdmin } = useRBAC();
   const { unread } = useNotificationStore((s) => s.counts);
-  const mobileMenuOpen = useAppStore((s) => s.mobileMenuOpen);
   const setMobileMenuOpen = useAppStore((s) => s.setMobileMenuOpen);
 
   const filteredNavGroups = navGroups.map(group => ({

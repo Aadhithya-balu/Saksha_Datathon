@@ -48,7 +48,7 @@ print("=== Test 3: / endpoint (streaming) ===")
 resp3 = client.post("/api/v2/ai/chat", json={"message": "hello", "stream": True})
 print(f"Status: {resp3.status_code}")
 print(f"Content-Type: {resp3.headers.get('content-type', '')}")
-lines = [l for l in resp3.text.split("\n") if l.strip()]
+lines = [item for item in resp3.text.split("\n") if item.strip()]
 print(f"Stream lines: {len(lines)}")
 for line in lines[:5]:
     parsed = json.loads(line)

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Filter, FileText, User, ShieldAlert, X, Plus } from 'lucide-react';
+import { Filter, FileText, User, ShieldAlert, X } from 'lucide-react';
 import type { ChatContextOptions } from '../../services/api';
 
 interface ContextSelectorProps {

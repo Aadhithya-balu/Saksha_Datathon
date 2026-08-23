@@ -7,11 +7,11 @@ dismissing notifications between officers and stations.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import func, or_, and_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
 from app.models.notification import Notification
 from app.models.user import User

@@ -11,7 +11,7 @@ import {
   resolveNotification,
   dismissNotification,
 } from '../services/api';
-import type { NotificationRecord, NotificationCount, NotificationListResponse, NotificationDashboardSummary } from '../services/api';
+import type { NotificationRecord, NotificationCount, NotificationDashboardSummary } from '../services/api';
 
 interface NotificationState {
   // Data
@@ -40,7 +40,7 @@ interface NotificationState {
   informModalOpen: boolean;
 
   // Actions
-  fetchNotifications: (page?: number, pageSize?: number) => Promise<void>;
+  fetchNotifications: (page?: number, pageSize?: number, unreadOnly?: boolean, notificationType?: string, severity?: string) => Promise<void>;
   fetchCounts: () => Promise<void>;
   fetchRecent: () => Promise<void>;
   fetchDashboard: () => Promise<void>;
@@ -93,14 +93,17 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   pollIntervalId: null,
   informModalOpen: false,
 
-  fetchNotifications: async (page, pageSize) => {
+  fetchNotifications: async (page, pageSize, unreadOnly, notificationType, severity) => {
     set({ loading: true, error: null });
     try {
       const p = page ?? get().page;
       const ps = pageSize ?? get().pageSize;
       const { searchQuery, filterCategory, filterPriority, filterStatus, filterSender } = get();
       const response = await getNotifications(
-        p, ps, false, undefined, undefined,
+        p, ps,
+        unreadOnly ?? false,
+        notificationType,
+        severity,
         filterPriority || undefined,
         filterCategory || undefined,
         filterStatus || undefined,
