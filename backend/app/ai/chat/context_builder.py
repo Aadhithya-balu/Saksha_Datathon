@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 from app.ai.chat.backend_fetcher import BackendResult
@@ -20,6 +21,12 @@ CRITICAL RULES:
 - When discussing criminals or cases, always reference specific IDs, numbers, or names from the context.
 - Do not use emojis.
 - Do not add disclaimers about being an AI unless explicitly asked.
+- TEMPORAL RULE: A "System Clock" section states the current date/time and every
+  record carries created_at / filed_at timestamps. For questions about "today",
+  "yesterday", "this week", or recency, compare those timestamps against the
+  System Clock and use the "recent activity" figures when present. Never guess.
+  Lead with those recency figures ("No new FIRs were filed today" or the counts)
+  and do NOT pad the reply with unrelated dossiers or record lists.
 
 RESPONSE FORMAT GUIDELINES:
 - For case queries: Present case number, status, priority, progress, description, and MO tags clearly.
@@ -70,6 +77,13 @@ class ContextBuilder:
                 sources=[],
                 citations=[],
             )
+
+        # Ground every answer in wall-clock time so temporal questions
+        # ("any crime today?") are answerable from record timestamps.
+        sections.append(
+            "### System Clock\n"
+            f"Current date and time: {datetime.now().strftime('%Y-%m-%d %H:%M (%A)')}"
+        )
 
         for result in successful:
             label = _SOURCE_LABELS.get(result.source, result.source)

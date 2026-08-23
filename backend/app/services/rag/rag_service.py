@@ -2,13 +2,21 @@
 from __future__ import annotations
 
 from typing import Any
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 from app.models.fir import FIR
 from app.models.criminal import Criminal
 from app.models.evidence import Evidence
 from app.models.crime import CrimeCase
 from app.services.analytics_service import category_breakdown, dashboard_summary, district_comparison
+
+# Generous per-entity caps so vector retrieval covers every record in the
+# database, not just an arbitrary first page. Queries are ordered for
+# deterministic indexing across runs.
+_FIR_CAP = 250
+_CRIMINAL_CAP = 250
+_EVIDENCE_CAP = 250
+_CASE_CAP = 200
 
 
 def build_rag_documents(
@@ -65,7 +73,7 @@ def build_rag_documents(
         fir_query = db.query(FIR)
         if fir_id:
             fir_query = fir_query.filter(FIR.id == fir_id)
-        firs = fir_query.limit(40).all()
+        firs = fir_query.order_by(FIR.created_at.desc()).limit(_FIR_CAP).all()
 
         for fir in firs:
             content_parts = [
@@ -97,7 +105,7 @@ def build_rag_documents(
         criminal_query = db.query(Criminal)
         if criminal_id:
             criminal_query = criminal_query.filter(Criminal.id == criminal_id)
-        criminals = criminal_query.limit(40).all()
+        criminals = criminal_query.order_by(Criminal.created_at.desc()).limit(_CRIMINAL_CAP).all()
 
         for c in criminals:
             content_parts = [
@@ -131,7 +139,7 @@ def build_rag_documents(
         ev_query = db.query(Evidence)
         if evidence_id:
             ev_query = ev_query.filter(Evidence.id == evidence_id)
-        evidences = ev_query.limit(40).all()
+        evidences = ev_query.order_by(Evidence.created_at.desc()).limit(_EVIDENCE_CAP).all()
 
         for ev in evidences:
             content_parts = [
@@ -159,7 +167,7 @@ def build_rag_documents(
         case_query = db.query(CrimeCase)
         if case_id:
             case_query = case_query.filter(CrimeCase.id == case_id)
-        cases = case_query.limit(30).all()
+        cases = case_query.order_by(CrimeCase.created_at.desc()).limit(_CASE_CAP).all()
 
         for case in cases:
             content_parts = [
@@ -183,3 +191,4 @@ def build_rag_documents(
         pass
 
     return documents
+

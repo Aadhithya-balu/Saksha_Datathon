@@ -84,20 +84,56 @@ function parse(src: string): Block[] {
 function fmt(text: string): React.ReactNode {
   const parts: React.ReactNode[] = [];
   let rem = text; let k = 0;
+  const pushPlain = (t: string) => { if (t) parts.push(t); };
   while (rem.length > 0) {
+    // "Label: value" field labels render bold — README-preview look without markdown.
+    const f = rem.match(/(^|[\s|])([A-Z][A-Za-z0-9/&()'.\- ]{1,28}):\s/);
     const b = rem.match(/^(.*?)\*\*(.*?)\*\*(.*)/);
-    const c = rem.match(/^(.*?)`(.*?)`(.*)/);
-    if (b && (!c || b.index! <= c.index!)) {
+    const eq = rem.match(/(^|[,\s])([A-Z][A-Za-z]{2,20})=/);
+    if (f && (!b || (f.index ?? 0) <= (b.index ?? Infinity)) && (!eq || (f.index ?? 0) <= (eq.index ?? Infinity))) {
+      pushPlain(rem.slice(0, f.index));
+      parts.push(
+        <span key={k++} className="chat-md-field">
+          <strong>{f[2]}:</strong>{" "}
+        </span>
+      );
+      rem = rem.slice((f.index ?? 0) + f[0].length);
+      continue;
+    }
+    if (b && (!c_match(rem) || b.index! <= c_match(rem)!)) {
       if (b[1]) parts.push(b[1]);
       parts.push(<strong key={k++} style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{b[2]}</strong>);
       rem = b[3];
-    } else if (c) {
+    } else if (c_match(rem) !== null && c_match(rem) !== undefined) {
+      const c = rem.match(/^(.*?)`(.*?)`(.*)/)!;
       if (c[1]) parts.push(c[1]);
       parts.push(<code key={k++} className="chat-md-code">{c[2]}</code>);
       rem = c[3];
+    } else if (eq) {
+      pushPlain(rem.slice(0, eq.index));
+      parts.push(<span key={k++} className="chat-md-eqkey"><strong>{eq[2]}</strong>=</span>);
+      rem = rem.slice((eq.index ?? 0) + eq[0].length);
     } else { parts.push(rem); break; }
   }
   return <>{parts}</>;
+}
+
+function c_match(text: string): number | null {
+  const m = text.match(/`/);
+  return m ? m.index ?? null : null;
+}
+
+/** Renders a record item as stacked "Field: value" rows (README-preview card). */
+function renderRecord(item: string): React.ReactNode {
+  if (!item.includes(' | ')) return fmt(item);
+  const fields = item.split(' | ').map(s => s.trim()).filter(Boolean);
+  return (
+    <span className="chat-md-record">
+      {fields.map((field, i) => (
+        <span key={i} className="chat-md-record-row">{fmt(field)}</span>
+      ))}
+    </span>
+  );
 }
 
 const CALLOUT: Record<string, { icon: React.ElementType; cls: string; label: string }> = {
@@ -121,10 +157,15 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
       case 'h1': els.push(<h2 key={k} className="chat-md-h1">{fmt(b.text)}</h2>); break;
       case 'h2': els.push(<h3 key={k} className="chat-md-h2">{fmt(b.text)}</h3>); break;
       case 'h3': els.push(<h4 key={k} className="chat-md-h3">{fmt(b.text)}</h4>); break;
-      case 'p': els.push(<p key={k} className="chat-md-p">{fmt(b.text)}</p>); break;
+      case 'p':
+        els.push(
+          /^Source: Saksha Database/.test(b.text)
+            ? <p key={k} className="chat-md-footer">{b.text}</p>
+            : <p key={k} className="chat-md-p">{fmt(b.text)}</p>
+        ); break;
       case 'quote': els.push(<blockquote key={k} className="chat-md-quote">{fmt(b.text)}</blockquote>); break;
-      case 'ul': els.push(<ul key={k} className="chat-md-ul">{b.items.map((it, j) => <li key={j}>{fmt(it)}</li>)}</ul>); break;
-      case 'ol': els.push(<ol key={k} className="chat-md-ol">{b.items.map((it, j) => <li key={j}>{fmt(it)}</li>)}</ol>); break;
+      case 'ul': els.push(<ul key={k} className="chat-md-ul">{b.items.map((it, j) => <li key={j}>{renderRecord(it)}</li>)}</ul>); break;
+      case 'ol': els.push(<ol key={k} className="chat-md-ol">{b.items.map((it, j) => <li key={j}>{renderRecord(it)}</li>)}</ol>); break;
       case 'code':
         els.push(
           <div key={k} className="chat-md-codeblock">

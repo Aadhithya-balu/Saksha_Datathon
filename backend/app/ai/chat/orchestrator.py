@@ -13,6 +13,7 @@ from app.ai.chat.intent_router import IntentRouter
 from app.ai.chat.llm_generator import LLMGenerator
 from app.ai.chat.memory import memory
 from app.ai.chat.query_planner import QueryPlanner
+from app.ai.chat.rag_retriever import RagRetriever
 from app.ai.chat.response_validator import ResponseValidator
 
 
@@ -24,6 +25,7 @@ class ChatOrchestrator:
         self.entity_extractor = EntityExtractor()
         self.query_planner = QueryPlanner()
         self.backend_fetcher = BackendFetcher()
+        self.rag_retriever = RagRetriever()
         self.context_builder = ContextBuilder()
         self.llm_generator = LLMGenerator()
         self.response_validator = ResponseValidator()
@@ -33,9 +35,13 @@ class ChatOrchestrator:
         message: str,
         session_id: str | None,
         db: Session,
+        history: list[dict[str, str]] | None = None,
     ) -> AsyncIterator[bytes]:
         sid = session_id or "default"
-        history = memory.get_history(sid)
+        # When an explicit history is supplied (persistent chat), it replaces the
+        # in-memory session store and nothing is written back to memory.
+        external_history = history is not None
+        hist = history if external_history else memory.get_history(sid)
 
         yield self._ndjson({"type": "status", "content": "Analyzing query intent..."})
 
@@ -56,6 +62,12 @@ class ChatOrchestrator:
 
         results = self.backend_fetcher.execute(plan, db)
 
+        # Free-text vector recall over database records (FIRs, criminals,
+        # evidence, cases) — augments structured intent-based fetching.
+        rag_result = self.rag_retriever.fetch(db, message)
+        if rag_result:
+            results.append(rag_result)
+
         successful = [r for r in results if r.success]
         failed = [r for r in results if not r.success]
 
@@ -74,25 +86,27 @@ class ChatOrchestrator:
             message=message,
             context_block=built_context.context_block,
             system_prompt=built_context.system_prompt,
-            history=history,
+            history=hist,
         ):
             full_response += chunk
             yield self._ndjson({"type": "token", "content": chunk})
 
         validated_response = self.response_validator.validate(full_response, results)
 
-        memory.add(sid, message, validated_response)
+        if not external_history:
+            memory.add(sid, message, validated_response)
 
         final_payload = {
             "type": "final",
             "content": {
                 "answer": validated_response,
                 "summary": built_context.summary,
-                "entities": [v for v in entities.to_dict().values() if v is not None],
+                "entities": [str(v) for v in entities.to_dict().values() if v is not None],
                 "classification": intent_result.intents[0].value if intent_result.intents else "general",
                 "sources": built_context.sources,
                 "chart_suggestion": self._suggest_chart(intent_result.intents),
                 "citations": built_context.citations,
+                "engine": self._engine_label(),
             },
         }
         yield self._ndjson(final_payload)
@@ -102,14 +116,19 @@ class ChatOrchestrator:
         message: str,
         session_id: str | None,
         db: Session,
+        history: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         sid = session_id or "default"
-        history = memory.get_history(sid)
+        external_history = history is not None
+        hist = history if external_history else memory.get_history(sid)
 
         intent_result = self.intent_router.detect(message)
         entities = self.entity_extractor.extract(message)
         plan = self.query_planner.plan(intent_result.intents, entities)
         results = self.backend_fetcher.execute(plan, db)
+        rag_result = self.rag_retriever.fetch(db, message)
+        if rag_result:
+            results.append(rag_result)
         built_context = self.context_builder.build(results, entities, message)
 
         import asyncio
@@ -120,7 +139,7 @@ class ChatOrchestrator:
                 message=message,
                 context_block=built_context.context_block,
                 system_prompt=built_context.system_prompt,
-                history=history,
+                history=hist,
             ):
                 chunks.append(chunk)
             return "".join(chunks)
@@ -137,17 +156,26 @@ class ChatOrchestrator:
             full_response = asyncio.run(_collect())
 
         validated_response = self.response_validator.validate(full_response, results)
-        memory.add(sid, message, validated_response)
+        if not external_history:
+            memory.add(sid, message, validated_response)
 
         return {
             "answer": validated_response,
             "summary": built_context.summary,
-            "entities": [v for v in entities.to_dict().values() if v is not None],
+            "entities": [str(v) for v in entities.to_dict().values() if v is not None],
             "classification": intent_result.intents[0].value if intent_result.intents else "general",
             "sources": built_context.sources,
             "chart_suggestion": self._suggest_chart(intent_result.intents),
             "citations": built_context.citations,
+            "engine": self._engine_label(),
         }
+
+    def _engine_label(self) -> str:
+        """Reports the engine that ACTUALLY produced the last answer.
+
+        Falls back to configured provider only before any generation ran.
+        """
+        return getattr(self.llm_generator, "last_engine", None) or "local-template"
 
     @staticmethod
     def _ndjson(payload: dict[str, Any]) -> bytes:
@@ -166,3 +194,4 @@ class ChatOrchestrator:
             if intent == Intent.CRIMINAL_NETWORK:
                 return "graph"
         return None
+
