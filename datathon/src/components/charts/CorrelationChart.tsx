@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import * as d3 from 'd3';
+import { useThemePalettes } from '../../theme';
 
 interface ScatterPoint {
   district: string;
@@ -22,6 +23,9 @@ const CORRELATION_DATA: ScatterPoint[] = [
 
 export const CorrelationChart: React.FC = () => {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; data: ScatterPoint } | null>(null);
+  const palette = useThemePalettes();
+  const c = palette.chart;
+  const map = palette.map;
 
   // Chart Dimensions
   const width = 500;
@@ -87,8 +91,8 @@ export const CorrelationChart: React.FC = () => {
 
       <div className="relative">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible">
-          {/* Geodesic dashed grid coordinates */}
-          <g stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" strokeDasharray="3 3">
+          {/* Dashed grid coordinates */}
+          <g stroke={c.grid} strokeWidth="0.5" strokeDasharray="3 3">
             {xTicks.map((tick, i) => (
               <line key={i} x1={xScale(tick)} y1={padding.top} x2={xScale(tick)} y2={height - padding.bottom} />
             ))}
@@ -98,8 +102,8 @@ export const CorrelationChart: React.FC = () => {
           </g>
 
           {/* Axes outlines */}
-          <line x1={padding.left} y1={height - padding.bottom} x2={width - padding.right} y2={height - padding.bottom} stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-          <line x1={padding.left} y1={padding.top} x2={padding.left} y2={height - padding.bottom} stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+          <line x1={padding.left} y1={height - padding.bottom} x2={width - padding.right} y2={height - padding.bottom} stroke={c.grid} strokeWidth="1" />
+          <line x1={padding.left} y1={padding.top} x2={padding.left} y2={height - padding.bottom} stroke={c.grid} strokeWidth="1" />
 
           {/* Axis Labels */}
           {xTicks.map((tick, i) => (
@@ -124,13 +128,13 @@ export const CorrelationChart: React.FC = () => {
           </text>
 
           {/* Linear regression best-fit slope path */}
-          <line 
-            x1={regression.x1} 
-            y1={regression.y1} 
-            x2={regression.x2} 
-            y2={regression.y2} 
-            stroke="#1E6FD9" 
-            strokeWidth="1.5" 
+          <line
+            x1={regression.x1}
+            y1={regression.y1}
+            x2={regression.x2}
+            y2={regression.y2}
+            stroke={c.series[0]}
+            strokeWidth="1.5"
             strokeDasharray="4 4"
             opacity="0.75"
           />
@@ -143,7 +147,7 @@ export const CorrelationChart: React.FC = () => {
             const isHovered = tooltip?.data.district === pt.district;
 
             return (
-              <g 
+              <g
                 key={i}
                 onMouseEnter={() => {
                   setTooltip({
@@ -156,22 +160,25 @@ export const CorrelationChart: React.FC = () => {
                 className="cursor-pointer"
               >
                 {/* Outer halo */}
-                <circle 
-                  cx={x} 
-                  cy={y} 
-                  r={r + 3} 
-                  fill={isHovered ? 'rgba(30,111,217,0.18)' : 'rgba(30,111,217,0.06)'} 
-                  stroke={isHovered ? '#1E6FD9' : 'rgba(30,111,217,0.2)'}
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={r + 3}
+                  fill={isHovered ? c.series[0] : c.series[0]}
+                  fillOpacity={isHovered ? 0.22 : 0.08}
+                  stroke={isHovered ? c.series[0] : c.grid}
                   strokeWidth="0.5"
                   className="transition-all duration-200"
                 />
-                {/* Core Dot node */}
-                <circle 
-                  cx={x} 
-                  cy={y} 
-                  r={r} 
-                  fill={pt.riskScore >= 70 ? '#C94A2A' : pt.riskScore >= 55 ? '#D4820A' : '#0e9e78'} 
-                  opacity="0.85"
+                {/* Core Dot node — theme-aware severity colors */}
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={r}
+                  fill={pt.riskScore >= 70 ? map.hotspotHigh : pt.riskScore >= 55 ? map.hotspotMedium : map.hotspotLow}
+                  opacity="0.9"
+                  stroke={map.bg}
+                  strokeWidth="1"
                 />
               </g>
             );
@@ -180,26 +187,28 @@ export const CorrelationChart: React.FC = () => {
 
         {/* Custom D3 Tooltip card floating */}
         {tooltip && (
-          <div 
-            className="absolute z-30 p-2.5 bg-[#0c1424] border border-[#1a2744] text-[9.5px] font-mono rounded max-w-[190px] shadow-2xl pointer-events-none"
-            style={{ 
-              left: `${(tooltip.x / width) * 100}%`, 
-              top: `${(tooltip.y / height) * 100}%` 
+          <div
+            className="absolute z-30 p-2.5 text-[11px] rounded-lg max-w-[190px] shadow-xl pointer-events-none"
+            style={{
+              left: `${(tooltip.x / width) * 100}%`,
+              top: `${(tooltip.y / height) * 100}%`,
+              backgroundColor: c.tooltipBg,
+              border: `1px solid ${c.tooltipBorder}`,
+              color: c.tooltipText,
             }}
           >
-            <span className="text-[#E8EDF5] font-bold block uppercase">{tooltip.data.district}</span>
-            <div className="h-[1px] bg-[#1a2744] my-1" />
-            <div className="flex justify-between gap-3 text-[#a8b4cc]">
-              <span>UNEMPLOYMENT:</span>
-              <span className="text-[#E8EDF5]">{tooltip.data.unemployment}%</span>
+            <span className="font-bold block">{tooltip.data.district}</span>
+            <div className="flex justify-between gap-3 mt-1" style={{ color: c.axis }}>
+              <span>Unemployment:</span>
+              <span className="font-semibold">{tooltip.data.unemployment}%</span>
             </div>
-            <div className="flex justify-between gap-3 text-[#a8b4cc] mt-0.5">
-              <span>CRIME THREAT:</span>
-              <span className="text-[#C94A2A] font-bold">{tooltip.data.riskScore}/100</span>
+            <div className="flex justify-between gap-3 mt-0.5" style={{ color: c.axis }}>
+              <span>Crime threat:</span>
+              <span className="font-bold">{tooltip.data.riskScore}/100</span>
             </div>
-            <div className="flex justify-between gap-3 text-[#a8b4cc] mt-0.5">
-              <span>POP DENSITY:</span>
-              <span className="text-[#1E6FD9]">{tooltip.data.populationDensity}/sq.km</span>
+            <div className="flex justify-between gap-3 mt-0.5" style={{ color: c.axis }}>
+              <span>Pop density:</span>
+              <span className="font-semibold">{tooltip.data.populationDensity}/sq.km</span>
             </div>
           </div>
         )}

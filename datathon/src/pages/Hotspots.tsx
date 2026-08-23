@@ -6,6 +6,7 @@ import { useAuditStore } from '../store/auditStore';
 import { useAuthStore } from '../store/authStore';
 import { getDistrictComparison, getHotspots, getRiskScores, type DistrictComparisonPoint, type HotspotPoint, type RiskScoresResponse } from '../services/api';
 import type { DistrictInfo } from '../store/mapStore';
+import { PageHeader } from '../components/ui/PageHeader';
 import { PageSkeleton } from '../components/ui/Skeleton';
 
 export const Hotspots: React.FC = () => {
@@ -78,18 +79,8 @@ export const Hotspots: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none bg-[var(--bg-primary)]">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3">
-          <div>
-            <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
-              <Compass className="w-4 h-4 text-[#1E6FD9] animate-pulse" />
-              District Hotspot Analysis Map
-            </h2>
-            <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
-              Loading geospatial telemetry...
-            </p>
-          </div>
-        </div>
+      <div className="h-[84vh] flex flex-col gap-4 md:p-1">
+        <PageHeader title="Hotspot Map" subtitle="Loading geospatial data…" icon={<Compass className="w-5 h-5" />} />
         <PageSkeleton />
       </div>
     );
@@ -97,23 +88,15 @@ export const Hotspots: React.FC = () => {
 
   if (error && hotspots.length === 0) {
     return (
-      <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none bg-[var(--bg-primary)]">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3">
-          <div>
-            <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
-              <Compass className="w-4 h-4 text-[#1E6FD9]" />
-              District Hotspot Analysis Map
-            </h2>
-          </div>
-        </div>
+      <div className="h-[84vh] flex flex-col gap-4 md:p-1">
+        <PageHeader title="Hotspot Map" icon={<Compass className="w-5 h-5" />} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-[var(--accent-coral-subtle)] border border-[var(--accent-coral)]/20 flex items-center justify-center mx-auto">
-              <Compass className="w-6 h-6 text-[var(--accent-coral)]" />
+            <div className="w-12 h-12 rounded-xl bg-[var(--accent-coral-subtle)] border border-[var(--accent-coral)]/20 flex items-center justify-center mx-auto text-[var(--accent-coral)]">
+              <Compass className="w-6 h-6" />
             </div>
             <p className="text-sm text-[var(--text-secondary)]">{error}</p>
-            <button onClick={() => { setError(null); setLoading(true); window.location.reload(); }}
-              className="px-3 py-1.5 text-[10px] font-mono uppercase bg-[var(--accent-blue)]/10 hover:bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] border border-[var(--accent-blue)]/30 rounded-btn transition-colors cursor-pointer">
+            <button onClick={() => { setError(null); setLoading(true); window.location.reload(); }} className="sk-btn sk-btn-primary">
               Retry
             </button>
           </div>
@@ -123,41 +106,34 @@ export const Hotspots: React.FC = () => {
   }
 
   return (
-    <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none bg-[var(--bg-primary)]">
-      
-      {/* Page Title */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3">
-        <div>
-          <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
-            <Compass className="w-4 h-4 text-[#1E6FD9] animate-pulse" />
-            District Hotspot Analysis Map
-          </h2>
-          <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
-            GEOSPATIAL INCIDENT GRID OVERLAY — MAPBOX DUST COORDS & DECK.GL SCATTER PLOTS
-          </p>
-        </div>
+    <div className="h-[84vh] flex flex-col gap-4 md:p-1">
 
-        <div className="flex items-center gap-2 font-mono text-[9px] uppercase">
-          <button
-            onClick={handleExportGeoJSON}
-            className="px-2.5 py-1.5 bg-[var(--bg-tertiary)] hover:bg-[#1E6FD9]/15 border border-border-color hover:border-[#1E6FD9]/30 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
-          >
-            <Download className="w-3 h-3" />
-            GEOJSON Export
+      {/* Page header */}
+      <PageHeader
+        title="Hotspot Map"
+        subtitle="Geospatial incident density across Karnataka districts"
+        icon={<Compass className="w-5 h-5" />}
+        actions={
+          <button onClick={handleExportGeoJSON} className="sk-btn sk-btn-secondary">
+            <Download className="w-4 h-4" />
+            GeoJSON Export
           </button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 text-[9px] font-mono">
+      {/* Top hotspots strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {hotspots.slice(0, 3).map((hotspot) => (
-          <div key={`${hotspot.name}-${hotspot.district_id}`} className="bg-[var(--bg-secondary)]/80 border border-[var(--border-muted)] rounded-lg p-3 flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[var(--text-primary)] font-semibold uppercase tracking-wide">{hotspot.name}</p>
-              <p className="text-[var(--text-muted)] mt-1">{hotspot.district_id} • {hotspot.category}</p>
+          <div key={`${hotspot.name}-${hotspot.district_id}`} className="sk-panel px-4 py-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{hotspot.name}</p>
+              <p className="text-xs text-[var(--text-muted)] truncate">{hotspot.district_id} · {hotspot.category}</p>
             </div>
-            <div className={`font-bold ${hotspot.score >= 80 ? 'text-[#C94A2A]' : hotspot.score >= 70 ? 'text-[#D4820A]' : 'text-[#0E9E78]'}`}>
+            <span
+              className={`sk-chip shrink-0 ${hotspot.score >= 80 ? 'sk-chip-error' : hotspot.score >= 70 ? 'sk-chip-warning' : 'sk-chip-success'}`}
+            >
               {hotspot.score}%
-            </div>
+            </span>
           </div>
         ))}
       </div>

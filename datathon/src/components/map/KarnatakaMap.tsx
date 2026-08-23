@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { downloadSecureDossier } from '../../utils/downloader';
 import { useAuditStore } from '../../store/auditStore';
 import { useAuthStore } from '../../store/authStore';
+import { useThemePalettes } from '../../theme';
+import { useAppStore } from '../../store/appStore';
 
 // Coordinates projection onto custom 800x600 SVG canvas
 const projectLonX = (lon: number) => {
@@ -67,6 +69,9 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
 
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
+  const theme = useAppStore((s) => s.theme);
+  const palette = useThemePalettes();
+  const map = palette.map;
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [mapZoom, setMapZoom] = useState(1);
@@ -172,21 +177,21 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
       </div>
 
       {/* RENDER CANVAS CONTAINER */}
-      <div className="flex-1 w-full relative cursor-grab active:cursor-grabbing bg-[var(--bg-secondary)] overflow-hidden">
-        
+      <div className="flex-1 w-full relative cursor-grab active:cursor-grabbing overflow-hidden" style={{ backgroundColor: map.bg }}>
+
         {/* GEODESIC BACKGROUND GRID */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20">
+        <svg className="absolute inset-0 w-full h-full pointer-events-none">
           <defs>
             <pattern id="gridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1E6FD9" strokeWidth="0.5" />
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke={map.grid} strokeWidth="0.5" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#gridPattern)" />
         </svg>
 
         {/* INTERACTIVE VECTOR GRAPHICS */}
-        <svg 
-          viewBox="0 0 800 600" 
+        <svg
+          viewBox="0 0 800 600"
           className="w-full h-full select-none transform transition-transform duration-1000 ease-out"
           style={{
             transform: `scale(${mapZoom}) translate(${mapOffset.x / mapZoom}px, ${mapOffset.y / mapZoom}px)`,
@@ -194,23 +199,23 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
           }}
         >
           {/* Geodesic coordinates lines */}
-          <g stroke="rgba(30,111,217,0.1)" strokeWidth="0.5" strokeDasharray="3 3">
+          <g stroke={map.graticule} strokeWidth="0.5" strokeDasharray="3 3">
             {[74, 75, 76, 77, 78].map((lon) => (
-              <line 
-                key={lon} 
-                x1={projectLonX(lon)} 
-                y1={0} 
-                x2={projectLonX(lon)} 
-                y2={600} 
+              <line
+                key={lon}
+                x1={projectLonX(lon)}
+                y1={0}
+                x2={projectLonX(lon)}
+                y2={600}
               />
             ))}
             {[12, 13, 14, 15, 16, 17, 18].map((lat) => (
-              <line 
-                key={lat} 
-                x1={0} 
-                y1={projectLatY(lat)} 
-                x2={800} 
-                y2={projectLatY(lat)} 
+              <line
+                key={lat}
+                x1={0}
+                y1={projectLatY(lat)}
+                x2={800}
+                y2={projectLatY(lat)}
               />
             ))}
           </g>
@@ -221,42 +226,42 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
               const projectedPoints = points.map(([lon, lat]) => `${projectLonX(lon)},${projectLatY(lat)}`).join(' ');
               const isSelected = selectedDistrict === name;
               const info = resolvedDistrictData[name];
-              
-              // Color coding based on active layers
-              let fill = 'rgba(30, 111, 217, 0.03)';
-              let stroke = 'rgba(255, 255, 255, 0.15)';
-              
+
+              // Color coding based on active layers — theme-aware palette
+              let fill = map.districtFill;
+              let stroke = map.boundary;
+
               if (layers.riskScore && info) {
-                // Red for high risk, orange/yellow for middle, blue/slate for low
                 const rs = info.riskScore;
-                fill = rs >= 80 
-                  ? 'rgba(201, 74, 42, 0.35)' 
-                  : rs >= 60 
-                  ? 'rgba(212, 130, 10, 0.35)' 
-                  : 'rgba(14, 158, 120, 0.25)';
+                fill = rs >= 80
+                  ? `rgba(217, 52, 20, ${theme === 'dark' ? 0.35 : 0.28})`
+                  : rs >= 60
+                  ? `rgba(181, 110, 7, ${theme === 'dark' ? 0.35 : 0.30})`
+                  : `rgba(13, 122, 91, ${theme === 'dark' ? 0.25 : 0.22})`;
               } else if (layers.beatCoverage && info) {
-                // Green gradient for high coverage
                 const br = info.beatRatio;
-                fill = br >= 75 
-                  ? 'rgba(14, 158, 120, 0.35)' 
-                  : br >= 60 
-                  ? 'rgba(30, 111, 217, 0.25)' 
-                  : 'rgba(212, 130, 10, 0.25)';
+                fill = br >= 75
+                  ? theme === 'dark' ? 'rgba(20, 201, 151, 0.30)' : 'rgba(5, 150, 105, 0.26)'
+                  : br >= 60
+                  ? theme === 'dark' ? 'rgba(61, 138, 240, 0.25)' : 'rgba(37, 99, 235, 0.20)'
+                  : theme === 'dark' ? 'rgba(240, 156, 46, 0.25)' : 'rgba(217, 119, 6, 0.24)';
               }
 
               if (isSelected) {
-                fill = 'rgba(30, 111, 217, 0.12)';
-                stroke = '#1E6FD9';
+                fill = map.districtSelected;
+                stroke = map.boundaryHover;
               }
 
               return (
                 <polygon
                   key={name}
                   points={projectedPoints}
-                  className="transition-all duration-300 hover:fill-slate-800/40 hover:stroke-[var(--accent-blue)]/80 cursor-pointer"
-                  fill={fill}
+                  className="transition-all duration-300 cursor-pointer"
+                  style={{ fill }}
                   stroke={stroke}
-                  strokeWidth={isSelected ? 2 : 1}
+                  strokeWidth={isSelected ? 2.25 : 1.25}
+                  onMouseEnter={(e) => { if (!isSelected) { e.currentTarget.style.fill = map.districtSelected; e.currentTarget.style.stroke = map.boundaryHover; } }}
+                  onMouseLeave={(e) => { e.currentTarget.style.fill = fill; e.currentTarget.style.stroke = stroke; }}
                   onClick={() => setSelectedDistrict(isSelected ? null : name)}
                 />
               );
@@ -273,17 +278,20 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
               return (
                 <g key={name} className="pointer-events-none select-none">
                   {/* Center pin node */}
-                  <circle 
-                    cx={x} 
-                    cy={y} 
-                    r={isSelected ? 4 : 2} 
-                    fill={isSelected ? '#1E6FD9' : '#A8B4CC'} 
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={isSelected ? 4 : 2.4}
+                    fill={isSelected ? map.boundaryHover : map.anchor}
                   />
-                  {/* District text tag */}
+                  {/* District text tag — bg-stroked for legibility in both themes */}
                   <text
-                    x={x + 6}
-                    y={y + 3}
-                    className="font-mono text-[9px] fill-[var(--text-muted)] font-semibold"
+                    x={x + 6.5}
+                    y={y + 3.5}
+                    className="font-mono text-[9px] font-semibold"
+                    style={{ paintOrder: 'stroke', stroke: map.bg, strokeWidth: 3, strokeLinejoin: 'round' }}
+                    fill={isSelected ? map.label : map.label}
+                    opacity={isSelected ? 1 : 0.9}
                   >
                     {name}
                   </text>
@@ -292,56 +300,62 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
             })}
           </g>
 
-          {/* HOTSPOT PULSING RING LAYERS (Deck.gl rendering mock) */}
+          {/* HOTSPOT PULSING RING LAYERS */}
           {layers.hotspot && (
             <g>
               {activeHotspots.map((hs, index) => {
                 const x = projectLonX(hs.lng);
                 const y = projectLatY(hs.lat);
                 const isHigh = hs.weight >= 80;
-                
-                // Color mapping
-                const color = isHigh ? '#C94A2A' : '#D4820A';
+
+                // Theme-aware severity colors with white core outline so the
+                // marker never disappears against either background.
+                const color = isHigh ? map.hotspotHigh : hs.weight >= 65 ? map.hotspotMedium : map.hotspotLow;
                 const isSelected = selectedHotspot && selectedHotspot.name === hs.name;
 
                 return (
-                  <g 
-                    key={index} 
-                    className="cursor-pointer pointer-events-auto" 
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
+                  <g
+                    key={index}
+                    className="cursor-pointer pointer-events-auto"
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (hs.district_id) {
                         setSelectedDistrict(hs.district_id);
                       }
-                      setSelectedHotspot(hs); 
+                      setSelectedHotspot(hs);
                     }}
                   >
-                    {/* Concentric pulsing rings using basic anim emulation */}
-                    <circle cx={x} cy={y} r={14} fill={color} opacity={0.12} className="animate-ping" style={{ transformOrigin: `${x}px ${y}px`, animationDuration: '2s' }} />
-                    <circle cx={x} cy={y} r={28} stroke={color} strokeWidth="0.5" fill="none" opacity={0.06} className="animate-ping" style={{ transformOrigin: `${x}px ${y}px`, animationDuration: '3s' }} />
-                    
-                    {/* Center Core dot */}
-                    <circle cx={x} cy={y} r={isHigh ? 6 : 4.5} fill={color} />
-                    <circle cx={x} cy={y} r={isHigh ? 8 : 6.5} stroke={color} strokeWidth="1" fill="none" opacity={0.5} />
+                    {/* Concentric pulsing rings */}
+                    <circle cx={x} cy={y} r={14} fill={color} opacity={map.haloOpacity} className="animate-ping" style={{ transformOrigin: `${x}px ${y}px`, animationDuration: '2s' }} />
+                    <circle cx={x} cy={y} r={28} stroke={color} strokeWidth="1" fill="none" opacity={map.haloOpacity * 0.6} className="animate-ping" style={{ transformOrigin: `${x}px ${y}px`, animationDuration: '3s' }} />
+
+                    {/* Center Core dot — outlined for contrast on any surface */}
+                    <circle cx={x} cy={y} r={isHigh ? 8.5 : 7} fill={map.bg} />
+                    <circle cx={x} cy={y} r={isHigh ? 6 : 4.5} fill={color} stroke={map.bg} strokeWidth="1.5" />
+                    <circle cx={x} cy={y} r={isHigh ? 9.5 : 8} stroke={color} strokeWidth="1.25" fill="none" opacity={0.75} />
 
                     {/* Popover Tooltip inside foreignObject so it scales with map view zoom & pan */}
                     {isSelected && (
                       <foreignObject x={x - 90} y={y - 120} width="180" height="110" className="z-50 pointer-events-auto">
-                        <div className="bg-[var(--bg-tertiary)] border border-[var(--accent-blue)] p-2.5 rounded-card shadow-glow-blue text-left flex flex-col gap-1.5 font-mono text-[9px] leading-tight text-[var(--text-primary)] relative">
-                          <div className="flex justify-between items-center border-b border-[var(--border-primary)] pb-1">
-                            <span className="font-bold text-[var(--accent-teal)] uppercase text-[7.5px]">Hotspot Details</span>
-                            <button 
+                        <div
+                          className="p-2.5 rounded-lg text-left flex flex-col gap-1.5 font-mono text-[10px] leading-tight relative shadow-lg"
+                          style={{ backgroundColor: palette.chart.tooltipBg, border: `1px solid ${palette.chart.tooltipBorder}`, color: palette.chart.tooltipText }}
+                        >
+                          <div className="flex justify-between items-center pb-1" style={{ borderColor: palette.chart.tooltipBorder, borderBottomWidth: 1 }}>
+                            <span className="font-bold uppercase text-[9px]" style={{ color: map.hotspotMedium }}>Hotspot Details</span>
+                            <button
                               onClick={(e) => { e.stopPropagation(); setSelectedHotspot(null); }}
-                              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer font-bold text-xs"
+                              className="cursor-pointer font-bold text-xs"
+                              style={{ color: palette.chart.axis }}
                             >
                               ×
                             </button>
                           </div>
                           <div>
-                            <p className="font-bold text-[var(--text-primary)] uppercase truncate">{hs.name}</p>
-                            <p className="text-[var(--text-muted)] mt-0.5 truncate">Sector: {hs.district_id}</p>
-                            <p className="text-[var(--text-secondary)] mt-0.5 truncate">Category: {hs.type}</p>
-                            <p className="text-red-400 font-bold mt-0.5">Threat Level: {hs.weight}%</p>
+                            <p className="font-bold uppercase truncate">{hs.name}</p>
+                            <p className="opacity-70 mt-0.5 truncate">Sector: {hs.district_id}</p>
+                            <p className="opacity-85 mt-0.5 truncate">Category: {hs.type}</p>
+                            <p className="font-bold mt-0.5" style={{ color: color }}>Threat Level: {hs.weight}%</p>
                           </div>
                         </div>
                       </foreignObject>
@@ -357,9 +371,9 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
         {selectedDistrict && (
           <button
             onClick={() => setSelectedDistrict(null)}
-            className="absolute bottom-4 left-4 z-20 px-3 py-1.5 bg-[var(--accent-coral)] hover:bg-[var(--accent-coral)]/80 text-[var(--text-primary)] font-mono text-[10px] uppercase rounded-btn flex items-center gap-1 shadow-glow-coral cursor-pointer"
+            className="absolute bottom-4 left-4 z-20 px-3 py-1.5 bg-[var(--accent-coral)] hover:opacity-90 text-white font-medium text-xs rounded-md flex items-center gap-1 shadow-sm cursor-pointer"
           >
-            <span>Reset View Coordinates</span>
+            <span>Reset View</span>
           </button>
         )}
       </div>
@@ -479,9 +493,9 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
                     );
                   }
                 }}
-                className="w-full py-2 bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/80 text-[var(--text-primary)] font-mono text-[10px] uppercase rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none"
+                className="w-full py-2.5 bg-[var(--accent-blue)] hover:bg-[var(--accent-blue-light)] text-white font-semibold text-[13px] rounded-md cursor-pointer text-center select-none transition-colors"
               >
-                Export Regional Dossier (PDF)
+                Export Regional Dossier
               </button>
             </div>
           </motion.div>

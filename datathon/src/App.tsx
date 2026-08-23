@@ -231,7 +231,7 @@ function App() {
         />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="w-full max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8 sk-page-enter">
+          <div className="w-full max-w-[1600px] 2xl:max-w-[1920px] mx-auto p-3 sm:p-4 md:p-6 lg:p-8 sk-page-enter">
             {renderActivePage()}
           </div>
         </main>
