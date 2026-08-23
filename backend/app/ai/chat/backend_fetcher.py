@@ -94,6 +94,8 @@ class BackendFetcher:
             return self._pg_list_cases(db, params)
         if method == "get_criminal":
             return self._pg_get_criminal(db, params)
+        if method == "search_criminals":
+            return self._pg_search_criminals(db, params)
         if method == "get_officer":
             return self._pg_get_officer(db, params)
         if method == "list_officers":
@@ -202,6 +204,29 @@ class BackendFetcher:
         parts = [self._format_criminal(c) for c in criminals]
         return BackendResult(
             source="postgres", data_type="criminal",
+            content="\n---\n".join(parts),
+            raw_data=[{"name": c.full_name, "id": str(c.id), "status": c.status} for c in criminals],
+        )
+
+    def _pg_search_criminals(self, db: Session, params: dict) -> BackendResult:
+        from app.models.criminal import Criminal
+        query = params.get("query", "")
+        pattern = f"%{query}%"
+        criminals = db.query(Criminal).filter(
+            Criminal.full_name.ilike(pattern)
+            | Criminal.aliases.ilike(pattern)
+            | Criminal.address.ilike(pattern)
+            | Criminal.mo_summary.ilike(pattern)
+            | Criminal.identifying_marks.ilike(pattern)
+        ).limit(15).all()
+        if not criminals:
+            return BackendResult(
+                source="postgres", data_type="criminals",
+                content=f"No criminal records match '{query}'.",
+            )
+        parts = [self._format_criminal(c) for c in criminals]
+        return BackendResult(
+            source="postgres", data_type="criminals",
             content="\n---\n".join(parts),
             raw_data=[{"name": c.full_name, "id": str(c.id), "status": c.status} for c in criminals],
         )
@@ -459,6 +484,7 @@ class BackendFetcher:
             from app.services.analytics_service import (
                 dashboard_summary, category_breakdown, district_comparison,
                 hotspots, anomalies, offender_dossiers,
+                recent_activity,
             )
             if method == "dashboard_summary":
                 s = dashboard_summary(db)
@@ -495,13 +521,33 @@ class BackendFetcher:
                 parts = [f"Anomaly: {an.get('title', 'Unknown')} (severity: {an.get('severity', 'N/A')})" for an in a[:10]]
                 return BackendResult(source="analytics", data_type="anomalies", content="\n".join(parts), raw_data=a)
 
+            if method == "recent_activity":
+                days = int(call.params.get("days", 0) or 0)
+                ra = recent_activity(db, days=days)
+                parts = [
+                    f"System date/time now: {ra['now']}",
+                    f"Period analyzed: {ra['period_label']}",
+                    f"New crime cases registered: {ra['new_cases']}",
+                    f"New FIRs filed: {ra['new_firs']}",
+                    f"New evidence items added: {ra['new_evidence']}",
+                    f"New criminal profiles added: {ra['new_criminals']}",
+                    f"Most recent case on file: {ra['latest_case']}",
+                    f"Most recent FIR on file: {ra['latest_fir']}",
+                ]
+                return BackendResult(
+                    source="analytics", data_type="recent_activity",
+                    content="\n".join(parts), raw_data=ra,
+                )
+
             if method == "offender_dossiers":
                 d = offender_dossiers(db)
                 if not d:
                     return BackendResult(source="analytics", data_type="dossiers", content="No offender data.")
                 parts = [
-                    f"{o.get('full_name', 'N/A')}: Status={o.get('status', 'N/A')}, "
-                    f"Classification={o.get('classification', 'N/A')}, Risk={o.get('risk_score', 'N/A')}"
+                    f"{o.get('name') or o.get('full_name') or 'Unknown offender'}: Status={o.get('status', 'N/A')}, "
+                    f"Classification={o.get('classification', 'N/A')}, Risk={o.get('riskScore', o.get('risk_score', 'N/A'))}, "
+                    f"Active Districts={', '.join(o.get('activeDistricts') or []) or 'None'}, "
+                    f"Gang={o.get('gangAffiliation', 'N/A')}"
                     for o in d[:10]
                 ]
                 return BackendResult(source="analytics", data_type="dossiers", content="\n".join(parts), raw_data=d)

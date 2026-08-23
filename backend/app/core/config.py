@@ -51,10 +51,19 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # --- LLM ---
-    LLM_PROVIDER: str = "local"  # "gemini" | "openai" | "local"
-    LLM_MODEL: str = "gemini-2.0-flash"
+    # "auto" (default) builds a failover chain in priority order: groq -> gemini -> openai,
+    # then falls back to local templates when no keys are configured.
+    # Explicit values: "groq" | "gemini" | "openai" | "local".
+    LLM_PROVIDER: str = "auto"
+    LLM_MODEL: str = ""  # optional explicit model override for the selected provider
+    # Comma-separated key lists are supported ("key1,key2"): when one key hits
+    # its usage/rate limit the generator automatically rotates to the next.
+    GROQ_API_KEY: str | None = None
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
     GEMINI_API_KEY: str | None = None
+    GEMINI_MODEL: str = "gemini-2.0-flash"
     OPENAI_API_KEY: str | None = None
+    OPENAI_MODEL: str = "gpt-4o-mini"
 
     # --- CORS ---
     ALLOWED_ORIGINS: str = "https://saksha-datathon-csbcweuf.onslate.in,http://localhost:3000,http://localhost:5173"

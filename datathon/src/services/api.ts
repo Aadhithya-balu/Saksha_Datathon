@@ -269,6 +269,53 @@ export interface ChatQueryResponse {
   summary?: string;
   entities?: string[];
   classification?: string;
+  engine?: string | null;
+}
+
+/* --- Persistent AI chat history --- */
+
+export interface ChatHistoryMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  classification?: string | null;
+  sources?: string[] | null;
+  citations?: ChatCitation[] | null;
+  created_at: string;
+}
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  is_temporary: boolean;
+  message_count: number;
+  last_message_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConversationDetail extends ConversationSummary {
+  messages: ChatHistoryMessage[];
+  total_messages: number;
+}
+
+export interface ConversationListResponse {
+  items: ConversationSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface CreateConversationPayload {
+  title?: string;
+  temporary?: boolean;
+  messages?: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    classification?: string;
+    sources?: string[];
+    citations?: ChatCitation[];
+  }>;
 }
 
 export interface ReportRecord {
@@ -569,21 +616,32 @@ export async function triggerNeo4jSync() {
   });
 }
 
-export async function chatQuery(message: string, sessionId?: string) {
+export async function chatQuery(message: string, sessionId?: string, options?: { conversationId?: string | null; persist?: boolean }) {
   return apiRequest<ChatQueryResponse>('/ai/chat/query', {
     method: 'POST',
-    body: JSON.stringify({ message, session_id: sessionId ?? null }),
+    body: JSON.stringify({
+      message,
+      session_id: sessionId ?? null,
+      conversation_id: options?.conversationId ?? null,
+      persist: options?.persist ?? true,
+    }),
   });
 }
 
 export interface ChatStreamChunk {
-  type: 'status' | 'token' | 'final' | 'error';
+  type: 'status' | 'token' | 'final' | 'error' | 'meta' | 'notice';
   content: any;
+}
+
+export interface ChatStreamOptions {
+  conversationId?: string | null;
+  persist?: boolean;
 }
 
 export async function* chatQueryStream(
   message: string,
   sessionId?: string,
+  options?: ChatStreamOptions,
 ): AsyncGenerator<ChatStreamChunk, void, unknown> {
   const { accessToken: token } = getStoredTokens();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -592,7 +650,13 @@ export async function* chatQueryStream(
   const response = await fetch(`${API_BASE_URL}/ai/chat`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ message, session_id: sessionId ?? null, stream: true }),
+    body: JSON.stringify({
+      message,
+      session_id: sessionId ?? null,
+      stream: true,
+      conversation_id: options?.conversationId ?? null,
+      persist: options?.persist ?? true,
+    }),
   });
 
   if (!response.ok) {
@@ -634,6 +698,57 @@ export async function* chatQueryStream(
       // ignore
     }
   }
+}
+
+/* --- Conversation history management --- */
+
+export async function listConversations(params?: { q?: string; limit?: number; offset?: number }) {
+  return apiRequest<ConversationListResponse>(`/ai/chat-history/conversations${buildQueryString(params)}`);
+}
+
+export async function getConversation(id: string, params?: { limit?: number; offset?: number }) {
+  return apiRequest<ConversationDetail>(`/ai/chat-history/conversations/${id}${buildQueryString(params)}`);
+}
+
+export async function createConversation(payload: CreateConversationPayload = {}) {
+  return apiRequest<ConversationDetail>('/ai/chat-history/conversations', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateConversation(
+  id: string,
+  payload: { title?: string; is_temporary?: boolean },
+) {
+  return apiRequest<ConversationSummary>(`/ai/chat-history/conversations/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteConversation(id: string) {
+  return apiRequest<void>(`/ai/chat-history/conversations/${id}`, { method: 'DELETE' });
+}
+
+export async function deleteAllConversations() {
+  return apiRequest<{ deleted: number }>('/ai/chat-history/conversations', { method: 'DELETE' });
+}
+
+export async function appendConversationMessage(
+  id: string,
+  payload: {
+    role: 'user' | 'assistant';
+    content: string;
+    classification?: string;
+    sources?: string[];
+    citations?: ChatCitation[];
+  },
+) {
+  return apiRequest<ChatHistoryMessage>(`/ai/chat-history/conversations/${id}/messages`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function listCrimes(page = 1, pageSize = 100) {

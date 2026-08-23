@@ -71,7 +71,7 @@ export const ForecastChart: React.FC = () => {
             <Area type="monotone" dataKey="value" stroke="#0ea5e9" fillOpacity={1} fill="url(#forecastGrad)" strokeWidth={2} dot={(props: any) => {
               const { cx, cy, payload } = props;
               const fillColor = payload.type === 'today' ? '#0E9E78' : payload.type === 'predicted' ? '#0ea5e9' : '#1E6FD9';
-              return <circle cx={cx} cy={cy} r={3} fill={fillColor} stroke="none" />;
+              return <circle key={payload.day} cx={cx} cy={cy} r={3} fill={fillColor} stroke="none" />;
             }} activeDot={{ r: 5, strokeWidth: 0 }} name="Incidents" />
           </AreaChart>
         </ResponsiveContainer>

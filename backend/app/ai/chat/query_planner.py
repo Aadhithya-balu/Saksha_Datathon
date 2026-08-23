@@ -33,6 +33,13 @@ class QueryPlanner:
         for intent in intents:
             calls.extend(self._plan_intent(intent, entities))
 
+        # Temporal questions ("any crime today?", "last week") need a
+        # time-windowed activity summary — without it the LLM cannot know
+        # what 'today' contains and dossiers/stats look timeless.
+        if entities.date_range_days is not None or entities.date:
+            days = entities.date_range_days if entities.date_range_days is not None else 1
+            calls.append(BackendCall("analytics", "recent_activity", {"days": days}, 0))
+
         deduped = self._deduplicate(calls)
         parallel = len(deduped) > 1
 
@@ -90,6 +97,8 @@ class QueryPlanner:
             calls.append(BackendCall("neo4j", "get_person_network", {"name": e.person_name}, 2))
         else:
             calls.append(BackendCall("analytics", "offender_dossiers", {}, 1))
+            if e.district:
+                calls.append(BackendCall("postgres", "search_criminals", {"query": e.district}, 1))
         return calls
 
     def _plan_officer(self, e: ExtractedEntities) -> list[BackendCall]:

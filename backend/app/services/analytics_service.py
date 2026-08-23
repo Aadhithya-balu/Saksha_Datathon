@@ -24,6 +24,47 @@ from app.models.victim import Victim
 
 SEVERITY_WEIGHT = {"low": 0.8, "medium": 1.0, "high": 1.25, None: 1.0}
 
+
+def recent_activity(db: Session, days: int = 0) -> dict[str, Any]:
+    """Time-aware activity summary so the chat can answer 'any records today?'.
+
+    days=0 means since local midnight (i.e. today); otherwise a rolling window.
+    """
+    from app.models.evidence import Evidence
+
+    now = datetime.now()
+    if days <= 0:
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        period_label = f"today ({start.strftime('%Y-%m-%d')})"
+    else:
+        start = now - timedelta(days=days)
+        period_label = f"{start.strftime('%Y-%m-%d %H:%M')} to {now.strftime('%Y-%m-%d %H:%M')}"
+
+    new_cases = db.query(CrimeCase).filter(CrimeCase.created_at >= start).count()
+    new_firs = db.query(FIR).filter(FIR.created_at >= start).count()
+    new_evidence = db.query(Evidence).filter(Evidence.created_at >= start).count()
+    new_criminals = db.query(Criminal).filter(Criminal.created_at >= start).count()
+
+    latest_case = db.query(CrimeCase).order_by(CrimeCase.created_at.desc()).first()
+    latest_fir = db.query(FIR).order_by(FIR.created_at.desc()).first()
+
+    return {
+        "period_label": period_label,
+        "new_cases": new_cases,
+        "new_firs": new_firs,
+        "new_evidence": new_evidence,
+        "new_criminals": new_criminals,
+        "latest_case": (
+            f"{latest_case.case_number} registered {latest_case.created_at.strftime('%Y-%m-%d %H:%M')}"
+            if latest_case and latest_case.created_at else "none on file"
+        ),
+        "latest_fir": (
+            f"{latest_fir.fir_number} filed {latest_fir.created_at.strftime('%Y-%m-%d %H:%M')}"
+            if latest_fir and latest_fir.created_at else "none on file"
+        ),
+        "now": now.strftime("%Y-%m-%d %H:%M"),
+    }
+
 SEASON_MAP = {
     1: "Winter", 2: "Winter", 3: "Summer",
     4: "Summer", 5: "Summer", 6: "Monsoon",
