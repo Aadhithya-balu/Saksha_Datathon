@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 
 const { mockPage, backendUser } = vi.hoisted(() => ({
   mockPage: (label: string) => ({ default: () => <div>{label}</div> }),
@@ -99,6 +99,27 @@ describe('App routing shell', () => {
     await waitFor(() => expect(screen.getByText('OVERVIEW-PAGE')).toBeInTheDocument(), { timeout: 5000 });
     expect(screen.getByTestId('sidebar')).toBeInTheDocument();
     expect(screen.getByTestId('header')).toBeInTheDocument();
+  });
+
+  it('restores the requested page from a deep URL on refresh', async () => {
+    seedSession();
+    window.history.pushState({}, '', '/ai-chat');
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText('AICHAT-PAGE')).toBeInTheDocument(), { timeout: 5000 });
+    expect(window.location.pathname).toBe('/ai-chat');
+  });
+
+  it('restores the matching page when browser history changes', async () => {
+    seedSession();
+    window.history.pushState({}, '', '/ai-chat');
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('AICHAT-PAGE')).toBeInTheDocument(), { timeout: 5000 });
+
+    window.history.pushState({}, '', '/notifications');
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')));
+    await waitFor(() => expect(screen.getByText('NOTIFICATIONS-PAGE')).toBeInTheDocument());
+    expect(window.location.pathname).toBe('/notifications');
   });
 
   it('blocks admins-only modules for unauthorized roles via RoleGuard', async () => {

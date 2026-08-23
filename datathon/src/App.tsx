@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from './store/authStore';
 import { useAuditStore } from './store/auditStore';
 import { useAppStore } from './store/appStore';
@@ -31,15 +31,79 @@ import SettingsHelp from './pages/SettingsHelp';
 import Admin from './pages/Admin';
 import NotFound from './pages/NotFound';
 
+const routeEntries = [
+  ['dashboard', '/dashboard'],
+  ['fir', '/firs'],
+  ['hotspot', '/hotspots'],
+  ['network', '/network'],
+  ['predictive', '/predictions'],
+  ['anomaly', '/anomalies'],
+  ['crime_cases', '/crime-cases'],
+  ['investigation', '/investigation'],
+  ['notifications', '/notifications'],
+  ['sociological', '/sociological'],
+  ['strategic', '/strategic'],
+  ['offenders', '/offenders'],
+  ['criminals', '/criminals'],
+  ['victims', '/victims'],
+  ['reports', '/reports'],
+  ['settings_help', '/settings'],
+  ['admin', '/admin'],
+  ['ai_chat', '/ai-chat'],
+  ['officers', '/officers'],
+  ['evidence', '/evidence'],
+  ['docs', '/docs'],
+] as const;
+
+const tabForPath = (pathname: string): string | null => {
+  const normalizedPath = pathname.replace(/\/+$/, '') || '/';
+  if (normalizedPath === '/' || normalizedPath === '/index.html') return 'dashboard';
+  if (/^\/cases(?:\/|$)/.test(normalizedPath)) return 'crime_cases';
+  return routeEntries.find(([, path]) => path === normalizedPath)?.[0] || null;
+};
+
+const pathForTab = (tab: string): string | null =>
+  routeEntries.find(([entryTab]) => entryTab === tab)?.[1] || null;
+
 function App() {
   const { isAuthenticated, user, isHydrating, initializeSession } = useAuthStore();
   const { addLog } = useAuditStore();
   const { activeTab, setActiveTab, sidebarCollapsed, setSidebarCollapsed, theme } = useAppStore();
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '') || '/';
   const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
-  const isKnownPath = basePath === '/'
-    ? normalizedPath === '/' || normalizedPath === '/index.html'
-    : normalizedPath === basePath || normalizedPath === `${basePath}/index.html`;
+  const appPath = basePath === '/' ? normalizedPath : normalizedPath.slice(basePath.length) || '/';
+  const [currentPath, setCurrentPath] = useState(appPath);
+  const routeTab = currentPath === '/' || currentPath === '/index.html' ? null : tabForPath(currentPath);
+  const isKnownPath = currentPath === '/' || currentPath === '/index.html' || routeTab !== null;
+  const isFirstRoutingEffect = useRef(true);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const nextPath = basePath === '/'
+        ? window.location.pathname
+        : window.location.pathname.slice(basePath.length) || '/';
+      const nextTab = tabForPath(nextPath);
+      setCurrentPath(nextPath);
+      if (nextTab) setActiveTab(nextTab);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [basePath, setActiveTab]);
+
+  useEffect(() => {
+    if (!isKnownPath) return;
+    if (isFirstRoutingEffect.current) {
+      isFirstRoutingEffect.current = false;
+      if (routeTab) setActiveTab(routeTab);
+      if (routeTab || activeTab === 'dashboard') return;
+    }
+    if (routeTab === activeTab) return;
+    const nextPath = pathForTab(activeTab);
+    if (!nextPath || nextPath === currentPath || (currentPath === '/' && activeTab === 'dashboard')) return;
+    window.history.pushState({}, '', `${basePath === '/' ? '' : basePath}${nextPath}`);
+    setCurrentPath(nextPath);
+  }, [activeTab, basePath, currentPath, isKnownPath]);
 
   useEffect(() => {
     void initializeSession();
@@ -123,7 +187,7 @@ function App() {
   }
 
   const renderActivePage = () => {
-    switch (activeTab) {
+    switch (routeTab || activeTab) {
       case 'dashboard': return <Overview />;
       case 'fir': return <RoleGuard path="/firs"><FIRPage /></RoleGuard>;
       case 'hotspot': return <RoleGuard path="/hotspots"><Hotspots /></RoleGuard>;
