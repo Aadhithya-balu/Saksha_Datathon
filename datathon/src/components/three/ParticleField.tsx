@@ -23,16 +23,18 @@ const ParticleField: React.FC = () => {
     let particles: Particle[] = [];
     const count = 45; // density of node particles
     const connectionRadius = 110;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     const init = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       particles = [];
 
       for (let i = 0; i < count; i++) {
         particles.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
+          x: Math.random() * window.innerWidth,
+          y: Math.random() * window.innerHeight,
           vx: (Math.random() - 0.5) * 0.45,
           vy: (Math.random() - 0.5) * 0.45,
           radius: Math.random() * 2 + 1,
@@ -42,15 +44,15 @@ const ParticleField: React.FC = () => {
     };
 
     const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
       // Draw background gradient mesh shift
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      const gradient = ctx.createLinearGradient(0, 0, window.innerWidth, window.innerHeight);
       gradient.addColorStop(0, '#0B1426');
       gradient.addColorStop(0.5, '#0e0f22');
       gradient.addColorStop(1, '#110c26'); // Hint of purple
       ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
       // Draw particles & connect lines
       for (let i = 0; i < particles.length; i++) {
@@ -59,8 +61,8 @@ const ParticleField: React.FC = () => {
         p1.y += p1.vy;
 
         // Bounce boundaries
-        if (p1.x < 0 || p1.x > canvas.width) p1.vx *= -1;
-        if (p1.y < 0 || p1.y > canvas.height) p1.vy *= -1;
+        if (p1.x < 0 || p1.x > window.innerWidth) p1.vx *= -1;
+        if (p1.y < 0 || p1.y > window.innerHeight) p1.vy *= -1;
 
         ctx.beginPath();
         ctx.arc(p1.x, p1.y, p1.radius, 0, Math.PI * 2);

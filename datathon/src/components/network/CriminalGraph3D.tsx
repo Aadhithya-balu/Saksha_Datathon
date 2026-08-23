@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+﻿import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ForceGraph3D from 'react-force-graph-3d';
 import { Search, RotateCcw, AlertTriangle } from 'lucide-react';
 import type { NetworkNodeCategory } from '../../services/api';
+import { useAppStore } from '../../store/appStore';
 
 export interface GraphNode {
   id: string;
@@ -70,6 +71,10 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
   const resolvedGraphData = useMemo(() => graphData ?? { nodes: DEFAULT_NODES, links: DEFAULT_LINKS }, [graphData]);
   const [currentGraphData, setCurrentGraphData] = useState(resolvedGraphData);
   const [hasError, setHasError] = useState(false);
+  const theme = useAppStore((s) => s.theme);
+  const isLight = theme === 'light';
+  const canvasBg = isLight ? '#f7f9fc' : '#080E1B';
+  const linkColor = isLight ? 'rgba(15, 42, 92, 0.28)' : 'rgba(255, 255, 255, 0.12)';
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
@@ -192,25 +197,26 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
       {/* GRAPH VIEWPORT */}
       <div ref={containerRef} className="flex-1 w-full h-full relative min-h-[300px]">
         {hasError ? (
-          <GraphFallback onNodeSelect={onNodeSelect} />
+          <GraphFallback onNodeSelect={onNodeSelect} isLight={isLight} />
         ) : (
-          <ErrorBoundary fallback={<GraphFallback onNodeSelect={onNodeSelect} />} onError={() => setHasError(true)}>
+          <ErrorBoundary fallback={<GraphFallback onNodeSelect={onNodeSelect} isLight={isLight} />} onError={() => setHasError(true)}>
             <ForceGraph3D
               ref={fgRef}
               graphData={currentGraphData}
               width={dimensions.width}
               height={dimensions.height}
-              backgroundColor="#080E1B"
+              backgroundColor={canvasBg}
               showNavInfo={false}
               nodeLabel="name"
               nodeColor={node => getNodeColor(node.category)}
               nodeVal={node => node.category === 'suspect' ? 9 : 6}
               nodeResolution={16}
-              linkColor={() => 'rgba(255, 255, 255, 0.12)'}
+              linkColor={() => linkColor}
               linkDirectionalParticles={1.5}
               linkDirectionalParticleSpeed={0.012}
               linkDirectionalParticleWidth={2}
               linkWidth={0.8}
+              rendererConfig={{ antialias: true }}
               onNodeClick={handleNodeClick}
             />
           </ErrorBoundary>
@@ -257,9 +263,10 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
 // Canvas-based fallback when WebGL crashes
 interface GraphFallbackProps {
   onNodeSelect?: (node: GraphNode) => void;
+  isLight: boolean;
 }
 
-const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect }) => {
+const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, isLight }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
@@ -269,6 +276,14 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect }) => {
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // Render at device pixel ratio for a sharp, HD-quality image
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const LOGICAL_W = 800;
+    const LOGICAL_H = 500;
+    canvas.width = LOGICAL_W * dpr;
+    canvas.height = LOGICAL_H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     let animId: number;
 
@@ -286,7 +301,7 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect }) => {
     };
 
     const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, LOGICAL_W, LOGICAL_H);
 
       // Draw particle flow animation lines
       ctx.lineWidth = 1;
@@ -297,7 +312,7 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect }) => {
           ctx.beginPath();
           ctx.moveTo(start.x, start.y);
           ctx.lineTo(end.x, end.y);
-          ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+          ctx.strokeStyle = isLight ? 'rgba(15, 42, 92, 0.18)' : 'rgba(255,255,255,0.06)';
           ctx.stroke();
 
           // Flow dot tracer
@@ -342,7 +357,7 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect }) => {
 
           // Text labels
           ctx.font = '9px monospace';
-          ctx.fillStyle = selectedNodeId === node.id ? '#ffffff' : '#A8B4CC';
+          ctx.fillStyle = selectedNodeId === node.id ? '#ffffff' : isLight ? '#334155' : '#A8B4CC';
           ctx.fillText(node.name, pt.x - 30, pt.y - size - 4);
         }
       });
@@ -384,7 +399,7 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect }) => {
       cancelAnimationFrame(animId);
       canvas.removeEventListener('click', handleCanvasClick);
     };
-  }, [onNodeSelect, selectedNodeId]);
+  }, [onNodeSelect, selectedNodeId, isLight]);
 
   return (
     <div className="absolute inset-0 w-full h-full flex flex-col justify-between bg-[var(--bg-surface)] p-4 text-center">

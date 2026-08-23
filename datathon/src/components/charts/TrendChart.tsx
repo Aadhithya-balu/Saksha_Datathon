@@ -1,5 +1,7 @@
 import React from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { useAppStore } from '../../store/appStore';
+import { useThemePalettes, tooltipStyle } from '../../theme';
 
 interface TrendDataPoint {
   month: string;
@@ -12,59 +14,58 @@ interface TrendChartProps {
 }
 
 export const TrendChart: React.FC<TrendChartProps> = ({ data = [] }) => {
+  const theme = useAppStore((s) => s.theme);
+  const palette = useThemePalettes();
+  const c = palette.chart;
   const maxY = Math.max(...data.map((item) => item.totalCrimes), 1);
 
   return (
-    <div className="w-full h-full bg-[var(--bg-secondary)]/80 border border-[var(--border-primary)] p-4 rounded-lg flex flex-col justify-between select-none relative">
-      <div className="flex justify-between items-center mb-3 font-mono">
-        <h4 className="text-[11.5px] font-bold text-[var(--text-primary)] uppercase tracking-wider">Crime Trend</h4>
-        <div className="flex items-center gap-3 text-[9px]">
+    <div className="sk-panel sk-panel-pad w-full h-full flex flex-col">
+      <div className="flex justify-between items-center mb-4">
+        <h4 className="sk-panel-title">Crime Trend</h4>
+        <div className="flex items-center gap-4 text-xs text-[var(--text-secondary)]">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-1.5 rounded-full bg-[var(--accent-purple)]" />
-            <span className="text-[var(--text-secondary)] uppercase">Total Crimes</span>
+            <span className="w-2.5 h-[3px] rounded-full" style={{ backgroundColor: c.series[4] }} />
+            <span>Total Cases</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-1.5 rounded-full bg-[var(--accent-teal)]" />
-            <span className="text-[var(--text-secondary)] uppercase">Solved Crimes</span>
+            <span className="w-2.5 h-[3px] rounded-full" style={{ backgroundColor: c.series[1] }} />
+            <span>Solved</span>
           </div>
         </div>
       </div>
 
-      <div className="flex-grow w-full min-h-[170px] text-[8.5px] font-mono">
+      <div className="flex-grow w-full min-h-[170px]">
         {data.length ? (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+            <AreaChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
               <defs>
                 <linearGradient id="totalCrimesGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6C43CC" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#6C43CC" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor={c.series[4]} stopOpacity={0.22} />
+                  <stop offset="95%" stopColor={c.series[4]} stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="solvedCrimesGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#0E9E78" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#0E9E78" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor={c.series[1]} stopOpacity={0.22} />
+                  <stop offset="95%" stopColor={c.series[1]} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-              <XAxis dataKey="month" stroke="#A8B4CC" tickLine={false} axisLine={false} dy={6} style={{ fill: 'var(--text-primary)', fontSize: '11px', fontWeight: 'bold' }} />
-              <YAxis stroke="#A8B4CC" tickLine={false} axisLine={false} dx={-6} domain={[0, Math.ceil(maxY * 1.2)]} style={{ fill: 'var(--text-primary)', fontSize: '11px', fontWeight: 'bold' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(11, 20, 38, 0.96)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  borderRadius: '6px',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: '11px',
-                  color: '#E8EDF5',
-                }}
-                cursor={{ stroke: 'rgba(255,255,255,0.08)' }}
+              <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} />
+              <XAxis dataKey="month" tickLine={false} axisLine={false} dy={6} tick={{ fill: c.axis, fontSize: 11.5 }} />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                dx={-4}
+                domain={[0, Math.ceil(maxY * 1.2)]}
+                tick={{ fill: c.axis, fontSize: 11.5 }}
               />
-              <Area type="monotone" dataKey="totalCrimes" stroke="#6C43CC" fillOpacity={1} fill="url(#totalCrimesGrad)" strokeWidth={2} dot={{ r: 3, fill: '#6C43CC', strokeWidth: 0 }} activeDot={{ r: 5, strokeWidth: 0 }} name="Total Crimes" />
-              <Area type="monotone" dataKey="solvedCrimes" stroke="#0E9E78" fillOpacity={1} fill="url(#solvedCrimesGrad)" strokeWidth={2} dot={{ r: 3, fill: '#0E9E78', strokeWidth: 0 }} activeDot={{ r: 5, strokeWidth: 0 }} name="Solved Crimes" />
+              <Tooltip contentStyle={tooltipStyle(theme)} cursor={{ stroke: c.axis, strokeDasharray: '3 3', opacity: 0.4 }} />
+              <Area type="monotone" dataKey="totalCrimes" stroke={c.series[4]} fill="url(#totalCrimesGrad)" strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2 }} name="Total Cases" />
+              <Area type="monotone" dataKey="solvedCrimes" stroke={c.series[1]} fill="url(#solvedCrimesGrad)" strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2 }} name="Solved" />
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-full flex items-center justify-center text-[10px] text-[var(--text-muted)] uppercase tracking-wider border border-dashed border-[var(--border-primary)] rounded">
-            No backend trend rows available
+          <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)] border border-dashed border-[var(--border-primary)] rounded-lg">
+            No trend data available for the selected filters
           </div>
         )}
       </div>
