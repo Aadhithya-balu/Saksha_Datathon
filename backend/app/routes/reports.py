@@ -157,7 +157,8 @@ def _report_query(
             query = query.join(Location, CrimeCase.location_id == Location.id, isouter=True).filter(Location.district == district)
         query = _apply_date_range(query, CrimeCase.occurred_at, date_from, date_to)
         headers = ["case_number", "category", "district", "station", "status", "priority", "progress", "occurred_at", "reported_at", "assigned_officer", "mo_tags", "description"]
-        def mapper(item): {
+        def mapper(item):
+            return {
             "case_number": item.case_number,
             "category": item.category.name if item.category else "",
             "district": item.location.district if item.location else "",
@@ -180,7 +181,8 @@ def _report_query(
         if district:
             query = query.filter(Officer.district == district)
         headers = ["badge_number", "name", "rank", "designation", "district", "station", "status", "phone", "email"]
-        def mapper(item): {
+        def mapper(item):
+            return {
             "badge_number": item.badge_number,
             "name": item.name,
             "rank": item.rank or "",
@@ -198,7 +200,8 @@ def _report_query(
         if status:
             query = query.filter(Criminal.status == status)
         headers = ["full_name", "aliases", "gender", "date_of_birth", "status", "address", "identifying_marks", "mo_summary"]
-        def mapper(item): {
+        def mapper(item):
+            return {
             "full_name": item.full_name,
             "aliases": item.aliases or "",
             "gender": item.gender or "",
@@ -216,7 +219,8 @@ def _report_query(
             query = query.filter(Evidence.status == status)
         query = _apply_date_range(query, Evidence.created_at, date_from, date_to)
         headers = ["title", "case_number", "evidence_type", "status", "assigned_to", "created_by", "storage_path", "created_at", "description"]
-        def mapper(item): {
+        def mapper(item):
+            return {
             "title": item.title,
             "case_number": item.crime_case.case_number if item.crime_case else "",
             "evidence_type": item.evidence_type,
