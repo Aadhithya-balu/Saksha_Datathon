@@ -143,7 +143,6 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
     if (pin.length === 6 && status === 'idle') {
       void submit();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pin]);
 
   useEffect(() => {
@@ -180,7 +179,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
     pinInputRef.current?.focus();
   }, []);
 
-  const useProfile = (profile: DemoProfile, index: number) => {
+  const applyProfile = (profile: DemoProfile, index: number) => {
     if (statusRef.current !== 'idle') return;
     setBadgeId(profile.badge);
     setPin('');
@@ -463,7 +462,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
                 key={profile.badge}
                 type="button"
                 disabled={busy}
-                onClick={() => useProfile(profile, index)}
+                onClick={() => applyProfile(profile, index)}
                 aria-label={`Use demo profile ${profile.title}, ${profile.badge} — ${profile.rank}`}
                 title={`${profile.title} · ${profile.rank}`}
                 className="flex min-w-0 cursor-pointer flex-col items-center gap-1.5 rounded-xl border px-1 py-2 transition-all duration-150 hover:-translate-y-px hover:border-[color:var(--lp-border-strong)] hover:bg-[color:var(--lp-accent-soft)] disabled:cursor-not-allowed disabled:opacity-40"

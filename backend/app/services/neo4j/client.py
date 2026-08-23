@@ -12,7 +12,6 @@ from app.models.crime import CrimeCase
 from app.models.criminal import Criminal
 from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
 from app.models.location import Location
-from app.models.victim import Victim
 
 
 def is_neo4j_available() -> bool:

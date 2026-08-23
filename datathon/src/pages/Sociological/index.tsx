@@ -6,7 +6,7 @@ import {
 import { motion } from 'framer-motion';
 import {
   Users, MapPin, TrendingUp, Brain, Clock, AlertTriangle, Activity, Building2,
-  ChevronDown, ChevronUp, Info, Loader2,
+  ChevronDown, ChevronUp, Loader2,
 } from 'lucide-react';
 import {
   getSociologicalDemographics, getSociologicalUrbanRural, getSociologicalSocioeconomic,

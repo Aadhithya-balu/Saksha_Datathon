@@ -8,13 +8,10 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import func, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.audit_log import AuditLog
-from app.models.crime import CrimeCase
-from app.models.evidence import Evidence
-from app.models.fir import FIR
 from app.models.notification import Notification
 from app.schemas.notification import ActivityEvent, ActivityFeedOut
 

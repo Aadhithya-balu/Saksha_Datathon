@@ -366,3 +366,30 @@ Please be respectful, collaborative, and constructive in all interactions.
 Thank you for contributing to Saksha.
 
 Your contributions help build a modern AI-powered Crime Intelligence Platform for smarter policing and public safety.
+
+## Local CI parity
+
+Run the same checks locally that GitHub Actions runs on your PR:
+
+```bash
+# Frontend (datathon/)
+cd datathon
+npm ci
+npm run lint          # ESLint - zero warnings allowed
+npm run typecheck     # tsc --noEmit
+npm test              # Vitest unit/component tests
+npm run build         # production build
+
+# Backend (backend/)
+cd backend
+pip install -r requirements.txt -r requirements-dev.txt
+python -m compileall app tests -q
+ruff check .          # config in ruff.toml
+DATABASE_URL="sqlite:///:memory:" JWT_SECRET_KEY="ci-test-secret" APP_DEBUG=false pytest tests -q
+
+# Repo-wide
+python scripts/check_secrets.py       # secret scan
+python scripts/check_spa_routing.py   # after npm run build
+```
+
+CI (`ci.yml`) fails if any of these fail, and includes a merge-compatibility job that dry-run merges your branch into `main` to catch conflicts before GitHub does.

@@ -11,11 +11,9 @@ Covers:
 """
 from __future__ import annotations
 
-import json
 import os
 import uuid
-from datetime import date, datetime, timezone
-from pathlib import Path
+from datetime import date
 
 import numpy as np
 import pytest
@@ -62,8 +60,6 @@ class TestFeatureExtractor:
     def test_extract_for_criminal_no_firs(self, db_session):
         """Criminal with no FIR links should produce a zero-heavy vector."""
         from app.models.criminal import Criminal
-        from app.models.role import Role
-        from app.models.user import User
 
         criminal = Criminal(
             full_name="Test Subject",
@@ -335,7 +331,6 @@ class TestCriminalAPIEndpoints:
         return resp.json()["access_token"]
 
     def test_risk_endpoint_returns_score(self, client, db_session, tmp_path, monkeypatch):
-        from app.ai import inference as inf_pkg
         import app.ai.inference.criminal as inf_mod
         from app.ai.pipelines.criminal import train as train_module
 

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, Cell, PieChart, Pie,
+  LineChart, Line, Cell,
 } from 'recharts';
 import { motion } from 'framer-motion';
 import {
   Shield, TrendingUp, TrendingDown, Minus, AlertTriangle, MapPin,
   Users, FileText, Target, Brain, Clock, Activity, Loader2, ChevronRight,
-  Zap, Crosshair, Radio,
+  Zap, Radio,
 } from 'lucide-react';
 import {
   getStrategicBriefing, getDailySummary, getResourceAllocation,

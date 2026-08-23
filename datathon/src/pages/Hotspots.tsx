@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import KarnatakaMap from '../components/map/KarnatakaMap';
-import { Compass, Download, Loader2 } from 'lucide-react';
+import { Compass, Download } from 'lucide-react';
 import { downloadSecureDossier } from '../utils/downloader';
 import { useAuditStore } from '../store/auditStore';
 import { useAuthStore } from '../store/authStore';
@@ -26,7 +26,7 @@ export const Hotspots: React.FC = () => {
           setDistrictMetrics(buildDistrictMetrics(districtResponse, riskResponse, hotspotResponse.hotspots));
         }
       })
-      .catch((err) => {
+      .catch(() => {
         if (isMounted) {
           setHotspots([]);
           setDistrictMetrics({});

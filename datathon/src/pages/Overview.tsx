@@ -42,8 +42,8 @@ import {
   type OfficerRecord,
 } from '../services/api';
 import { 
-  ShieldAlert, Eye, Compass, Cpu, 
-  MapPin, Shield, Calendar, Sparkles, 
+  ShieldAlert, 
+  MapPin, Shield, Sparkles, 
   UserMinus, Settings, Users, AlertCircle, FileText, PlusCircle, Bookmark, Compass as NavIcon,
   Clock, RefreshCw
 } from 'lucide-react';

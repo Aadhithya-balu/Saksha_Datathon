@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNetwork } from '../../hooks/useNetwork';
 import GraphExplorerToolbar from '../../components/network/GraphExplorerToolbar';
 import CriminalGraph3D from '../../components/network/CriminalGraph3D';
-import type { GraphNode } from '../../components/network/CriminalGraph3D';
 import NodeDetailPanel from '../../components/network/NodeDetailPanel';
 import ShortestPathPanel from '../../components/network/ShortestPathPanel';
 import GangNetworkView from '../../components/network/GangNetworkView';

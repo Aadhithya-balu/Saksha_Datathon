@@ -1,4 +1,6 @@
-import sys, os, time
+import sys
+import os
+import time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from _db_config import CONN
 import psycopg2
@@ -200,14 +202,14 @@ print("\nFinal row counts:", flush=True)
 for t in HIST:
     try:
         print(f"  {t}: {count_rows(cur, t)} rows", flush=True)
-    except:
+    except Exception:
         pass
 
 print("\nOperational tables:", flush=True)
 for t in ['users','crime_cases','criminals','victims','firs','notifications','officers','evidence','roles']:
     try:
         print(f"  {t}: {count_rows(cur, t)} rows", flush=True)
-    except:
+    except Exception:
         pass
 
 cur.close()

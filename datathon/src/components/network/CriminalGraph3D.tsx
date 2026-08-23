@@ -1,16 +1,20 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ForceGraph3D from 'react-force-graph-3d';
-import * as THREE from 'three';
-import { Search, Eye, ZoomIn, ZoomOut, RotateCcw, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Search, RotateCcw, AlertTriangle } from 'lucide-react';
+import type { NetworkNodeCategory } from '../../services/api';
 
 export interface GraphNode {
   id: string;
   name: string;
-  category: 'suspect' | 'offender' | 'location' | 'victim';
+  category: NetworkNodeCategory;
   riskScore: number;
   details: string;
   casesCount: number;
   phone?: string;
+  /** Spatial coordinates assigned by the force-graph simulation at render time. */
+  x?: number;
+  y?: number;
+  z?: number;
 }
 
 export interface GraphLink {
@@ -74,7 +78,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
     if (!containerRef.current) return;
     
     const resizeObserver = new ResizeObserver((entries) => {
-      for (let entry of entries) {
+      for (const entry of entries) {
         const { width, height } = entry.contentRect;
         setDimensions({
           width: width || 600,
@@ -110,7 +114,6 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
       // Highlight coordinates by focusing camera on the node in 3D
       if (fgRef.current && !hasError) {
         const distance = 80;
-        const node3D: any = fgRef.current.scene().getObjectByName(matchedNode.id) || matchedNode;
         if (fgRef.current.cameraPosition) {
           fgRef.current.cameraPosition(
             { x: matchedNode.x || 0, y: (matchedNode.y || 0) + 15, z: (matchedNode.z || 0) + distance },
@@ -268,10 +271,6 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect }) => {
     if (!ctx) return;
 
     let animId: number;
-    
-    // Fallback simulated layout points coordinates representing relation matrix
-    const scaleX = (val: number) => 80 + val * 6.4;
-    const scaleY = (val: number) => 80 + val * 4.4;
 
     const mockCoords: Record<string, { x: number, y: number }> = {
       'node-1': { x: 300, y: 180 },

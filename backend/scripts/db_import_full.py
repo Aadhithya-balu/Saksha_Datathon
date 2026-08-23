@@ -115,7 +115,7 @@ def main():
             cur.execute(f'SELECT COUNT(*) FROM "{t}"')
             cnt = cur.fetchone()[0]
             log(f"  {t}: {cnt} rows")
-        except:
+        except Exception:
             log(f"  {t}: ERROR")
 
     cur.execute("SELECT pg_size_pretty(pg_database_size('postgres'))")

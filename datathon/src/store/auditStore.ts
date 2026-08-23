@@ -1,11 +1,24 @@
 import { create } from 'zustand';
 
+export type AuditActionType =
+  | 'PAGE_VIEW'
+  | 'SEARCH'
+  | 'EXPORT'
+  | 'AUTH'
+  | 'ESCALATION'
+  | 'REVIEW'
+  | 'CREATE'
+  | 'UPDATE'
+  | 'DELETE'
+  | 'UPLOAD'
+  | 'DOWNLOAD';
+
 export interface AuditLogEntry {
   id: string;
   timestamp: string;
   officerName: string;
   badgeId: string;
-  actionType: 'PAGE_VIEW' | 'SEARCH' | 'EXPORT' | 'AUTH' | 'ESCALATION' | 'REVIEW';
+  actionType: AuditActionType;
   details: string;
   ipAddress: string;
 }

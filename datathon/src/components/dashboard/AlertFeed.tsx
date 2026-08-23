@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAlertStore } from '../../store/alertStore';
 import type { CrimeAlert } from '../../store/alertStore';
-import { AlertCircle, Eye, ShieldAlert, CheckCircle, Navigation } from 'lucide-react';
+import { AlertCircle, Eye, ShieldAlert } from 'lucide-react';
 import * as THREE from 'three';
 
 interface AlertFeedProps {

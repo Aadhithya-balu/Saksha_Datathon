@@ -12,4 +12,25 @@ export default defineConfig({
       },
     },
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+    css: false,
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary', 'lcov'],
+      reportsDirectory: './coverage',
+      include: [
+        'src/services/api.ts',
+        'src/store/*.ts',
+        'src/hooks/*.ts',
+        'src/components/auth/**',
+        'src/components/layout/**',
+        'src/App.tsx',
+      ],
+      exclude: ['src/test/setup.ts'],
+    },
+  },
 })

@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
 import { SessionTimer } from '../auth/SessionTimer';
 import {
@@ -44,8 +43,7 @@ const pageLabels: Record<string, string> = {
 };
 
 export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarCollapsed }) => {
-  const { user } = useAuthStore();
-  const { theme, toggleTheme, activeTab, setCommandPaletteOpen, sidebarCollapsed: storeCollapsed, setSidebarCollapsed: storeSetCollapsed } = useAppStore();
+  const { theme, toggleTheme, activeTab, setCommandPaletteOpen } = useAppStore();
   const [emulatorActive, setEmulatorActive] = React.useState(isEmulatorActive);
   const [systime, setSystime] = React.useState(new Date().toLocaleTimeString());
 

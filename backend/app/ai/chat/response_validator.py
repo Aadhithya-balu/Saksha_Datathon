@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from app.ai.chat.backend_fetcher import BackendResult
 
@@ -24,7 +23,6 @@ class ResponseValidator:
         if not successful:
             return response
 
-        known_names = self._collect_known_names(successful)
         known_ids = self._collect_known_ids(successful)
         response_ids = self._extract_response_ids(response)
 
@@ -107,3 +105,4 @@ class ResponseValidator:
             if clean in kid.lower() or kid.lower() in clean:
                 return True
         return False
+

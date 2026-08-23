@@ -1,7 +1,6 @@
 import os
 import uuid
 import json
-from datetime import datetime
 from typing import Any
 from fastapi import UploadFile, HTTPException
 from sqlalchemy.orm import Session
@@ -15,9 +14,8 @@ from app.models.evidence_metadata import EvidenceMetadata
 from app.models.evidence_timeline import EvidenceTimeline
 from app.models.evidence_assignment import EvidenceAssignment
 from app.models.chain_of_custody import ChainOfCustody
-from app.models.evidence_ai_summary import EvidenceAISummary
 from app.models.user import User
-from app.core.config import settings, ROOT_DIR
+from app.core.config import ROOT_DIR
 
 UPLOAD_DIR = Path(ROOT_DIR) / "backend" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -112,7 +110,7 @@ def save_upload_file(upload_file: UploadFile, evidence_id: uuid.UUID) -> str:
                 buffer.write(chunk)
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Failed to save uploaded file")
             
     return str(file_path)
@@ -145,8 +143,10 @@ def generate_ai_summary(evidence: Evidence, metadata: EvidenceMetadata, timeline
         summary += "### Assignment History\n"
         for a in assignments:
             status_text = a.status
-            if a.completed_at: status_text = "Completed"
-            elif a.accepted_at: status_text = "In Progress"
+            if a.completed_at:
+                status_text = 'Completed'
+            elif a.accepted_at:
+                status_text = 'In Progress'
             summary += f"- Assigned to UUID {a.assigned_to} (Status: {status_text})\n"
         summary += "\n"
         

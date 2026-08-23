@@ -9,8 +9,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
-from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import JSON, Boolean, ForeignKey, String, Text, asc, desc, or_
+from pydantic import BaseModel, Field
+from sqlalchemy import ForeignKey, String, Text, asc, desc, or_
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, Session, mapped_column

@@ -145,8 +145,7 @@ export const CorrelationChart: React.FC = () => {
             return (
               <g 
                 key={i}
-                onMouseEnter={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
+                onMouseEnter={() => {
                   setTooltip({
                     x: x + 10,
                     y: y - 25,

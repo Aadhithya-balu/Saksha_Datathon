@@ -3,7 +3,7 @@ import { useMapStore, DISTRICT_COORDS } from '../../store/mapStore';
 import type { HotspotPoint } from '../../services/api';
 import type { DistrictInfo } from '../../store/mapStore';
 import TimeSlider from './TimeSlider';
-import { Shield, MapPin, Eye, Info, X, TrendingUp, TrendingDown, Users, AlertTriangle } from 'lucide-react';
+import { Shield, X, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { downloadSecureDossier } from '../../utils/downloader';
 import { useAuditStore } from '../../store/auditStore';
@@ -51,35 +51,6 @@ const DISTRICT_BOUNDARIES: Record<string, [number, number][]> = {
   ]
 };
 
-// Generates time-dependent hotspots
-const getHotspotsForHour = (hour: number) => {
-  const baseHotspots = [
-    { name: 'Bengaluru Commercial Hub', lat: 12.9716, lng: 77.5946, weight: 85, type: 'Cyber Fraud' },
-    { name: 'Bengaluru Tech Corridor', lat: 12.9141, lng: 77.6413, weight: 70, type: 'Online Extortion' },
-    { name: 'Mysuru Palace Gate', lat: 12.3021, lng: 76.6531, weight: 45, type: 'Pickpocketing' },
-    { name: 'Kalaburagi Outskirts', lat: 17.3350, lng: 76.8380, weight: 72, type: 'Land disputes' },
-    { name: 'Belagavi Checkpoint', lat: 15.8600, lng: 74.5100, weight: 62, type: 'Smuggling' },
-    { name: 'Ballari Mines Sector B', lat: 15.1480, lng: 76.9250, weight: 80, type: 'Mineral Theft' },
-    { name: 'Mangaluru Harbor Port', lat: 12.9050, lng: 74.8350, weight: 68, type: 'Narcotics Transit' },
-  ];
-
-  // Adjust hotspot weights depending on the hour (crime spikes late evening & night)
-  return baseHotspots.map(hs => {
-    let multiplier = 1.0;
-    if (hour >= 18 || hour <= 2) {
-      // Night surge
-      multiplier = hs.type === 'Cyber Fraud' ? 0.7 : 1.35;
-    } else if (hour >= 8 && hour <= 16) {
-      // Daytime cyber surge
-      multiplier = hs.type === 'Cyber Fraud' ? 1.4 : 0.6;
-    }
-    return {
-      ...hs,
-      weight: Math.min(100, Math.round(hs.weight * multiplier))
-    };
-  });
-};
-
 interface KarnatakaMapProps {
   hotspots?: HotspotPoint[];
   districtDataOverride?: Record<string, DistrictInfo>;
@@ -87,14 +58,11 @@ interface KarnatakaMapProps {
 
 export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], districtDataOverride }) => {
   const {
-    viewState,
     selectedDistrict,
-    timeOfDay,
     layers,
     districtData,
     setSelectedDistrict,
-    toggleLayer,
-    flyToDistrict
+    toggleLayer
   } = useMapStore();
 
   const { user } = useAuthStore();
@@ -530,5 +498,4 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ hotspots = [], distr
 };
 
 export default KarnatakaMap;
-export { projectLonX, projectLatY };
 

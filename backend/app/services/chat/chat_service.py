@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator, Iterable
+from typing import AsyncIterator
 from sqlalchemy.orm import Session
 
 from app.ai.models.rag.chat_model import InvestigationChatModel, ChatResponse

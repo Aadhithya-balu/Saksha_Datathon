@@ -342,7 +342,7 @@ export const AIChat: React.FC = () => {
   const followUp = (s: string) => { setInput(s); setTimeout(() => send(s), 50); };
 
   const copy = async (t: string, id: string) => {
-    try { await navigator.clipboard.writeText(t); } catch {}
+    try { await navigator.clipboard.writeText(t); } catch { /* clipboard unavailable */ }
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
   };

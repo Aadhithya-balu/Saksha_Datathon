@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, FileText, UserCheck, AlertTriangle, Shield, RefreshCw, Search } from 'lucide-react';
 import { getActivityFeed } from '../../services/api';
-import type { ActivityEvent, ActivityFeedResponse } from '../../services/api';
+import type { ActivityFeedResponse } from '../../services/api';
 
 interface ActivityFeedProps {
   limit?: number;

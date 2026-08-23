@@ -72,7 +72,7 @@ export const FIRTimeline: React.FC<FIRTimelineProps> = ({ fir }) => {
       events.push({
         title: `Evidence Logged: ${ev.evidence_type.toUpperCase()}`,
         date: evDate,
-        description: `${ev.description || 'Crime evidence logged.'} Collected by user badge: [${ev.collected_by || 'IO'}]. Chain of custody: ${ev.chain_of_custody || 'Logged.'}`,
+        description: `${ev.description || 'Crime evidence logged.'} Collected by: [${ev.created_by || 'IO'}].`,
         icon: <FileText className="w-3.5 h-3.5 text-black" />,
         color: 'bg-emerald-400 shadow-emerald-400/30'
       });

@@ -1,0 +1,4 @@
+# Development / CI-only dependencies (not required at runtime).
+# Install with: pip install -r requirements-dev.txt
+ruff==0.8.4
+pip-audit==2.22.0

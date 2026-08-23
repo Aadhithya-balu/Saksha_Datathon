@@ -9,9 +9,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 
-from app.ai.features.criminal.extractor import FEATURE_NAMES, extract_all, extract_for_criminal
+from app.ai.features.criminal.extractor import extract_for_criminal
 from app.ai.models.criminal.clustering import CriminalClusteringModel
 from app.ai.models.criminal.repeat_offender import RepeatOffenderPredictor
 from app.ai.models.criminal.risk_scorer import CriminalRiskScorer

@@ -9,7 +9,6 @@ from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundException
-from app.schemas.common import PaginatedResponse
 
 ModelT = TypeVar("ModelT")
 

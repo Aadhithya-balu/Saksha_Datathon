@@ -19,12 +19,9 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 from app.ai.features.risk.feature_engineering import (
-    FORECAST_FEATURE_COLUMNS,
-    RISK_FEATURE_COLUMNS,
     build_forecast_features,
     build_risk_features,
 )

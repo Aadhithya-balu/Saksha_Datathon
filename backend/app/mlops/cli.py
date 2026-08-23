@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import sys
 
 from .pipeline import run_scheduled_retraining

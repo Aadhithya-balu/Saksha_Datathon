@@ -1,6 +1,6 @@
 import React from 'react';
 import type { GraphNode } from './CriminalGraph3D';
-import { User, ShieldAlert, Phone, MapPin, Briefcase, Plus, X, Heart, Link2 } from 'lucide-react';
+import { User, ShieldAlert, Phone, MapPin, Briefcase, X, Link2 } from 'lucide-react';
 import { downloadSecureDossier } from '../../utils/downloader';
 import { useAuditStore } from '../../store/auditStore';
 import { useAuthStore } from '../../store/authStore';

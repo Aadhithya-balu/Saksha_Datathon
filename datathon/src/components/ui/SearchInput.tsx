@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { Search, X } from 'lucide-react';
 
 interface SearchInputProps {

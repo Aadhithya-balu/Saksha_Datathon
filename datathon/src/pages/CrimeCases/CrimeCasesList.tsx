@@ -2,12 +2,11 @@ import React, { useEffect, useState } from 'react';
 import {
   getCrimeCases,
   deleteCrimeCase,
-  getUnassignedOfficers,
   getCrimeCategories,
   getLocationsList,
 } from '../../services/api';
-import type { CrimeCaseDetailRecord, OfficerWithUserRecord } from '../../services/api';
-import { Search, Plus, Eye, Edit2, Trash2, ShieldAlert, CheckCircle, Clock } from 'lucide-react';
+import type { CrimeCaseDetailRecord } from '../../services/api';
+import { Search, Plus, Eye, Edit2, Trash2, ShieldAlert } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useRealtimeStore } from '../../store/realtimeStore';
 
@@ -24,7 +23,6 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
 }) => {
   const user = useAuthStore((state) => state.user);
   const [cases, setCases] = useState<CrimeCaseDetailRecord[]>([]);
-  const [officers, setOfficers] = useState<OfficerWithUserRecord[]>([]);
   const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
   const [districts, setDistricts] = useState<string[]>([]);
   const [search, setSearch] = useState('');
@@ -54,9 +52,6 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
 
   useEffect(() => {
     fetchCases();
-    getUnassignedOfficers()
-      .then(setOfficers)
-      .catch((err) => console.error('Error fetching officers:', err));
   }, [search, statusFilter, categoryFilter, districtFilter, priorityFilter]);
 
   // Load filter dropdown options once

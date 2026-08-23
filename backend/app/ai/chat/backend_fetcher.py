@@ -1,9 +1,8 @@
 """Backend fetcher — executes query plans against PostgreSQL, Neo4j, and ML services."""
 from __future__ import annotations
 
-import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -70,7 +69,7 @@ class BackendFetcher:
                 source=call.service, data_type=call.method,
                 content="Unknown service", success=False,
             )
-        except Exception as exc:
+        except Exception:
             return BackendResult(
                 source=call.service, data_type=call.method,
                 content="", success=False, error="Service call failed",
@@ -427,7 +426,6 @@ class BackendFetcher:
     def _ml_hotspot_predict(self, params: dict) -> BackendResult:
         from app.ai.inference.hotspot import predict as hotspot_predict
         from datetime import datetime
-        district = params.get("district", "Bengaluru Urban")
         try:
             result = hotspot_predict([{
                 "CaseMasterID": f"CHAT-{datetime.now().strftime('%Y%m%d%H%M%S')}",
@@ -624,3 +622,4 @@ class BackendFetcher:
         if c.identifying_marks:
             parts.append(f"Marks: {c.identifying_marks}")
         return " | ".join(parts)
+

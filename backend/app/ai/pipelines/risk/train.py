@@ -18,9 +18,7 @@ from __future__ import annotations
 
 import logging
 
-import numpy as np
 import pandas as pd
-from sklearn.model_selection import TimeSeriesSplit
 from sqlalchemy import create_engine
 
 from app.ai.features.risk.feature_engineering import (

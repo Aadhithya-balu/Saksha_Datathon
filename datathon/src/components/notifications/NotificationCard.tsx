@@ -1,12 +1,10 @@
 import React from 'react';
 import {
-  AlertTriangle, AlertCircle, Info, Clock, CheckCheck, CheckCircle,
-  Trash2, Reply, Archive, User, Building, FileText, ExternalLink,
+  AlertTriangle, AlertCircle, Info, Clock, CheckCircle, Archive, User, Building, FileText,
   Radio, Eye,
 } from 'lucide-react';
 import { useNotificationStore } from '../../store/notificationStore';
 import type { NotificationRecord } from '../../services/api';
-import { useAuthStore } from '../../store/authStore';
 
 interface NotificationCardProps {
   notification: NotificationRecord;
@@ -46,10 +44,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export const NotificationCard: React.FC<NotificationCardProps> = ({ notification, onSelect }) => {
   const { markRead, acknowledge, dismiss } = useNotificationStore();
-  const { user } = useAuthStore();
   const n = notification;
   const priorityColor = PRIORITY_COLORS[n.priority] || PRIORITY_COLORS.medium;
-  const isAdmin = user?.role === 'SCRB';
 
   const getPriorityIcon = () => {
     switch (n.priority) {

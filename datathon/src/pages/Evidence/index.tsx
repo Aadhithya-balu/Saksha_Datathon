@@ -4,7 +4,6 @@ import { Search, Plus, Filter, HardDrive, FileText, UploadCloud, Cpu, Download, 
 import { apiRequest, chatQueryStream } from '../../services/api';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 import { MarkdownRenderer } from '../../components/chat/MarkdownRenderer';
-import { useAppStore } from '../../store/appStore';
 
 interface Evidence {
   id: string;
@@ -34,7 +33,6 @@ const EvidencePage: React.FC = () => {
   });
   const [evidenceDetail, setEvidenceDetail] = useState<any>(null);
   const [assigneeId, setAssigneeId] = useState('');
-  const { setActiveTab } = useAppStore();
 
   // Inline AI Chat state
   const [aiChatOpen, setAiChatOpen] = useState(false);
@@ -191,7 +189,7 @@ const EvidencePage: React.FC = () => {
       });
       if (!res.ok) {
         let msg = res.statusText;
-        try { const d = await res.json(); msg = d.detail || d.message || msg; } catch {}
+        try { const d = await res.json(); msg = d.detail || d.message || msg; } catch { /* non-JSON error body */ }
         throw new Error(msg || 'Failed to download file');
       }
       const blob = await res.blob();
@@ -351,7 +349,11 @@ const EvidencePage: React.FC = () => {
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${item.status === 'Analyzed' ? 'bg-[#0E9E78]/20 text-[#0E9E78]' : 'bg-[#D4820A]/20 text-[#D4820A]'}`}>
                     {item.status}
                   </span>
-                  {item.storage_path && <HardDrive className="w-4 h-4 text-[#1E6FD9]" title="File Attached" />}
+                  {item.storage_path && (
+                    <span title="File Attached" className="inline-flex">
+                      <HardDrive className="w-4 h-4 text-[#1E6FD9]" />
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

@@ -3,8 +3,8 @@ import { chatQueryStream, type ChatCitation } from '../../services/api';
 import { MarkdownRenderer } from '../chat/MarkdownRenderer';
 import { CitationBadge } from '../chat/CitationBadge';
 import {
-  Sparkles, X, Send, Copy, Check, FileText, RefreshCw,
-  MessageSquare, ChevronRight, Search, Database, Brain, Zap
+  Sparkles, X, Send, Copy, Check, FileText,
+  MessageSquare, ChevronRight, Search, Database, Brain
 } from 'lucide-react';
 
 interface Message {
@@ -145,14 +145,6 @@ export const GlobalAIAssistant: React.FC = () => {
     } finally {
       setIsLoading(false);
       setStreamStatus('');
-    }
-  };
-
-  const handleRetry = async () => {
-    const lastUserMsg = [...messages].reverse().find(m => m.sender === 'user');
-    if (lastUserMsg) {
-      setMessages(prev => prev.filter(m => m.sender === 'user'));
-      await handleSendMessage(lastUserMsg.text);
     }
   };
 

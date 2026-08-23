@@ -8,14 +8,10 @@ Handles automatic SQL fallback when Neo4j is offline or pending sync.
 
 from collections import Counter, defaultdict, deque
 from datetime import datetime
-from typing import Any
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.crime import CrimeCase
-from app.models.criminal import Criminal
 from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
-from app.models.location import Location
-from app.models.victim import Victim
 from app.models.network import (
     AIGraphInsight,
     CentralityMetric,

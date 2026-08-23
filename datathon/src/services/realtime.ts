@@ -98,7 +98,8 @@ export function connectRealtime(handlers: RealtimeHandlers): () => void {
         }
       };
 
-      while (true) {
+      // Read frames until the server closes the stream.
+      for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });

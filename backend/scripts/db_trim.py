@@ -4,7 +4,11 @@ sample of 5 000 CrimeCase rows and cascading to all children.
 
 Run once:  py -3.12 scripts/db_trim.py
 """
-import os, sys, time, json, csv
+import os
+import sys
+import time
+import json
+import csv
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from _db_config import CONN
 import psycopg2

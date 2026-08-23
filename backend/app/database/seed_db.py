@@ -5,8 +5,6 @@ officers, victims, and cases for a production-grade demo.
 """
 import random
 from datetime import date, datetime, timedelta
-from math import cos, sin
-from random import uniform
 
 from app.core.security import hash_password
 from app.database.postgres import SessionLocal
@@ -476,13 +474,12 @@ def _generate_synthetic_cases():
 
     statuses = ["open", "open", "open", "closed", "investigating"]
     priorities = ["low", "medium", "medium", "high", "critical"]
-    now = datetime.now()
+
     cases = []
 
     for i in range(25):
         cat = rng.choice(category_names)
         station = rng.choice(stations)
-        district = station_map[station]
         days_ago = rng.randint(1, 365)
         status = rng.choice(statuses)
         priority = rng.choice(priorities)
@@ -906,3 +903,4 @@ def _seed_notifications(db, user_objs):
 
 if __name__ == "__main__":
     seed()
+

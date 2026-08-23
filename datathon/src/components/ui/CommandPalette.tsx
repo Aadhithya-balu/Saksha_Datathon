@@ -20,7 +20,6 @@ import {
   FolderOpen,
   Settings,
   BookOpen,
-  Command,
   ArrowRight,
   CornerDownLeft,
 } from 'lucide-react';

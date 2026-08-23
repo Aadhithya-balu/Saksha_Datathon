@@ -144,7 +144,7 @@ def create_evidence(payload: EvidenceCreate, db: Session = Depends(get_db), curr
         add_timeline_event(db, item.id, "Evidence Created", current_user)
         audit_service.log_action(db, current_user, "CREATE", "Evidence", str(item.id))
         return item
-    except IntegrityError as e:
+    except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400, detail="Invalid case_id. The specified Case UUID does not exist in the system.")
 
