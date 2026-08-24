@@ -11,6 +11,7 @@ interface StatCardProps {
   trendValue: string;
   subtext: string;
   glowColor: 'blue' | 'teal' | 'amber' | 'coral' | 'purple' | 'indigo' | 'emerald';
+  onClick?: () => void;
 }
 
 export const StatCard: React.FC<StatCardProps> = ({
@@ -22,7 +23,8 @@ export const StatCard: React.FC<StatCardProps> = ({
   trend,
   trendValue,
   subtext,
-  glowColor
+  glowColor,
+  onClick
 }) => {
   // Rich colors mapping from reference design system
   const colorSchemes = {
@@ -75,6 +77,7 @@ export const StatCard: React.FC<StatCardProps> = ({
 
   return (
     <div 
+      onClick={onClick}
       className={`p-3.5 rounded-xl border border-border-color bg-secondary-bg/80 backdrop-blur-md flex flex-col items-start gap-3 select-none relative overflow-hidden transition-all duration-300 ease-out cursor-pointer transform hover:-translate-y-1.5 hover:scale-[1.02] group ${colorSchemes[glowColor].glow}`}
       style={{ transformStyle: 'preserve-3d', perspective: '800px' }}
     >

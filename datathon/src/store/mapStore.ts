@@ -20,17 +20,22 @@ export interface DistrictInfo {
 interface MapState {
   viewState: ViewState;
   selectedDistrict: string | null;
+  selectedStation: string | null;
+  selectedCrimeId: string | null;
   timeOfDay: number; // 0 to 23 hours
   layers: {
     hotspot: boolean;
     beatCoverage: boolean;
     riskScore: boolean;
+    socioEconomic: boolean;
   };
   districtData: Record<string, DistrictInfo>;
   setViewState: (viewState: ViewState) => void;
   setSelectedDistrict: (district: string | null) => void;
+  setSelectedStation: (station: string | null) => void;
+  setSelectedCrimeId: (crimeId: string | null) => void;
   setTimeOfDay: (hour: number) => void;
-  toggleLayer: (layerKey: 'hotspot' | 'beatCoverage' | 'riskScore') => void;
+  toggleLayer: (layerKey: 'hotspot' | 'beatCoverage' | 'riskScore' | 'socioEconomic') => void;
   flyToDistrict: (districtName: string) => void;
 }
 
@@ -56,11 +61,14 @@ export const useMapStore = create<MapState>((set) => ({
     bearing: 0,
   },
   selectedDistrict: null,
+  selectedStation: null,
+  selectedCrimeId: null,
   timeOfDay: 19, // Default to evening
   layers: {
     hotspot: true,
     beatCoverage: false,
     riskScore: false,
+    socioEconomic: false,
   },
   districtData: {
     'Bengaluru Urban': { name: 'Bengaluru Urban', crimeCount: 1420, riskScore: 88, beatRatio: 82, topCrimeType: 'Cyber Crime & Online Fraud', weeklyTrend: 'up' },
@@ -75,7 +83,9 @@ export const useMapStore = create<MapState>((set) => ({
   },
 
   setViewState: (viewState) => set({ viewState }),
-  setSelectedDistrict: (selectedDistrict) => set({ selectedDistrict }),
+  setSelectedDistrict: (selectedDistrict) => set({ selectedDistrict, selectedStation: null, selectedCrimeId: null }),
+  setSelectedStation: (selectedStation) => set({ selectedStation, selectedCrimeId: null }),
+  setSelectedCrimeId: (selectedCrimeId) => set({ selectedCrimeId }),
   setTimeOfDay: (timeOfDay) => set({ timeOfDay }),
   
   toggleLayer: (layerKey) => set((state) => ({

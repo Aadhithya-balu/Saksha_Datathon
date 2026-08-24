@@ -7,10 +7,10 @@ import { motion } from 'framer-motion';
 import {
   Shield, TrendingUp, TrendingDown, Minus, AlertTriangle, MapPin,
   Users, FileText, Target, Brain, Clock, Activity, Loader2, ChevronRight,
-  Zap, Radio,
+  Zap, Radio, Flame,
 } from 'lucide-react';
 import {
-  getStrategicBriefing, getDailySummary, getResourceAllocation,
+  getStrategicBriefing, getDailySummary, getResourceAllocation, getStrategicEmergingTrends,
   type StrategicBriefing, type DailySummary, type ResourceAllocation,
 } from '../../services/api';
 
@@ -20,6 +20,7 @@ export default function Strategic() {
   const [briefing, setBriefing] = useState<StrategicBriefing | null>(null);
   const [daily, setDaily] = useState<DailySummary | null>(null);
   const [resources, setResources] = useState<ResourceAllocation | null>(null);
+  const [emergingTrends, setEmergingTrends] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<string>('command');
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -29,14 +30,16 @@ export default function Strategic() {
   async function loadData() {
     setLoading(true);
     try {
-      const [b, d, r] = await Promise.allSettled([
+      const [b, d, r, t] = await Promise.allSettled([
         getStrategicBriefing(),
         getDailySummary(),
         getResourceAllocation(),
+        getStrategicEmergingTrends(),
       ]);
       if (b.status === 'fulfilled') setBriefing(b.value);
       if (d.status === 'fulfilled') setDaily(d.value);
       if (r.status === 'fulfilled') setResources(r.value);
+      if (t.status === 'fulfilled' && Array.isArray(t.value)) setEmergingTrends(t.value);
     } catch (e) {
       console.error('Failed to load strategic data', e);
       setLoadError('Failed to load strategic briefing data. Please try again.');
@@ -233,40 +236,87 @@ export default function Strategic() {
       )}
 
       {/* Emerging Trends */}
-      {activeSection === 'trends' && briefing?.emerging_trends && (
+      {activeSection === 'trends' && (
         <div className="space-y-4">
           <div className="bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-primary)] overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border-primary)]">
-              <Brain className="w-4 h-4 text-[var(--accent-purple)]" />
-              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Emerging Crime Trends (30-day comparison)</h3>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-primary)]">
+              <div className="flex items-center gap-2">
+                <Brain className="w-4 h-4 text-[var(--accent-purple)]" />
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                  Emerging Crime Trends (30-day Spatiotemporal Comparison)
+                </h3>
+              </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-500/10 text-red-400 border border-red-500/30 flex items-center gap-1">
+                <Flame className="w-3 h-3 text-red-400 animate-pulse" />
+                Live Surge Telemetry
+              </span>
             </div>
             <div className="p-4">
               <div className="space-y-3">
-                {briefing.emerging_trends.map((t) => (
-                  <div key={t.category} className="flex items-center justify-between p-3 bg-[var(--bg-primary)] rounded-lg border border-[var(--border-primary)]">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-8 rounded-full ${
-                        t.direction === 'increasing' ? 'bg-[var(--accent-coral)]' :
-                        t.direction === 'decreasing' ? 'bg-[var(--accent-teal)]' : 'bg-[var(--text-muted)]'
-                      }`} />
-                      <div>
-                        <h4 className="text-sm font-semibold text-[var(--text-primary)]">{t.category}</h4>
-                        <p className="text-xs text-[var(--text-muted)]">{t.recent_count} recent vs {t.historical_count} historical</p>
+                {(emergingTrends.length > 0 ? emergingTrends : (briefing?.emerging_trends || [])).map((t: any) => {
+                  const isSpike = t.direction === 'increasing' && t.change_percentage > 10;
+                  return (
+                    <div 
+                      key={t.category} 
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg border transition-all gap-3 ${
+                        isSpike 
+                          ? 'bg-red-500/5 border-red-500/30 hover:border-red-500/60 shadow-sm' 
+                          : 'bg-[var(--bg-primary)] border-[var(--border-primary)]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2.5 h-10 rounded-full ${
+                          isSpike ? 'bg-red-500 animate-pulse' :
+                          t.direction === 'increasing' ? 'bg-[var(--accent-coral)]' :
+                          t.direction === 'decreasing' ? 'bg-[var(--accent-teal)]' : 'bg-[var(--text-muted)]'
+                        }`} />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-[var(--text-primary)]">{t.category}</h4>
+                            {isSpike && (
+                              <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 text-[9px] font-bold uppercase flex items-center gap-1 border border-red-500/40 animate-pulse">
+                                <Flame className="w-2.5 h-2.5" />
+                                Red-Zone Surge
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">
+                            {t.recent_count} recent filings vs {t.historical_count} baseline filings
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 self-end sm:self-center">
+                        <div className="text-right">
+                          <span className={`text-lg font-mono font-extrabold flex items-center gap-1 justify-end ${
+                            isSpike ? 'text-red-400' :
+                            t.direction === 'increasing' ? 'text-[var(--accent-coral)]' :
+                            t.direction === 'decreasing' ? 'text-[var(--accent-teal)]' : 'text-[var(--text-muted)]'
+                          }`}>
+                            {t.change_percentage > 0 ? '+' : ''}{t.change_percentage}%
+                            {t.direction === 'increasing' ? <TrendingUp className="w-5 h-5 text-red-400" /> :
+                             t.direction === 'decreasing' ? <TrendingDown className="w-5 h-5 text-[var(--accent-teal)]" /> :
+                             <Minus className="w-5 h-5 text-[var(--text-muted)]" />}
+                          </span>
+                          <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase">
+                            {t.direction} trajectory
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            window.dispatchEvent(new CustomEvent('navigate-tab', { detail: 'hotspot' }));
+                          }}
+                          className="px-3 py-1.5 bg-[var(--accent-blue)]/10 hover:bg-[var(--accent-blue)]/20 border border-[var(--accent-blue)]/30 text-[var(--accent-blue)] text-xs font-mono font-bold rounded-btn transition-colors cursor-pointer flex items-center gap-1"
+                          title="Locate this surge on the Spatiotemporal Hotspots Vector Map"
+                        >
+                          <span>Locate on Map</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-lg font-bold ${
-                        t.direction === 'increasing' ? 'text-[var(--accent-coral)]' :
-                        t.direction === 'decreasing' ? 'text-[var(--accent-teal)]' : 'text-[var(--text-muted)]'
-                      }`}>
-                        {t.change_percentage > 0 ? '+' : ''}{t.change_percentage}%
-                      </span>
-                      {t.direction === 'increasing' ? <TrendingUp className="w-5 h-5 text-[var(--accent-coral)]" /> :
-                       t.direction === 'decreasing' ? <TrendingDown className="w-5 h-5 text-[var(--accent-teal)]" /> :
-                       <Minus className="w-5 h-5 text-[var(--text-muted)]" />}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

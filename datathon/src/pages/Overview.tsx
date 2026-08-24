@@ -520,6 +520,7 @@ export const Overview: React.FC = () => {
           trendValue="8.6%"
           subtext="vs Apr 24"
           glowColor="purple"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'crime_cases' } }))}
         />
         <StatCard
           title="Solved Crimes"
@@ -529,6 +530,7 @@ export const Overview: React.FC = () => {
           trendValue="12.4%"
           subtext="vs Apr 24"
           glowColor="teal"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'fir' } }))}
         />
         <StatCard
           title="Active Cases"
@@ -538,6 +540,7 @@ export const Overview: React.FC = () => {
           trendValue="5.3%"
           subtext="vs Apr 24"
           glowColor="coral"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'crime_cases' } }))}
         />
         <StatCard
           title="Crime Hotspots"
@@ -547,6 +550,7 @@ export const Overview: React.FC = () => {
           trendValue="3 New"
           subtext="active beat nodes"
           glowColor="amber"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'hotspot' } }))}
         />
         <StatCard
           title="High Risk Areas"
@@ -556,6 +560,7 @@ export const Overview: React.FC = () => {
           trendValue="2 New"
           subtext="monitored regions"
           glowColor="indigo"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'hotspot' } }))}
         />
         <StatCard
           title="Missing Persons"
@@ -565,6 +570,7 @@ export const Overview: React.FC = () => {
           trendValue="7.2%"
           subtext="vs Apr 24"
           glowColor="blue"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'victims' } }))}
         />
         <StatCard
           title="Repeat Offenders"
@@ -574,6 +580,7 @@ export const Overview: React.FC = () => {
           trendValue="5 New"
           subtext="surveillance lists"
           glowColor="emerald"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'offenders' } }))}
         />
       </div>
 
@@ -586,7 +593,12 @@ export const Overview: React.FC = () => {
 
         {/* Donut Chart - 4-cols */}
         <div className="lg:col-span-4 h-[300px] lg:h-full">
-          <DonutChart data={donutChartData} />
+          <DonutChart 
+            data={donutChartData} 
+            onCategoryClick={() => {
+              window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'crime_cases' } }));
+            }}
+          />
         </div>
       </div>
 

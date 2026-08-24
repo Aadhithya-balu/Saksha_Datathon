@@ -12,9 +12,10 @@ const COLORS = ['#1E6FD9', '#C94A2A', '#0E9E78', '#6C43CC', '#D4820A', '#80b3ff'
 
 interface DonutChartProps {
   data?: PieDataPoint[];
+  onCategoryClick?: (categoryName: string) => void;
 }
 
-export const DonutChart: React.FC<DonutChartProps> = ({ data = [] }) => {
+export const DonutChart: React.FC<DonutChartProps> = ({ data = [], onCategoryClick }) => {
   const totalCrimes = data.reduce((a, b) => a + b.value, 0);
 
   return (
@@ -26,7 +27,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data = [] }) => {
             <LayoutGrid className="w-4 h-4 text-[var(--accent-blue)]" />
             Crime Category Distribution
           </h4>
-          <span className="text-[9px] text-[var(--text-secondary)] uppercase font-semibold">Radial Segment Breakdown</span>
+          <span className="text-[9px] text-[var(--text-secondary)] uppercase font-semibold">Radial Segment Breakdown (Click to filter)</span>
         </div>
       </div>
 
@@ -44,6 +45,8 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data = [] }) => {
                 dataKey="value"
                 stroke="rgba(8,14,27,0.8)"
                 strokeWidth={2}
+                cursor={onCategoryClick ? 'pointer' : 'default'}
+                onClick={(entry) => entry?.name && onCategoryClick?.(entry.name)}
               >
                 {data.map((_entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} opacity={0.85} />
@@ -72,7 +75,12 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data = [] }) => {
       {/* Legend */}
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-[8.5px] text-[var(--text-secondary)] font-semibold uppercase tracking-wider pt-2 border-t border-[var(--border-primary)]">
         {data.slice(0, 6).map((item, index) => (
-          <div key={item.name} className="flex items-center gap-1.5">
+          <div 
+            key={item.name} 
+            onClick={() => onCategoryClick?.(item.name)}
+            className={`flex items-center gap-1.5 ${onCategoryClick ? 'cursor-pointer hover:text-white transition-colors' : ''}`}
+            title={`Filter by ${item.name}`}
+          >
             <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
             <span className="truncate">{item.name}</span>
           </div>
