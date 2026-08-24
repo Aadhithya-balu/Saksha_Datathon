@@ -5,9 +5,18 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_user
 from app.auth.rbac import ALL_ROLES, require_roles
 from app.database.postgres import get_db
+from app.models.user import User
 from app.services import sociological_service
 
 router = APIRouter(prefix="/sociological", tags=["Sociological Insights"], dependencies=[Depends(require_roles(*ALL_ROLES))])
+
+
+@router.get("/dataset-info")
+def socioeconomic_dataset_info(current_user: User = Depends(get_current_user)):
+    """Provenance of the versioned socio-economic dataset backing this module."""
+    from app.services.sociological_service import dataset_info
+
+    return dataset_info()
 
 
 @router.get("/demographics")

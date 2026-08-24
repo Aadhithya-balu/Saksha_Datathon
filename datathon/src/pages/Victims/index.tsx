@@ -13,9 +13,11 @@ import {
   MapPin, 
   FileText, 
   Phone,
-  ExternalLink
+  ExternalLink,
+  BarChart3
 } from 'lucide-react';
 import { CardSkeleton } from '../../components/ui/Skeleton';
+import { VictimologyPanel } from './VictimologyPanel';
 
 interface VictimSummary {
   id: string;
@@ -37,6 +39,7 @@ export const Victims: React.FC = () => {
   const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
   const [victimDetails, setVictimDetails] = useState<any>(null);
   const [hoveredNode, setHoveredNode] = useState<any>(null);
+  const [showVictimology, setShowVictimology] = useState<boolean>(false);
 
   // Load victims on mount or search
   useEffect(() => {
@@ -284,6 +287,17 @@ export const Victims: React.FC = () => {
             CLASSIFIED VICTIM INDEX — SECURE PROFILE REGISTRY & INTEGRATED CASE RELATIONS
           </p>
         </div>
+        <button
+          onClick={() => setShowVictimology((current) => !current)}
+          className={`inline-flex items-center gap-1.5 rounded px-3 py-2 text-[10px] font-bold uppercase tracking-wider border transition-colors cursor-pointer ${
+            showVictimology
+              ? 'border-[#0E9E78] bg-[#0E9E78]/20 text-[#0E9E78]'
+              : 'border-border-color bg-[var(--bg-tertiary)]/35 text-[var(--text-secondary)] hover:border-[#0E9E78]/50'
+          }`}
+        >
+          <BarChart3 className="h-3.5 w-3.5" />
+          {showVictimology ? 'Back to Dossiers' : 'Victimology Analytics'}
+        </button>
       </div>
 
       <div className="flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">
@@ -348,10 +362,12 @@ export const Victims: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Dossier Panel (Col: 8) */}
+        {/* Right Dossier / Victimology Panel (Col: 8) */}
         <div className="lg:col-span-8 bg-[var(--bg-secondary)] border border-border-color p-5 rounded-card flex flex-col gap-5 overflow-y-auto custom-scrollbar">
           
-          {loadingDetails ? (
+          {showVictimology ? (
+            <VictimologyPanel />
+          ) : loadingDetails ? (
             <div className="h-full w-full flex items-center justify-center">
               <CardSkeleton />
             </div>

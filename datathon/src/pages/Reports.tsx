@@ -68,7 +68,7 @@ export const Reports: React.FC = () => {
     setFilters((current) => ({ ...current, reportType, status: '', sortBy: 'created_at' }));
   };
 
-  const download = async (format: 'pdf' | 'csv' | 'docx' | 'txt') => {
+  const download = async (format: 'pdf' | 'csv' | 'docx' | 'txt' | 'xlsx') => {
     setExporting(format);
     setError(null);
     try {

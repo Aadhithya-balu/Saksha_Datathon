@@ -39,7 +39,7 @@ router = APIRouter(prefix="/reports", tags=["Reports"], dependencies=[Depends(re
 ))])
 
 REPORT_TYPES = {"cases", "officers", "criminals", "evidence"}
-EXPORT_FORMATS = {"pdf", "csv", "docx", "txt"}
+EXPORT_FORMATS = {"pdf", "csv", "docx", "txt", "xlsx"}
 SORTABLE_COLUMNS: dict[str, dict[str, Any]] = {
     "cases": {
         "case_number": CrimeCase.case_number,
@@ -249,6 +249,52 @@ def _csv_response(filename: str, headers: list[str], rows: list[dict[str, Any]])
         content=buffer.getvalue().encode("utf-8"),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}.csv"'},
+    )
+
+
+def _xlsx_response(filename: str, title: str, filters: dict, headers: list[str], rows: list[dict[str, Any]]) -> Response:
+    """Native Excel workbook export (gap M1 — previously unimplemented)."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Report"
+
+    header_fill = PatternFill(start_color="FF1E293B", end_color="FF1E293B", fill_type="solid")
+    header_font = Font(color="FFF8FAFC", bold=True, size=10)
+
+    # Metadata block
+    generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    filter_str = ", ".join(f"{k}={v}" for k, v in filters.items()) if filters else "None"
+    sheet.append(["SAKSHA Police Intelligence & Analytics Platform"])
+    sheet.append([title])
+    sheet.append([f"Generated At: {generated} | Filters: {filter_str} | Total Records: {len(rows)}"])
+    sheet.append([])
+    meta_rows = 4
+
+    formatted_headers = [h.replace("_", " ").title() for h in headers]
+    sheet.append(formatted_headers)
+    for cell in sheet[meta_rows]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(vertical="center")
+
+    for row in rows:
+        sheet.append([_clean_text(row.get(h))[:400] for h in headers])
+
+    for index, header in enumerate(headers, start=1):
+        max_len = min(max((len(str(sheet.cell(row=r, column=index).value or "")) for r in range(meta_rows, min(sheet.max_row, meta_rows + 200) + 1)), default=10) + 2, 60)
+        sheet.column_dimensions[get_column_letter(index)].width = max(12, max_len)
+    sheet.freeze_panes = f"A{meta_rows + 1}"
+
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}.xlsx"'},
     )
 
 
@@ -553,7 +599,7 @@ def preview_report(
 def generate_report(
     report_type: str,
     request: Request,
-    export_format: str = Query("pdf", pattern="^(pdf|csv|docx|txt)$"),
+    export_format: str = Query("pdf", pattern="^(pdf|csv|docx|txt|xlsx)$"),
     search: str | None = None,
     status: str | None = None,
     district: str | None = None,
@@ -600,6 +646,8 @@ def export_report(
     
     if export_format == "csv":
         return _csv_response(filename, headers, rows)
+    elif export_format == "xlsx":
+        return _xlsx_response(filename, title, filters, headers, rows)
     elif export_format == "docx":
         docx_bytes = _generate_docx(title, filters, headers, rows)
         return Response(content=docx_bytes, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", headers={"Content-Disposition": f'attachment; filename="{filename}.docx"'})
@@ -636,6 +684,8 @@ def export_dossier(
     
     if export_format == "csv":
         return _csv_response(filename, headers, rows)
+    elif export_format == "xlsx":
+        return _xlsx_response(filename, payload.title, filters, headers, rows)
     elif export_format == "docx":
         docx_bytes = _generate_docx(payload.title, filters, headers, rows)
         return Response(content=docx_bytes, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", headers={"Content-Disposition": f'attachment; filename="{filename}.docx"'})

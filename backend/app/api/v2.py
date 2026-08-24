@@ -34,9 +34,17 @@ from app.routes import (
     ai_criminal,
     ai_hotspot,
     ai_risk,
+    ai_mo,
     network,
     sociological,
     strategic,
+)
+
+# Gap-closure modules (issue #139): legacy ingestion, victimology, interventions
+from app.routes import (
+    data_import,
+    interventions,
+    victimology,
 )
 
 
@@ -71,3 +79,9 @@ api_router.include_router(ai_risk.router)
 api_router.include_router(network.router)
 api_router.include_router(sociological.router)
 api_router.include_router(strategic.router)
+
+# Gap-closure modules (issue #139)
+api_router.include_router(data_import.router)
+api_router.include_router(victimology.router)
+api_router.include_router(ai_mo.router)
+api_router.include_router(interventions.router)

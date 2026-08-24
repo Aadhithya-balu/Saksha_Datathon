@@ -216,7 +216,7 @@ export const FIRPage: React.FC = () => {
     }
   };
 
-  const handleExportPDF = (format: "pdf" | "docx" | "txt" | "csv" = "pdf") => {
+  const handleExportPDF = (format: "pdf" | "docx" | "txt" | "csv" | "xlsx" = "pdf") => {
     if (!selectedFir || !user) return;
 
     addLog(
