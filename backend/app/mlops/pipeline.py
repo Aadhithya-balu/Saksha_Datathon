@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import inspect
+import logging
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,6 +11,8 @@ from typing import Any
 from .dataset_versioning import DatasetVersionStore
 from .monitoring import ModelMonitor
 from .registry import ModelRegistry
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -34,7 +37,25 @@ def run_full_mlops_cycle(db_session=None, *, registry_root: str | Path = "mlflow
         artifact = registry.register(model_name, artifact_path, dataset_version=dataset_version, metrics_path=_metrics_path_for(model_name, registry_root), stage="staging", metadata={"metrics": metrics})
         registry.promote(model_name, artifact.version, "production")
         snapshot = monitor.record(model_name, dataset_version, metrics, drift=[])
+        if isinstance(metrics, dict) and metrics.get("status") not in ("skipped", "degraded"):
+            try:
+                from app.ai.inference.refresh import record_refresh_success
+
+                record_refresh_success(model_name)
+            except Exception:  # pragma: no cover - never fail the cycle
+                pass
         results.append(ModelRunResult(model_name=model_name, dataset_version=snapshot.dataset_version, registry_version=artifact.version, metrics=metrics, deployed_stage="production"))
+
+    # Issue #145 (gap 133.4): a promotion only reaches the running API once the
+    # inference lru_caches are dropped. Invalidate them when the cycle runs in
+    # this process; external processes (CI) are covered by disk-signature
+    # detection in app.ai.inference.refresh.check_external_updates().
+    try:
+        from app.ai.inference.refresh import invalidate_all_caches
+
+        invalidate_all_caches(reason="mlops-cycle")
+    except Exception as exc:  # pragma: no cover - never fail the cycle
+        logger.warning("Post-cycle cache invalidation failed: %s", exc)
     return results
 
 
@@ -57,12 +78,20 @@ def _run_trainer(model_name: str, db_session=None) -> dict[str, Any]:
         "risk": "app.ai.pipelines.risk.train",
         "hotspot": "app.ai.pipelines.hotspot.train",
     }
-    if model_name == "hotspot" and importlib.util.find_spec("lightgbm") is None:
-        return {
-            "status": "skipped",
-            "model_name": model_name,
-            "error": "lightgbm is not installed in this environment",
-        }
+    # Hotspot training imports optuna (module level) and its evaluate step
+    # imports shap — skip cleanly when any of the optional stack is absent.
+    if model_name == "hotspot":
+        missing = [
+            pkg
+            for pkg in ("lightgbm", "optuna", "shap")
+            if importlib.util.find_spec(pkg) is None
+        ]
+        if missing:
+            return {
+                "status": "skipped",
+                "model_name": model_name,
+                "error": f"optional hotspot dependencies not installed: {', '.join(missing)}",
+            }
     try:
         module = __import__(module_map[model_name], fromlist=["run_training"])
         trainer = getattr(module, "run_training")

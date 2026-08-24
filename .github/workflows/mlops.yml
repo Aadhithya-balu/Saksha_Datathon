@@ -5,7 +5,10 @@ on:
     branches: [main]
   pull_request:
   schedule:
-    - cron: "0 2 * * 0"
+    # Nightly retrain so registry artifacts stay close to live data
+    # (issue #145: models must keep up as crime cases are created).
+    - cron: "0 2 * * *"
+  workflow_dispatch: {}
 
 jobs:
   mlops:

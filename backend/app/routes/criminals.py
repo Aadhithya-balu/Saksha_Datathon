@@ -11,6 +11,7 @@ from app.models.criminal import Criminal
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.criminal import CriminalCreate, CriminalOut, CriminalUpdate, MOProfile
+from app.ai.inference.refresh import mark_data_changed
 from app.services import audit_service
 from app.services.base_service import BaseCRUDService
 
@@ -210,6 +211,7 @@ def mo_profile(criminal_id: uuid.UUID, db: Session = Depends(get_db), current_us
 def create_criminal(payload: CriminalCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     criminal = criminal_crud.create(db, payload.model_dump())
     audit_service.log_action(db, current_user, "CREATE", "Criminal", str(criminal.id))
+    mark_data_changed("criminal", db=db)
     return criminal
 
 
@@ -217,4 +219,5 @@ def create_criminal(payload: CriminalCreate, db: Session = Depends(get_db), curr
 def update_criminal(criminal_id: uuid.UUID, payload: CriminalUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     criminal = criminal_crud.update(db, criminal_id, payload.model_dump(exclude_unset=True))
     audit_service.log_action(db, current_user, "UPDATE", "Criminal", str(criminal_id))
+    mark_data_changed("criminal", db=db)
     return criminal

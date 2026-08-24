@@ -84,6 +84,14 @@ def _load_feature_columns() -> list[str] | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def invalidate_caches() -> None:
+    """Drop cached artifacts so retrained/promoted models are reloaded (issue #145)."""
+    _load_model.cache_clear()
+    _load_metadata.cache_clear()
+    _load_training_metrics.cache_clear()
+    _load_feature_columns.cache_clear()
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

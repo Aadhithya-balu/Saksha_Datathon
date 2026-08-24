@@ -93,6 +93,11 @@ def _invalidate_cache() -> None:
     _cluster_model.cache_clear()
 
 
+def invalidate_caches() -> None:
+    """Public alias used by the central refresh service (issue #145)."""
+    _invalidate_cache()
+
+
 # ── public inference functions ────────────────────────────────────────────────
 
 def _to_uuid(value: str):
@@ -106,6 +111,9 @@ def _to_uuid(value: str):
 
 def score_criminal_risk(db, criminal_id: str) -> dict[str, Any]:
     """Return risk score for a single criminal by UUID string."""
+    from app.ai.inference.refresh import maybe_refresh_async
+
+    maybe_refresh_async("criminal", db=db, reason="inference")
     from app.models.criminal import Criminal
     from sqlalchemy.orm import joinedload
     from app.models.fir import FIRCriminalLink, FIR
@@ -149,6 +157,9 @@ def score_criminal_risk(db, criminal_id: str) -> dict[str, Any]:
 
 
 def predict_repeat_offender(db, criminal_id: str) -> dict[str, Any]:
+    from app.ai.inference.refresh import maybe_refresh_async
+
+    maybe_refresh_async("criminal", db=db, reason="inference")
     from app.models.criminal import Criminal
     from sqlalchemy.orm import joinedload
     from app.models.fir import FIRCriminalLink, FIR
@@ -190,6 +201,9 @@ def predict_repeat_offender(db, criminal_id: str) -> dict[str, Any]:
 
 
 def find_similar_offenders(db, criminal_id: str, top_k: int = 5) -> dict[str, Any]:
+    from app.ai.inference.refresh import maybe_refresh_async
+
+    maybe_refresh_async("criminal", db=db, reason="inference")
     from app.models.criminal import Criminal
 
     uid = _to_uuid(criminal_id)
@@ -227,6 +241,9 @@ def find_similar_offenders(db, criminal_id: str, top_k: int = 5) -> dict[str, An
 
 
 def cluster_criminal(db, criminal_id: str) -> dict[str, Any]:
+    from app.ai.inference.refresh import maybe_refresh_async
+
+    maybe_refresh_async("criminal", db=db, reason="inference")
     from app.models.criminal import Criminal
 
     uid = _to_uuid(criminal_id)
@@ -293,6 +310,9 @@ def get_investigation_recommendations(db, criminal_id: str) -> dict[str, Any]:
 def retrain_models(db) -> dict[str, Any]:
     """Retrain all models from current DB state and reload caches."""
     from app.ai.pipelines.criminal.train import run_training
+    from app.ai.inference.refresh import record_refresh_success
+
     metrics = run_training(db_session=db)
     _invalidate_cache()
+    record_refresh_success("criminal")
     return metrics

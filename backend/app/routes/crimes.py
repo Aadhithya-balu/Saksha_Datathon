@@ -12,6 +12,7 @@ from app.models.crime import CrimeCase
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.crime import CrimeCaseCreate, CrimeCaseOut, CrimeCaseUpdate, CrimeTimelineEvent
+from app.ai.inference.refresh import mark_data_changed
 from app.services import audit_service
 from app.services.crime_service import crime_crud, get_crime_timeline
 
@@ -70,6 +71,7 @@ def crime_timeline(crime_id: uuid.UUID, db: Session = Depends(get_db), current_u
 def create_crime(payload: CrimeCaseCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     crime = crime_crud.create(db, payload.model_dump())
     audit_service.log_action(db, current_user, "CREATE", "CrimeCase", str(crime.id))
+    mark_data_changed("crime_case", db=db)
     return crime
 
 
@@ -77,6 +79,7 @@ def create_crime(payload: CrimeCaseCreate, db: Session = Depends(get_db), curren
 def update_crime(crime_id: uuid.UUID, payload: CrimeCaseUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     crime = crime_crud.update(db, crime_id, payload.model_dump(exclude_unset=True))
     audit_service.log_action(db, current_user, "UPDATE", "CrimeCase", str(crime_id))
+    mark_data_changed("crime_case", db=db)
     return crime
 
 
@@ -84,4 +87,5 @@ def update_crime(crime_id: uuid.UUID, payload: CrimeCaseUpdate, db: Session = De
 def delete_crime(crime_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     crime_crud.delete(db, crime_id)
     audit_service.log_action(db, current_user, "DELETE", "CrimeCase", str(crime_id))
+    mark_data_changed("crime_case", db=db)
     return {"message": "Crime case deleted"}

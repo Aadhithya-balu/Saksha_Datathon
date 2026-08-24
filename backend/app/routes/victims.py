@@ -11,6 +11,7 @@ from app.models.victim import Victim
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.victim import VictimCreate, VictimOut, VictimUpdate
+from app.ai.inference.refresh import mark_data_changed
 from app.services import audit_service
 from app.services.base_service import BaseCRUDService
 
@@ -90,6 +91,7 @@ def get_victim(victim_id: uuid.UUID, db: Session = Depends(get_db), current_user
 def create_victim(payload: VictimCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     victim = victim_crud.create(db, payload.model_dump())
     audit_service.log_action(db, current_user, "CREATE", "Victim", str(victim.id))
+    mark_data_changed("victim", db=db)
     return victim
 
 
@@ -97,4 +99,5 @@ def create_victim(payload: VictimCreate, db: Session = Depends(get_db), current_
 def update_victim(victim_id: uuid.UUID, payload: VictimUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     victim = victim_crud.update(db, victim_id, payload.model_dump(exclude_unset=True))
     audit_service.log_action(db, current_user, "UPDATE", "Victim", str(victim_id))
+    mark_data_changed("victim", db=db)
     return victim

@@ -6,7 +6,9 @@ Endpoints
 GET  /ai/predictions/risk-scores   – district risk scores (frontend already calls this)
 POST /ai/predictions/risk-scores   – risk scores from submitted records
 POST /ai/predictions/forecast      – crime count forecast from submitted records
+POST /ai/predictions/train         – admin-triggered retrain (issue #145, gap 133.3)
 GET  /ai/predictions/model-info    – model metadata
+GET  /ai/predictions/refresh-status– staleness/auto-refresh status (issue #145)
 GET  /ai/predictions/health        – liveness check
 
 Delegates all ML logic to app.ai.inference.risk.
@@ -20,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, joinedload
 
-from app.ai.inference.risk import get_model_info, predict_forecast, predict_risk
+from app.ai.inference.risk import get_model_info, invalidate_caches, predict_forecast, predict_risk
 from app.auth.dependencies import get_current_user
 from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
@@ -87,6 +89,9 @@ def get_risk_scores(
     """Return latest district risk scores based on crime records."""
     del current_user
     try:
+        from app.ai.inference.refresh import maybe_refresh_async
+
+        maybe_refresh_async("risk", db=db, reason="inference")
         cases = db.query(CrimeCase).options(joinedload(CrimeCase.location), joinedload(CrimeCase.category)).all()
         if not cases:
             info = get_model_info()
@@ -156,6 +161,48 @@ def predict_crime_forecast(
         forecasts=[ForecastItem(**r) for r in results],
         total=len(results),
     )
+
+
+@router.post("/train", dependencies=[Depends(require_roles(ROLE_ADMIN))])
+def train_risk_models(current_user: User = Depends(get_current_user)):
+    """Retrain district risk + forecast models from live DB data (issue #145, gap 133.3).
+
+    Documented previously but never implemented; now backed by
+    app.ai.pipelines.risk.train.run_training with post-train cache invalidation.
+    """
+    from app.ai.inference.refresh import record_refresh_success
+    from app.ai.pipelines.risk.train import run_training
+
+    try:
+        metrics = run_training()
+    except ModuleNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Risk trainer dependency missing: {exc.name}",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Risk training failed: {exc}")
+    invalidate_caches()
+    record_refresh_success("risk")
+    return {"status": "ok", "retrained_by": current_user.username, "metrics": metrics}
+
+
+@router.get("/refresh-status")
+def risk_refresh_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Staleness + auto-refresh status for every model domain (issue #145)."""
+    from app.ai.inference.refresh import get_refresh_status
+
+    return get_refresh_status(db=db)
+
+
+# CONTEXT.md documents POST /api/v2/ai/risk/train — expose that exact path
+# as an alias of the /train implementation above (issue #145, gap 133.3).
+alias_router = APIRouter(tags=["District Risk Prediction"], dependencies=[Depends(require_roles(ROLE_ADMIN))])
+
+
+@alias_router.post("/ai/risk/train")
+def train_risk_models_documented_path(current_user: User = Depends(get_current_user)):
+    return train_risk_models(current_user)
 
 
 @router.get("/model-info")

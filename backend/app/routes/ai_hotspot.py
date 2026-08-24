@@ -58,6 +58,9 @@ def hotspot_predict(
     payload: HotspotPredictRequest,
     current_user: User = Depends(get_current_user),
 ):
+    from app.ai.inference.refresh import maybe_refresh_async
+
+    maybe_refresh_async("hotspot", reason="inference")
     try:
         results = predict(payload.records)
     except Exception:
@@ -80,6 +83,9 @@ def hotspot_predict_batch(
 
 @router.get("/model-info")
 def hotspot_model_info(current_user: User = Depends(get_current_user)):
+    from app.ai.inference.refresh import check_external_updates
+
+    check_external_updates()
     try:
         return get_model_info()
     except FileNotFoundError:
