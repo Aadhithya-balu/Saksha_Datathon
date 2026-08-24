@@ -268,6 +268,12 @@ def anomalies(db: Session) -> dict[str, Any]:
             rows.append(
                 {
                     "case_id": fir.fir_number,
+                    "case_uuid": str(case.id),
+                    "case_number": case.case_number,
+                    "district": case.location.district if case.location else None,
+                    "station": case.location.station if case.location else None,
+                    "category": case.category.name if case.category else None,
+                    "filed_at": fir.filed_at.isoformat() if fir.filed_at else None,
                     "label": label,
                     "score": round(min(score, 0.98), 2),
                     "reason": ", ".join(reasons) if reasons else "case diverges from current baseline",

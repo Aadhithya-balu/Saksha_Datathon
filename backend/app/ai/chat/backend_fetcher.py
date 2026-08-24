@@ -290,7 +290,7 @@ class BackendFetcher:
         if method == "get_full_network":
             return self._neo4j_full_network(db)
         if method == "get_gangs":
-            return self._neo4j_gangs()
+            return self._neo4j_gangs(db)
         if method == "shortest_path":
             return self._neo4j_shortest_path(params, db)
         return BackendResult(source="neo4j", data_type=method, content="Method not implemented")
@@ -320,9 +320,9 @@ class BackendFetcher:
             parts.append(f"  {node.name} ({node.category.value}, risk={node.riskScore})")
         return BackendResult(source="neo4j", data_type="network", content="\n".join(parts))
 
-    def _neo4j_gangs(self) -> BackendResult:
+    def _neo4j_gangs(self, db: Session) -> BackendResult:
         from app.services.network.network_service import get_organization_gang_networks
-        gangs = get_organization_gang_networks()
+        gangs = get_organization_gang_networks(db)
         parts = []
         for g in gangs:
             members = ", ".join(m.name for m in g.members)
@@ -362,7 +362,7 @@ class BackendFetcher:
                 content=f"Network (SQL fallback): {graph.total_nodes} nodes, {graph.total_edges} edges",
             )
         if method == "get_gangs":
-            return self._neo4j_gangs()
+            return self._neo4j_gangs(db)
         return BackendResult(source="neo4j", data_type=method, content="Neo4j unavailable, no SQL fallback.")
 
     def _exec_ml(self, call: BackendCall, db: Session) -> BackendResult:

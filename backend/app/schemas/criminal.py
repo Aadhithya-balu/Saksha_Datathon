@@ -14,6 +14,7 @@ class CriminalBase(BaseModel):
     identifying_marks: str | None = None
     mo_summary: str | None = None
     status: str = "at_large"
+    gang_affiliation: str | None = None
 
 
 class CriminalCreate(CriminalBase):
@@ -27,6 +28,7 @@ class CriminalUpdate(BaseModel):
     identifying_marks: str | None = None
     mo_summary: str | None = None
     status: str | None = None
+    gang_affiliation: str | None = None
 
 
 class CriminalOut(CriminalBase):
@@ -35,10 +37,16 @@ class CriminalOut(CriminalBase):
     created_at: datetime
 
 
+class MOTimeWindow(BaseModel):
+    window: str
+    incident_count: int
+    distribution: dict[str, int] = {}
+
+
 class MOProfile(BaseModel):
     criminal_id: uuid.UUID
     preferred_crime_types: list[str] = []
-    common_time_window: str | None = None
+    common_time_window: MOTimeWindow | None = None
     common_tools: list[str] = []
     jurisdictions_active: list[str] = []
     linked_incidents_count: int = 0

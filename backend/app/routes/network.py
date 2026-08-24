@@ -58,19 +58,21 @@ def get_case_network(
 
 @router.get("/gangs", response_model=list[GangNetworkSummary])
 def list_gang_networks(
+    db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
 ):
     """List active criminal gangs, syndicates, hierarchy structures, and member networks."""
-    return network_service.get_organization_gang_networks()
+    return network_service.get_organization_gang_networks(db)
 
 
 @router.get("/gangs/{gang_id}", response_model=GangNetworkSummary)
 def get_gang_network_detail(
     gang_id: str,
+    db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
 ):
     """Retrieve details and hierarchy tree for a specific criminal gang syndicate."""
-    gangs = network_service.get_organization_gang_networks()
+    gangs = network_service.get_organization_gang_networks(db)
     for g in gangs:
         if g.gang_id == gang_id:
             return g

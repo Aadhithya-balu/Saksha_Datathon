@@ -17,6 +17,7 @@ class NetworkNodeCategory(str, Enum):
     GANG = "gang"
     VEHICLE = "vehicle"
     WEAPON = "weapon"
+    OFFICER = "officer"
 
 
 class NetworkNode(BaseModel):
