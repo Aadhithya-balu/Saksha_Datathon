@@ -9,6 +9,7 @@ import type { CrimeCaseDetailRecord } from '../../services/api';
 import { Search, Plus, Eye, Edit2, Trash2, ShieldAlert } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useRealtimeStore } from '../../store/realtimeStore';
+import CrimeInsightsBar from '../../components/crimeCases/CrimeInsightsBar';
 
 interface CrimeCasesListProps {
   onSelectCase: (id: string) => void;
@@ -153,6 +154,22 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
           <Plus className="w-4 h-4" /> Create Crime Case
         </button>
       </div>
+
+      {/* Visual Crime Telemetry & Insights Ribbon */}
+      <CrimeInsightsBar
+        cases={cases}
+        activeStatus={statusFilter}
+        activePriority={priorityFilter}
+        onSelectStatus={(s) => setStatusFilter(s)}
+        onSelectPriority={(p) => setPriorityFilter(p)}
+        onResetFilters={() => {
+          setSearch('');
+          setStatusFilter('');
+          setCategoryFilter('');
+          setDistrictFilter('');
+          setPriorityFilter('');
+        }}
+      />
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row gap-3">

@@ -29,6 +29,7 @@ import {
   getCrimeCategories,
   getLocationsList,
   listOfficers,
+  getCrimeCases,
   type AnomalyRecord,
   type CategoryPoint,
   type DashboardSummary,
@@ -150,9 +151,9 @@ export const Overview: React.FC = () => {
         setTrends(trendResult);
         setCategories(categoryResult);
 
-        // STAGE 2: Secondary data — renders as it arrives
-        Promise.all([
-          getRiskScores(undefined, filters.district),
+        // STAGE 2: Secondary data — renders as each arrives using Promise.allSettled
+        Promise.allSettled([
+          getRiskScores('next_7d', filters.district),
           getHotspots(filters.district),
           getAnomalies(),
           getOfficerStats(),
@@ -160,18 +161,37 @@ export const Overview: React.FC = () => {
           getRecentIncidents(),
           getForecast(),
           getRiskPrediction(),
-        ]).then(([riskResult, hotspotResult, anomalyResult, officerStatsResult, evidenceStatsResult, recentIncidentsResult, forecastResult, riskPredictionResult]) => {
+          getCrimeCases('', filters.status, 1, 8, {
+            district: filters.district,
+            category_id: filters.category_id,
+            priority: filters.priority,
+          }),
+        ]).then(([riskRes, hotspotRes, anomalyRes, officerRes, evidenceRes, recentRes, forecastRes, riskPredRes, casesRes]) => {
           if (!isMounted) return;
-          setRiskScores(riskResult);
-          setHotspots(hotspotResult.hotspots);
-          setAnomalies(anomalyResult.anomalies);
-          setOfficerStats(officerStatsResult);
-          setEvidenceStats(evidenceStatsResult);
-          setRecentIncidents(recentIncidentsResult);
-          setForecastData(forecastResult);
-          setRiskPrediction(riskPredictionResult);
-        }).catch(() => {
-          // Secondary data failures are non-fatal
+          if (riskRes.status === 'fulfilled' && riskRes.value) setRiskScores(riskRes.value);
+          if (hotspotRes.status === 'fulfilled' && hotspotRes.value?.hotspots) setHotspots(hotspotRes.value.hotspots);
+          if (anomalyRes.status === 'fulfilled' && anomalyRes.value?.anomalies) setAnomalies(anomalyRes.value.anomalies);
+          if (officerRes.status === 'fulfilled' && officerRes.value) setOfficerStats(officerRes.value);
+          if (evidenceRes.status === 'fulfilled' && evidenceRes.value) setEvidenceStats(evidenceRes.value);
+
+          // Populate recent incidents: use recent-incidents response if present, or fallback to real cases from getCrimeCases
+          let incidents: RecentIncidentType[] = [];
+          if (recentRes.status === 'fulfilled' && Array.isArray(recentRes.value) && recentRes.value.length > 0) {
+            incidents = recentRes.value;
+          } else if (casesRes.status === 'fulfilled' && casesRes.value?.results?.length) {
+            incidents = casesRes.value.results.map((c) => ({
+              case_number: c.case_number,
+              crime_type: (c as any).crime_type || (c as any).category || 'Case Incident',
+              location: (c as any).location || (c as any).station || 'Statewide Area',
+              time: c.occurred_at || (c as any).time || new Date().toISOString(),
+              status: c.status || 'open',
+              priority: c.priority || 'medium',
+            }));
+          }
+          setRecentIncidents(incidents);
+
+          if (forecastRes.status === 'fulfilled' && forecastRes.value) setForecastData(forecastRes.value);
+          if (riskPredRes.status === 'fulfilled' && riskPredRes.value) setRiskPrediction(riskPredRes.value);
         });
 
         setError(null);
@@ -812,13 +832,6 @@ export const Overview: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="min-h-[300px]"><SpatiotemporalHeatmap /></div>
         <div className="min-h-[300px]"><SpatialCube3D /></div>
-      </div>
-
-      {/* Derived watchlist counters */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard title="High Risk Areas" value={highRiskCount} icon={<NavIcon className="w-4 h-4" />} trend="stable" trendValue="Monitored" subtext="regions above threshold" glowColor="purple" />
-        <StatCard title="Missing Persons" value={missingPersonsCount} icon={<Users className="w-4 h-4" />} trend="down" trendValue="7.2%" subtext="active searches" glowColor="blue" />
-        <StatCard title="Repeat Offenders" value={repeatOffenderCount} icon={<UserMinus className="w-4 h-4" />} trend="up" trendValue="Watchlist" subtext="under surveillance" glowColor="emerald" />
       </div>
     </div>
   );
