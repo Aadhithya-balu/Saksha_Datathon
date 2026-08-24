@@ -545,6 +545,23 @@ def seed() -> None:
         _seed_cases_and_firs(db, category_objs, location_objs, criminal_objs, victim_objs, officer_objs)
         _seed_notifications(db, user_objs)
         db.commit()
+
+        # Issue #144 gap 132.1: backfill the normalized MO tag relations from
+        # the seeded mo_tags/mo_summary fields so pattern detection works out
+        # of the box. Idempotent — safe on already-seeded databases.
+        try:
+            from app.services.mo_pattern_service import sync_mo_tags
+
+            stats = sync_mo_tags(db)
+            print(
+                "MO sync: "
+                f"{stats['case_links_created']} case links + "
+                f"{stats['criminal_links_created']} criminal links "
+                f"({stats['tags_created']} new tags)"
+            )
+        except Exception as exc:  # never fail seeding over analytics backfill
+            print(f"MO sync skipped: {exc}")
+
         print("Seed complete. Prototype logins:")
         print("- admin / 564738")
         print("- SCRB-7740 / 123456")

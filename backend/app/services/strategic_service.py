@@ -107,7 +107,19 @@ def get_strategic_briefing(db: Session) -> dict[str, Any]:
 
     emerging_trends = _detect_emerging_trends(db)
 
-    deployment_suggestions = _generate_deployment_suggestions(districts_at_risk, top_categories, emerging_trends)
+    # Issue #143 gap 131.4: ground deployment advice in *when* incidents happen,
+    # not just where — peak time windows are computed from real occurred_at data.
+    temporal_windows = _district_temporal_windows(db)
+    for entry in districts_at_risk:
+        profile = temporal_windows.get(entry["district"])
+        if profile:
+            entry["peak_time_window"] = profile["peak_window_label"]
+            entry["night_share_pct"] = profile["night_share_pct"]
+            entry["weekend_share_pct"] = profile["weekend_share_pct"]
+
+    deployment_suggestions = _generate_deployment_suggestions(
+        districts_at_risk, top_categories, emerging_trends, temporal_windows=temporal_windows
+    )
 
     return {
         "generated_at": now.isoformat(),
@@ -192,6 +204,10 @@ def get_resource_allocation(db: Session) -> dict[str, Any]:
         .all()
     )
 
+    # Temporal overlay (issue #143 gap 131.4): patrol ratios are informed by
+    # when incidents actually cluster, not just aggregate volume.
+    temporal_windows = _district_temporal_windows(db)
+
     total_crimes = sum(c for _, c in districts) or 1
     allocations = []
     for district, count in districts:
@@ -204,12 +220,16 @@ def get_resource_allocation(db: Session) -> dict[str, Any]:
             priority = "MEDIUM"
         else:
             priority = "LOW"
+        profile = temporal_windows.get(district, {})
         allocations.append({
             "district": district,
             "crime_share_pct": pct,
             "crime_count": count,
             "allocation_priority": priority,
             "suggested_patrol_ratio": round(pct / 10, 1),
+            "peak_time_window": profile.get("peak_window_label"),
+            "night_share_pct": profile.get("night_share_pct"),
+            "busiest_day": profile.get("busiest_day"),
         })
 
     return {
@@ -362,12 +382,70 @@ def _detect_emerging_trends(db: Session) -> list[dict[str, Any]]:
     return trends
 
 
+def _district_temporal_windows(db: Session) -> dict[str, dict[str, Any]]:
+    """Per-district temporal incident profile (issue #143 gap 131.4).
+
+    For every district with timestamped cases, identifies the dominant
+    four-hour-block window, night share (20:00-02:00), weekend share, and
+    busiest weekday — the raw material for time-aware patrol deployment.
+    """
+    rows = (
+        db.query(Location.district, CrimeCase.occurred_at)
+        .join(CrimeCase, CrimeCase.location_id == Location.id)
+        .filter(CrimeCase.occurred_at.isnot(None))
+        .all()
+    )
+
+    # Four 6-hour blocks; labels use 24h clock for briefing readability.
+    windows = [
+        ("00:00-06:00", range(0, 6)),
+        ("06:00-12:00", range(6, 12)),
+        ("12:00-18:00", range(12, 18)),
+        ("18:00-24:00", range(18, 24)),
+    ]
+    profiles: dict[str, dict[str, Any]] = {}
+    hour_totals: dict[str, list[int]] = {}
+    dow_totals: dict[str, list[int]] = {}
+
+    for district, occurred_at in rows:
+        district = district or "Unknown"
+        hour_totals.setdefault(district, [0] * 24)
+        dow_totals.setdefault(district, [0] * 7)
+        hour_totals[district][occurred_at.hour] += 1
+        dow_totals[district][occurred_at.weekday()] += 1
+
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    for district, hours in hour_totals.items():
+        dows = dow_totals[district]
+        total = sum(hours) or 1
+        block_counts = {label: sum(hours[h] for h in rng) for label, rng in windows}
+        peak_label = max(block_counts, key=block_counts.get) if total else None
+        night_count = sum(hours[h] for h in (20, 21, 22, 23, 0, 1))
+        busiest_day = max(range(7), key=lambda d: dows[d]) if total else None
+        profiles[district] = {
+            "total_incidents": sum(hours),
+            "peak_window_label": peak_label,
+            "peak_window_share_pct": round(block_counts.get(peak_label, 0) / total * 100, 1) if peak_label else 0.0,
+            "night_share_pct": round(night_count / total * 100, 1),
+            "weekend_share_pct": round((dows[5] + dows[6]) / total * 100, 1),
+            "busiest_day": days[busiest_day] if busiest_day is not None else None,
+        }
+    return profiles
+
+
 def _generate_deployment_suggestions(
     districts_at_risk: list[dict],
     top_categories: list[dict],
     emerging_trends: list[dict],
+    temporal_windows: dict[str, dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Generate actionable deployment suggestions based on intelligence."""
+    """Generate actionable deployment suggestions based on intelligence.
+
+    With ``temporal_windows`` supplied (issue #143 gap 131.4), adds
+    time-shifted patrol guidance derived from each district's observed
+    peak incident windows instead of volume-only recommendations.
+    """
+    temporal_windows = temporal_windows or {}
     suggestions = []
 
     critical_districts = [d for d in districts_at_risk if d["risk_level"] == "CRITICAL"]
@@ -389,6 +467,40 @@ def _generate_deployment_suggestions(
             "district": "State-wide",
             "resource_type": "special_operation",
         })
+
+    # Temporal deployment guidance — highest-risk districts first.
+    ranked = sorted(
+        districts_at_risk,
+        key=lambda d: (-{"CRITICAL": 3, "HIGH": 2, "MEDIUM": 1}.get(d.get("risk_level"), 0), -d.get("crime_count", 0)),
+    )
+    for d in ranked:
+        profile = temporal_windows.get(d["district"])
+        if not profile or profile.get("night_share_pct") is None:
+            continue
+        if profile["night_share_pct"] >= 45:
+            suggestions.append({
+                "priority": "HIGH" if d.get("risk_level") in {"CRITICAL", "HIGH"} else "MEDIUM",
+                "action": f"Shift patrol coverage to the 20:00-02:00 window in {d['district']}",
+                "reason": (
+                    f"{profile['night_share_pct']}% of incidents occur between 20:00 and 02:00 "
+                    f"(peak block {profile.get('peak_window_label')})"
+                ),
+                "district": d["district"],
+                "resource_type": "night_patrol",
+            })
+        elif profile.get("weekend_share_pct", 0) >= 35:
+            suggestions.append({
+                "priority": "MEDIUM",
+                "action": f"Weekend surge patrols in {d['district']} ({profile['busiest_day']} emphasis)",
+                "reason": (
+                    f"{profile['weekend_share_pct']}% of incidents fall on weekends; "
+                    f"busiest day is {profile.get('busiest_day')}"
+                ),
+                "district": d["district"],
+                "resource_type": "weekend_patrol",
+            })
+        if len([s for s in suggestions if s["resource_type"] in {"night_patrol", "weekend_patrol"}]) >= 4:
+            break
 
     if not suggestions:
         suggestions.append({

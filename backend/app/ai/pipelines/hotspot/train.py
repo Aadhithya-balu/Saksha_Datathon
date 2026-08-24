@@ -39,9 +39,30 @@ _FEATURE_COLUMNS_PATH = (
 
 
 def _load_feature_columns() -> list[str]:
-    if not _FEATURE_COLUMNS_PATH.exists():
-        raise FileNotFoundError(f"feature_columns.json not found: {_FEATURE_COLUMNS_PATH}")
-    return json.loads(_FEATURE_COLUMNS_PATH.read_text())
+    """Feature list used for training.
+
+    The checked-in feature_columns.json documents the artifact currently
+    deployed for inference. At training time the code-level FEATURE_COLUMNS
+    (which may include newer engineered features) is the source of truth;
+    save_artifacts() then writes a matching feature_columns.json alongside
+    the freshly trained model.
+    """
+    from app.ai.features.hotspot.feature_engineering import FEATURE_COLUMNS
+
+    if _FEATURE_COLUMNS_PATH.exists():
+        try:
+            stored = json.loads(_FEATURE_COLUMNS_PATH.read_text())
+        except Exception:
+            stored = None
+        if isinstance(stored, list):
+            if stored == FEATURE_COLUMNS:
+                return list(stored)
+            logger.warning(
+                "feature_columns.json has %d features but FEATURE_COLUMNS defines %d — "
+                "training with the current FEATURE_COLUMNS set.",
+                len(stored), len(FEATURE_COLUMNS),
+            )
+    return list(FEATURE_COLUMNS)
 
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 logger = logging.getLogger(__name__)

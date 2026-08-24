@@ -526,3 +526,95 @@ def _generate_socio_insights(overlays: list[dict]) -> list[dict[str, str]]:
         })
 
     return insights
+
+
+DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+def get_temporal_hotspot_matrix(
+    db: Session,
+    district: str | None = None,
+    location_id: str | None = None,
+) -> dict[str, Any]:
+    """Hour x day-of-week incident matrix (issue #143 gap 131.3).
+
+    Returns the true observed cross-tabulation of incidents by hour (0-23)
+    and weekday, optionally filtered to one district or station location,
+    plus statistically-flagged peak cells (standardized residuals under an
+    independence model) so the frontend heatmap no longer has to fabricate
+    a deterministic baseline distribution.
+    """
+    query = (
+        db.query(CrimeCase.id, CrimeCase.case_number, CrimeCase.occurred_at, Location.district, Location.station)
+        .join(Location, CrimeCase.location_id == Location.id)
+        .filter(CrimeCase.occurred_at.isnot(None))
+    )
+    if district:
+        query = query.filter(Location.district == district)
+    if location_id:
+        query = query.filter(Location.id == location_id)
+    rows = query.all()
+
+    counts = [[0] * 7 for _ in range(24)]          # counts[hour][weekday]
+    case_refs: dict[tuple[int, int], list[str]] = {}
+    for case_id, case_number, occurred_at, row_district, station in rows:
+        hour = occurred_at.hour
+        dow = occurred_at.weekday()
+        counts[hour][dow] += 1
+        case_refs.setdefault((hour, dow), []).append(case_number)
+
+    grand_total = sum(sum(row_counts) for row_counts in counts)
+    hour_totals = [sum(counts[h]) for h in range(24)]
+    day_totals = [sum(counts[h][d] for h in range(24)) for d in range(7)]
+
+    matrix = []
+    peaks = []
+    if grand_total:
+        for hour in range(24):
+            cells = []
+            for dow in range(7):
+                count = counts[hour][dow]
+                expected = hour_totals[hour] * day_totals[dow] / grand_total
+                std_residual = (count - expected) / expected ** 0.5 if expected > 0 else 0.0
+                cells.append(
+                    {
+                        "day": DAYS_OF_WEEK[dow],
+                        "count": count,
+                        "percentage": round(count / grand_total * 100, 2),
+                        "expected": round(expected, 2),
+                        "std_residual": round(std_residual, 3),
+                    }
+                )
+                if count > 0:
+                    peaks.append({"hour": hour, "day": DAYS_OF_WEEK[dow], "count": count, "std_residual": std_residual})
+            matrix.append(
+                {
+                    "hour": hour,
+                    "label": f"{hour:02d}:00-{(hour + 1) % 24:02d}:00",
+                    "total": hour_totals[hour],
+                    "cells": cells,
+                }
+            )
+
+    peaks.sort(key=lambda item: (-item["std_residual"], -item["count"]))
+    significant_peaks = [
+        {**peak, "std_residual": round(peak["std_residual"], 3)}
+        for peak in peaks
+        if peak["std_residual"] > 1.5
+    ][:8]
+
+    busiest = max(range(24), key=lambda h: hour_totals[h]) if grand_total else None
+    return {
+        "filters": {"district": district, "location_id": location_id},
+        "days": DAYS_OF_WEEK,
+        "matrix": matrix,
+        "grand_total": grand_total,
+        "hour_totals": [{"hour": h, "count": hour_totals[h]} for h in range(24)],
+        "day_totals": [{"day": DAYS_OF_WEEK[d], "count": day_totals[d]} for d in range(7)],
+        "peaks": significant_peaks,
+        "busiest_hour": busiest,
+        "night_share_pct": round(
+            sum(hour_totals[h] for h in (20, 21, 22, 23, 0, 1, 2, 3, 4, 5)) / grand_total * 100, 1
+        ) if grand_total else 0.0,
+        "weekend_share_pct": round((day_totals[5] + day_totals[6]) / grand_total * 100, 1) if grand_total else 0.0,
+    }

@@ -12,6 +12,8 @@ export interface GraphNode {
   details: string;
   casesCount: number;
   phone?: string;
+  /** True when the record originates from the bundled demo seed dataset (gap 132.4). */
+  isSeed?: boolean;
   /** Spatial coordinates assigned by the force-graph simulation at render time. */
   x?: number;
   y?: number;

@@ -1,7 +1,7 @@
 {
-  "trained_at": "2026-07-25T02:08:38.400501+00:00",
+  "trained_at": "2026-08-24T10:47:35.997846+00:00",
   "n_criminals": 51,
-  "n_features": 10,
+  "n_features": 14,
   "feature_names": [
     "fir_count",
     "open_fir_count",
@@ -12,22 +12,26 @@
     "status_encoded",
     "recency_days",
     "avg_case_age_days",
-    "multi_district_flag"
+    "multi_district_flag",
+    "mo_tag_count",
+    "mo_night_flag",
+    "mo_weapon_flag",
+    "mo_vehicle_flag"
   ],
   "risk_scorer": {
-    "mean_risk_score": 23.77765936841781,
-    "std_risk_score": 28.503763041691208,
-    "high_risk_fraction": 0.1568627450980392
+    "mean_risk_score": 30.883106792456548,
+    "std_risk_score": 25.76704098492575,
+    "high_risk_fraction": 0.13725490196078433
   },
   "repeat_offender": {
-    "mean_probability": 0.7624121092037528
+    "mean_probability": 0.9201755919326535
   },
   "similarity": {
     "index_size": 51.0,
-    "mean_max_similarity": 0.9993058926067999
+    "mean_max_similarity": 0.9987717448728468
   },
   "clustering": {
-    "inertia": 24514.8171,
+    "inertia": 28784.2538,
     "n_clusters": 4.0,
     "mean_cluster_size": 12.75
   }

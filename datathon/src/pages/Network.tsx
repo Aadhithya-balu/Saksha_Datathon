@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import CriminalGraph3D from '../components/network/CriminalGraph3D';
 import type { GraphNode } from '../components/network/CriminalGraph3D';
 import NodeDetailPanel from '../components/network/NodeDetailPanel';
-import { Share2, Network as NetIcon, Layers } from 'lucide-react';
+import { Share2, Network as NetIcon, Layers, Database } from 'lucide-react';
 import { downloadSecureDossier } from '../utils/downloader';
 import { useAuditStore } from '../store/auditStore';
 import { useAuthStore } from '../store/authStore';
@@ -93,6 +93,14 @@ export const Network: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Gap 132.4: transparency banner for demo-seeded content */}
+      {graphData && graphData.nodes.some((n) => n.isSeed) && (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-card border border-[#6C43CC]/25 bg-[#6C43CC]/5 text-[9.5px] font-mono text-[#6C43CC] uppercase tracking-wider">
+          <Database className="w-3.5 h-3.5 flex-shrink-0" />
+          Dataset scope: contains seeded demo records — flagged nodes originate from the bundled training dataset, not live intelligence
+        </div>
+      )}
 
       {/* Main Graph Grid splitting */}
       <div className="flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">

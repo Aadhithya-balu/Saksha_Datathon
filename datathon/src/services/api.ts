@@ -176,6 +176,8 @@ export interface NetworkNode {
   lat?: number | null;
   lng?: number | null;
   extra?: Record<string, any>;
+  /** True when the record originates from the bundled demo seed dataset (gap 132.4). */
+  isSeed?: boolean;
 }
 
 export interface NetworkEdge {
@@ -198,6 +200,8 @@ export interface NetworkGraphResponse {
   total_nodes: number;
   total_edges: number;
   is_neo4j_backed: boolean;
+  seed_node_count?: number;
+  dataset_scope?: 'live_records' | 'contains_seed_demo_records' | string;
 }
 
 export interface GangHierarchyMember {
@@ -208,6 +212,7 @@ export interface GangHierarchyMember {
   riskScore: number;
   status: string;
   casesCount: number;
+  isSeed?: boolean;
 }
 
 export interface GangNetworkSummary {
@@ -221,6 +226,7 @@ export interface GangNetworkSummary {
   primary_racket: string;
   members: GangHierarchyMember[];
   relationships: NetworkEdge[];
+  is_demo_derived?: boolean;
 }
 
 export interface ShortestPathResult {
@@ -1525,6 +1531,50 @@ export async function getSociologicalTemporal() {
   return apiRequest<TemporalDemographic>('/sociological/temporal-demographics');
 }
 
+/** Hour x day-of-week incident matrix (issue #143 gap 131.3). */
+export interface TemporalMatrixCell {
+  day: string;
+  count: number;
+  percentage: number;
+  expected: number;
+  std_residual: number;
+}
+
+export interface TemporalMatrixRow {
+  hour: number;
+  label: string;
+  total: number;
+  cells: TemporalMatrixCell[];
+}
+
+export interface TemporalMatrixPeak {
+  hour: number;
+  day: string;
+  count: number;
+  std_residual: number;
+}
+
+export interface TemporalMatrixResponse {
+  filters: { district: string | null; location_id: string | null };
+  days: string[];
+  matrix: TemporalMatrixRow[];
+  grand_total: number;
+  hour_totals: Array<{ hour: number; count: number }>;
+  day_totals: Array<{ day: string; count: number }>;
+  peaks: TemporalMatrixPeak[];
+  busiest_hour: number | null;
+  night_share_pct: number;
+  weekend_share_pct: number;
+}
+
+export async function getSociologicalTemporalMatrix(params?: { district?: string; location_id?: string }) {
+  const query = new URLSearchParams();
+  if (params?.district) query.set('district', params.district);
+  if (params?.location_id) query.set('location_id', params.location_id);
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return apiRequest<TemporalMatrixResponse>(`/sociological/temporal-matrix${suffix}`);
+}
+
 export async function getSociologicalOffenderDemographics() {
   return apiRequest<OffenderDemographics>('/sociological/offender-demographics');
 }
@@ -1808,6 +1858,63 @@ export async function extractCaseEntities(caseId: string) {
     entities_by_type: Record<string, string[]>;
     entities: ExtractedEntity[];
   }>(`/ai/mo/extract-case/${caseId}`);
+}
+
+// ── Recurring MO Pattern Detection (issue #144 gap 132.2) ───────────────────
+
+export interface MOPatternMember {
+  kind: 'case' | 'criminal';
+  id: string;
+  label: string;
+  status?: string | null;
+  district?: string | null;
+}
+
+export interface MOPattern {
+  pattern_id: string;
+  support: number;
+  case_count: number;
+  criminal_count: number;
+  members: MOPatternMember[];
+  shared_tags: string[];
+  dominant_category: string | null;
+  districts: string[];
+  first_occurred: string | null;
+  last_occurred: string | null;
+  peak_time_window: string | null;
+  at_large_members: number;
+  threat_score: number;
+  example_narrative: string;
+}
+
+export interface MOPatternResponse {
+  patterns: MOPattern[];
+  total_patterns: number;
+  method: string;
+  min_support: number;
+  entities_analysed: { cases: number; criminals: number };
+  generated_at: string;
+}
+
+export async function getRecurringMOPatterns(minSupport = 2, k = 10) {
+  const search = new URLSearchParams({ min_support: String(minSupport), k: String(k) });
+  return apiRequest<MOPatternResponse>(`/ai/mo/patterns?${search.toString()}`);
+}
+
+export interface MOTagSyncStats {
+  cases_scanned: number;
+  criminals_scanned: number;
+  tags_created: number;
+  case_links_created: number;
+  criminal_links_created: number;
+  already_synced: number;
+}
+
+export async function syncMOTags() {
+  return apiRequest<MOTagSyncStats>('/ai/mo/sync-tags', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
 }
 
 // ── Data Import / Legacy Ingestion (issue #139 M1/M2) ───────────────────────

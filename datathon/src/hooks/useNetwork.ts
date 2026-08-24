@@ -23,6 +23,9 @@ export function useNetwork() {
   const [minRisk, setMinRisk] = useState<number>(0);
   const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] } | null>(null);
   const [isNeo4jBacked, setIsNeo4jBacked] = useState<boolean>(false);
+  // Gap 132.4: provenance transparency about demo-seeded records.
+  const [seedNodeCount, setSeedNodeCount] = useState<number>(0);
+  const [datasetScope, setDatasetScope] = useState<string>('live_records');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +61,8 @@ export function useNetwork() {
         links: res.edges as GraphLink[],
       });
       setIsNeo4jBacked(res.is_neo4j_backed);
+      setSeedNodeCount(res.seed_node_count ?? 0);
+      setDatasetScope(res.dataset_scope ?? 'live_records');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch graph data');
     } finally {
@@ -147,6 +152,8 @@ export function useNetwork() {
     setMinRisk,
     graphData,
     isNeo4jBacked,
+    seedNodeCount,
+    datasetScope,
     loading,
     error,
     selectedNode,

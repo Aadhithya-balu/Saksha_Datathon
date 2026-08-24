@@ -5,11 +5,13 @@ complete without pretending an ML model is already trained.
 """
 from __future__ import annotations
 
+import math
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
+import numpy as np
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
@@ -203,35 +205,253 @@ def risk_scores(db: Session, district_id: str | None = None, window: str = "next
     }
 
 
+# ---------------------------------------------------------------------------
+# Spatial statistics (issue #143 gap 131.1)
+#
+# The legacy hotspot score was ad-hoc counting (35 + share*55 + recent*2).
+# These helpers add proper cluster-significance testing:
+#   - Getis-Ord Gi*  : per-location z-scores for high-high clustering,
+#   - Gaussian KDE   : smooth incident density surface over lat/lng,
+#   - Global Moran's I: spatial autocorrelation of the whole map.
+# Pure numpy/math — no new dependencies.
+# ---------------------------------------------------------------------------
+
+GISTAR_BAND_KM = 25.0          # neighbour distance band for the spatial weights
+EARTH_RADIUS_KM = 6371.0088
+
+
+def _haversine_km_matrix(lats: np.ndarray, lngs: np.ndarray) -> np.ndarray:
+    """Pairwise great-circle distance matrix (km) between location centroids."""
+    lat = np.radians(np.asarray(lats, dtype=np.float64))
+    lon = np.radians(np.asarray(lngs, dtype=np.float64))
+    dlat = lat[:, None] - lat[None, :]
+    dlon = lon[:, None] - lon[None, :]
+    a = np.sin(dlat / 2.0) ** 2 + np.cos(lat)[:, None] * np.cos(lat)[None, :] * np.sin(dlon / 2.0) ** 2
+    return 2.0 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(a, 0.0, 1.0)))
+
+
+def _distance_band_weights(dist_km: np.ndarray, band_km: float) -> np.ndarray:
+    """Binary Gi* weights including the self-pair (the 'star' convention)."""
+    return (dist_km <= band_km).astype(np.float64)
+
+
+def _two_sided_p(z: float) -> float:
+    """Two-tailed p-value under the standard normal approximation."""
+    return math.erfc(abs(z) / math.sqrt(2.0))
+
+
+def getis_ord_gi_star(values: np.ndarray, weights: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Getis-Ord Gi* z-scores and two-sided p-values for weighted points.
+
+    values  : (n,) observed counts per location
+    weights : (n, n) symmetric spatial weights (self-inclusive for Gi* star)
+    """
+    values = np.asarray(values, dtype=np.float64)
+    n = len(values)
+    if n < 3 or not weights.any():
+        return np.zeros(n), np.ones(n)
+
+    x_bar = values.mean()
+    s_numerator = (values ** 2).sum() / n - x_bar ** 2
+    if s_numerator <= 0:
+        return np.zeros(n), np.ones(n)
+    s = math.sqrt(s_numerator)
+
+    w_sums = weights.sum(axis=1)                       # Σ_j w_ij
+    w_sq_sums = (weights ** 2).sum(axis=1)             # Σ_j w_ij²
+    w_x = weights @ values                             # Σ_j w_ij x_j
+
+    denom = s * np.sqrt((n * w_sq_sums - w_sums ** 2) / max(n - 1, 1))
+    denom = np.where(denom > 1e-12, denom, 1e-12)
+    z_scores = (w_x - x_bar * w_sums) / denom
+    p_values = np.array([_two_sided_p(float(z)) for z in z_scores])
+    return z_scores, p_values
+
+
+def morans_i(values: np.ndarray, weights: np.ndarray) -> dict[str, float | None]:
+    """Global Moran's I with randomisation-normality variance and z-test."""
+    values = np.asarray(values, dtype=np.float64)
+    weights = np.asarray(weights, dtype=np.float64)
+    n = len(values)
+    if n < 4 or not weights.any():
+        return {"moran_i": None, "expected_i": None, "z_score": None, "p_value": None}
+
+    s0 = float(weights.sum())
+    if s0 <= 0:
+        return {"moran_i": None, "expected_i": None, "z_score": None, "p_value": None}
+
+    deviations = values - values.mean()
+    num = float((deviations[:, None] * weights * deviations[None, :]).sum())
+    den = float((deviations ** 2).sum())
+    if den <= 0:
+        return {"moran_i": None, "expected_i": None, "z_score": None, "p_value": None}
+
+    moran = (n / s0) * num / den
+    expected = -1.0 / (n - 1)
+
+    s1 = 0.5 * float(((weights + weights.T) ** 2).sum())
+    row_sums = weights.sum(axis=1) + weights.sum(axis=0)
+    s2 = float((row_sums ** 2).sum())
+    m2 = den / n
+    m4 = float((deviations ** 4).sum() / n)
+    b2 = m4 / (m2 ** 2) if m2 > 0 else 0.0
+
+    var_numerator = (
+        n * ((n ** 2 - 3 * n + 3) * s1 - n * s2 + 3 * s0 ** 2)
+        - b2 * ((n ** 2 - n) * s1 - 2 * n * s0 ** 2 + 6 * s0 ** 2)
+    )
+    var_denominator = (n - 1) ** 2 * (n - 2) * (n - 3) * s0 ** 2
+    variance = var_numerator / var_denominator if var_denominator > 0 else 0.0
+    z_score = (moran - expected) / math.sqrt(variance) if variance > 0 else 0.0
+
+    return {
+        "moran_i": round(moran, 4),
+        "expected_i": round(expected, 4),
+        "z_score": round(float(z_score), 4),
+        "p_value": round(_two_sided_p(float(z_score)), 4),
+    }
+
+
+def gaussian_kde_density(
+    points_lat: np.ndarray,
+    points_lng: np.ndarray,
+    eval_lat: np.ndarray,
+    eval_lng: np.ndarray,
+) -> np.ndarray:
+    """Gaussian kernel density estimate at evaluation points.
+
+    ``points_*`` are individual incident coordinates; bandwidth follows
+    Silverman's rule applied to the mean pairwise distance so the estimate
+    adapts to the spatial spread of the data.
+    """
+    pts = np.column_stack([np.radians(points_lat, dtype=np.float64), np.radians(points_lng, dtype=np.float64)])
+    ev = np.column_stack([np.radians(eval_lat, dtype=np.float64), np.radians(eval_lng, dtype=np.float64)])
+    n_pts = len(pts)
+    if n_pts == 0 or len(ev) == 0:
+        return np.zeros(max(len(ev), 0))
+    # Pairwise distances evaluation-points × incident-points (km)
+    dlat = ev[:, None, 0] - pts[None, :, 0]
+    dlon = ev[:, None, 1] - pts[None, :, 1]
+    a = np.sin(dlat / 2.0) ** 2 + np.cos(ev[:, 0])[:, None] * np.cos(pts[:, 0])[None, :] * np.sin(dlon / 2.0) ** 2
+    dist = 2.0 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(a, 0.0, 1.0)))
+
+    bandwidth = 5.0
+    if n_pts > 1:
+        mean_pairwise = float(_haversine_km_matrix(points_lat, points_lng).mean()) or 1.0
+        # Silverman-style bandwidth (km), clamped so kernels stay local.
+        bandwidth = float(np.clip(0.9 * mean_pairwise * n_pts ** (-1.0 / 5.0), 2.0, 50.0))
+
+    u = dist / bandwidth
+    kernels = np.exp(-0.5 * u ** 2)
+    density = kernels.sum(axis=1) / (n_pts * bandwidth * math.sqrt(2.0 * math.pi))
+    return density
+
+
 def hotspots(db: Session, district_id: str | None = None) -> dict[str, Any]:
+    """Statistically scored spatial hotspots (issue #143 gap 131.1).
+
+    Replaces ad-hoc counting with Getis-Ord Gi* cluster significance,
+    Gaussian kernel density estimation, and a global Moran's I test.
+    Legacy response fields (score/category/trend ordering contract) are kept;
+    new fields are additive only.
+    """
     query = db.query(Location).join(CrimeCase, CrimeCase.location_id == Location.id)
     if district_id:
         query = query.filter(Location.district == district_id)
     locations = query.options(joinedload(Location.crimes).joinedload(CrimeCase.category)).all()
 
-    max_count = max((len(location.crimes) for location in locations), default=1)
-    rows = []
+    prepared: list[dict[str, Any]] = []
+    incident_lat: list[float] = []
+    incident_lng: list[float] = []
+    total_cases = 0
     for location in locations:
-        crimes = location.crimes
+        crimes = [case for case in location.crimes]
         if not crimes:
             continue
         categories = Counter(case.category.name for case in crimes if case.category)
         recent = sum(1 for case in crimes if _within_days(case.occurred_at, 30))
         previous = max(len(crimes) - recent, 0)
         trend = "up" if recent > previous else "down" if recent < previous else "stable"
-        score = min(100, round(35 + (len(crimes) / max_count) * 55 + recent * 2))
-        rows.append(
+        total_cases += len(crimes)
+        incident_lat.extend([location.latitude] * len(crimes))
+        incident_lng.extend([location.longitude] * len(crimes))
+        prepared.append(
             {
                 "district_id": location.district,
                 "name": location.station or location.address or location.district,
                 "lat": location.latitude,
                 "lng": location.longitude,
-                "score": score,
+                "count": len(crimes),
+                "recent_count": recent,
                 "category": categories.most_common(1)[0][0] if categories else "Unclassified",
                 "trend": trend,
             }
         )
-    return {"hotspots": sorted(rows, key=lambda row: row["score"], reverse=True)}
+
+    if not prepared:
+        return {
+            "hotspots": [],
+            "statistics": {
+                "method": "getis_ord_gi_star+kde+morans_i",
+                "locations_assessed": 0,
+                "incidents_assessed": 0,
+                "bandwidth_km": GISTAR_BAND_KM,
+                **morans_i(np.zeros(0), np.zeros((0, 0))),
+            },
+        }
+
+    counts = np.array([item["count"] for item in prepared], dtype=np.float64)
+    lats = np.array([item["lat"] for item in prepared], dtype=np.float64)
+    lngs = np.array([item["lng"] for item in prepared], dtype=np.float64)
+
+    # Spatial weights: self-inclusive distance band around each centroid.
+    dist_km = _haversine_km_matrix(lats, lngs)
+    weights = _distance_band_weights(dist_km, GISTAR_BAND_KM)
+
+    z_scores, p_values = getis_ord_gi_star(counts, weights)
+
+    # Kernel density evaluated at every location centroid -> percentile rank.
+    densities = gaussian_kde_density(np.array(incident_lat), np.array(incident_lng), lats, lngs)
+    kde_pct = np.zeros(len(densities))
+    if densities.max() > densities.min():
+        order = densities.argsort().argsort()
+        kde_pct = order / max(len(densities) - 1, 1) * 100.0
+
+    max_count = float(counts.max())
+    rows: list[dict[str, Any]] = []
+    for idx, item in enumerate(prepared):
+        z = float(z_scores[idx])
+        p = float(p_values[idx])
+        # Composite 0-100 score blending cluster significance (Gi*), smoothed
+        # density, raw volume share, and recency — deterministic and explainable.
+        gi_component = float(np.clip(z / 3.0, -1.0, 1.5)) / 1.5 * 100.0
+        volume_component = counts[idx] / max_count * 100.0
+        recency_component = min(100.0, item["recent_count"] * 12.5)
+        score = int(round(0.40 * max(gi_component, 0.0) + 0.30 * kde_pct[idx] + 0.15 * volume_component + 0.15 * recency_component))
+        score = int(np.clip(score, 0, 100))
+        rows.append(
+            {
+                **item,
+                "score": score,
+                "z_score": round(z, 4),
+                "p_value": round(p, 4),
+                "kde_percentile": round(float(kde_pct[idx]), 1),
+                "significant": bool(p < 0.05 and z > 0),
+            }
+        )
+
+    statistics = {
+        "method": "getis_ord_gi_star+kde+morans_i",
+        "locations_assessed": len(prepared),
+        "incidents_assessed": int(total_cases),
+        "bandwidth_km": GISTAR_BAND_KM,
+        **morans_i(counts, weights),
+    }
+
+    return {
+        "hotspots": sorted(rows, key=lambda row: (row["score"], row["count"]), reverse=True),
+        "statistics": statistics,
+    }
 
 
 def anomalies(db: Session) -> dict[str, Any]:
