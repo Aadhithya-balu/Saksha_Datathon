@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Query, HTTPException, UploadFile, File
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fpdf import FPDF
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -370,13 +370,21 @@ def download_evidence_file(
         raise HTTPException(status_code=404, detail="Evidence record not found.")
 
     metadata = db.query(EvidenceMetadata).filter(EvidenceMetadata.evidence_id == evidence_id).first()
-    file_path = Path(metadata.filepath if metadata else evidence.storage_path or "")
-
-    # If raw file format is requested and file exists on disk, serve physical binary file
-    if format == "raw" and file_path.exists() and file_path.is_file():
+    # If raw file format is requested:
+    if format == "raw":
         add_timeline_event(db, evidence_id, "Evidence File Downloaded", current_user)
         audit_service.log_action(db, current_user, "DOWNLOAD", "Evidence", str(evidence_id))
-        return FileResponse(path=str(file_path), filename=metadata.filename if metadata else file_path.name, media_type=metadata.mime_type if metadata else "application/octet-stream")
+
+        # 1. Prefer Supabase Storage URL if configured (survives restarts/deployments)
+        if metadata and metadata.storage_url:
+            return RedirectResponse(url=metadata.storage_url)
+
+        # 2. Fall back to local file on disk (development / local storage mode)
+        file_path = Path(metadata.filepath if metadata else evidence.storage_path or "")
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(path=str(file_path), filename=metadata.filename if metadata else file_path.name, media_type=metadata.mime_type if metadata else "application/octet-stream")
+
+        raise HTTPException(status_code=404, detail="Evidence raw file not found on local or cloud storage. Re-upload required.")
 
     # Otherwise, generate authentic official Karnataka Police PDF dossier from live database
     custody_records = (
