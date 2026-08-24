@@ -46,6 +46,7 @@ class EvidenceMetadataOut(BaseModel):
     filesize: int
     mime_type: str
     uploaded_by: str | None = None
+    storage_url: str | None = None
     extracted_data: dict[str, Any] | None = None
     created_at: datetime
 
