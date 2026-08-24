@@ -2,32 +2,8 @@ import React, { useEffect, useState } from 'react';
 import type { CrimeAlert } from '../store/alertStore';
 import { getAnomalies, createNotification } from '../services/api';
 import { useAuthStore } from '../store/authStore';
-import { ShieldAlert, CheckCircle, Search, MapPin, HardDrive, Loader2 } from 'lucide-react';
+import { ShieldAlert, CheckCircle, Search, MapPin, HardDrive, Loader2, FolderOpen } from 'lucide-react';
 import { TableSkeleton } from '../components/ui/Skeleton';
-
-const DISTRICT_CODE_MAP: Record<string, { district: string; station: string }> = {
-  BNG: { district: 'Bengaluru Urban', station: 'Whitefield Police Station' },
-  BRL: { district: 'Ballari', station: 'City Police Station' },
-  MYS: { district: 'Mysuru', station: 'Devaraja Police Station' },
-  HSN: { district: 'Hassan', station: 'Hassan Town Station' },
-  CTD: { district: 'Chitradurga', station: 'Chitradurga Rural Station' },
-  KLR: { district: 'Kolar', station: 'Kolar Town Station' },
-  CB: { district: 'Chikkaballapura', station: 'Chikkaballapura Station' },
-  KDG: { district: 'Kodagu', station: 'Madikeri Station' },
-  DVG: { district: 'Davanagere', station: 'Davanagere City Station' },
-  DK: { district: 'Dakshina Kannada', station: 'Surathkal Police Station' },
-  BDR: { district: 'Bidar', station: 'Bidar Town Station' },
-  BLG: { district: 'Belagavi', station: 'Belagavi Central Station' },
-};
-
-function parseDistrictFromFir(caseId: string): { district: string; station: string } {
-  const match = caseId.match(/FIR-\d+\/([A-Z]+)\/\d+/i) || caseId.match(/\/([A-Z]+)\//i) || caseId.match(/CR-\d+-([A-Z]+)-\d+/i);
-  if (match && match[1]) {
-    const code = match[1].toUpperCase();
-    if (DISTRICT_CODE_MAP[code]) return DISTRICT_CODE_MAP[code];
-  }
-  return { district: 'Bengaluru Urban', station: 'City Central Police Station' };
-}
 
 export const Anomalies: React.FC = () => {
   const [alerts, setAlerts] = useState<CrimeAlert[]>([]);
@@ -46,26 +22,25 @@ export const Anomalies: React.FC = () => {
     void getAnomalies()
       .then((response) => {
         if (!isMounted) return;
-        const mappedAlerts = response.anomalies.map<CrimeAlert>((item, index) => {
-          const loc = parseDistrictFromFir(item.case_id);
-          return {
-            id: item.case_id,
-            firNumber: item.case_id,
-            district: loc.district,
-            station: loc.station,
-            crimeType: item.label,
-            offenceDetails: item.reason,
-            anomalyScore: Math.round(item.score * 100),
-            deviationPercent: Math.round(item.score * 100),
-            severity: item.score >= 0.8 ? 'HIGH' : 'WATCH',
-            timestamp: new Date(Date.now() - index * 3600000).toISOString(),
-            status: 'PENDING',
-            featureBreakdown: {
-              'Anomaly Score': Math.round(item.score * 100),
-              'Category Severity': Math.max(40, Math.round(item.score * 90)),
-            },
-          };
-        });
+        const mappedAlerts = response.anomalies.map<CrimeAlert>((item) => ({
+          id: item.case_id,
+          firNumber: item.case_id,
+          caseUuid: item.case_uuid,
+          caseNumber: item.case_number,
+          district: item.district || 'Unrecorded',
+          station: item.station || 'Unrecorded',
+          crimeType: item.category || item.label,
+          offenceDetails: item.reason,
+          anomalyScore: Math.round(item.score * 100),
+          deviationPercent: Math.round(item.score * 100),
+          severity: item.score >= 0.8 ? 'HIGH' : 'WATCH',
+          timestamp: item.filed_at || new Date().toISOString(),
+          status: 'PENDING',
+          featureBreakdown: {
+            'Anomaly Score': Math.round(item.score * 100),
+            'Category Severity': Math.max(40, Math.round(item.score * 90)),
+          },
+        }));
         setAlerts(mappedAlerts);
         setSelectedAlertId(mappedAlerts[0]?.id ?? null);
         setLoadError(null);
@@ -323,6 +298,19 @@ export const Anomalies: React.FC = () => {
 
               {/* ACTION BUTTON WORKBENCH */}
               <div className="pt-5 border-t border-[var(--border-muted)] flex gap-2 text-[9.5px] font-mono uppercase">
+                {activeAlert.caseUuid && (
+                  <button
+                    onClick={() => {
+                      sessionStorage.setItem('selected_entity_id', activeAlert.caseUuid!);
+                      window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'crime_cases', targetId: activeAlert.caseUuid } }));
+                    }}
+                    className="py-2.5 px-3 bg-[#6C43CC] hover:bg-[#6C43CC]/80 text-[var(--text-primary)] rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none flex items-center justify-center gap-1.5"
+                    title={`Open linked case file ${activeAlert.caseNumber || ''} in the Crime Cases module`}
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" />
+                    Open Case File
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     sessionStorage.setItem('selected_district_override', activeAlert.district);

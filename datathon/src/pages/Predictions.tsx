@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import ForecastChart from '../components/charts/ForecastChart';
 import CorrelationChart from '../components/charts/CorrelationChart';
 import WeatherCorrelationChart from '../components/charts/WeatherCorrelationChart';
-import { Cpu, RefreshCw, ShieldAlert, Sparkles, Sun, CloudRain, Wind, Snowflake } from 'lucide-react';
-import { getAnomalies, getRiskScores, getModelInfo, getSeasonBreakdown, type AnomalyRecord, type RiskScoresResponse, type ModelInfo, type SeasonData } from '../services/api';
+import { Cpu, RefreshCw, ShieldAlert, Sparkles, Sun, CloudRain, Wind, Snowflake, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { getAnomalies, getRiskScores, getModelInfo, getSeasonBreakdown, getEmergingTrends, type AnomalyRecord, type RiskScoresResponse, type ModelInfo, type SeasonData, type EmergingTypology } from '../services/api';
 import { PageSkeleton } from '../components/ui/Skeleton';
 
 const SEASON_ICONS: Record<string, React.ReactNode> = {
@@ -20,19 +20,26 @@ const SEASON_COLORS: Record<string, string> = {
   Winter: 'bg-cyan-500/20 border-cyan-500/30 text-cyan-400',
 };
 
+const TREND_META: Record<EmergingTypology['direction'], { icon: React.ReactNode; cls: string }> = {
+  increasing: { icon: <TrendingUp className="w-3.5 h-3.5" />, cls: 'bg-[#C94A2A]/10 border-[#C94A2A]/30 text-[#C94A2A]' },
+  decreasing: { icon: <TrendingDown className="w-3.5 h-3.5" />, cls: 'bg-[#0E9E78]/10 border-[#0E9E78]/30 text-[#0E9E78]' },
+  stable: { icon: <Minus className="w-3.5 h-3.5" />, cls: 'bg-blue-500/10 border-blue-500/30 text-blue-400' },
+};
+
 export const Predictions: React.FC = () => {
   const [riskScores, setRiskScores] = useState<RiskScoresResponse | null>(null);
   const [anomalies, setAnomalies] = useState<AnomalyRecord[]>([]);
   const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
   const [seasons, setSeasons] = useState<SeasonData[]>([]);
+  const [typologies, setTypologies] = useState<EmergingTypology[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    void Promise.all([getRiskScores(), getAnomalies(), getModelInfo(), getSeasonBreakdown()])
-      .then(([riskResponse, anomalyResponse, modelResponse, seasonResponse]) => {
+    void Promise.all([getRiskScores(), getAnomalies(), getModelInfo(), getSeasonBreakdown(), getEmergingTrends().catch(() => [])])
+      .then(([riskResponse, anomalyResponse, modelResponse, seasonResponse, typologyResponse]) => {
         if (!isMounted) {
           return;
         }
@@ -41,6 +48,7 @@ export const Predictions: React.FC = () => {
         setAnomalies(anomalyResponse.anomalies);
         setModelInfo(modelResponse);
         setSeasons(seasonResponse.seasons);
+        setTypologies(typologyResponse);
       })
       .catch(() => {
         if (isMounted) {
@@ -167,6 +175,37 @@ export const Predictions: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* EMERGING CRIME TYPOLOGIES (30d vs prior 30d, from strategic analytics) */}
+      {typologies.length > 0 && (
+        <div className="bg-secondary-bg/25 border border-border-color p-5 rounded-card">
+          <div className="flex justify-between items-center border-b border-[var(--border-muted)] pb-2 mb-4">
+            <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-widest">
+              Emerging Crime Typologies • Last 30 Days vs Prior Period
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {typologies.map((t) => {
+              const meta = TREND_META[t.direction] ?? TREND_META.stable;
+              return (
+                <div key={t.category} className={`p-3.5 border rounded-card flex flex-col gap-2 ${meta.cls}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] font-bold uppercase font-mono truncate max-w-[75%]" title={t.category}>{t.category}</span>
+                    {meta.icon}
+                  </div>
+                  <span className="text-lg font-bold font-mono">
+                    {t.change_percentage > 0 ? '+' : ''}{t.change_percentage}%
+                  </span>
+                  <div className="text-[9px] font-mono flex items-center justify-between opacity-80">
+                    <span>Recent: {t.recent_count}</span>
+                    <span>Prior: {t.historical_count}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

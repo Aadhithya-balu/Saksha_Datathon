@@ -3,7 +3,11 @@ High-level Network Intelligence & Graph Analytics Service.
 
 Provides Criminal Relationship Graph, Case Relationship Graph, Gang Networks,
 Link Analysis, Shortest Path Analysis, Timeline Integration, and AI Graph Insights.
-Handles automatic SQL fallback when Neo4j is offline or pending sync.
+
+Gap #129.2: all fabricated seed nodes/edges and hardcoded syndicate rosters were
+removed — every node/edge is now derived from PostgreSQL records or Neo4j.
+Gap #129.3: full-graph reads prefer a live Neo4j instance and fall back to SQL;
+the silent FIR ``limit(100)`` truncation was removed.
 """
 
 from collections import Counter, defaultdict, deque
@@ -11,6 +15,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.crime import CrimeCase
+from app.models.criminal import Criminal
 from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
 from app.models.network import (
     AIGraphInsight,
@@ -24,70 +29,11 @@ from app.models.network import (
     NetworkNodeCategory,
     ShortestPathResponse,
 )
-from app.services.neo4j.client import is_neo4j_available, query_shortest_path_neo4j
+from app.services.neo4j.client import fetch_full_graph_neo4j, is_neo4j_available, query_shortest_path_neo4j
 
-# Pre-seeded Syndicate / Gang Definitions for Intelligence Analysis
-MOCK_GANG_SYNDICATES: list[GangNetworkSummary] = [
-    GangNetworkSummary(
-        gang_id="gang-101",
-        name="Kodaikanal Interstate Burglary Network",
-        leader_name='Ramu "Kodaikanal" Swamy',
-        leader_id="criminal-1",
-        active_members=14,
-        risk_level="CRITICAL",
-        territory="Bengaluru, Mysuru, Kodaikanal Transit",
-        primary_racket="Armed Night Home Burglaries & Lock-Breaking",
-        members=[
-            GangHierarchyMember(id="node-1", name='Ramu "Kodaikanal" Swamy', role="Kingpin & Operations Boss", rank_level=1, riskScore=92.0, status="at_large", casesCount=14),
-            GangHierarchyMember(id="node-4", name="Karthik Gowda", role="Interstate Safe Cracker", rank_level=2, riskScore=71.0, status="active", casesCount=4),
-            GangHierarchyMember(id="node-11", name="Deva 'Shadow' Kumar", role="Lookout & Recon", rank_level=3, riskScore=64.0, status="active", casesCount=3),
-            GangHierarchyMember(id="node-12", name="Nagesh 'Pawn' Rao", role="Gold Receiver & Fence", rank_level=4, riskScore=78.0, status="active", casesCount=6),
-        ],
-        relationships=[
-            NetworkEdge(source="node-1", target="node-4", relationship="Direct Command"),
-            NetworkEdge(source="node-1", target="node-11", relationship="Field Handler"),
-            NetworkEdge(source="node-4", target="node-12", relationship="Fences Stolen Jewelry"),
-        ],
-    ),
-    GangNetworkSummary(
-        gang_id="gang-102",
-        name="Ballari Sand & Transport Syndicate",
-        leader_name="Mohsin Pasha",
-        leader_id="criminal-5",
-        active_members=9,
-        risk_level="HIGH",
-        territory="Ballari, Vijayanagara, District Border Checkposts",
-        primary_racket="Illegal Gravel Excavation & Highway Extortion",
-        members=[
-            GangHierarchyMember(id="node-5", name="Mohsin Pasha", role="Syndicate Leader", rank_level=1, riskScore=65.0, status="active", casesCount=5),
-            GangHierarchyMember(id="node-13", name="Imran Khan", role="Logistics & Fleet Driver", rank_level=3, riskScore=58.0, status="active", casesCount=2),
-            GangHierarchyMember(id="node-14", name="Suresh 'Bail' Shetty", role="Protection Racket & Legal Fixer", rank_level=2, riskScore=62.0, status="active", casesCount=3),
-        ],
-        relationships=[
-            NetworkEdge(source="node-5", target="node-13", relationship="Vehicle Fleet Supervisor"),
-            NetworkEdge(source="node-5", target="node-14", relationship="Bribe & Money Distributor"),
-        ],
-    ),
-    GangNetworkSummary(
-        gang_id="gang-103",
-        name="Coastal Narcotics Transit Ring",
-        leader_name="Sayed Ibrahim",
-        leader_id="criminal-3",
-        active_members=12,
-        risk_level="CRITICAL",
-        territory="Mangaluru Harbor & Interstate Coast Line",
-        primary_racket="Synthetic Narcotics Distribution & Maritime Transit",
-        members=[
-            GangHierarchyMember(id="node-3", name="Sayed Ibrahim", role="Transit Mastermind", rank_level=1, riskScore=84.0, status="at_large", casesCount=6),
-            GangHierarchyMember(id="node-2", name='Vikram "Vicky" Yadav', role="Money Mule & Crypto Launderer", rank_level=2, riskScore=88.0, status="at_large", casesCount=8),
-            GangHierarchyMember(id="node-15", name="Abdul Rashid", role="Harbor Cargo Handler", rank_level=3, riskScore=69.0, status="active", casesCount=5),
-        ],
-        relationships=[
-            NetworkEdge(source="node-3", target="node-2", relationship="Hawala & Mule Fund Settlement"),
-            NetworkEdge(source="node-3", target="node-15", relationship="Dockyard Smuggling Ops"),
-        ],
-    ),
-]
+
+def _criminal_risk(criminal: Criminal) -> float:
+    return min(100.0, 45.0 + len(criminal.fir_links) * 10)
 
 
 def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: float = 0.0) -> tuple[list[NetworkNode], list[NetworkEdge]]:
@@ -100,54 +46,12 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
             joinedload(FIR.victim_links).joinedload(FIRVictimLink.victim),
         )
         .order_by(FIR.filed_at.desc())
-        .limit(100)
         .all()
     )
 
     nodes_map: dict[str, NetworkNode] = {}
     edges_list: list[NetworkEdge] = []
 
-    # Default seed nodes for initial state
-    default_nodes = [
-        NetworkNode(id="node-1", name='Ramu "Kodaikanal" Swamy', category=NetworkNodeCategory.SUSPECT, riskScore=92.0, details="Leader of interstate burglary gang. Suspected in home burglaries.", casesCount=14, phone="+91 94420-12891", gangAffiliation="Kodaikanal Interstate Burglary Network", status="at_large"),
-        NetworkNode(id="node-2", name='Vikram "Vicky" Yadav', category=NetworkNodeCategory.SUSPECT, riskScore=88.0, details="Underground money mule coordinator. Funnels loan app funds.", casesCount=8, phone="+91 98845-09228", gangAffiliation="Coastal Narcotics Transit Ring", status="at_large"),
-        NetworkNode(id="node-3", name="Sayed Ibrahim", category=NetworkNodeCategory.SUSPECT, riskScore=84.0, details="Logistics provider for synthetic narcotics shipments.", casesCount=6, phone="+91 99014-38419", gangAffiliation="Coastal Narcotics Transit Ring", status="at_large"),
-        NetworkNode(id="node-4", name="Karthik Gowda", category=NetworkNodeCategory.OFFENDER, riskScore=71.0, details="Prior conviction for property fraud & Excise violations.", casesCount=4, gangAffiliation="Kodaikanal Interstate Burglary Network", status="active"),
-        NetworkNode(id="node-5", name="Mohsin Pasha", category=NetworkNodeCategory.OFFENDER, riskScore=65.0, details="Known organizer of illegal gravel mining syndicates in Ballari.", casesCount=5, gangAffiliation="Ballari Sand & Transport Syndicate", status="active"),
-        NetworkNode(id="node-6", name="Indiranagar Sect-B, Bengaluru", category=NetworkNodeCategory.LOCATION, riskScore=75.0, details="Hotspot of recurring extortion and cyber fraud campaigns.", casesCount=22, district="Bengaluru"),
-        NetworkNode(id="node-7", name="Harbor Gate A, Mangaluru", category=NetworkNodeCategory.LOCATION, riskScore=68.0, details="Seizure point of synthetic drug consignments.", casesCount=11, district="Mangaluru"),
-        NetworkNode(id="node-8", name="Devaraja Police Limit, Mysuru", category=NetworkNodeCategory.LOCATION, riskScore=50.0, details="Historic zone of lock-break burglaries.", casesCount=9, district="Mysuru"),
-        NetworkNode(id="node-9", name="K. S. Narayanan", category=NetworkNodeCategory.VICTIM, riskScore=10.0, details="Complainant in FIR fraud scam. Swindled via biometric bypass.", casesCount=1),
-        NetworkNode(id="node-10", name="Dr. Vinay Murthy", category=NetworkNodeCategory.VICTIM, riskScore=12.0, details="Home burglary witness in Mysuru break-in.", casesCount=1),
-        NetworkNode(id="node-11", name="Deva 'Shadow' Kumar", category=NetworkNodeCategory.SUSPECT, riskScore=64.0, details="Interstate lookout and vehicle scout.", casesCount=3, gangAffiliation="Kodaikanal Interstate Burglary Network"),
-        NetworkNode(id="node-12", name="Nagesh 'Pawn' Rao", category=NetworkNodeCategory.OFFENDER, riskScore=78.0, details="Fences stolen gold ornaments.", casesCount=6, gangAffiliation="Kodaikanal Interstate Burglary Network"),
-        NetworkNode(id="node-13", name="Imran Khan", category=NetworkNodeCategory.OFFENDER, riskScore=58.0, details="Gravel truck driver.", casesCount=2, gangAffiliation="Ballari Sand & Transport Syndicate"),
-        NetworkNode(id="node-14", name="Suresh 'Bail' Shetty", category=NetworkNodeCategory.SUSPECT, riskScore=62.0, details="Extortion protection agent.", casesCount=3, gangAffiliation="Ballari Sand & Transport Syndicate"),
-        NetworkNode(id="node-15", name="Abdul Rashid", category=NetworkNodeCategory.OFFENDER, riskScore=69.0, details="Dockyard cargo worker.", casesCount=5, gangAffiliation="Coastal Narcotics Transit Ring"),
-    ]
-    for n in default_nodes:
-        nodes_map[n.id] = n
-
-    default_edges = [
-        NetworkEdge(source="node-1", target="node-6", relationship="Last active cell location"),
-        NetworkEdge(source="node-1", target="node-8", relationship="Prior home break-in zone"),
-        NetworkEdge(source="node-1", target="node-10", relationship="Attacked residential yard"),
-        NetworkEdge(source="node-2", target="node-6", relationship="Launders app funds"),
-        NetworkEdge(source="node-9", target="node-6", relationship="Victim resided zone"),
-        NetworkEdge(source="node-3", target="node-7", relationship="Smuggles chemical contraband"),
-        NetworkEdge(source="node-5", target="node-7", relationship="Connected cargo clearing agent"),
-        NetworkEdge(source="node-4", target="node-8", relationship="Excise transit route overlap"),
-        NetworkEdge(source="node-1", target="node-4", relationship="Known accomplice association"),
-        NetworkEdge(source="node-2", target="node-9", relationship="Targeted in loan extortions"),
-        NetworkEdge(source="node-1", target="node-11", relationship="Lookout Coordination"),
-        NetworkEdge(source="node-4", target="node-12", relationship="Fences jewelry"),
-        NetworkEdge(source="node-5", target="node-13", relationship="Truck dispatch"),
-        NetworkEdge(source="node-3", target="node-15", relationship="Port unloading link"),
-        NetworkEdge(source="node-2", target="node-3", relationship="Hawala Transfer Link"),
-    ]
-    edges_list.extend(default_edges)
-
-    # Ingest real PostgreSQL data into graph
     for fir in firs:
         case = fir.crime_case
         case_id = f"case-{fir.id}"
@@ -164,45 +68,85 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
         loc_node_id = None
         if case and case.location:
             loc_node_id = f"location-{case.location.id}"
-            nodes_map[loc_node_id] = NetworkNode(
-                id=loc_node_id,
-                name=f"{case.location.station or 'Station'}, {case.location.district}",
-                category=NetworkNodeCategory.LOCATION,
-                riskScore=60.0,
-                details=f"District: {case.location.district}",
-                casesCount=len(case.location.crimes) if hasattr(case.location, "crimes") else 1,
-                district=case.location.district,
-            )
+            if loc_node_id not in nodes_map:
+                nodes_map[loc_node_id] = NetworkNode(
+                    id=loc_node_id,
+                    name=f"{case.location.station or 'Station'}, {case.location.district}",
+                    category=NetworkNodeCategory.LOCATION,
+                    riskScore=60.0,
+                    details=f"District: {case.location.district}",
+                    casesCount=len(case.location.crimes) if hasattr(case.location, "crimes") else 1,
+                    district=case.location.district,
+                )
             edges_list.append(NetworkEdge(source=case_id, target=loc_node_id, relationship="Occurred At Jurisdiction"))
 
+        fir_criminal_ids: list[str] = []
         for link in fir.criminal_links:
             criminal = link.criminal
             crim_id = f"criminal-{criminal.id}"
-            nodes_map[crim_id] = NetworkNode(
-                id=crim_id,
-                name=criminal.full_name,
-                category=NetworkNodeCategory.SUSPECT if criminal.status == "at_large" else NetworkNodeCategory.OFFENDER,
-                riskScore=min(100.0, 45.0 + len(criminal.fir_links) * 10),
-                details=criminal.mo_summary or criminal.identifying_marks or "Linked in FIR records",
-                casesCount=len(criminal.fir_links),
-                status=criminal.status,
-            )
+            fir_criminal_ids.append(crim_id)
+            if crim_id not in nodes_map:
+                nodes_map[crim_id] = NetworkNode(
+                    id=crim_id,
+                    name=criminal.full_name,
+                    category=NetworkNodeCategory.SUSPECT if criminal.status == "at_large" else NetworkNodeCategory.OFFENDER,
+                    riskScore=_criminal_risk(criminal),
+                    details=criminal.mo_summary or criminal.identifying_marks or "Linked in FIR records",
+                    casesCount=len(criminal.fir_links),
+                    phone=None,
+                    gangAffiliation=(criminal.gang_affiliation or "").strip() or None,
+                    status=criminal.status,
+                )
             edges_list.append(NetworkEdge(source=crim_id, target=case_id, relationship="Accused in FIR"))
             if loc_node_id:
                 edges_list.append(NetworkEdge(source=crim_id, target=loc_node_id, relationship="Operated in area"))
 
+        # Co-accused association edges between criminals sharing this FIR
+        for i in range(len(fir_criminal_ids)):
+            for j in range(i + 1, len(fir_criminal_ids)):
+                edges_list.append(NetworkEdge(
+                    source=fir_criminal_ids[i],
+                    target=fir_criminal_ids[j],
+                    relationship=f"Co-accused in {fir.fir_number}",
+                ))
+
         for vlink in fir.victim_links:
             victim = vlink.victim
             vic_id = f"victim-{victim.id}"
-            nodes_map[vic_id] = NetworkNode(
-                id=vic_id,
-                name=victim.full_name,
-                category=NetworkNodeCategory.VICTIM,
-                riskScore=15.0,
-                details=victim.statement or "Victim named in FIR",
-                casesCount=1,
-            )
+            if vic_id not in nodes_map:
+                nodes_map[vic_id] = NetworkNode(
+                    id=vic_id,
+                    name=victim.full_name,
+                    category=NetworkNodeCategory.VICTIM,
+                    riskScore=15.0,
+                    details=victim.statement or "Victim named in FIR",
+                    casesCount=len(victim.fir_links),
+                )
             edges_list.append(NetworkEdge(source=vic_id, target=case_id, relationship="Victim in FIR"))
+
+    # Investigating officers connected to their cases
+    officer_ids_seen: set[str] = set()
+    for fir in firs:
+        if fir.investigating_officer is None:
+            continue
+        officer = fir.investigating_officer
+        officer_node_id = f"officer-{officer.id}"
+        if officer_node_id not in officer_ids_seen:
+            officer_ids_seen.add(officer_node_id)
+            nodes_map[officer_node_id] = NetworkNode(
+                id=officer_node_id,
+                name=officer.name,
+                category=NetworkNodeCategory.OFFICER,
+                riskScore=10.0,
+                details=f"{officer.rank or 'Officer'}, {officer.station} ({officer.badge_number})",
+                casesCount=len(officer.firs),
+                district=officer.district,
+            )
+        edges_list.append(NetworkEdge(
+            source=f"case-{fir.id}",
+            target=officer_node_id,
+            relationship="Investigated by",
+        ))
 
     # Apply Category & Risk filters
     filtered_nodes = [
@@ -219,21 +163,47 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
 
 
 def get_full_network_graph(db: Session, category_filter: str | None = None, min_risk: float = 0.0) -> NetworkGraphResponse:
-    """Fetch complete or filtered relationship network."""
+    """Fetch complete or filtered relationship network (Neo4j-first, SQL fallback)."""
+    neo4j_data = fetch_full_graph_neo4j() if is_neo4j_available() else None
+    if neo4j_data:
+        nodes = [NetworkNode(**n) for n in neo4j_data["nodes"]]
+        edges = [NetworkEdge(**e) for e in neo4j_data["edges"]]
+        filtered_nodes = [
+            n for n in nodes
+            if (not category_filter or n.category.value == category_filter) and n.riskScore >= min_risk
+        ]
+        valid_ids = {n.id for n in filtered_nodes}
+        filtered_edges = [e for e in edges if e.source in valid_ids and e.target in valid_ids]
+        return NetworkGraphResponse(
+            nodes=filtered_nodes,
+            edges=filtered_edges,
+            total_nodes=len(filtered_nodes),
+            total_edges=len(filtered_edges),
+            is_neo4j_backed=True,
+        )
+
     nodes, edges = _build_sql_graph(db, category_filter=category_filter, min_risk=min_risk)
     return NetworkGraphResponse(
         nodes=nodes,
         edges=edges,
         total_nodes=len(nodes),
         total_edges=len(edges),
-        is_neo4j_backed=is_neo4j_available(),
+        is_neo4j_backed=False,
     )
 
 
 def get_person_network_graph(db: Session, person_id: str, depth: int = 1) -> NetworkGraphResponse:
     """Fetch relationship graph centered on a specific person or node."""
     nodes, edges = _build_sql_graph(db)
-    target_id = person_id if person_id in {n.id for n in nodes} else "node-1"
+    if person_id not in {n.id for n in nodes}:
+        return NetworkGraphResponse(
+            nodes=[],
+            edges=[],
+            total_nodes=0,
+            total_edges=0,
+            is_neo4j_backed=is_neo4j_available(),
+        )
+    target_id = person_id
 
     visited_nodes: set[str] = {target_id}
     current_frontier = {target_id}
@@ -262,12 +232,69 @@ def get_person_network_graph(db: Session, person_id: str, depth: int = 1) -> Net
 
 def get_case_network_graph(db: Session, case_id: str) -> NetworkGraphResponse:
     """Fetch case relationship graph."""
-    return get_person_network_graph(db, case_id, depth=2)
+    normalized = case_id if case_id.startswith(("case-", "fir-")) else f"case-{case_id}"
+    return get_person_network_graph(db, normalized, depth=2)
 
 
-def get_organization_gang_networks() -> list[GangNetworkSummary]:
-    """Retrieve list of organized crime gang syndicates & hierarchy."""
-    return MOCK_GANG_SYNDICATES
+def get_organization_gang_networks(db: Session) -> list[GangNetworkSummary]:
+    """Derive organized-crime gang hierarchies from criminal gang affiliations."""
+    criminals = (
+        db.query(Criminal)
+        .options(joinedload(Criminal.fir_links))
+        .all()
+    )
+
+    by_gang: dict[str, list[Criminal]] = defaultdict(list)
+    for criminal in criminals:
+        gang_name = (criminal.gang_affiliation or "").strip()
+        if gang_name:
+            by_gang[gang_name].append(criminal)
+
+    summaries: list[GangNetworkSummary] = []
+    for gang_name, members in sorted(by_gang.items()):
+        ranked = sorted(members, key=lambda c: (len(c.fir_links), _criminal_risk(c)), reverse=True)
+        leader = ranked[0]
+        avg_risk = sum(_criminal_risk(c) for c in members) / len(members)
+
+        hierarchy_members = []
+        hierarchy_edges = []
+        for idx, member in enumerate(ranked[:10]):
+            role = "Kingpin" if idx == 0 else ("Lieutenant" if idx <= 2 else "Operative")
+            hierarchy_members.append(GangHierarchyMember(
+                id=f"criminal-{member.id}",
+                name=member.full_name,
+                role=role,
+                rank_level=idx + 1,
+                riskScore=_criminal_risk(member),
+                status=member.status or "unknown",
+                casesCount=len(member.fir_links),
+            ))
+            if idx > 0:
+                hierarchy_edges.append(NetworkEdge(
+                    source=f"criminal-{leader.id}",
+                    target=f"criminal-{member.id}",
+                    relationship="Reports to" if idx <= 2 else "Associated with",
+                ))
+
+        risk_level = "CRITICAL" if avg_risk >= 80 else ("HIGH" if avg_risk >= 65 else "MODERATE")
+        summaries.append(GangNetworkSummary(
+            gang_id=f"gang-{_gang_slug(gang_name)}",
+            name=gang_name,
+            leader_name=leader.full_name,
+            leader_id=f"criminal-{leader.id}",
+            active_members=len(members),
+            risk_level=risk_level,
+            territory=", ".join(sorted({lk.fir.crime_case.location.district for lk in leader.fir_links if lk.fir and lk.fir.crime_case and lk.fir.crime_case.location})),
+            primary_racket="Derived from linked FIR categories" ,
+            members=hierarchy_members,
+            relationships=hierarchy_edges,
+        ))
+    return summaries
+
+
+def _gang_slug(value: str) -> str:
+    import re
+    return re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-") or "unknown"
 
 
 def find_shortest_path(db: Session, source_id: str, target_id: str, max_depth: int = 5) -> ShortestPathResponse:
@@ -287,11 +314,19 @@ def find_shortest_path(db: Session, source_id: str, target_id: str, max_depth: i
     nodes_by_id = {n.id: n for n in nodes}
 
     if source_id not in nodes_by_id or target_id not in nodes_by_id:
-        # Fallback to defaults if specific IDs not found
-        s_id = source_id if source_id in nodes_by_id else "node-1"
-        t_id = target_id if target_id in nodes_by_id else "node-2"
-    else:
-        s_id, t_id = source_id, target_id
+        missing = [sid for sid in (source_id, target_id) if sid not in nodes_by_id]
+        return ShortestPathResponse(
+            found=False,
+            distance=0,
+            path_nodes=[],
+            path_edges=[],
+            explanation=(
+                f"No path computed: entity reference(s) not present in current network data: "
+                f"{', '.join(missing)}."
+            ),
+        )
+
+    s_id, t_id = source_id, target_id
 
     adj = defaultdict(list)
     edge_map = {}
@@ -350,9 +385,12 @@ def perform_link_analysis(db: Session) -> LinkAnalysisResponse:
     """Compute network centrality, bridge nodes, broker scores, and graph density."""
     nodes, edges = _build_sql_graph(db)
     degree_counts = Counter()
+    adjacency: dict[str, set[str]] = defaultdict(set)
     for e in edges:
         degree_counts[e.source] += 1
         degree_counts[e.target] += 1
+        adjacency[e.source].add(e.target)
+        adjacency[e.target].add(e.source)
 
     total_nodes = len(nodes)
     max_possible_edges = (total_nodes * (total_nodes - 1)) / 2 if total_nodes > 1 else 1
@@ -362,8 +400,16 @@ def perform_link_analysis(db: Session) -> LinkAnalysisResponse:
     for n in nodes:
         deg = degree_counts[n.id]
         norm_deg = round(deg / (total_nodes - 1), 3) if total_nodes > 1 else 0.0
-        # Simulating betweenness and bridge scores based on degree & risk
-        betweenness = round(min(1.0, norm_deg * 1.5 + (n.riskScore / 200)), 2)
+        # Betweenness approximated via neighbor diversity: a node connecting
+        # otherwise-disconnected neighbors acts as a bridge/broker.
+        neighbor_count = len(adjacency[n.id])
+        inter_links = sum(
+            1 for x in adjacency[n.id] for y in adjacency[n.id]
+            if x < y and y in adjacency[x]
+        )
+        possible_pairs = neighbor_count * (neighbor_count - 1) / 2 if neighbor_count > 1 else 1
+        brokerage_ratio = 1 - (inter_links / possible_pairs) if possible_pairs else 0.0
+        betweenness = round(min(1.0, norm_deg * 1.2 + brokerage_ratio * 0.5 + (n.riskScore / 400)), 2)
         is_bridge = betweenness > 0.4 or deg >= 4
         centralities.append(
             CentralityMetric(
@@ -381,9 +427,11 @@ def perform_link_analysis(db: Session) -> LinkAnalysisResponse:
     sorted_impact = sorted(centralities, key=lambda c: c.degree_centrality, reverse=True)
     bridges = [c for c in centralities if c.is_bridge_node]
 
+    gang_networks = get_organization_gang_networks(db)
+
     return LinkAnalysisResponse(
         graph_density=density,
-        total_clusters=len(MOCK_GANG_SYNDICATES),
+        total_clusters=len(gang_networks),
         top_broker_nodes=sorted_brokers[:5],
         high_impact_nodes=sorted_impact[:5],
         bridge_nodes=bridges,
@@ -391,42 +439,101 @@ def perform_link_analysis(db: Session) -> LinkAnalysisResponse:
 
 
 def generate_ai_graph_insights(db: Session) -> list[AIGraphInsight]:
-    """Generate AI-backed criminal network pattern insights & threat alerts."""
+    """Derive criminal-network pattern insights from the live graph structure."""
     nodes, edges = _build_sql_graph(db)
+    insights: list[AIGraphInsight] = []
+
+    if not nodes:
+        return insights
+
+    nodes_by_id = {n.id: n for n in nodes}
     link_analysis = perform_link_analysis(db)
+    now_iso = datetime.now().isoformat()
 
+    # Insight 1: highest-betweenness broker node (data-driven, no fabricated names)
     top_broker = link_analysis.top_broker_nodes[0] if link_analysis.top_broker_nodes else None
-    top_broker_name = top_broker.node_name if top_broker else 'Ramu "Kodaikanal" Swamy'
-
-    return [
-        AIGraphInsight(
-            id="insight-1",
+    if top_broker is not None and top_broker.degree_centrality > 0:
+        insights.append(AIGraphInsight(
+            id="insight-broker",
             insight_type="broker_identification",
-            title=f"Critical Broker Node Detected: {top_broker_name}",
-            description=f"Node {top_broker_name} exhibits high betweenness centrality ({top_broker.betweenness_score if top_broker else 0.85}). Removing or monitoring this node disrupts cross-district coordination.",
-            threat_level="CRITICAL",
-            target_node_ids=["node-1", "node-2"],
-            recommendation="Issue immediate electronic surveillance and flag associate vehicle numbers at district toll checkposts.",
-            timestamp=datetime.now().isoformat(),
-        ),
-        AIGraphInsight(
-            id="insight-2",
-            insight_type="syndicate_cluster",
-            title="Cross-District Narcotics Hawala Nexus Identified",
-            description="High degree correlation between Coastal Narcotics Ring (Mangaluru) and Indiranagar Extortion Money Mules (Bengaluru).",
-            threat_level="HIGH",
-            target_node_ids=["node-2", "node-3", "node-6"],
-            recommendation="Initiate joint investigation unit between Mangaluru Harbor Division & Bengaluru Cyber Crime Cell.",
-            timestamp=datetime.now().isoformat(),
-        ),
-        AIGraphInsight(
-            id="insight-3",
+            title=f"Critical Broker Node Detected: {top_broker.node_name}",
+            description=(
+                f"{top_broker.node_name} exhibits the highest betweenness centrality "
+                f"({top_broker.betweenness_score}) across {len(edges)} recorded relationships. "
+                f"Removing or monitoring this node would disrupt cross-entity coordination."
+            ),
+            threat_level="CRITICAL" if top_broker.betweenness_score >= 0.6 else "HIGH",
+            target_node_ids=[top_broker.node_id],
+            recommendation="Prioritize surveillance and travel-record checks for this hub entity.",
+            timestamp=now_iso,
+        ))
+
+    # Insight 2: multi-jurisdiction offenders (same person active across districts)
+    districts_by_entity: dict[str, set[str]] = defaultdict(set)
+    for edge in edges:
+        if edge.relationship == "Operated in area":
+            loc = nodes_by_id.get(edge.target)
+            actor = nodes_by_id.get(edge.source)
+            if loc and actor and loc.district:
+                districts_by_entity[edge.source].add(loc.district)
+    multi_district = {
+        eid: dset for eid, dset in districts_by_entity.items()
+        if len(dset) >= 2 and eid in nodes_by_id
+    }
+    for entity_id, dset in sorted(multi_district.items(), key=lambda kv: -len(kv[1]))[:2]:
+        entity = nodes_by_id[entity_id]
+        insights.append(AIGraphInsight(
+            id=f"insight-crossjur-{entity_id}",
             insight_type="cross_jurisdiction_link",
-            title="Mysuru Burglaries & Ballari Transit Overlap",
-            description="Suspect accomplice Karthik Gowda acts as bridge node connecting Kodaikanal Burglaries to Ballari Sand Fleet route.",
+            title=f"Cross-District Activity Pattern: {entity.name}",
+            description=(
+                f"{entity.name} appears in incident records spanning {len(dset)} districts "
+                f"({', '.join(sorted(dset))}), indicating likely interstate/inter-district operations."
+            ),
+            threat_level="HIGH" if entity.riskScore >= 70 else "MEDIUM",
+            target_node_ids=[entity_id],
+            recommendation="Coordinate intelligence sharing between the listed district units.",
+            timestamp=now_iso,
+        ))
+
+    # Insight 3: densest co-accused cluster (gang-style grouping from shared FIRs)
+    co_accused_pairs = [e for e in edges if e.relationship.startswith("Co-accused")]
+    pair_counter = Counter()
+    for edge in co_accused_pairs:
+        pair_counter[frozenset({edge.source, edge.target})] += 1
+    if pair_counter:
+        strongest_pair = max(pair_counter, key=lambda fs: pair_counter[fs])
+        pair_names = [nodes_by_id[nid].name for nid in strongest_pair if nid in nodes_by_id]
+        insights.append(AIGraphInsight(
+            id="insight-cluster",
+            insight_type="syndicate_cluster",
+            title="Repeat Co-Accused Cluster Identified",
+            description=(
+                f"{', '.join(pair_names)} repeatedly appear together in multiple FIRs "
+                f"(shared-incident count: {max(pair_counter.values())}), indicating an "
+                f"operational cell rather than coincidental association."
+            ),
+            threat_level="HIGH",
+            target_node_ids=list(strongest_pair),
+            recommendation="Track the cell's shared locations and check for common handlers.",
+            timestamp=now_iso,
+        ))
+
+    # Insight 4: bridge-node concentration alert when density is low but bridges exist
+    if link_analysis.bridge_nodes and link_analysis.graph_density < 0.2:
+        bridge_names = ", ".join(b.node_name for b in link_analysis.bridge_nodes[:3])
+        insights.append(AIGraphInsight(
+            id="insight-fragility",
+            insight_type="high_risk_hub",
+            title="Sparse Network With Concentrated Bridge Nodes",
+            description=(
+                f"Graph density is only {link_analysis.graph_density}, yet bridge nodes exist "
+                f"({bridge_names}). The network fragments quickly if these connectors are disrupted."
+            ),
             threat_level="MEDIUM",
-            target_node_ids=["node-4", "node-5", "node-8"],
-            recommendation="Inspect cargo manifests at Ballari-Mysuru border checkposts for stolen gold jewelry.",
-            timestamp=datetime.now().isoformat(),
-        ),
-    ]
+            target_node_ids=[b.node_id for b in link_analysis.bridge_nodes[:3]],
+            recommendation="Focus disruption strategy on identified bridge entities.",
+            timestamp=now_iso,
+        ))
+
+    return insights

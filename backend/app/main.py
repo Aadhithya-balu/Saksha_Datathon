@@ -72,6 +72,26 @@ def _migrate_notifications_table():
         logger.warning(f"Notifications table migration skipped: {exc}")
 
 
+def _migrate_criminals_table():
+    """Add gang_affiliation to criminals if missing (issue #141 gang network derivation).
+
+    ``create_all`` only applies new columns on fresh tables, so existing
+    deployments get the column via idempotent DDL here.
+    """
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'criminals'"
+            ))
+            existing = {row[0] for row in result}
+            if "gang_affiliation" not in existing:
+                conn.execute(text("ALTER TABLE criminals ADD COLUMN gang_affiliation VARCHAR(255)"))
+                conn.commit()
+                logger.info("Criminals table migration complete (gang_affiliation added)")
+    except Exception as exc:
+        logger.warning(f"Criminals table migration skipped: {exc}")
+
+
 def _ensure_realtime_indexes():
     """Create indexes required for fast real-time case feeds if missing.
 
@@ -98,6 +118,7 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         _migrate_notifications_table()
+        _migrate_criminals_table()
         _ensure_realtime_indexes()
         with engine.connect():
             logger.info("PostgreSQL connection OK")

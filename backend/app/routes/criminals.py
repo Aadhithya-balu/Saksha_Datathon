@@ -194,13 +194,15 @@ def get_criminal(criminal_id: uuid.UUID, db: Session = Depends(get_db), current_
 @router.get("/{criminal_id}/mo-profile", response_model=MOProfile)
 def mo_profile(criminal_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     criminal = criminal_crud.get(db, criminal_id)
+    from app.services.mo_semantic_service import build_criminal_mo_profile
+    profile = build_criminal_mo_profile(db, criminal.id)
     return MOProfile(
         criminal_id=criminal.id,
-        preferred_crime_types=[],
-        common_time_window=None,
-        common_tools=[],
-        jurisdictions_active=[],
-        linked_incidents_count=len(criminal.fir_links),
+        preferred_crime_types=profile["preferred_crime_types"],
+        common_time_window=profile["common_time_window"],
+        common_tools=profile["common_tools"],
+        jurisdictions_active=profile["jurisdictions_active"],
+        linked_incidents_count=profile["linked_incidents_count"],
     )
 
 

@@ -19,6 +19,7 @@ class Criminal(Base, UUIDPKMixin, TimestampMixin):
     identifying_marks: Mapped[str | None] = mapped_column(Text, nullable=True)
     mo_summary: Mapped[str | None] = mapped_column(Text, nullable=True)  # modus operandi notes
     status: Mapped[str] = mapped_column(String(30), default="at_large")  # at_large/arrested/convicted/deceased
+    gang_affiliation: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Mirrors the corresponding node in Neo4j for cross-reference between the two stores
     neo4j_node_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)

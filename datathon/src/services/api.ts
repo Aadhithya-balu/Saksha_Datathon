@@ -144,6 +144,12 @@ export interface HotspotsResponse {
 
 export interface AnomalyRecord {
   case_id: string;
+  case_uuid?: string;
+  case_number?: string;
+  district?: string | null;
+  station?: string | null;
+  category?: string | null;
+  filed_at?: string | null;
   label: string;
   score: number;
   reason: string;
@@ -153,7 +159,7 @@ export interface AnomaliesResponse {
   anomalies: AnomalyRecord[];
 }
 
-export type NetworkNodeCategory = 'suspect' | 'offender' | 'case' | 'location' | 'victim' | 'gang' | 'vehicle' | 'weapon';
+export type NetworkNodeCategory = 'suspect' | 'offender' | 'case' | 'location' | 'victim' | 'gang' | 'vehicle' | 'weapon' | 'officer';
 
 export interface NetworkNode {
   id: string;
@@ -1615,8 +1621,16 @@ export async function getHighRiskDistricts() {
   return apiRequest<any[]>('/strategic/high-risk-districts');
 }
 
+export interface EmergingTypology {
+  category: string;
+  recent_count: number;
+  historical_count: number;
+  change_percentage: number;
+  direction: 'increasing' | 'decreasing' | 'stable';
+}
+
 export async function getEmergingTrends() {
-  return apiRequest<any[]>('/strategic/emerging-trends');
+  return apiRequest<EmergingTypology[]>('/strategic/emerging-trends');
 }
 
 export const getStrategicEmergingTrends = getEmergingTrends;

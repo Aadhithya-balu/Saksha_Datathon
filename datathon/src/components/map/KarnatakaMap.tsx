@@ -140,6 +140,39 @@ export interface EmergingTrendItem {
   direction: string;
 }
 
+type SocioIndicatorKey = 'urbanization' | 'unemployment_rate' | 'literacy_rate' | 'avg_income_lakhs' | 'crime_per_lakh';
+
+const SOCIO_INDICATORS: Array<{ key: SocioIndicatorKey; label: string; unit: string }> = [
+  { key: 'urbanization', label: 'Urbanization', unit: '' },
+  { key: 'unemployment_rate', label: 'Unemployment', unit: '%' },
+  { key: 'literacy_rate', label: 'Literacy', unit: '%' },
+  { key: 'avg_income_lakhs', label: 'Avg Income', unit: 'L' },
+  { key: 'crime_per_lakh', label: 'Crime Rate', unit: '/lakh' },
+];
+
+// Interpolate blue -> amber -> red across [0, 1] (0 = lowest value of the range)
+function socioShade(t: number): { fill: string; stroke: string } {
+  const clamped = Math.min(1, Math.max(0, t));
+  let r: number;
+  let g: number;
+  let b: number;
+  if (clamped < 0.5) {
+    const k = clamped / 0.5;
+    r = Math.round(30 + (212 - 30) * k);
+    g = Math.round(111 + (130 - 111) * k);
+    b = Math.round(217 + (10 - 217) * k);
+  } else {
+    const k = (clamped - 0.5) / 0.5;
+    r = Math.round(212 + (201 - 212) * k);
+    g = Math.round(130 + (74 - 130) * k);
+    b = Math.round(10 + (42 - 10) * k);
+  }
+  return {
+    fill: `rgba(${r}, ${g}, ${b}, ${0.18 + clamped * 0.3})`,
+    stroke: `rgb(${r}, ${g}, ${b})`,
+  };
+}
+
 interface KarnatakaMapProps {
   hotspots?: HotspotPoint[];
   districtDataOverride?: Record<string, DistrictInfo>;
@@ -178,6 +211,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
   const [mapZoom, setMapZoom] = useState(1);
   const [mapOffset, setMapOffset] = useState({ x: 0, y: 0 });
   const [selectedHotspot, setSelectedHotspot] = useState<any | null>(null);
+  const [socioIndicator, setSocioIndicator] = useState<SocioIndicatorKey>('unemployment_rate');
 
   // Map socio-economic reference array by district name
   const socioEconomicMap = useMemo(() => {
@@ -189,6 +223,34 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
     });
     return map;
   }, [socioEconomicData]);
+
+  // Quantitative range for the selected indicator across all mapped districts
+  const socioIndicatorRange = useMemo(() => {
+    if (socioIndicator === 'urbanization') return null;
+    const values = Object.values(socioEconomicMap)
+      .map((item: any) => Number(item?.[socioIndicator]))
+      .filter((v) => Number.isFinite(v));
+    if (values.length === 0) return null;
+    return { min: Math.min(...values), max: Math.max(...values) };
+  }, [socioEconomicMap, socioIndicator]);
+
+  const socioDistrictShade = (socio: any): { fill: string; stroke: string } | null => {
+    if (!socio) return null;
+    if (socioIndicator === 'urbanization' || !socioIndicatorRange) {
+      if (socioIndicator !== 'urbanization') return null;
+      return socio.urbanization_type === 'urban'
+        ? { fill: 'rgba(201, 74, 42, 0.40)', stroke: '#C94A2A' }
+        : socio.urbanization_type === 'semi_urban'
+        ? { fill: 'rgba(212, 130, 10, 0.35)', stroke: '#D4820A' }
+        : { fill: 'rgba(30, 111, 217, 0.25)', stroke: '#1E6FD9' };
+    }
+    const value = Number(socio[socioIndicator]);
+    if (!Number.isFinite(value) || socioIndicatorRange.max === socioIndicatorRange.min) {
+      return { fill: 'rgba(120, 130, 150, 0.20)', stroke: 'rgba(120, 130, 150, 0.6)' };
+    }
+    const t = (value - socioIndicatorRange.min) / (socioIndicatorRange.max - socioIndicatorRange.min);
+    return socioShade(t);
+  };
 
   // Open details panel when a district or station is selected
   useEffect(() => {
@@ -472,14 +534,32 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
           <button
             onClick={() => toggleLayer('socioEconomic')}
             className={`w-full py-1 px-2.5 rounded text-[9.5px] font-mono uppercase flex items-center justify-between transition-colors border cursor-pointer ${
-              layers.socioEconomic 
-                ? 'bg-amber-500/15 border-amber-500 text-amber-400' 
+              layers.socioEconomic
+                ? 'bg-amber-500/15 border-amber-500 text-amber-400'
                 : 'bg-transparent border-[var(--border-secondary)] text-[var(--text-secondary)]'
             }`}
           >
             <span>Socio-Economic Layer</span>
             <div className={`w-1.5 h-1.5 rounded-full ${layers.socioEconomic ? 'bg-amber-400 animate-pulse' : 'bg-[var(--text-muted)]'}`} />
           </button>
+
+          {layers.socioEconomic && (
+            <div className="grid grid-cols-2 gap-1 pl-1">
+              {SOCIO_INDICATORS.map((indicator) => (
+                <button
+                  key={indicator.key}
+                  onClick={() => setSocioIndicator(indicator.key)}
+                  className={`py-0.5 px-1.5 rounded text-[8px] font-mono uppercase transition-colors border cursor-pointer ${
+                    socioIndicator === indicator.key
+                      ? 'bg-amber-500/20 border-amber-500/60 text-amber-300'
+                      : 'bg-transparent border-border-color text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                  }`}
+                >
+                  {indicator.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -544,12 +624,11 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
               let stroke = isSpikedDistrict ? 'rgba(239, 68, 68, 0.45)' : map.boundary;
               
               if (layers.socioEconomic && socio) {
-                fill = socio.urbanization_type === 'urban' 
-                  ? 'rgba(201, 74, 42, 0.40)' 
-                  : socio.urbanization_type === 'semi_urban' 
-                  ? 'rgba(212, 130, 10, 0.35)' 
-                  : 'rgba(30, 111, 217, 0.25)';
-                stroke = socio.urbanization_type === 'urban' ? '#C94A2A' : '#D4820A';
+                const shade = socioDistrictShade(socio);
+                if (shade) {
+                  fill = shade.fill;
+                  stroke = shade.stroke;
+                }
               } else if (layers.riskScore && info) {
                 const rs = info.riskScore;
                 fill = rs >= 80
@@ -755,6 +834,29 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
           )}
           </g>
         </svg>
+
+        {/* SOCIO-ECONOMIC OVERLAY LEGEND */}
+        {layers.socioEconomic && (
+          <div className="absolute bottom-4 right-4 z-20 px-3 py-2 bg-[var(--bg-secondary)]/85 border border-border-color rounded-card backdrop-blur-sm pointer-events-none select-none">
+            <div className="text-[8px] font-mono uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
+              Overlay: {SOCIO_INDICATORS.find((i) => i.key === socioIndicator)?.label}
+              {socioIndicatorRange ? ` (${socioIndicatorRange.min}–${socioIndicatorRange.max}${SOCIO_INDICATORS.find((i) => i.key === socioIndicator)?.unit})` : ''}
+            </div>
+            {socioIndicator === 'urbanization' || !socioIndicatorRange ? (
+              <div className="flex flex-col gap-1 text-[8px] font-mono">
+                <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded-sm" style={{ background: 'rgba(201, 74, 42, 0.55)' }} /> Urban</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded-sm" style={{ background: 'rgba(212, 130, 10, 0.5)' }} /> Semi-Urban</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded-sm" style={{ background: 'rgba(30, 111, 217, 0.4)' }} /> Rural</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[8px] font-mono">LOW</span>
+                <div className="w-24 h-2 rounded-sm" style={{ background: 'linear-gradient(90deg, rgba(30,111,217,0.25), rgba(212,130,10,0.6), rgba(201,74,42,0.75))' }} />
+                <span className="text-[8px] font-mono">HIGH</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* MAP INFO RESET SELECTOR */}
         {(selectedDistrict || selectedStation || selectedCrimeId) && (

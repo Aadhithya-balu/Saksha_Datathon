@@ -18,7 +18,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.crime import CrimeCase
 from app.models.criminal import Criminal
@@ -253,6 +253,91 @@ def extract_entities(text: str) -> dict[str, Any]:
         "method": "rule_based_regex+gazetteer (no external NLP model required)",
         "note": "Person names are extracted via honorific patterns; add spaCy NER later for deeper coverage.",
     }
+
+
+def build_criminal_mo_profile(db: Session, criminal_id: Any) -> dict[str, Any]:
+    """Derive a behavioural MO profile from the criminal's linked FIR history.
+
+    Closes gap #129.1: preferred crime types, activity time window, common
+    tools/weapons, and active jurisdictions are computed from real records
+    (FIR -> case -> category/location) instead of returning hardcoded stubs.
+    """
+    from collections import Counter
+
+    from app.models.fir import FIRCriminalLink, FIR as FIRModel
+
+    links = (
+        db.query(FIRCriminalLink)
+        .filter(FIRCriminalLink.criminal_id == criminal_id)
+        .all()
+    )
+    fir_ids = [link.fir_id for link in links]
+    firs = (
+        db.query(FIRModel)
+        .options(
+            joinedload(FIRModel.crime_case).joinedload(CrimeCase.category),
+            joinedload(FIRModel.crime_case).joinedload(CrimeCase.location),
+        )
+        .filter(FIRModel.id.in_(fir_ids))
+        .all()
+        if fir_ids
+        else []
+    )
+
+    categories: Counter[str] = Counter()
+    hour_buckets: Counter[str] = Counter()
+    jurisdictions: Counter[str] = Counter()
+    combined_text_parts: list[str] = []
+
+    for fir in firs:
+        case = fir.crime_case
+        if case is None:
+            continue
+        if case.category is not None:
+            categories[case.category.name] += 1
+        if case.location is not None and case.location.district:
+            jurisdictions[case.location.district] += 1
+        if fir.filed_at is not None:
+            hour_buckets[_time_window_for_hour(fir.filed_at.hour)] += 1
+        narrative = (fir.narrative or "").strip()
+        if narrative:
+            combined_text_parts.append(narrative)
+
+    criminal = db.query(Criminal).filter(Criminal.id == criminal_id).first()
+    if criminal and (criminal.mo_summary or "").strip():
+        combined_text_parts.insert(0, criminal.mo_summary)
+
+    extraction = extract_entities(" \n".join(combined_text_parts)) if combined_text_parts else {"entities": {}}
+    entities = extraction.get("entities", {})
+    tools = sorted(set(entities.get("weapons", [])) | set(entities.get("controlled_substances", [])))
+
+    common_window = None
+    if hour_buckets:
+        window_name, window_hits = hour_buckets.most_common(1)[0]
+        common_window = {
+            "window": window_name,
+            "incident_count": int(window_hits),
+            "distribution": {name: int(count) for name, count in hour_buckets.most_common()},
+        }
+
+    return {
+        "preferred_crime_types": [name for name, _count in categories.most_common(3)],
+        "common_time_window": common_window,
+        "common_tools": tools,
+        "jurisdictions_active": [name for name, _count in jurisdictions.most_common()],
+        "linked_incidents_count": len(firs),
+        "method": "derived_from_linked_fir_history + rule_based NER",
+    }
+
+
+def _time_window_for_hour(hour: int) -> str:
+    if 22 <= hour or hour < 5:
+        return "Night (22:00-05:00)"
+    if 5 <= hour < 12:
+        return "Morning (05:00-12:00)"
+    if 12 <= hour < 17:
+        return "Afternoon (12:00-17:00)"
+    return "Evening (17:00-22:00)"
 
 
 def extract_case_entities(db: Session, case_id: str) -> dict[str, Any] | None:

@@ -3,6 +3,8 @@ import { create } from 'zustand';
 export interface CrimeAlert {
   id: string;
   firNumber: string;
+  caseUuid?: string;
+  caseNumber?: string;
   district: string;
   station: string;
   crimeType: string;

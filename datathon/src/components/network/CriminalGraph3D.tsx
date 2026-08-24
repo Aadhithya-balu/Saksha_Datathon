@@ -24,38 +24,7 @@ export interface GraphLink {
   relationship: string;
 }
 
-const DEFAULT_NODES: GraphNode[] = [
-  // Red: high-risk suspects
-  { id: 'node-1', name: 'Ramu "Kodaikanal" Swamy', category: 'suspect', riskScore: 92, details: 'Leader of coordinate interstate break-in gang. Suspected in late night residential robberies in Mysuru and Bengaluru.', casesCount: 14, phone: '+91 94420-12891' },
-  { id: 'node-2', name: 'Vikram "Vicky" Yadav', category: 'suspect', riskScore: 88, details: 'Underground money mule coordinator. Funnels fraudulent loans through virtual ledger IDs.', casesCount: 8, phone: '+91 98845-09228' },
-  { id: 'node-3', name: 'Sayed Ibrahim', category: 'suspect', riskScore: 84, details: 'Logistics provider for narcotics shipments. Connected to Mangaluru Harbor transit lines.', casesCount: 6, phone: '+91 99014-38419' },
-
-  // Amber: known offenders
-  { id: 'node-4', name: 'Karthik Gowda', category: 'offender', riskScore: 71, details: 'Prior conviction for property fraud. Intercepted twice during excise checkpoint violations.', casesCount: 4 },
-  { id: 'node-5', name: 'Mohsin Pasha', category: 'offender', riskScore: 65, details: 'Known organizer of illegal sand gravel mining syndicates in Ballari.', casesCount: 5 },
-
-  // Blue: locations
-  { id: 'node-6', name: 'Indiranagar Sect-B, Bengaluru', category: 'location', riskScore: 75, details: 'Hotspot of recurring app-based extortion campaigns.', casesCount: 22 },
-  { id: 'node-7', name: 'Harbor Gate A, Mangaluru', category: 'location', riskScore: 68, details: 'Seizure point of multiple synthetic drug consignments.', casesCount: 11 },
-  { id: 'node-8', name: 'Devaraja Police Limit, Mysuru', category: 'location', riskScore: 50, details: 'Historic zone of lock-break burglaries.', casesCount: 9 },
-
-  // Grey: victims
-  { id: 'node-9', name: 'K. S. Narayanan', category: 'victim', riskScore: 10, details: 'Complainant in FIR fraud scan. Swindled of 4.5L via biometric face ID bypass.', casesCount: 1 },
-  { id: 'node-10', name: 'Dr. Vinay Murthy', category: 'victim', riskScore: 12, details: 'Home burglary witness in Mysuru break-in.', casesCount: 1 }
-];
-
-const DEFAULT_LINKS: GraphLink[] = [
-  { source: 'node-1', target: 'node-6', relationship: 'Last active cell location' },
-  { source: 'node-1', target: 'node-8', relationship: 'Prior home break-in zone' },
-  { source: 'node-1', target: 'node-10', relationship: 'Attacked residential yard' },
-  { source: 'node-2', target: 'node-6', relationship: 'Launders app funds' },
-  { source: 'node-9', target: 'node-6', relationship: 'Victim resided zone' },
-  { source: 'node-3', target: 'node-7', relationship: 'Smuggles chemical contraband' },
-  { source: 'node-5', target: 'node-7', relationship: 'Connected cargo clearing agent' },
-  { source: 'node-4', target: 'node-8', relationship: 'Excise transit route overlap' },
-  { source: 'node-1', target: 'node-4', relationship: 'Known accomplice association' },
-  { source: 'node-2', target: 'node-9', relationship: 'Targeted in loan extortions' }
-];
+const EMPTY_GRAPH_DATA: { nodes: GraphNode[]; links: GraphLink[] } = { nodes: [], links: [] };
 
 interface CriminalGraph3DProps {
   onNodeSelect?: (node: GraphNode) => void;
@@ -68,7 +37,7 @@ interface CriminalGraph3DProps {
 export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, graphData }) => {
   const fgRef = useRef<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const resolvedGraphData = useMemo(() => graphData ?? { nodes: DEFAULT_NODES, links: DEFAULT_LINKS }, [graphData]);
+  const resolvedGraphData = useMemo(() => graphData ?? EMPTY_GRAPH_DATA, [graphData]);
   const [currentGraphData, setCurrentGraphData] = useState(resolvedGraphData);
   const [hasError, setHasError] = useState(false);
   const theme = useAppStore((s) => s.theme);
@@ -197,9 +166,9 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
       {/* GRAPH VIEWPORT */}
       <div ref={containerRef} className="flex-1 w-full h-full relative min-h-[300px]">
         {hasError ? (
-          <GraphFallback onNodeSelect={onNodeSelect} isLight={isLight} />
+          <GraphFallback onNodeSelect={onNodeSelect} isLight={isLight} graphData={currentGraphData} />
         ) : (
-          <ErrorBoundary fallback={<GraphFallback onNodeSelect={onNodeSelect} isLight={isLight} />} onError={() => setHasError(true)}>
+          <ErrorBoundary fallback={<GraphFallback onNodeSelect={onNodeSelect} isLight={isLight} graphData={currentGraphData} />} onError={() => setHasError(true)}>
             <ForceGraph3D
               ref={fgRef}
               graphData={currentGraphData}
@@ -260,19 +229,49 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
   );
 };
 
-// Canvas-based fallback when WebGL crashes
+// Canvas-based fallback when WebGL crashes — renders the real graph data
 interface GraphFallbackProps {
   onNodeSelect?: (node: GraphNode) => void;
   isLight: boolean;
+  graphData?: {
+    nodes: GraphNode[];
+    links: GraphLink[];
+  };
 }
 
-const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, isLight }) => {
+const FALLBACK_NODE_COLORS: Record<string, string> = {
+  suspect: '#C94A2A',
+  offender: '#D4820A',
+  location: '#1E6FD9',
+  victim: '#6A7A96',
+  case: '#0E9E78',
+  gang: '#6C43CC',
+  vehicle: '#3D8AF0',
+  weapon: '#F09C2E',
+  officer: '#14C997',
+};
+
+const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, isLight, graphData }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
+  // Deterministic circular layout computed from the actual node list
+  const layout = useMemo(() => {
+    const nodes = graphData?.nodes ?? [];
+    const coords: Record<string, { x: number; y: number }> = {};
+    const cx = 400;
+    const cy = 250;
+    nodes.forEach((node, index) => {
+      const angle = (index / Math.max(nodes.length, 1)) * Math.PI * 2;
+      const radius = nodes.length <= 3 ? 90 : 185;
+      coords[node.id] = { x: cx + radius * Math.cos(angle), y: cy + radius * 0.72 * Math.sin(angle) };
+    });
+    return { nodes, links: graphData?.links ?? [], coords };
+  }, [graphData]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || layout.nodes.length === 0) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -287,27 +286,16 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, isLight }) 
 
     let animId: number;
 
-    const mockCoords: Record<string, { x: number, y: number }> = {
-      'node-1': { x: 300, y: 180 },
-      'node-2': { x: 480, y: 170 },
-      'node-3': { x: 200, y: 350 },
-      'node-4': { x: 370, y: 320 },
-      'node-5': { x: 600, y: 250 },
-      'node-6': { x: 420, y: 80 },
-      'node-7': { x: 150, y: 200 },
-      'node-8': { x: 650, y: 380 },
-      'node-9': { x: 550, y: 90 },
-      'node-10': { x: 300, y: 450 }
-    };
+    const { nodes: layoutNodes, links: layoutLinks, coords } = layout;
 
     const draw = () => {
       ctx.clearRect(0, 0, LOGICAL_W, LOGICAL_H);
 
       // Draw particle flow animation lines
       ctx.lineWidth = 1;
-      DEFAULT_LINKS.forEach(link => {
-        const start = mockCoords[link.source];
-        const end = mockCoords[link.target];
+      layoutLinks.forEach(link => {
+        const start = coords[link.source];
+        const end = coords[link.target];
         if (start && end) {
           ctx.beginPath();
           ctx.moveTo(start.x, start.y);
@@ -329,16 +317,13 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, isLight }) 
       });
 
       // Draw Nodes
-      DEFAULT_NODES.forEach((node) => {
-        const pt = mockCoords[node.id];
+      layoutNodes.forEach((node) => {
+        const pt = coords[node.id];
         if (pt) {
           const isHigh = node.category === 'suspect';
           const size = isHigh ? 13 : 9;
-          
-          let fill = '#6A7A96';
-          if (node.category === 'suspect') fill = '#C94A2A';
-          else if (node.category === 'offender') fill = '#D4820A';
-          else if (node.category === 'location') fill = '#1E6FD9';
+
+          const fill = FALLBACK_NODE_COLORS[node.category] ?? '#6A7A96';
 
           // Outer pulsing ring on selected
           if (selectedNodeId === node.id) {
@@ -374,10 +359,10 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, isLight }) 
       const clickY = e.clientY - rect.top;
 
       let found: GraphNode | null = null;
-      
+
       // Match coordinate radius
-      for (const node of DEFAULT_NODES) {
-        const pt = mockCoords[node.id];
+      for (const node of layoutNodes) {
+        const pt = coords[node.id];
         if (pt) {
           const dist = Math.hypot(clickX - pt.x, clickY - pt.y);
           if (dist <= 20) {
@@ -399,7 +384,21 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, isLight }) 
       cancelAnimationFrame(animId);
       canvas.removeEventListener('click', handleCanvasClick);
     };
-  }, [onNodeSelect, selectedNodeId, isLight]);
+  }, [onNodeSelect, selectedNodeId, isLight, layout]);
+
+  if (layout.nodes.length === 0) {
+    return (
+      <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-[var(--bg-surface)] p-4 text-center gap-2">
+        <AlertTriangle className="w-6 h-6 text-[var(--accent-amber)]" />
+        <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
+          No network records available to visualize
+        </span>
+        <span className="text-[9px] font-mono text-[var(--text-disabled)]">
+          Sync PostgreSQL into Neo4j or add linked FIR/case data first.
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="absolute inset-0 w-full h-full flex flex-col justify-between bg-[var(--bg-surface)] p-4 text-center">
