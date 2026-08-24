@@ -118,7 +118,7 @@ export const FIRAttachments: React.FC<FIRAttachmentsProps> = ({
 
   const handleDownload = (
     filename: string,
-    format: "pdf" | "docx" | "txt" | "csv" = "pdf",
+    format: "pdf" | "docx" | "txt" | "csv" | "xlsx" = "pdf",
   ) => {
     downloadSecureDossier(
       `ATTACHMENT_${filename.replace(/[^a-zA-Z0-9]/g, "_")}`,

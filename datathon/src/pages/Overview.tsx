@@ -273,7 +273,7 @@ export const Overview: React.FC = () => {
     setEndDate('');
   };
 
-  const handleExportOverview = (format: 'pdf' | 'docx' | 'txt' | 'csv') => {
+  const handleExportOverview = (format: 'pdf' | 'docx' | 'txt' | 'csv' | 'xlsx') => {
     const officerName = user?.name || 'Inspector System';
     const badgeId = user?.badgeId || 'SCRB-7740';
 

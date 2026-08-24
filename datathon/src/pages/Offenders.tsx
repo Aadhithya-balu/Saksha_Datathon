@@ -59,7 +59,7 @@ export const Offenders: React.FC = () => {
     );
   });
 
-  const handleExport = (format: "pdf" | "docx" | "txt" | "csv") => {
+  const handleExport = (format: "pdf" | "docx" | "txt" | "csv" | "xlsx") => {
     if (!activeOffender || !user) return;
     addLog(
       user.name,

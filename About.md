@@ -48,13 +48,13 @@ npm run dev:all
 ## Architecture
 
 ```
-Crime Data Sources
+Crime Data Sources (incl. CCTNS-style CSV/XLSX bulk imports)
        ↓
-Supabase PostgreSQL (11 tables per FIR ER diagram)
+Supabase PostgreSQL (22 SQLAlchemy models) + Neo4j Aura graph
        ↓
-FastAPI Backend (60 REST endpoints)
+FastAPI Backend (75+ REST endpoints under /api/v2)
        ↓
-React Frontend (8 intelligence modules)
+React Frontend (18 intelligence modules)
 ```
 
 ---
@@ -65,31 +65,38 @@ React Frontend (8 intelligence modules)
 |--------|------|-------------------|
 | Crime Intelligence Dashboard | Overview | /dashboard/* |
 | Geospatial Hotspot Detection | Hotspots | /ai/hotspots |
-| Criminal Network Analysis | Network | /ai/network/person/* |
-| Predictive Intelligence | Predictions | /ai/predictions/* |
-| Anomaly Detection | Anomalies | /ai/predictions/anomalies |
-| Offender Registry | Offenders | /ai/offenders/dossiers |
-| Reports Center | Reports | static + /reports |
-| Settings & Help | Settings | static |
+| Criminal Network Analysis | Network | /network/*, /ai/network/person/* |
+| Predictive Intelligence | Predictions | /ai/risk/*, /ai/hotspot/* |
+| Anomaly Detection | Anomalies | /ai/anomaly/detect |
+| Offender Registry | Offenders | /dashboard/offender-dossiers |
+| Reports Center | Reports | /reports (PDF/DOCX/TXT/CSV/XLSX export) |
+| FIR Management | FIR | /firs/* |
+| Investigation Workspace | Investigation | /investigation/* |
+| Crime Cases | Crime Cases | /crime-cases/* |
+| Sociological Intelligence | Sociological | /sociological/* (dataset-backed indicators) |
+| Strategic Command | Strategic | /strategic/*, /interventions/* (before/after effectiveness) |
+| Victimology Analytics | Victims | /victimology/* (repeat-victimization, vulnerability index) |
+| Semantic MO Search | AI tools | /ai/mo/search, /ai/mo/extract-* |
+| Bulk Data Import (CCTNS profiles) | Admin → Import tab | /data-import/* |
+| Notifications | Notifications | /notifications/* |
+| Evidence Chain of Custody | Evidence | /evidence/* |
+| Settings & Help | Settings | /admin/* |
 
 ---
 
 ## Database Schema (Supabase PostgreSQL)
 
-Tables created per Police FIR ER Diagram:
+Core tables created by `app/models/` (applied via SQLAlchemy `create_all`):
 - `roles`, `users` — authentication & RBAC
-- `crime_categories` — IPC section classifications
-- `locations` — district/station geo coordinates
-- `criminals` — offender registry
-- `victims` — victim/complainant records
-- `officers` — investigating officer profiles
-- `crime_cases` — central incident records
-- `firs` — First Information Reports
-- `fir_criminal_links` — FIR ↔ Criminal (many-to-many)
-- `fir_victim_links` — FIR ↔ Victim (many-to-many)
-- `evidence` — physical/digital evidence chain
-- `reports` — generated intelligence reports
-- `audit_logs` — system access audit trail
+- `crime_categories`, `locations`, `officers`, `criminals`, `victims`
+- `crime_cases`, `firs`, `fir_criminal_links`, `fir_victim_links`
+- `evidence`, `evidence_metadata`, `evidence_timeline`,
+  `evidence_assignment`, `chain_of_custody`, `evidence_ai_summary`
+- `reports`, `audit_logs`, `notifications`, `investigation_notes`
+- `import_jobs` — bulk CSV/XLSX ingestion audit (issue #139)
+- `interventions` — prevention programs + effectiveness tracking (issue #139)
+- `socioeconomic_indicators` — optional Supabase-side reference table
+  (see `backend/scripts/socioeconomic_indicators.sql`; demo data, <50 KB)
 
 ---
 
@@ -97,11 +104,11 @@ Tables created per Police FIR ER Diagram:
 
 **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Zustand, Recharts, Three.js, react-force-graph-3d, Framer Motion
 
-**Backend:** FastAPI, SQLAlchemy 2, Pydantic v2, python-jose (JWT), passlib/bcrypt, Neo4j driver
+**Backend:** FastAPI, SQLAlchemy 2, Pydantic v2, python-jose (JWT), SHA-256 salted password hashing, Neo4j driver
 
 **Database:** Supabase PostgreSQL (hosted), Neo4j Aura (graph)
 
-**AI/Analytics:** Rule-based scoring engine in `analytics_service.py` (ready for ML model swap-in)
+**AI/Analytics:** LightGBM hotspot prediction, RandomForest risk scoring, XGBoost/LightGBM forecasting, Z-score L2 anomaly detection, custom NumPy criminal-risk/repeat-offender models, TF-IDF+LSA semantic MO search — each with rule-based fallbacks when no trained artifact exists.
 
 ---
 
@@ -116,6 +123,8 @@ Tables created per Police FIR ER Diagram:
 ## See Also
 
 - `IMPLEMENTATION.md` — full technical memory, API reference, ER mapping
-- `backend/app/services/analytics_service.py` — all AI/analytics logic
+- `CONTEXT.md` — complete project context (architecture, schema, endpoints)
+- `CCTNS_ICJS_INTEROP.md` — legacy data ingestion & interop spec (issue #139)
+- `backend/scripts/socioeconomic_indicators.sql` — Supabase reference-indicator table
 - `backend/app/database/seed_db.py` — demo data definitions
 - `datathon/src/services/api.ts` — all frontend API calls

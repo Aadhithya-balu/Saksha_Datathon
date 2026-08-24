@@ -141,7 +141,7 @@ export const Predictions: React.FC = () => {
 
       {/* WEATHER & SEASONAL CORRELATION */}
       <div className="w-full">
-        <WeatherCorrelationChart />
+        <WeatherCorrelationChart seasons={seasons} />
       </div>
 
       {/* SEASONAL CRIME BREAKDOWN */}

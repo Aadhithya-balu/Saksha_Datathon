@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { motion } from 'framer-motion';
 import {
-  Shield, TrendingUp, TrendingDown, Minus, AlertTriangle, MapPin,
+  Shield, ShieldCheck, TrendingUp, TrendingDown, Minus, AlertTriangle, MapPin,
   Users, FileText, Target, Brain, Clock, Activity, Loader2, ChevronRight,
   Zap, Radio, Flame,
 } from 'lucide-react';
@@ -13,6 +13,7 @@ import {
   getStrategicBriefing, getDailySummary, getResourceAllocation, getStrategicEmergingTrends,
   type StrategicBriefing, type DailySummary, type ResourceAllocation,
 } from '../../services/api';
+import InterventionsPanel from './InterventionsPanel';
 
 const COLORS = ['#C94A2A', '#D4820A', '#1E6FD9', '#0D9488', '#7C3AED', '#EC4899', '#64748B', '#059669'];
 
@@ -113,6 +114,7 @@ export default function Strategic() {
           { id: 'risk', label: 'Risk Districts', icon: AlertTriangle },
           { id: 'trends', label: 'Emerging Trends', icon: TrendingUp },
           { id: 'deployment', label: 'Deployment', icon: Target },
+          { id: 'interventions', label: 'Interventions', icon: ShieldCheck },
           { id: 'network', label: 'Top Networks', icon: Users },
         ].map((tab) => (
           <button key={tab.id} onClick={() => setActiveSection(tab.id)}
@@ -381,6 +383,13 @@ export default function Strategic() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Interventions */}
+      {activeSection === 'interventions' && (
+        <div className="bg-[var(--bg-secondary)]/40 rounded-xl border border-[var(--border-primary)] p-4">
+          <InterventionsPanel />
         </div>
       )}
 

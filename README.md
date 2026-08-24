@@ -184,9 +184,13 @@ The anomaly detection module identifies incidents that deviate from established 
 
 ### AI Techniques
 
-* Isolation Forest
-* Local Outlier Factor (LOF)
-* Statistical Outlier Detection
+* Z-score L2 deviation scoring (custom NumPy, with train/evaluate/predict interface)
+* Statistical outlier detection over temporal, spatial, and categorical features
+* Rule-based fallbacks when no trained model artifact is present
+
+Note: earlier revisions of this document mentioned Isolation Forest / Local
+Outlier Factor; the shipped implementation is the Z-score L2 deviation model in
+`backend/app/ai/models/anomaly/model.py`.
 
 ### Outcomes
 

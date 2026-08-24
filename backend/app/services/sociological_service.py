@@ -2,10 +2,18 @@
 
 Computes crime correlations with population density, urban/rural classifications,
 age/gender demographics, and socio-economic indicators using real DB data
-combined with Karnataka reference datasets.
+combined with a versioned Karnataka socio-economic dataset
+(backend/data/socioeconomic/karnataka_socioeconomic_indicators.csv).
+
+Closes gap M3: indicator values are loaded from a versioned CSV dataset
+(Census 2011 / Economic Survey / PLFS approximations) instead of hardcoded
+code constants, and correlations are computed from actual joined data.
 """
 from __future__ import annotations
 
+import csv
+import os
+from functools import lru_cache
 from typing import Any
 
 from sqlalchemy import func
@@ -17,7 +25,8 @@ from app.models.location import Location
 from app.models.victim import Victim
 
 
-# Karnataka district reference data (population in lakhs, area in sq km)
+# Karnataka district reference data (population in lakhs, area in sq km).
+# FALLBACK ONLY — superseded by the versioned CSV dataset when present.
 KARNATAKA_DISTRICTS = {
     "Bengaluru Urban": {"population_lakhs": 131.9, "area_sq_km": 741, "type": "urban", "literacy_rate": 88.5, "sex_ratio": 916, "avg_income_lakhs": 4.2},
     "Mysuru": {"population_lakhs": 30.0, "area_sq_km": 6268, "type": "semi_urban", "literacy_rate": 84.1, "sex_ratio": 970, "avg_income_lakhs": 2.8},
@@ -29,6 +38,141 @@ KARNATAKA_DISTRICTS = {
     "Tumkuru": {"population_lakhs": 26.8, "area_sq_km": 10597, "type": "rural", "literacy_rate": 75.2, "sex_ratio": 971, "avg_income_lakhs": 1.9},
     "Dharwad": {"population_lakhs": 18.5, "area_sq_km": 4260, "type": "semi_urban", "literacy_rate": 82.7, "sex_ratio": 965, "avg_income_lakhs": 2.3},
 }
+
+DATASET_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "data", "socioeconomic", "karnataka_socioeconomic_indicators.csv",
+)
+
+_DATASET_NUMERIC_COLUMNS = (
+    "population_lakhs", "area_sq_km", "literacy_rate", "sex_ratio",
+    "avg_income_lakhs", "unemployment_rate", "urbanization_share_pct",
+)
+
+_INDICATOR_TABLE = "socioeconomic_indicators"
+_DATASET_VERSION = "2.0.0"
+
+
+def _coerce_indicator_entry(row: dict[str, Any]) -> dict[str, Any]:
+    """Normalize one indicator row (CSV or DB) into the module's entry shape."""
+    urban_type = row.get("urbanization_type")
+    if not isinstance(urban_type, str) or not urban_type.strip():
+        urban_type = "rural"
+    entry: dict[str, Any] = {"type": urban_type.strip(), "unemployment_rate": None}
+    for column in _DATASET_NUMERIC_COLUMNS:
+        raw = row.get(column)
+        if raw is None or (isinstance(raw, str) and not raw.strip()):
+            entry[column] = None
+            continue
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            entry[column] = None
+            continue
+        # Smallint columns arrive as floats from NUMERIC — keep ints integral.
+        entry[column] = int(value) if column in ("sex_ratio", "data_year") and value == int(value) else value
+    # Back-compat defaults used across this module.
+    for key in ("population_lakhs", "area_sq_km", "literacy_rate", "sex_ratio", "avg_income_lakhs"):
+        entry[key] = entry.get(key) or 0
+    return entry
+
+
+def _load_indicators_from_db() -> dict[str, dict[str, Any]]:
+    """Load indicators from the Supabase table when it exists and is populated.
+
+    Raises silently-caught exceptions upward; callers fall back to CSV.
+    """
+    from sqlalchemy import text
+
+    from app.database.postgres import SessionLocal  # local import avoids cycles
+
+    session = SessionLocal()
+    try:
+        rows = session.execute(
+            text(f"SELECT * FROM {_INDICATOR_TABLE}")  # nosec: fixed identifier
+        ).mappings().all()
+        loaded: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            district = str(row.get("district") or "").strip()
+            if district:
+                loaded[district] = _coerce_indicator_entry(dict(row))
+                source_year = row.get("data_year")
+                loaded[district]["data_year"] = float(source_year) if source_year is not None else None
+        return loaded
+    finally:
+        session.close()
+
+
+@lru_cache(maxsize=1)
+def _load_socioeconomic_dataset() -> tuple[dict[str, dict[str, Any]], str | None]:
+    """Load Karnataka socio-economic indicators.
+
+    Order of preference:
+      1. Supabase `socioeconomic_indicators` table (updatable without deploys).
+      2. Bundled versioned CSV (offline / demo fallback).
+      3. Built-in constants (last-resort degradation).
+
+    Returns (district_reference, source_label).
+    """
+    fallback = {k: {**v, "unemployment_rate": None} for k, v in KARNATAKA_DISTRICTS.items()}
+    try:
+        db_rows = _load_indicators_from_db()
+        if db_rows:
+            return db_rows, f"supabase_{_INDICATOR_TABLE}"
+    except Exception:  # noqa: BLE001 - any DB failure degrades to CSV fallback
+        pass
+    if not os.path.isfile(DATASET_PATH):
+        return fallback, "built_in_fallback"
+    try:
+        loaded: dict[str, dict[str, Any]] = {}
+        with open(DATASET_PATH, newline="", encoding="utf-8") as handle:
+            for row in csv.DictReader(handle):
+                district = (row.get("district") or "").strip()
+                if not district:
+                    continue
+                entry = _coerce_indicator_entry(row)
+                year_raw = row.get("data_year")
+                try:
+                    entry["data_year"] = float(year_raw) if str(year_raw or "").strip() else None
+                except ValueError:
+                    entry["data_year"] = None
+                loaded[district] = entry
+        if not loaded:
+            return fallback, "built_in_fallback"
+        return loaded, "versioned_csv"
+    except OSError:
+        return fallback, "built_in_fallback"
+
+
+def district_reference() -> dict[str, dict[str, Any]]:
+    """District socio-economic reference currently backing all sociological analytics."""
+    reference, _source = _load_socioeconomic_dataset()
+    return reference
+
+
+def dataset_info() -> dict[str, Any]:
+    """Provenance metadata for the active socio-economic dataset."""
+    reference, source = _load_socioeconomic_dataset()
+    years = sorted({int(v["data_year"]) for v in reference.values() if v.get("data_year")})
+    return {
+        "source": source,
+        "file": "backend/data/socioeconomic/karnataka_socioeconomic_indicators.csv",
+        "table": _INDICATOR_TABLE if (source or "").startswith("supabase_") else None,
+        "version": _DATASET_VERSION,
+        "demo_data": True,
+        "data_years": years,
+        "districts": sorted(reference.keys()),
+        "district_count": len(reference),
+        "indicators": [
+            "population_lakhs", "area_sq_km", "literacy_rate", "sex_ratio",
+            "avg_income_lakhs", "unemployment_rate", "urbanization_share_pct",
+        ],
+        "approximations": ["avg_income_lakhs", "unemployment_rate"],
+        "notes": [
+            "Census 2011 base figures; income and unemployment are documented approximations.",
+            f"Updatable in Supabase via backend/scripts/socioeconomic_indicators.sql ({_INDICATOR_TABLE} table).",
+        ],
+    }
 
 # Karnataka urbanization reference (for classification)
 URBANIZATION_TIERS = {
@@ -85,11 +229,12 @@ def get_urban_rural_analysis(db: Session) -> dict[str, Any]:
         .all()
     )
 
+    reference = district_reference()
     urban_rural_buckets = {"urban": 0, "semi_urban": 0, "rural": 0}
     district_crimes = {}
     for district, count in rows:
         district_crimes[district] = count
-        ref = KARNATAKA_DISTRICTS.get(district, {})
+        ref = reference.get(district, {})
         dtype = ref.get("type", "rural")
         urban_rural_buckets[dtype] += count
 
@@ -121,15 +266,19 @@ def get_socioeconomic_overlay(db: Session) -> dict[str, Any]:
     )
 
     district_crimes = {d: c for d, c in rows}
+    reference = district_reference()
     overlays = []
 
-    for district, ref in KARNATAKA_DISTRICTS.items():
+    for district, ref in reference.items():
         crime_count = district_crimes.get(district, 0)
         pop = ref["population_lakhs"]
         area = ref["area_sq_km"]
-        density = round(pop * 100000 / area, 0)
+        density = round(pop * 100000 / area, 0) if area else 0
         crime_per_lakh = round(crime_count / pop, 1) if pop else 0
         crime_per_sqkm = round(crime_count / area, 4) if area else 0
+        # Normalize crime rate to a 0-100 risk index (top district == 100) so it can be
+        # plotted against socio-economic indicators on a common scale.
+        unemployment_rate = ref.get("unemployment_rate")
 
         overlays.append({
             "district": district,
@@ -143,10 +292,18 @@ def get_socioeconomic_overlay(db: Session) -> dict[str, Any]:
             "literacy_rate": ref["literacy_rate"],
             "sex_ratio": ref["sex_ratio"],
             "avg_income_lakhs": ref["avg_income_lakhs"],
+            "unemployment_rate": unemployment_rate,
+            "urbanization_share_pct": ref.get("urbanization_share_pct"),
             "correlation_flags": _compute_correlation_flags(crime_per_lakh, ref),
         })
 
     overlays.sort(key=lambda x: x["crime_per_lakh"], reverse=True)
+
+    max_crime_per_lakh = max((o["crime_per_lakh"] for o in overlays), default=0)
+    for overlay in overlays:
+        overlay["risk_index"] = (
+            round(overlay["crime_per_lakh"] / max_crime_per_lakh * 100, 1) if max_crime_per_lakh else 0.0
+        )
 
     literacy_correlation = _compute_correlation(
         [o["literacy_rate"] for o in overlays],
@@ -156,14 +313,23 @@ def get_socioeconomic_overlay(db: Session) -> dict[str, Any]:
         [o["avg_income_lakhs"] for o in overlays],
         [o["crime_per_lakh"] for o in overlays],
     )
+    unemployment_pairs = [
+        (o["unemployment_rate"], o["crime_per_lakh"]) for o in overlays if o["unemployment_rate"] is not None
+    ]
+    unemployment_correlation = _compute_correlation(
+        [pair[0] for pair in unemployment_pairs],
+        [pair[1] for pair in unemployment_pairs],
+    )
 
     return {
         "districts": overlays,
         "correlations": {
             "literacy_vs_crime": literacy_correlation,
             "income_vs_crime": income_correlation,
+            "unemployment_vs_crime": unemployment_correlation,
         },
         "insights": _generate_socio_insights(overlays),
+        "dataset": dataset_info(),
     }
 
 
@@ -177,8 +343,9 @@ def get_population_crime_correlation(db: Session) -> dict[str, Any]:
     )
 
     scatter_data = []
+    reference = district_reference()
     for district, count in rows:
-        ref = KARNATAKA_DISTRICTS.get(district)
+        ref = reference.get(district)
         if ref:
             pop = ref["population_lakhs"]
             area = ref["area_sq_km"]
@@ -273,8 +440,9 @@ def get_offender_demographics(db: Session) -> dict[str, Any]:
 
 def _compute_district_density(district_crimes: dict) -> list[dict]:
     result = []
+    reference = district_reference()
     for district, count in district_crimes.items():
-        ref = KARNATAKA_DISTRICTS.get(district)
+        ref = reference.get(district)
         if ref:
             pop = ref["population_lakhs"]
             area = ref["area_sq_km"]

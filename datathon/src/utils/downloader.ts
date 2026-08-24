@@ -1,6 +1,6 @@
 import { API_BASE_URL, getStoredTokens } from '../services/api';
 
-export const downloadSecureDossier = async (title: string, data: Record<string, any>, watermark: string, format: 'pdf' | 'docx' | 'txt' | 'csv' = 'pdf') => {
+export const downloadSecureDossier = async (title: string, data: Record<string, any>, watermark: string, format: 'pdf' | 'docx' | 'txt' | 'csv' | 'xlsx' = 'pdf') => {
   try {
     const tokens = getStoredTokens();
     const response = await fetch(`${API_BASE_URL}/reports/dossier/export/${format}`, {

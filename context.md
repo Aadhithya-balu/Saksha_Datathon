@@ -55,6 +55,10 @@
 | Mini k-means | Criminal clustering | Custom numpy |
 | Z-score L2 Deviation | Anomaly detection | Custom numpy |
 | In-Memory Vector Store (SHA-256) | RAG chat with case context | Custom |
+| TF-IDF + TruncatedSVD (LSA) cosine | Semantic MO search (issue #139 M6) | scikit-learn |
+| Rule-based NER (regex/gazetteer) | Plates, phones, weapons, places, dates, money extraction | Custom |
+| Composite vulnerability index | Victimology risk scoring (issue #139 M5) | Custom |
+| Pre/post window comparison | Intervention effectiveness verdicts (issue #139 M7) | Custom SQL/numpy |
 
 ### Infrastructure
 | Component | Technology |
@@ -127,22 +131,28 @@ Saksha_Datathon/
 |   |   |-- core/              # config, security, exceptions
 |   |   |-- database/          # postgres.py, neo4j.py, seed_db.py
 |   |   |-- auth/              # rbac.py, dependencies.py
-|   |   |-- models/            # 22 SQLAlchemy ORM models
+|   |   |-- models/            # 24 SQLAlchemy ORM models (incl. ImportJob, Intervention)
 |   |   |-- schemas/           # Pydantic v2 request/response schemas
-|   |   |-- services/          # 13 service modules
+|   |   |-- services/          # 17 service modules
 |   |   |   |-- base_service.py
 |   |   |   |-- analytics_service.py
 |   |   |   |-- crime_service.py
 |   |   |   |-- evidence_service.py
 |   |   |   |-- investigation_service.py
 |   |   |   |-- audit_service.py
+|   |   |   |-- sociological_service.py  # demographics + dataset-backed indicators (issue #139 M3)
+|   |   |   |-- strategic_service.py     # command briefing, resource allocation
+|   |   |   |-- ingest_service.py        # CSV/XLSX bulk import engine, CCTNS profile (issue #139 M1/M2)
+|   |   |   |-- victimology_service.py   # repeat-victimization + vulnerability index (issue #139 M5)
+|   |   |   |-- mo_semantic_service.py   # TF-IDF+LSA MO search, rule-based NER (issue #139 M6)
+|   |   |   |-- intervention_service.py  # before/after effectiveness (issue #139 M7)
 |   |   |   |-- network/       # network_service.py
 |   |   |   |-- neo4j/         # client.py
 |   |   |   |-- dashboard/     # dashboard_service.py
 |   |   |   |-- notifications/ # notification_service.py, activity_service.py
 |   |   |   |-- chat/          # chat_service.py
 |   |   |   |-- rag/           # rag_service.py
-|   |   |-- routes/            # 21 route modules (59+ endpoints)
+|   |   |-- routes/            # 25 route modules (75+ endpoints)
 |   |   |-- ai/                # 40 AI/ML files
 |   |   |   |-- inference/     # hotspot.py, risk.py, criminal.py, anomaly.py
 |   |   |   |-- models/        # risk/, criminal/, anomaly/, rag/
@@ -153,7 +163,8 @@ Saksha_Datathon/
 |   |   |-- mlops/             # registry, pipeline, monitoring, drift, deploy, cli
 |   |   |-- tests/             # 10 test files (pytest)
 |   |-- neo4j/                 # schema.cypher, queries_reference.cypher
-|   |-- scripts/               # retrain_hotspot_rf.py, setup_officers_evidence.sql
+|   |-- scripts/               # retrain_hotspot_rf.py, setup_officers_evidence.sql, socioeconomic_indicators.sql
+|   |-- data/socioeconomic/    # versioned demo indicator dataset (all 30 districts, issue #139 M3)
 |   |-- uploads/               # Evidence file uploads
 |   |-- Dockerfile
 |   |-- docker-compose.yml
@@ -257,6 +268,16 @@ Saksha_Datathon/
 | `system_settings` | Admin system config | key-value pairs |
 | `role_permissions` | Granular permissions | FK to roles |
 
+### Gap-Closure Modules (issue #139)
+| Table | Purpose | Key Relationships |
+|---|---|---|
+| `import_jobs` | Bulk CSV/XLSX ingestion audit (M1/M2) | FK to users; entity_type, status, row report JSON |
+| `interventions` | Prevention programs + effectiveness windows (M7) | district, intervention_type, started/ended_at |
+
+Optional Supabase-side reference table: `socioeconomic_indicators`
+(31 rows, <50 KB — see `backend/scripts/socioeconomic_indicators.sql`;
+loaded by the sociological service with the bundled CSV as offline fallback).
+
 ---
 
 ## Neo4j Graph Schema
@@ -286,7 +307,7 @@ Saksha_Datathon/
 
 ---
 
-## API Endpoints (59+ Routes)
+## API Endpoints (75+ Routes)
 
 ### Authentication (`/api/v2/auth/`)
 - `POST /login` - JWT token generation
@@ -310,7 +331,7 @@ Saksha_Datathon/
 - CRUD + upload, download, assign, accept, complete, return, reject, summary (11 routes)
 
 ### Reports (`/api/v2/reports/`)
-- list, statistics, preview, generate, export (CSV/PDF)
+- list, statistics, preview, generate, export (PDF/DOCX/TXT/CSV/XLSX)
 
 ### Notifications (`/api/v2/notifications/`)
 - list, count, recent, read, read-all, dismiss, activity-feed, live-timeline (8 routes)
@@ -323,6 +344,33 @@ Saksha_Datathon/
 
 ### Network Analysis (`/api/v2/network/`)
 - full graph, person graph, case graph, gangs, shortest-path, link-analysis, AI insights
+
+### Sociological (`/api/v2/sociological/`)
+- demographics, urban-rural, socioeconomic (dataset-backed incl. unemployment correlation), population-correlation, temporal-demographics, offender-demographics, dataset-info
+
+### Strategic (`/api/v2/strategic/`)
+- briefing, daily-summary, high-risk-districts, emerging-trends, resource-allocation
+
+### Data Import (`/api/v2/data-import/`, issue #139 M1/M2)
+- `GET /entities` - supported entity specs and column profiles
+- `GET /template/{entity_type}?export_format=csv|xlsx` - downloadable template with profile mapping
+- `POST /preview` - parse + validate upload, return column mapping & row report
+- `POST /commit` - persist valid rows (supports dry_run)
+- `GET /jobs`, `GET /jobs/{id}` - import job audit trail
+
+### Victimology (`/api/v2/victimology/`, issue #139 M5)
+- `GET /overview` - repeat-victimization rate, gender split, top risk districts
+- `GET /repeat-victims?min_fir_count=` - repeat-victim registry
+- `GET /vulnerability-index` - composite vulnerability scores with cited risk factors
+
+### Semantic MO Search (`/api/v2/ai/mo/`, issue #139 M6)
+- `GET /search?q=&k=&kinds=` - TF-IDF+LSA cosine similarity over MO summaries/narratives (substring fallback without sklearn)
+- `POST /extract-entities` - rule-based NER over free text (plates, phones, weapons, places, dates, money)
+- `GET /extract-case/{case_id}` - entity extraction over a case's description + FIRs
+
+### Interventions (`/api/v2/interventions/`, issue #139 M7)
+- CRUD for prevention programs
+- `GET /{id}/effectiveness` - equal pre/post window crime comparison with verdict
 
 ### AI/ML Endpoints
 - `POST /api/v2/ai/chat` - Streaming RAG chat
@@ -412,12 +460,12 @@ All models implement a standard interface:
 | Notifications | `notifications` | Real-time notifications, activity feed, system health |
 | Offenders | `offenders` | Offender dossiers with AI recommendations |
 | Criminals | `criminals` | Criminal registry with risk scores |
-| Victims | `victims` | Victim and witness index |
+| Victims | `victims` | Victim/witness index + Victimology analytics toggle (repeat-victimization, vulnerability index) |
 | Officers | `officers` | Officer directory |
 | Evidence | `evidence` | Evidence chain of custody management |
-| Reports | `reports` | Report generation, preview, export (CSV/PDF) |
+| Reports | `reports` | Report generation, preview, export (CSV/PDF/DOCX/TXT/XLSX) |
 | AI Chat | `ai_chat` | RAG-powered conversational AI crime analyst |
-| Admin/Settings | `settings_help` | User management, roles, system settings |
+| Admin/Settings | `settings_help` | User management, roles, system settings, Data Import tab (bulk CSV/XLSX) |
 
 ### Key Components (51)
 - **Auth:** BadgeLogin (badge-id entry), FaceIDScanner (face-api.js), SessionTimer
@@ -431,7 +479,7 @@ All models implement a standard interface:
 - **Notifications:** NotificationBell, NotificationCenter, ActivityFeed, LiveEventTimeline, SystemHealth
 - **3D:** GlobeScene, ParticleField (Three.js scenes)
 - **Layout:** Sidebar (collapsible), Header (with notification bell), RoleGuard (RBAC enforcement)
-- **Admin:** Admin panel with user/role management
+- **Admin:** Admin panel with user/role management + DataImportPanel (bulk CSV/XLSX ingestion)
 - **Reports:** Report generation and export
 
 ### Zustand Stores (5)
@@ -563,6 +611,8 @@ All models implement a standard interface:
 7. **App.css** contains Vite boilerplate styles (hero, counter, ticks) that are unused
 8. **Custom scrollbar** is defined in index.css but referenced as `custom-scrollbar` class in App.tsx (missing class definition)
 9. **Some sidebar navigation items** (officers, evidence, notifications) are implemented but not all appear in the Sidebar component navigation
+10. **Socio-economic indicators are demo data** - Census 2011 base figures with approximated income/unemployment; updatable via `backend/scripts/socioeconomic_indicators.sql` without code changes
+11. **MO semantic search** requires scikit-learn for TF-IDF+LSA; falls back to substring matching when unavailable
 
 ---
 
@@ -587,13 +637,13 @@ All models implement a standard interface:
 | Backend Python files | ~80+ |
 | Frontend TSX/TS files | ~85+ |
 | AI/ML model files | 40 |
-| Service modules | 13 |
-| Route modules | 21 |
-| ORM models | 22 |
-| React components | 51 |
+| Service modules | 17 |
+| Route modules | 25 |
+| ORM models | 24 |
+| React components | 52+ |
 | Zustand stores | 5 |
 | Custom hooks | 4 |
-| Test files | 10+ |
+| Test files | 14+ |
 | CI/CD workflows | 2 |
 | Docker files | 3 |
-| Documentation files | 10 |
+| Documentation files | 11 |

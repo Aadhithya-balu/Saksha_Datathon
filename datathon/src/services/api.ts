@@ -1449,6 +1449,8 @@ export interface DistrictOverlay {
   literacy_rate: number;
   sex_ratio: number;
   avg_income_lakhs: number;
+  unemployment_rate: number;
+  risk_index: number | null;
   correlation_flags: string[];
 }
 
@@ -1457,7 +1459,15 @@ export interface SocioeconomicAnalysis {
   correlations: {
     literacy_vs_crime: number;
     income_vs_crime: number;
+    unemployment_vs_crime: number | null;
   };
+  dataset?: {
+    version: string;
+    source_file: string;
+    last_verified: string;
+    notes: string[];
+    fields_available: string[];
+  } | null;
   insights: Array<{
     type: string;
     title: string;
@@ -1617,4 +1627,275 @@ export async function getResourceAllocation() {
 
 export async function getDailySummary() {
   return apiRequest<DailySummary>('/strategic/daily-summary');
+}
+
+// ── Victimology (issue #139 M5) ─────────────────────────────────────────────
+
+export interface VictimologyOverview {
+  total_victims: number;
+  victims_with_firs: number;
+  repeat_victim_count: number;
+  repeat_victimization_rate: number | null;
+  average_age: number | null;
+  gender_distribution: Array<{ gender: string; count: number }>;
+  top_risk_districts: Array<{ district: string; victim_count: number; avg_vulnerability: number }>;
+}
+
+export interface RepeatVictim {
+  id: string;
+  name: string;
+  fir_count: number;
+  districts: string[];
+  categories: string[];
+  vulnerability_index: number | null;
+}
+
+export interface VulnerabilityEntry {
+  id: string;
+  name: string;
+  district: string | null;
+  age: number | null;
+  gender: string | null;
+  fir_count: number;
+  vulnerability_index: number;
+  risk_factors: string[];
+}
+
+export async function getVictimologyOverview() {
+  return apiRequest<VictimologyOverview>('/victimology/overview');
+}
+
+export async function getRepeatVictims(minFirCount = 2) {
+  return apiRequest<{ count: number; repeat_victims: RepeatVictim[] }>(
+    `/victimology/repeat-victims?min_fir_count=${minFirCount}`
+  );
+}
+
+export async function getVulnerabilityIndex() {
+  return apiRequest<{ count: number; entries: VulnerabilityEntry[] }>('/victimology/vulnerability-index');
+}
+
+// ── Interventions (issue #139 M7) ───────────────────────────────────────────
+
+export type InterventionStatus = 'planned' | 'active' | 'completed' | 'suspended';
+
+export interface InterventionRecord {
+  id: string;
+  district: string;
+  intervention_type: string;
+  title: string;
+  description: string | null;
+  started_at: string;
+  ended_at: string | null;
+  status: InterventionStatus;
+  target_category: string | null;
+  created_by_name: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface InterventionEffectiveness {
+  intervention_id: string;
+  title: string;
+  district: string;
+  status: string;
+  pre_window: { start: string; end: string; crime_count: number };
+  post_window: { start: string; end: string; crime_count: number };
+  change_percentage: number | null;
+  verdict: 'effective' | 'partially_effective' | 'no_measurable_effect' | 'insufficient_data';
+}
+
+export interface InterventionCreateInput {
+  district: string;
+  intervention_type: string;
+  title: string;
+  description?: string;
+  started_at: string;
+  ended_at?: string;
+  status?: InterventionStatus;
+  target_category?: string;
+  notes?: string;
+}
+
+export async function listInterventions(params: { district?: string; status?: string } = {}) {
+  const search = new URLSearchParams();
+  if (params.district) search.set('district', params.district);
+  if (params.status) search.set('status', params.status);
+  const qs = search.toString();
+  return apiRequest<{ count: number; interventions: InterventionRecord[] }>(
+    `/interventions${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function createIntervention(input: InterventionCreateInput) {
+  return apiRequest<InterventionRecord>('/interventions', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function getInterventionEffectiveness(id: string) {
+  return apiRequest<InterventionEffectiveness>(`/interventions/${id}/effectiveness`);
+}
+
+export async function updateIntervention(id: string, patch: Partial<InterventionCreateInput>) {
+  return apiRequest<InterventionRecord>(`/interventions/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}
+
+// ── Semantic MO Search + NER (issue #139 M6) ────────────────────────────────
+
+export interface MoSearchResult {
+  doc_id: string;
+  kind: string;
+  title: string;
+  similarity: number | null;
+  excerpt: string;
+  meta: Record<string, unknown>;
+}
+
+export async function searchModusOperandi(query: string, k = 8, kinds?: string[]) {
+  const search = new URLSearchParams({ q: query, k: String(k) });
+  if (kinds?.length) search.set('kinds', kinds.join(','));
+  return apiRequest<{
+    query: string;
+    corpus_size: number;
+    embedding_method: string;
+    results: MoSearchResult[];
+  }>(`/ai/mo/search?${search.toString()}`);
+}
+
+export interface ExtractedEntity {
+  text: string;
+  type: string;
+  start: number;
+  end: number;
+  source: string;
+}
+
+export async function extractEntities(text: string) {
+  return apiRequest<{
+    entity_count: number;
+    entities_by_type: Record<string, string[]>;
+    entities: ExtractedEntity[];
+  }>('/ai/mo/extract-entities', {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
+}
+
+export async function extractCaseEntities(caseId: string) {
+  return apiRequest<{
+    case_id: string;
+    case_number: string;
+    entity_count: number;
+    entities_by_type: Record<string, string[]>;
+    entities: ExtractedEntity[];
+  }>(`/ai/mo/extract-case/${caseId}`);
+}
+
+// ── Data Import / Legacy Ingestion (issue #139 M1/M2) ───────────────────────
+
+export interface ImportColumnSpec {
+  name: string;
+  required: boolean;
+  type: string;
+  choices?: string[];
+}
+
+export interface ImportEntitySpec {
+  entity_type: string;
+  columns: ImportColumnSpec[];
+}
+
+export interface ImportProfileInfo {
+  profile: string;
+  description: string;
+  sample_mappings?: Record<string, string>;
+}
+
+export interface ImportPreviewReportItem {
+  row_number: number;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface ImportAnalysis {
+  entity_type: string;
+  profile: string;
+  filename: string;
+  detected_headers: string[];
+  column_mapping: Record<string, string>;
+  unmapped_headers: string[];
+  missing_required_columns: string[];
+  total_rows: number;
+  sample_mapped_rows: Array<Record<string, unknown>>;
+  validation_report: ImportPreviewReportItem[];
+  truncated_report: boolean;
+  estimated_valid_rows: number;
+  estimated_invalid_rows: number;
+}
+
+export interface ImportCommitResult {
+  job_id: string;
+  status: string;
+  entity_type: string;
+  profile: string;
+  filename: string;
+  total_rows: number;
+  imported_rows: number;
+  failed_rows: number;
+  validation_report: ImportPreviewReportItem[];
+}
+
+export interface ImportJobSummary {
+  id: string;
+  entity_type: string;
+  source_format: string;
+  mapping_profile: string;
+  filename: string;
+  status: string;
+  total_rows: number;
+  imported_rows: number;
+  failed_rows: number;
+  created_at: string | null;
+  created_by: string | null;
+}
+
+export async function getImportEntities() {
+  return apiRequest<{ profiles: ImportProfileInfo[]; entities: ImportEntitySpec[]; max_rows: number }>('/data-import/entities');
+}
+
+export async function analyzeImportFile(file: File, entityType: string, profile = 'standard') {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('entity_type', entityType);
+  form.append('profile', profile);
+  return apiRequest<ImportAnalysis>('/data-import/preview', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export async function commitImportFile(
+  file: File,
+  entityType: string,
+  profile = 'standard',
+  dryRun = false
+) {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('entity_type', entityType);
+  form.append('profile', profile);
+  if (dryRun) form.append('dry_run', 'true');
+  return apiRequest<ImportCommitResult>('/data-import/commit', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export async function listImportJobs(pageSize = 20) {
+  return apiRequest<{ total: number; page: number; page_size: number; results: ImportJobSummary[] }>(`/data-import/jobs?page=1&page_size=${pageSize}`);
 }

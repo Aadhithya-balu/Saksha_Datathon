@@ -79,7 +79,7 @@ export const ExportButton: React.FC<{ label: string; onClick: () => void; disabl
   </button>
 );
 
-export const ExportMenu: React.FC<{ disabled?: boolean; exportingFormat?: string | null; onExport: (format: 'pdf' | 'docx' | 'txt' | 'csv') => void }> = ({ disabled, exportingFormat, onExport }) => {
+export const ExportMenu: React.FC<{ disabled?: boolean; exportingFormat?: string | null; onExport: (format: 'pdf' | 'docx' | 'txt' | 'csv' | 'xlsx') => void }> = ({ disabled, exportingFormat, onExport }) => {
   return (
     <div className="relative inline-block text-left">
       <select
@@ -97,6 +97,7 @@ export const ExportMenu: React.FC<{ disabled?: boolean; exportingFormat?: string
         <option value="docx" className="bg-[#0A1220] text-white">Export DOCX</option>
         <option value="txt" className="bg-[#0A1220] text-white">Export TXT</option>
         <option value="csv" className="bg-[#0A1220] text-white">Export CSV</option>
+        <option value="xlsx" className="bg-[#0A1220] text-white">Export XLSX</option>
       </select>
       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2">
         <Download className="h-3.5 w-3.5 text-[#0E9E78]" />
