@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { useAppStore } from '../../store/appStore';
+import { useThemePalettes, tooltipStyle } from '../../theme';
 
 interface WeatherCorrelationData {
   factor: string;
@@ -16,15 +18,18 @@ const CORRELATION_DATA: WeatherCorrelationData[] = [
   { factor: 'Monsoon Flooding', probability: 42, crimeType: 'Property Looting', icon: 'rain' }
 ];
 
-const COLORS = ['#1E6FD9', '#6C43CC', '#C94A2A', '#D4820A', '#0E9E78'];
+
 
 export const WeatherCorrelationChart: React.FC = () => {
   const [selectedFactor, setSelectedFactor] = useState<string | null>(null);
+  const theme = useAppStore((s) => s.theme);
+  const palette = useThemePalettes();
+  const COLORS = palette.chart.series;
 
   const activeDetail = CORRELATION_DATA.find(d => d.factor === selectedFactor) || CORRELATION_DATA[0];
 
   return (
-    <div className="w-full bg-[var(--bg-secondary)]/80 border border-[var(--border-primary)] p-4 rounded-lg flex flex-col justify-between select-none font-mono">
+    <div className="sk-panel sk-panel-pad w-full flex flex-col justify-between select-none">
       
       {/* Title block */}
       <div className="flex justify-between items-center mb-3">
@@ -50,32 +55,23 @@ export const WeatherCorrelationChart: React.FC = () => {
                 }
               }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={palette.chart.grid} vertical={false} />
               <XAxis 
                 dataKey="factor" 
-                stroke="#A8B4CC" 
+                stroke={palette.chart.axis} 
                 tickLine={false} 
                 axisLine={false} 
-                style={{ fill: 'var(--text-primary)', fontSize: '11px', fontWeight: 'bold' }}
+                tick={{ fill: palette.chart.axis, fontSize: 11.5 }}
               />
               <YAxis 
-                stroke="#A8B4CC" 
+                stroke={palette.chart.axis} 
                 tickLine={false} 
                 axisLine={false} 
                 domain={[0, 100]}
                 unit="%"
-                style={{ fill: 'var(--text-primary)', fontSize: '11px', fontWeight: 'bold' }}
+                tick={{ fill: palette.chart.axis, fontSize: 11.5 }}
               />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(11, 20, 38, 0.96)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  borderRadius: '6px',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: '11px',
-                  color: '#E8EDF5',
-                }}
-              />
+              <Tooltip contentStyle={tooltipStyle(theme)} />
               <Bar dataKey="probability" radius={[4, 4, 0, 0]}>
                 {CORRELATION_DATA.map((entry, index) => (
                   <Cell 

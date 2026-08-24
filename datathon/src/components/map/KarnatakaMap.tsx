@@ -1,20 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useMapStore, DISTRICT_COORDS } from '../../store/mapStore';
-import type { HotspotPoint, CrimeCaseRecord } from '../../services/api';
+import type { HotspotPoint } from '../../services/api';
 import type { DistrictInfo } from '../../store/mapStore';
 import TimeSlider from './TimeSlider';
 import { 
   Shield, X, TrendingUp, TrendingDown, AlertTriangle, 
   MapPin, ChevronRight, ChevronDown, ArrowLeft, Radio, FileText, 
-  Clock, Flame, CheckCircle, AlertCircle
+  Clock, Flame
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { downloadSecureDossier } from '../../utils/downloader';
 import { useAuditStore } from '../../store/auditStore';
 import { useAuthStore } from '../../store/authStore';
+import { useThemePalettes } from '../../theme';
+import { useAppStore } from '../../store/appStore';
 
 // Real Karnataka District Police Station database mapping
-export const DISTRICT_POLICE_STATIONS: Record<string, HotspotPoint[]> = {
+const DISTRICT_POLICE_STATIONS: Record<string, HotspotPoint[]> = {
   'Bengaluru Urban': [
     { district_id: 'Bengaluru Urban', name: 'Whitefield Police Station', lat: 12.9698, lng: 77.7500, score: 94, category: 'Cyber Crime & Online Fraud', trend: 'up' },
     { district_id: 'Bengaluru Urban', name: 'Jayanagar Police Station', lat: 12.9260, lng: 77.5830, score: 92, category: 'Narcotics Smuggling Services', trend: 'down' },
@@ -153,7 +155,6 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
   emergingTrends = [],
   crimeCases = [],
   socioEconomicData = [],
-  anomaliesList = []
 }) => {
   const {
     selectedDistrict,
@@ -170,6 +171,9 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
 
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
+  const theme = useAppStore((s) => s.theme);
+  const palette = useThemePalettes();
+  const map = palette.map;
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [mapZoom, setMapZoom] = useState(1);
@@ -247,21 +251,21 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
     };
   }, [selectedDistrict, resolvedDistrictData]);
 
-  // Filter stations in current district
+  // Get active district's complete police station registry
   const districtStations = useMemo(() => {
     if (!selectedDistrict) return [];
     const targetDist = selectedDistrict.toLowerCase();
     
-    // 1. Check in DISTRICT_POLICE_STATIONS dictionary
-    const dictMatch = Object.entries(DISTRICT_POLICE_STATIONS).find(([k]) => k.toLowerCase() === targetDist);
-    const dictStations = dictMatch ? dictMatch[1] : [];
-
-    // 2. Check in activeHotspots
+    // Find district key in dictionary (case-insensitive)
+    const dictKey = Object.keys(DISTRICT_POLICE_STATIONS).find(k => k.toLowerCase() === targetDist);
+    const dictStations = dictKey ? DISTRICT_POLICE_STATIONS[dictKey] : [];
+    
+    // Also include any dynamically passed hotspots for this district
     const liveStations = activeHotspots.filter(h => (h.district_id || '').toLowerCase() === targetDist);
     
     // Combine unique stations
     const map = new Map<string, any>();
-    [...dictStations, ...liveStations].forEach(s => {
+    [...dictStations, ...liveStations].forEach((s: any) => {
       if (s.name && !map.has(s.name)) {
         map.set(s.name, {
           ...s,
@@ -325,7 +329,6 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
       
       const directMatches = crimeCases.filter((c: any) => {
         const loc = (c.location || c.station || '').toLowerCase();
-        const caseNum = (c.case_number || '').toLowerCase();
         const desc = (c.description || '').toLowerCase();
         return (stationToken.length >= 3 && (loc.includes(stationToken) || desc.includes(stationToken) || stationToken.includes(loc)))
           || loc.includes(stationLower) || stationLower.includes(loc);
@@ -482,13 +485,13 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
       </div>
 
       {/* RENDER CANVAS CONTAINER */}
-      <div className="flex-1 w-full min-h-[460px] relative cursor-grab active:cursor-grabbing bg-[var(--bg-secondary)] overflow-hidden">
-        
+      <div className="flex-1 w-full min-h-[460px] relative cursor-grab active:cursor-grabbing overflow-hidden" style={{ backgroundColor: map.bg }}>
+
         {/* GEODESIC BACKGROUND GRID */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20">
+        <svg className="absolute inset-0 w-full h-full pointer-events-none">
           <defs>
             <pattern id="gridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1E6FD9" strokeWidth="0.5" />
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke={map.grid} strokeWidth="0.5" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#gridPattern)" />
@@ -507,7 +510,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
             }}
           >
             {/* Geodesic coordinates lines */}
-            <g stroke="rgba(30,111,217,0.1)" strokeWidth="0.5" strokeDasharray="3 3">
+            <g stroke={map.graticule} strokeWidth="0.5" strokeDasharray="3 3">
               {[74, 75, 76, 77, 78].map((lon) => (
                 <line 
                   key={lon} 
@@ -538,8 +541,8 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
               const isSpikedDistrict = info?.weeklyTrend === 'up' || emergingTrends.some(t => t.direction === 'increasing' && t.change_percentage > 15 && info?.topCrimeType?.toLowerCase().includes(t.category.toLowerCase()));
               
               // Color coding based on active layers & trend spikes
-              let fill = isSpikedDistrict ? 'rgba(239, 68, 68, 0.08)' : 'rgba(30, 111, 217, 0.03)';
-              let stroke = isSpikedDistrict ? 'rgba(239, 68, 68, 0.45)' : 'rgba(255, 255, 255, 0.15)';
+              let fill = isSpikedDistrict ? 'rgba(239, 68, 68, 0.08)' : map.districtFill;
+              let stroke = isSpikedDistrict ? 'rgba(239, 68, 68, 0.45)' : map.boundary;
               
               if (layers.socioEconomic && socio) {
                 fill = socio.urbanization_type === 'urban' 
@@ -550,34 +553,36 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                 stroke = socio.urbanization_type === 'urban' ? '#C94A2A' : '#D4820A';
               } else if (layers.riskScore && info) {
                 const rs = info.riskScore;
-                fill = rs >= 80 
-                  ? 'rgba(201, 74, 42, 0.35)' 
-                  : rs >= 60 
-                  ? 'rgba(212, 130, 10, 0.35)' 
-                  : 'rgba(14, 158, 120, 0.25)';
+                fill = rs >= 80
+                  ? `rgba(217, 52, 20, ${theme === 'dark' ? 0.35 : 0.28})`
+                  : rs >= 60
+                  ? `rgba(181, 110, 7, ${theme === 'dark' ? 0.35 : 0.30})`
+                  : `rgba(13, 122, 91, ${theme === 'dark' ? 0.25 : 0.22})`;
               } else if (layers.beatCoverage && info) {
                 const br = info.beatRatio;
-                fill = br >= 75 
-                  ? 'rgba(14, 158, 120, 0.35)' 
-                  : br >= 60 
-                  ? 'rgba(30, 111, 217, 0.25)' 
-                  : 'rgba(212, 130, 10, 0.25)';
+                fill = br >= 75
+                  ? theme === 'dark' ? 'rgba(20, 201, 151, 0.30)' : 'rgba(5, 150, 105, 0.26)'
+                  : br >= 60
+                  ? theme === 'dark' ? 'rgba(61, 138, 240, 0.25)' : 'rgba(37, 99, 235, 0.20)'
+                  : theme === 'dark' ? 'rgba(240, 156, 46, 0.25)' : 'rgba(217, 119, 6, 0.24)';
               }
 
               if (isSelected) {
-                fill = isSpikedDistrict ? 'rgba(239, 68, 68, 0.18)' : 'rgba(30, 111, 217, 0.12)';
-                stroke = isSpikedDistrict ? '#EF4444' : '#1E6FD9';
+                fill = isSpikedDistrict ? 'rgba(239, 68, 68, 0.18)' : map.districtSelected;
+                stroke = isSpikedDistrict ? '#EF4444' : map.boundaryHover;
               }
 
               return (
                 <polygon
                   key={name}
                   points={projectedPoints}
-                  className={`transition-all duration-300 hover:fill-slate-800/40 hover:stroke-[var(--accent-blue)]/80 cursor-pointer ${isSpikedDistrict ? 'stroke-dasharray-2' : ''}`}
+                  className={`transition-all duration-300 cursor-pointer ${isSpikedDistrict ? 'stroke-dasharray-2' : ''}`}
                   fill={fill}
                   stroke={stroke}
-                  strokeWidth={isSelected ? 2 : isSpikedDistrict ? 1.5 : 1}
+                  strokeWidth={isSelected ? 2.25 : isSpikedDistrict ? 1.5 : 1.25}
                   strokeDasharray={isSpikedDistrict ? '4 2' : undefined}
+                  onMouseEnter={(e) => { if (!isSelected && !isSpikedDistrict) { e.currentTarget.style.fill = map.districtSelected; e.currentTarget.style.stroke = map.boundaryHover; } }}
+                  onMouseLeave={(e) => { e.currentTarget.style.fill = fill; e.currentTarget.style.stroke = stroke; }}
                   onClick={() => {
                     setSelectedDistrict(isSelected ? null : name);
                     setSelectedStation(null);
@@ -598,16 +603,21 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
 
               return (
                 <g key={name} className="pointer-events-none select-none">
-                  <circle 
-                    cx={x} 
-                    cy={y} 
-                    r={isSelected ? 4 : isSpiked ? 3 : 2} 
-                    fill={isSelected ? '#1E6FD9' : isSpiked ? '#EF4444' : '#A8B4CC'} 
+                  {/* Center pin node */}
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={isSelected ? 4 : isSpiked ? 3 : 2.4}
+                    fill={isSelected ? map.boundaryHover : isSpiked ? '#EF4444' : map.anchor}
                   />
+                  {/* District text tag — bg-stroked for legibility in both themes */}
                   <text
-                    x={x + 6}
-                    y={y + 3}
-                    className={`font-mono text-[9px] font-semibold ${isSpiked ? 'fill-red-400 font-bold' : 'fill-[var(--text-muted)]'}`}
+                    x={x + 6.5}
+                    y={y + 3.5}
+                    className={`font-mono text-[9px] ${isSpiked ? 'font-bold' : 'font-semibold'}`}
+                    style={{ paintOrder: 'stroke', stroke: map.bg, strokeWidth: 3, strokeLinejoin: 'round' }}
+                    fill={isSpiked ? '#EF4444' : map.label}
+                    opacity={isSelected || isSpiked ? 1 : 0.9}
                   >
                     {name} {isSpiked ? '⚠️' : ''}
                   </text>
@@ -628,7 +638,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                 const isSpikeTrend = hs.trend === 'up' || emergingTrends.some(t => t.direction === 'increasing' && t.change_percentage > 10 && catLower.includes(t.category.toLowerCase()));
                 
                 // Color mapping: Red Alert if spiked trend or threat score >= 80
-                const color = isSpikeTrend ? '#EF4444' : isHigh ? '#C94A2A' : hs.weight >= 60 ? '#D4820A' : '#1E6FD9';
+                const color = isSpikeTrend ? '#EF4444' : isHigh ? map.hotspotHigh : hs.weight >= 65 ? map.hotspotMedium : map.hotspotLow;
                 const isSelected = (selectedHotspot && selectedHotspot.name === hs.name) || isStationSelected;
 
                 return (
@@ -678,7 +688,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                       cy={y} 
                       r={Math.round(14 * temporalShiftInfo.multiplier)} 
                       fill={color} 
-                      opacity={0.15} 
+                      opacity={map.haloOpacity} 
                       className="animate-ping" 
                       style={{ transformOrigin: `${x}px ${y}px`, animationDuration: `${Math.max(1.0, 3 - hs.weight / 40)}s` }} 
                     />
@@ -687,16 +697,17 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                       cy={y} 
                       r={Math.round(28 * temporalShiftInfo.multiplier)} 
                       stroke={color} 
-                      strokeWidth="0.5" 
+                      strokeWidth="1" 
                       fill="none" 
-                      opacity={0.08} 
+                      opacity={map.haloOpacity * 0.6} 
                       className="animate-ping" 
                       style={{ transformOrigin: `${x}px ${y}px`, animationDuration: `${Math.max(1.8, 4.5 - hs.weight / 30)}s` }} 
                     />
                     
                     {/* Center Core dot */}
-                    <circle cx={x} cy={y} r={isSpikeTrend || isHigh || isSelected ? 6.5 : 4.5} fill={isSelected ? '#00F0FF' : color} />
-                    <circle cx={x} cy={y} r={isSpikeTrend || isHigh || isSelected ? 9.5 : 6.5} stroke={isSelected ? '#00F0FF' : color} strokeWidth="1.5" fill="none" opacity={0.8} />
+                    <circle cx={x} cy={y} r={isSpikeTrend || isHigh || isSelected ? 8.5 : 7} fill={map.bg} />
+                    <circle cx={x} cy={y} r={isSpikeTrend || isHigh || isSelected ? 6 : 4.5} fill={isSelected ? '#00F0FF' : color} stroke={map.bg} strokeWidth="1.5" />
+                    <circle cx={x} cy={y} r={isSpikeTrend || isHigh || isSelected ? 9.5 : 8} stroke={isSelected ? '#00F0FF' : color} strokeWidth="1.25" fill="none" opacity={0.8} />
 
                     {/* Station Name Label when District Selected */}
                     {selectedDistrict && (
@@ -713,21 +724,27 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                     {/* Popover Tooltip inside foreignObject */}
                     {isSelected && (
                       <foreignObject x={x - 90} y={y - 120} width="180" height="110" className="z-50 pointer-events-auto">
-                        <div className="bg-[var(--bg-tertiary)] border border-[var(--accent-blue)] p-2.5 rounded-card shadow-glow-blue text-left flex flex-col gap-1.5 font-mono text-[9px] leading-tight text-[var(--text-primary)] relative">
-                          <div className="flex justify-between items-center border-b border-[var(--border-primary)] pb-1">
-                            <span className="font-bold text-[var(--accent-teal)] uppercase text-[7.5px]">Station Telemetry</span>
-                            <button 
+                        <div
+                          className="p-2.5 rounded-lg text-left flex flex-col gap-1.5 font-mono text-[10px] leading-tight relative shadow-lg"
+                          style={{ backgroundColor: palette.chart.tooltipBg, border: `1px solid ${palette.chart.tooltipBorder}`, color: palette.chart.tooltipText }}
+                        >
+                          <div className="flex justify-between items-center pb-1" style={{ borderColor: palette.chart.tooltipBorder, borderBottomWidth: 1 }}>
+                            <span className="font-bold uppercase text-[9px]" style={{ color: isSpikeTrend ? '#EF4444' : map.hotspotMedium }}>
+                              {isSpikeTrend ? '🔥 Surge Alert' : 'Hotspot Details'}
+                            </span>
+                            <button
                               onClick={(e) => { e.stopPropagation(); setSelectedHotspot(null); }}
-                              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer font-bold text-xs"
+                              className="cursor-pointer font-bold text-xs"
+                              style={{ color: palette.chart.axis }}
                             >
                               ×
                             </button>
                           </div>
                           <div>
-                            <p className="font-bold text-[var(--text-primary)] uppercase truncate">{hs.name}</p>
-                            <p className="text-[var(--text-muted)] mt-0.5 truncate">Sector: {hs.district_id}</p>
-                            <p className="text-[var(--text-secondary)] mt-0.5 truncate">Category: {hs.type}</p>
-                            <p className="text-red-400 font-bold mt-0.5">Threat Level: {hs.weight}%</p>
+                            <p className="font-bold uppercase truncate">{hs.name}</p>
+                            <p className="opacity-70 mt-0.5 truncate">Sector: {hs.district_id}</p>
+                            <p className="opacity-85 mt-0.5 truncate">Category: {hs.type}</p>
+                            <p className="font-bold mt-0.5" style={{ color: color }}>Threat Level: {hs.weight}%</p>
                           </div>
                         </div>
                       </foreignObject>
@@ -748,9 +765,9 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
               setSelectedStation(null);
               setSelectedCrimeId(null);
             }}
-            className="absolute bottom-4 left-4 z-20 px-3 py-1.5 bg-[var(--accent-coral)] hover:bg-[var(--accent-coral)]/80 text-[var(--text-primary)] font-mono text-[10px] uppercase rounded-btn flex items-center gap-1.5 shadow-glow-coral cursor-pointer"
+            className="absolute bottom-4 left-4 z-20 px-3 py-1.5 bg-[var(--accent-coral)] hover:opacity-90 text-white font-medium text-xs rounded-md flex items-center gap-1.5 shadow-sm cursor-pointer"
           >
-            <ArrowLeft className="w-3 h-3" />
+            <ArrowLeft className="w-3.5 h-3.5" />
             <span>Reset View to Statewide</span>
           </button>
         )}
@@ -1164,7 +1181,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                     );
                   }
                 }}
-                className="w-full py-2 bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/80 text-[var(--text-primary)] font-mono text-[10px] uppercase rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none shadow-glow-blue"
+                className="w-full py-2.5 bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/80 text-white font-semibold text-[12px] uppercase rounded-md cursor-pointer text-center select-none transition-colors shadow-sm"
               >
                 Export SCRB Dossier (PDF)
               </button>

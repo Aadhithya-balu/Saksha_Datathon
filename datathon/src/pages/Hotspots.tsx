@@ -2,8 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import KarnatakaMap, { type EmergingTrendItem } from '../components/map/KarnatakaMap';
 import SpatiotemporalHeatmap from '../components/dashboard/SpatiotemporalHeatmap';
 import { 
-  Compass, Download, Flame, TrendingUp, TrendingDown, 
-  Layers, Clock, AlertTriangle, Radio, BarChart3, Map as MapIcon, ChevronRight
+  Compass, Download, Flame, TrendingUp,
+  BarChart3, Map as MapIcon, ChevronRight
 } from 'lucide-react';
 import { downloadSecureDossier } from '../utils/downloader';
 import { useAuditStore } from '../store/auditStore';
@@ -13,9 +13,10 @@ import { useNotificationStore } from '../store/notificationStore';
 import { 
   getDistrictComparison, getHotspots, getRiskScores, getEmergingTrends, getRecentIncidents, getCrimeCases,
   getSociologicalSocioeconomic, getAnomalies,
-  type DistrictComparisonPoint, type HotspotPoint, type RiskScoresResponse, type RecentIncident 
+  type DistrictComparisonPoint, type HotspotPoint, type RiskScoresResponse
 } from '../services/api';
 import type { DistrictInfo } from '../store/mapStore';
+import { PageHeader } from '../components/ui/PageHeader';
 import { PageSkeleton } from '../components/ui/Skeleton';
 
 const BASELINE_HOTSPOTS: HotspotPoint[] = [
@@ -32,7 +33,7 @@ const BASELINE_HOTSPOTS: HotspotPoint[] = [
 export const Hotspots: React.FC = () => {
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
-  const { setSelectedDistrict, setSelectedStation, setTimeOfDay, timeOfDay } = useMapStore();
+  const { selectedDistrict, setSelectedDistrict, setSelectedStation, setTimeOfDay, timeOfDay } = useMapStore();
 
   const [hotspots, setHotspots] = useState<HotspotPoint[]>(BASELINE_HOTSPOTS);
   const [districtMetrics, setDistrictMetrics] = useState<Record<string, DistrictInfo>>({});
@@ -41,7 +42,7 @@ export const Hotspots: React.FC = () => {
   const [socioEconomicData, setSocioEconomicData] = useState<any[]>([]);
   const [anomaliesList, setAnomaliesList] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<'map' | 'matrix'>('map');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
+  const [selectedCategoryFilter] = useState<string>('ALL');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +109,7 @@ export const Hotspots: React.FC = () => {
 
     void Promise.allSettled([
       getRecentIncidents(),
-      getCrimeCases({ page_size: 50 }),
+      getCrimeCases('', undefined, 1, 50),
     ]).then(([recentRes, casesRes]) => {
       if (!isMounted) return;
       const recentList = recentRes.status === 'fulfilled' ? recentRes.value : [];
@@ -214,18 +215,8 @@ export const Hotspots: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none bg-[var(--bg-primary)]">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3">
-          <div>
-            <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
-              <Compass className="w-4 h-4 text-[#1E6FD9] animate-pulse" />
-              Spatiotemporal Crime Cluster & Hotspot Telemetry
-            </h2>
-            <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
-              Loading geospatial vector grid & temporal telemetry...
-            </p>
-          </div>
-        </div>
+      <div className="h-[84vh] flex flex-col gap-4 md:p-1">
+        <PageHeader title="Spatiotemporal Hotspots" subtitle="Loading geospatial data & temporal telemetry…" icon={<Compass className="w-5 h-5" />} />
         <PageSkeleton />
       </div>
     );
@@ -233,23 +224,15 @@ export const Hotspots: React.FC = () => {
 
   if (error && hotspots.length === 0) {
     return (
-      <div className="h-[84vh] flex flex-col gap-4 p-1 md:p-3 select-none bg-[var(--bg-primary)]">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3">
-          <div>
-            <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
-              <Compass className="w-4 h-4 text-[#1E6FD9]" />
-              Spatiotemporal Crime Cluster & Hotspot Telemetry
-            </h2>
-          </div>
-        </div>
+      <div className="h-[84vh] flex flex-col gap-4 md:p-1">
+        <PageHeader title="Spatiotemporal Hotspots" icon={<Compass className="w-5 h-5" />} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-[var(--accent-coral-subtle)] border border-[var(--accent-coral)]/20 flex items-center justify-center mx-auto">
-              <Compass className="w-6 h-6 text-[var(--accent-coral)]" />
+            <div className="w-12 h-12 rounded-xl bg-[var(--accent-coral-subtle)] border border-[var(--accent-coral)]/20 flex items-center justify-center mx-auto text-[var(--accent-coral)]">
+              <Compass className="w-6 h-6" />
             </div>
             <p className="text-sm text-[var(--text-secondary)]">{error}</p>
-            <button onClick={() => { setError(null); setLoading(true); window.location.reload(); }}
-              className="px-3 py-1.5 text-[10px] font-mono uppercase bg-[var(--accent-blue)]/10 hover:bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] border border-[var(--accent-blue)]/30 rounded-btn transition-colors cursor-pointer">
+            <button onClick={() => { setError(null); setLoading(true); window.location.reload(); }} className="sk-btn sk-btn-primary">
               Retry
             </button>
           </div>
@@ -259,60 +242,44 @@ export const Hotspots: React.FC = () => {
   }
 
   return (
-    <div className="h-[84vh] flex flex-col gap-3 p-1 md:p-3 select-none bg-[var(--bg-primary)] font-mono">
-      
-      {/* PAGE HEADER & CONTROLS */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-2.5">
-        <div>
+    <div className="h-[84vh] flex flex-col gap-4 md:p-1">
+
+      {/* Page header */}
+      <PageHeader
+        title="Spatiotemporal Crime Cluster & Hotspots"
+        subtitle="Geospatial incident density & interactive temporal shift analysis across Karnataka"
+        icon={<Compass className="w-5 h-5" />}
+        actions={
           <div className="flex items-center gap-2">
-            <Compass className="w-4 h-4 text-[#1E6FD9] animate-pulse" />
-            <h2 className="text-md font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2 font-mono">
-              Spatiotemporal Crime Cluster &amp; Drill-Down Map
-            </h2>
-            <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 font-mono">
-              <Radio className="w-2.5 h-2.5 animate-pulse" />
-              SCRB Telemetry
-            </span>
-          </div>
-          <p className="text-[9.5px] text-[var(--text-muted)] mt-0.5 font-mono">
-            Interactive District &rarr; Police Station &rarr; Crime Drill-down with Temporal Shift Analysis
-          </p>
-        </div>
+            {/* View Mode Toggle */}
+            <div className="flex bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded p-0.5">
+              <button
+                onClick={() => setViewMode('map')}
+                className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                  viewMode === 'map' ? 'bg-[var(--accent-blue)] text-white shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <MapIcon className="w-3.5 h-3.5" />
+                Vector Map
+              </button>
+              <button
+                onClick={() => setViewMode('matrix')}
+                className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                  viewMode === 'matrix' ? 'bg-[var(--accent-blue)] text-white shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                Spatiotemporal Matrix
+              </button>
+            </div>
 
-        {/* View Mode & Export Bar */}
-        <div className="flex items-center gap-2 text-[9px] uppercase">
-          
-          {/* View Mode Toggle */}
-          <div className="flex bg-[var(--bg-secondary)] border border-border-color rounded p-0.5">
-            <button
-              onClick={() => setViewMode('map')}
-              className={`px-2.5 py-1 rounded font-bold flex items-center gap-1 transition-colors cursor-pointer ${
-                viewMode === 'map' ? 'bg-[#1E6FD9] text-white' : 'text-[var(--text-secondary)] hover:text-white'
-              }`}
-            >
-              <MapIcon className="w-3 h-3" />
-              Geospatial Vector Map
-            </button>
-            <button
-              onClick={() => setViewMode('matrix')}
-              className={`px-2.5 py-1 rounded font-bold flex items-center gap-1 transition-colors cursor-pointer ${
-                viewMode === 'matrix' ? 'bg-[#1E6FD9] text-white' : 'text-[var(--text-secondary)] hover:text-white'
-              }`}
-            >
-              <BarChart3 className="w-3 h-3" />
-              Spatiotemporal Matrix
+            <button onClick={handleExportGeoJSON} className="sk-btn sk-btn-secondary">
+              <Download className="w-4 h-4" />
+              GeoJSON Export
             </button>
           </div>
-
-          <button
-            onClick={handleExportGeoJSON}
-            className="px-2.5 py-1 bg-[var(--bg-tertiary)] hover:bg-[#1E6FD9]/15 border border-border-color hover:border-[#1E6FD9]/30 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-btn transition-colors cursor-pointer flex items-center gap-1"
-          >
-            <Download className="w-3 h-3" />
-            <span>GeoJSON Export</span>
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* EMERGING TREND ALERTS REAL-TIME TICKER (Surge alerts > 10%) */}
       {activeAlertSurges.length > 0 && (
@@ -356,7 +323,7 @@ export const Hotspots: React.FC = () => {
       )}
 
       {/* TOP SUMMARY TELEMETRY CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-[9px]">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {displayedTopHotspots.map((hotspot) => (
           <div 
             key={`${hotspot.name}-${hotspot.district_id}`} 
@@ -364,23 +331,17 @@ export const Hotspots: React.FC = () => {
               setSelectedDistrict(hotspot.district_id);
               setSelectedStation(hotspot.name);
             }}
-            className="bg-[var(--bg-secondary)]/80 hover:bg-[var(--bg-secondary)] border border-[var(--border-muted)] hover:border-[var(--accent-blue)]/50 rounded-lg p-2.5 flex items-start justify-between gap-2 cursor-pointer transition-all shadow-sm"
+            className="sk-panel px-4 py-3 flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--accent-blue)]/60 transition-all shadow-sm"
           >
-            <div>
-              <div className="flex items-center gap-1.5">
-                <p className="text-[var(--text-primary)] font-bold uppercase tracking-wide truncate max-w-[160px]">{hotspot.name}</p>
-                <span className="text-[8px] text-[var(--accent-teal)] font-semibold">{hotspot.district_id}</span>
-              </div>
-              <p className="text-[var(--text-muted)] mt-0.5 truncate">{hotspot.category}</p>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{hotspot.name}</p>
+              <p className="text-xs text-[var(--text-muted)] truncate">{hotspot.district_id} · {hotspot.category}</p>
             </div>
-            <div className="text-right shrink-0">
-              <span className={`font-extrabold text-[11px] ${hotspot.score >= 80 ? 'text-[#C94A2A]' : hotspot.score >= 70 ? 'text-[#D4820A]' : 'text-[#0E9E78]'}`}>
-                {hotspot.score}%
-              </span>
-              <span className="block text-[7.5px] text-[var(--text-muted)] uppercase mt-0.5">
-                {selectedDistrict ? `${selectedDistrict} Station` : 'Top Threat Level'}
-              </span>
-            </div>
+            <span
+              className={`sk-chip shrink-0 ${hotspot.score >= 80 ? 'sk-chip-error' : hotspot.score >= 70 ? 'sk-chip-warning' : 'sk-chip-success'}`}
+            >
+              {hotspot.score}%
+            </span>
           </div>
         ))}
       </div>
