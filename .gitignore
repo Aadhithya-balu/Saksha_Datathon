@@ -29,6 +29,9 @@ htmlcov/
 *.sqlite3
 *.db
 
+# Local evidence uploads (dev only — production uses Supabase Storage)
+backend/uploads/
+
 TODO.md
 
 # Logs

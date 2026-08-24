@@ -15,9 +15,15 @@ from app.models.evidence_timeline import EvidenceTimeline
 from app.models.evidence_assignment import EvidenceAssignment
 from app.models.chain_of_custody import ChainOfCustody
 from app.models.user import User
-from app.core.config import ROOT_DIR
+from app.core.config import BACKEND_DIR, settings
 
-UPLOAD_DIR = Path(ROOT_DIR) / "backend" / "uploads"
+# ---------------------------------------------------------------------------
+# Upload directory — used only when Supabase Storage is not configured.
+# Defaults to <backend_dir>/uploads so the path is correct both locally
+# (backend/uploads/) and inside the Docker container (/app/uploads/).
+# ---------------------------------------------------------------------------
+_custom_upload_dir = settings.UPLOAD_DIR.strip() if settings.UPLOAD_DIR else ""
+UPLOAD_DIR = Path(_custom_upload_dir) if _custom_upload_dir else Path(BACKEND_DIR) / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_MIME_TYPES = {
@@ -89,16 +95,52 @@ def extract_metadata(file_path: str, mime_type: str) -> dict[str, Any]:
     
     return metadata
 
-def save_upload_file(upload_file: UploadFile, evidence_id: uuid.UUID) -> str:
+def _upload_to_supabase_storage(file_path: str, storage_key: str, mime_type: str) -> str | None:
+    """Upload a local file to Supabase Storage and return the public/signed URL.
+
+    Returns None when Supabase Storage is not configured or the upload fails,
+    so the caller can fall back to serving from the local path.
+    """
+    bucket = (settings.SUPABASE_STORAGE_BUCKET or "").strip()
+    url = (settings.SUPABASE_URL or "").strip()
+    key = (settings.SUPABASE_ANON_KEY or "").strip()
+    if not (bucket and url and key):
+        return None
+    try:
+        import httpx
+        with open(file_path, "rb") as fh:
+            data = fh.read()
+        upload_url = f"{url}/storage/v1/object/{bucket}/{storage_key}"
+        headers = {
+            "Authorization": f"Bearer {key}",
+            "Content-Type": mime_type,
+            "x-upsert": "true",
+        }
+        resp = httpx.post(upload_url, content=data, headers=headers, timeout=60)
+        if resp.status_code in (200, 201):
+            return f"{url}/storage/v1/object/public/{bucket}/{storage_key}"
+    except Exception:  # noqa: BLE001 — storage failure must not break the upload flow
+        pass
+    return None
+
+
+def save_upload_file(upload_file: UploadFile, evidence_id: uuid.UUID) -> tuple[str, str | None]:
+    """Save an uploaded file locally (for metadata extraction) and optionally
+    push it to Supabase Storage for persistent cloud access.
+
+    Returns ``(local_file_path, storage_url)`` where *storage_url* is the
+    Supabase Storage URL when the upload succeeded, or ``None`` when running
+    in local-only mode.
+    """
     validate_upload_file(upload_file)
-    
+
     file_ext = os.path.splitext(upload_file.filename)[1].lower()
     unique_filename = f"{evidence_id}_{uuid.uuid4()}{file_ext}"
     file_path = UPLOAD_DIR / unique_filename
-    
+
     file_size = 0
     max_bytes = MAX_FILE_SIZE_MB * 1024 * 1024
-    
+
     try:
         with open(file_path, "wb") as buffer:
             while chunk := upload_file.file.read(1024 * 1024):
@@ -112,8 +154,20 @@ def save_upload_file(upload_file: UploadFile, evidence_id: uuid.UUID) -> str:
         raise
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to save uploaded file")
-            
-    return str(file_path)
+
+    mime_type = upload_file.content_type or "application/octet-stream"
+    storage_key = f"evidence/{evidence_id}/{unique_filename}"
+    storage_url = _upload_to_supabase_storage(str(file_path), storage_key, mime_type)
+
+    # When the file is safely in Supabase Storage, remove the local copy to
+    # avoid accumulating files on ephemeral server storage.
+    if storage_url:
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
+
+    return str(file_path), storage_url
 
 def add_timeline_event(db: Session, evidence_id: uuid.UUID, action: str, current_user: User, description: str = None):
     event = EvidenceTimeline(

@@ -172,13 +172,15 @@ def delete_evidence(evidence_id: uuid.UUID, db: Session = Depends(get_db), curre
 @router.post("/{evidence_id}/upload", response_model=EvidenceMetadataOut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR, ROLE_FORENSIC, ROLE_CRIME_ANALYST))])
 def upload_evidence_file(evidence_id: uuid.UUID, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     evidence = evidence_crud.get(db, evidence_id)
-    
-    file_path = save_upload_file(file, evidence_id)
-    file_size = os.path.getsize(file_path)
+
+    file_path, storage_url = save_upload_file(file, evidence_id)
+    # Use local path for metadata extraction only when the file still exists
+    # (it is removed after a successful Supabase Storage upload).
+    file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
     mime_type = file.content_type or "application/octet-stream"
-    
-    extracted = extract_metadata(file_path, mime_type)
-    
+
+    extracted = extract_metadata(file_path, mime_type) if os.path.exists(file_path) else {}
+
     metadata = db.query(EvidenceMetadata).filter(EvidenceMetadata.evidence_id == evidence_id).first()
     if metadata:
         metadata.filename = file.filename
@@ -187,6 +189,7 @@ def upload_evidence_file(evidence_id: uuid.UUID, file: UploadFile = File(...), d
         metadata.mime_type = mime_type
         metadata.uploaded_by = current_user.full_name or current_user.username
         metadata.extracted_data = extracted
+        metadata.storage_url = storage_url
     else:
         metadata = EvidenceMetadata(
             evidence_id=evidence_id,
@@ -195,15 +198,18 @@ def upload_evidence_file(evidence_id: uuid.UUID, file: UploadFile = File(...), d
             filesize=file_size,
             mime_type=mime_type,
             uploaded_by=current_user.full_name or current_user.username,
-            extracted_data=extracted
+            extracted_data=extracted,
+            storage_url=storage_url,
         )
         db.add(metadata)
-        
-    evidence.storage_path = file_path
+
+    # storage_path on the Evidence record: prefer the cloud URL so the value
+    # remains meaningful after the local temp file is cleaned up.
+    evidence.storage_path = storage_url or file_path
     _add_custody_record(db, evidence_id, current_user, "Evidence File Uploaded", to_user=current_user.id, remarks=file.filename)
     db.commit()
     db.refresh(metadata)
-    
+
     add_timeline_event(db, evidence_id, "Evidence Uploaded", current_user, f"File {file.filename} uploaded.")
     audit_service.log_action(db, current_user, "UPLOAD", "Evidence", str(evidence_id))
     return metadata
@@ -365,6 +371,9 @@ def download_evidence_file(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
+@router.get("/{evidence_id}/download", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR, ROLE_INSPECTOR, ROLE_FORENSIC, ROLE_CRIME_ANALYST))])
+def download_evidence_file(evidence_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from fastapi.responses import RedirectResponse
     evidence = evidence_crud.get(db, evidence_id)
     if not evidence:
         raise HTTPException(status_code=404, detail="Evidence record not found.")
@@ -406,6 +415,18 @@ def download_evidence_file(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{clean_filename}"'}
     )
+    if not metadata:
+        raise HTTPException(status_code=404, detail="Evidence file not found.")
+    add_timeline_event(db, evidence_id, "Evidence File Downloaded", current_user)
+    audit_service.log_action(db, current_user, "DOWNLOAD", "Evidence", str(evidence_id))
+    # Prefer Supabase Storage URL — survives restarts and redeployments.
+    if metadata.storage_url:
+        return RedirectResponse(url=metadata.storage_url)
+    # Fall back to local file (development / no-storage-bucket mode).
+    file_path = Path(metadata.filepath or evidence.storage_path or "")
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Evidence file not found on local storage. Re-upload required.")
+    return FileResponse(path=str(file_path), filename=metadata.filename, media_type=metadata.mime_type)
 
 @router.post("/{evidence_id}/assign", response_model=EvidenceAssignmentOut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR, ROLE_INSPECTOR, ROLE_CRIME_ANALYST))])
 def assign_evidence(

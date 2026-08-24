@@ -226,6 +226,7 @@ CREATE TABLE evidence_metadata (
     filesize INTEGER NOT NULL,
     mime_type VARCHAR(100) NOT NULL,
     uploaded_by VARCHAR(255),
+    storage_url VARCHAR(1000),
     extracted_data JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
