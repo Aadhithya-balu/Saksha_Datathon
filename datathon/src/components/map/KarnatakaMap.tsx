@@ -282,10 +282,11 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
       return Array.from(map.values());
     }
 
+    const center = DISTRICT_COORDS[selectedDistrict] || { lat: 14.5, lng: 75.8 };
     return [
-      { district_id: selectedDistrict, name: `${selectedDistrict} Town Police Station`, lat: 12.97, lng: 77.59, weight: 82, baseScore: 82, type: 'Patrol Beat Station', score: 82, trend: 'up' as const },
-      { district_id: selectedDistrict, name: `${selectedDistrict} Central Police Station`, lat: 12.95, lng: 77.55, weight: 75, baseScore: 75, type: 'Jurisdiction Station', score: 75, trend: 'stable' as const },
-      { district_id: selectedDistrict, name: `${selectedDistrict} Traffic & Highway Station`, lat: 12.92, lng: 77.52, weight: 68, baseScore: 68, type: 'Highway Security', score: 68, trend: 'down' as const }
+      { district_id: selectedDistrict, name: `${selectedDistrict} Town Police Station`, lat: center.lat + 0.03, lng: center.lng + 0.02, weight: 82, baseScore: 82, type: 'Patrol Beat Station', score: 82, trend: 'up' as const },
+      { district_id: selectedDistrict, name: `${selectedDistrict} Central Police Station`, lat: center.lat - 0.02, lng: center.lng - 0.03, weight: 75, baseScore: 75, type: 'Jurisdiction Station', score: 75, trend: 'stable' as const },
+      { district_id: selectedDistrict, name: `${selectedDistrict} Rural Police Station`, lat: center.lat - 0.05, lng: center.lng + 0.04, weight: 68, baseScore: 68, type: 'Highway Security', score: 68, trend: 'down' as const }
     ];
   }, [selectedDistrict, activeHotspots, temporalShiftInfo]);
 
@@ -599,7 +600,8 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
               const x = projectLonX(coords.lng);
               const y = projectLatY(coords.lat);
               const isSelected = selectedDistrict === name;
-              const isSpiked = resolvedDistrictData[name]?.weeklyTrend === 'up';
+              const info = resolvedDistrictData[name];
+              const isSpiked = info?.weeklyTrend === 'up';
 
               return (
                 <g key={name} className="pointer-events-none select-none">
@@ -619,7 +621,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                     fill={isSpiked ? '#EF4444' : map.label}
                     opacity={isSelected || isSpiked ? 1 : 0.9}
                   >
-                    {name} {isSpiked ? '⚠️' : ''}
+                    {name} {isSpiked ? '⚠️' : ''} {layers.beatCoverage && info ? `(${info.beatRatio}%)` : ''}
                   </text>
                 </g>
               );
@@ -709,13 +711,14 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                     <circle cx={x} cy={y} r={isSpikeTrend || isHigh || isSelected ? 6 : 4.5} fill={isSelected ? '#00F0FF' : color} stroke={map.bg} strokeWidth="1.5" />
                     <circle cx={x} cy={y} r={isSpikeTrend || isHigh || isSelected ? 9.5 : 8} stroke={isSelected ? '#00F0FF' : color} strokeWidth="1.25" fill="none" opacity={0.8} />
 
-                    {/* Station Name Label when District Selected */}
-                    {selectedDistrict && (
+                    {/* Station Name Label - only show for stations belonging to the selected district or when active */}
+                    {(isSelected || (selectedDistrict && (hs.district_id || '').toLowerCase() === selectedDistrict.toLowerCase())) && (
                       <text
                         x={x}
-                        y={y + 14}
+                        y={y + 13}
                         textAnchor="middle"
-                        className={`font-mono text-[7.5px] font-bold pointer-events-none drop-shadow ${isSpikeTrend ? 'fill-red-400 font-extrabold' : 'fill-[var(--text-primary)]'}`}
+                        className={`font-mono text-[8px] font-bold pointer-events-none ${isSpikeTrend ? 'fill-red-400 font-extrabold' : 'fill-[var(--text-primary)]'}`}
+                        style={{ paintOrder: 'stroke', stroke: map.bg, strokeWidth: 3, strokeLinejoin: 'round' }}
                       >
                         {isSpikeTrend ? '🔥 ' : ''}{hs.name.replace(/police station/i, 'PS')}
                       </text>

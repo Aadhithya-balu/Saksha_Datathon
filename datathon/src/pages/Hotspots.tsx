@@ -33,7 +33,7 @@ const BASELINE_HOTSPOTS: HotspotPoint[] = [
 export const Hotspots: React.FC = () => {
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
-  const { selectedDistrict, setSelectedDistrict, setSelectedStation, setTimeOfDay, timeOfDay } = useMapStore();
+  const { selectedDistrict, selectedStation, setSelectedDistrict, setSelectedStation, setTimeOfDay, timeOfDay } = useMapStore();
 
   const [hotspots, setHotspots] = useState<HotspotPoint[]>(BASELINE_HOTSPOTS);
   const [districtMetrics, setDistrictMetrics] = useState<Record<string, DistrictInfo>>({});
@@ -167,19 +167,51 @@ export const Hotspots: React.FC = () => {
     return emergingTrends.filter(t => t.direction === 'increasing' && t.change_percentage > 10);
   }, [emergingTrends]);
 
-  // Top telemetry cards: Show active district's stations if selected, otherwise statewide top 3
+  // Top telemetry cards: Show active police station & district stations if selected, otherwise statewide top 3
   const displayedTopHotspots = useMemo(() => {
-    if (selectedDistrict) {
-      const targetDist = (selectedDistrict || '').toLowerCase();
-      const districtHotspots = filteredHotspots.filter(
-        h => (h.district_id || '').toLowerCase() === targetDist
+    const map = new Map<string, HotspotPoint>();
+
+    // 1. If a specific station is currently selected, ensure it is the leading card
+    if (selectedStation) {
+      const match = filteredHotspots.find(
+        (h) => (h.name || '').toLowerCase() === selectedStation.toLowerCase()
       );
-      if (districtHotspots.length > 0) {
-        return districtHotspots.slice(0, 3);
+      if (match) {
+        map.set(match.name, match);
+      } else {
+        map.set(selectedStation, {
+          district_id: selectedDistrict || 'Karnataka',
+          name: selectedStation,
+          lat: 12.97,
+          lng: 77.59,
+          score: 88,
+          category: 'Active Patrol Beat Jurisdiction',
+          trend: 'up',
+        });
       }
     }
-    return filteredHotspots.slice(0, 3);
-  }, [filteredHotspots, selectedDistrict]);
+
+    // 2. If a district is selected, add its stations
+    if (selectedDistrict) {
+      const targetDist = (selectedDistrict || '').toLowerCase();
+      filteredHotspots
+        .filter((h) => (h.district_id || '').toLowerCase() === targetDist)
+        .forEach((h) => {
+          if (!map.has(h.name)) map.set(h.name, h);
+        });
+    }
+
+    // 3. If fewer than 3 cards, fill with top statewide hotspots
+    if (map.size < 3) {
+      filteredHotspots.forEach((h) => {
+        if (map.size < 3 && !map.has(h.name)) {
+          map.set(h.name, h);
+        }
+      });
+    }
+
+    return Array.from(map.values()).slice(0, 3);
+  }, [filteredHotspots, selectedDistrict, selectedStation]);
 
   const handleExportGeoJSON = () => {
     const geojsonData = {
@@ -324,26 +356,40 @@ export const Hotspots: React.FC = () => {
 
       {/* TOP SUMMARY TELEMETRY CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {displayedTopHotspots.map((hotspot) => (
-          <div 
-            key={`${hotspot.name}-${hotspot.district_id}`} 
-            onClick={() => {
-              setSelectedDistrict(hotspot.district_id);
-              setSelectedStation(hotspot.name);
-            }}
-            className="sk-panel px-4 py-3 flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--accent-blue)]/60 transition-all shadow-sm"
-          >
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{hotspot.name}</p>
-              <p className="text-xs text-[var(--text-muted)] truncate">{hotspot.district_id} · {hotspot.category}</p>
-            </div>
-            <span
-              className={`sk-chip shrink-0 ${hotspot.score >= 80 ? 'sk-chip-error' : hotspot.score >= 70 ? 'sk-chip-warning' : 'sk-chip-success'}`}
+        {displayedTopHotspots.map((hotspot) => {
+          const isCurrentActive = (selectedStation || '').toLowerCase() === hotspot.name.toLowerCase();
+          return (
+            <div 
+              key={`${hotspot.name}-${hotspot.district_id}`} 
+              onClick={() => {
+                setSelectedDistrict(hotspot.district_id);
+                setSelectedStation(hotspot.name);
+              }}
+              className={`sk-panel px-4 py-3 flex items-center justify-between gap-3 cursor-pointer transition-all shadow-sm ${
+                isCurrentActive
+                  ? 'border-[var(--accent-blue)] ring-1 ring-[var(--accent-blue)] bg-[var(--accent-blue-subtle)]'
+                  : 'hover:border-[var(--accent-blue)]/60'
+              }`}
             >
-              {hotspot.score}%
-            </span>
-          </div>
-        ))}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{hotspot.name}</p>
+                  {isCurrentActive && (
+                    <span className="px-1.5 py-0.5 text-[8px] font-bold rounded bg-[var(--accent-blue)] text-white uppercase shrink-0">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-[var(--text-muted)] truncate">{hotspot.district_id} · {hotspot.category}</p>
+              </div>
+              <span
+                className={`sk-chip shrink-0 ${hotspot.score >= 80 ? 'sk-chip-error' : hotspot.score >= 70 ? 'sk-chip-warning' : 'sk-chip-success'}`}
+              >
+                {hotspot.score}%
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       {/* MAIN VISUALIZATION VIEWPORT */}
