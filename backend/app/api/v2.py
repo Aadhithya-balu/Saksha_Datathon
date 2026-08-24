@@ -47,6 +47,12 @@ from app.routes import (
     victimology,
 )
 
+# Issue #146: station drill-down + red-zone spike alerts
+from app.routes import (
+    alerts,
+    stations,
+)
+
 
 api_router = APIRouter()
 
@@ -86,3 +92,7 @@ api_router.include_router(data_import.router)
 api_router.include_router(victimology.router)
 api_router.include_router(ai_mo.router)
 api_router.include_router(interventions.router)
+
+# Issue #146: station drill-down + red-zone spike alerts
+api_router.include_router(stations.router)
+api_router.include_router(alerts.router)

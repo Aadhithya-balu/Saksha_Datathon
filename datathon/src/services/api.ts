@@ -140,6 +140,54 @@ export interface HotspotPoint {
 
 export interface HotspotsResponse {
   hotspots: HotspotPoint[];
+  hour?: number | null;
+}
+
+export interface StationSummary {
+  district: string;
+  station: string;
+  lat: number;
+  lng: number;
+  total_cases: number;
+  recent_30d: number;
+  prior_30d: number;
+  open_cases: number;
+  top_category: string;
+  top_category_count: number;
+  trend: 'up' | 'down' | 'stable';
+  last_incident_at: string | null;
+  risk_score: number;
+}
+
+export interface StationsSummaryResponse {
+  stations: StationSummary[];
+  count: number;
+  source: string;
+}
+
+export interface RedZone {
+  district: string;
+  category: string;
+  current_count: number;
+  baseline_count: number;
+  spike_ratio: number;
+  severity: 'high' | 'critical';
+  stations: string[];
+  window: string;
+}
+
+export interface RedZonesResponse {
+  generated_at: string;
+  thresholds: { min_current: number; ratio_threshold: number };
+  red_zones: RedZone[];
+}
+
+export interface RedZoneNotifyResponse {
+  status: string;
+  zones_detected: number;
+  created: number;
+  skipped: number;
+  broadcast_by: string;
 }
 
 export interface AnomalyRecord {
@@ -585,12 +633,24 @@ export async function getRiskScores(window = 'next_7d', districtId?: string) {
   return apiRequest<RiskScoresResponse>(`/ai/predictions/risk-scores${buildQueryString({ window, district_id: districtId })}`);
 }
 
-export async function getHotspots(districtId?: string) {
-  return apiRequest<HotspotsResponse>(`/ai/hotspots${buildQueryString({ district_id: districtId })}`);
+export async function getHotspots(districtId?: string, hour?: number) {
+  return apiRequest<HotspotsResponse>(`/ai/hotspots${buildQueryString({ district_id: districtId, hour })}`);
 }
 
 export async function getAnomalies() {
   return apiRequest<AnomaliesResponse>('/ai/predictions/anomalies');
+}
+
+export async function getStationsSummary(params?: { district?: string; q?: string }) {
+  return apiRequest<StationsSummaryResponse>(`/stations/summary${buildQueryString({ district: params?.district, q: params?.q })}`);
+}
+
+export async function getRedZones(minCurrent = 3, ratioThreshold = 1.5) {
+  return apiRequest<RedZonesResponse>(`/alerts/red-zones${buildQueryString({ min_current: minCurrent, ratio_threshold: ratioThreshold })}`);
+}
+
+export async function broadcastRedZones(minCurrent = 3, ratioThreshold = 1.5) {
+  return apiRequest<RedZoneNotifyResponse>(`/alerts/red-zones/notify${buildQueryString({ min_current: minCurrent, ratio_threshold: ratioThreshold })}`, { method: 'POST' });
 }
 
 export async function getNetworkPerson(personId: string, depth = 1) {

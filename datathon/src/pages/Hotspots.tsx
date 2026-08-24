@@ -13,7 +13,8 @@ import { useNotificationStore } from '../store/notificationStore';
 import { 
   getDistrictComparison, getHotspots, getRiskScores, getEmergingTrends, getRecentIncidents, getCrimeCases,
   getSociologicalSocioeconomic,
-  type DistrictComparisonPoint, type HotspotPoint, type RiskScoresResponse
+  getRedZones, getStationsSummary,
+  type DistrictComparisonPoint, type HotspotPoint, type RiskScoresResponse, type RedZone
 } from '../services/api';
 import type { DistrictInfo } from '../store/mapStore';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -40,6 +41,7 @@ export const Hotspots: React.FC = () => {
   const [emergingTrends, setEmergingTrends] = useState<EmergingTrendItem[]>([]);
   const [recentCases, setRecentCases] = useState<any[]>([]);
   const [socioEconomicData, setSocioEconomicData] = useState<any[]>([]);
+  const [redZones, setRedZones] = useState<RedZone[]>([]);
   const [viewMode, setViewMode] = useState<'map' | 'matrix'>('map');
   const [selectedCategoryFilter] = useState<string>('ALL');
 
@@ -59,13 +61,15 @@ export const Hotspots: React.FC = () => {
       setSelectedStation(null);
     }
 
-    // 1. Primary fast load: Hotspots + District Comparison
+    // 1. Primary fast load: hotspots, live station summaries, and district comparison
     void Promise.allSettled([
       getHotspots(),
+      getStationsSummary(),
       getDistrictComparison(),
-    ]).then(([hotspotRes, districtRes]) => {
+    ]).then(([hotspotRes, stationRes, districtRes]) => {
       if (!isMounted) return;
       const hotspotsFailed = hotspotRes.status === 'rejected';
+      const stations = stationRes.status === 'fulfilled' ? stationRes.value.stations : [];
       const districtFailed = districtRes.status === 'rejected';
       if (hotspotsFailed && districtFailed) {
         setHotspots([]);
@@ -74,7 +78,19 @@ export const Hotspots: React.FC = () => {
         setLoading(false);
         return;
       }
-      const hsList = hotspotRes.status === 'fulfilled' && hotspotRes.value.hotspots?.length > 0 ? hotspotRes.value.hotspots : BASELINE_HOTSPOTS;
+      const backendHotspots = hotspotRes.status === 'fulfilled' ? hotspotRes.value.hotspots : [];
+      const stationHotspots: HotspotPoint[] = stations.map(station => ({
+        district_id: station.district,
+        name: station.station,
+        lat: station.lat,
+        lng: station.lng,
+        score: station.risk_score,
+        category: station.top_category,
+        trend: station.trend,
+      }));
+      const hsList = backendHotspots.length > 0
+        ? backendHotspots
+        : stationHotspots.length > 0 ? stationHotspots : BASELINE_HOTSPOTS;
       const distList = districtRes.status === 'fulfilled' ? districtRes.value : [];
       setHotspots(hsList);
       setDistrictMetrics(prev => ({
@@ -90,7 +106,7 @@ export const Hotspots: React.FC = () => {
       setError('Unable to load hotspot and district intelligence data. Please retry.');
     });
 
-    // 2. Secondary progressive load: Emerging Trends, Recent Cases, Socio-Economic, & Anomalies
+    // 2. Secondary progressive load: trends, red zones, recent cases, and socio-economic data
     void getEmergingTrends().then(trendsData => {
       if (isMounted && Array.isArray(trendsData)) {
         setEmergingTrends(trendsData);
@@ -110,6 +126,10 @@ export const Hotspots: React.FC = () => {
           });
         }
       }
+    }).catch(() => undefined);
+
+    void getRedZones().then(result => {
+      if (isMounted) setRedZones(result.red_zones || []);
     }).catch(() => undefined);
 
     void getSociologicalSocioeconomic().then(socioRes => {
@@ -330,6 +350,22 @@ export const Hotspots: React.FC = () => {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {redZones.length > 0 && (
+        <div className="bg-red-950/30 border border-red-500/30 rounded-lg px-3 py-2 flex items-center gap-3 overflow-x-auto no-scrollbar font-mono text-[9px]">
+          <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 font-bold uppercase shrink-0">Red-zone spikes</span>
+          {redZones.slice(0, 4).map(zone => (
+            <button
+              key={`${zone.district}-${zone.category}`}
+              onClick={() => { setSelectedDistrict(zone.district); setSelectedStation(null); }}
+              className="text-left text-red-200 hover:text-white shrink-0"
+              title={`Focus ${zone.district} on the map`}
+            >
+              {zone.category} · {zone.district} <span className="text-red-400 font-bold">x{zone.spike_ratio}</span>
+            </button>
+          ))}
         </div>
       )}
 
