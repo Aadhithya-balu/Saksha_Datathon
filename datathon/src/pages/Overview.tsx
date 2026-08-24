@@ -480,11 +480,77 @@ export const Overview: React.FC = () => {
       </div>
 
       {/* Primary KPI cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Crimes" value={totalCrimes} icon={<Shield className="w-4 h-4" />} trend="up" trendValue="8.6%" subtext="vs last month" glowColor="blue" />
-        <StatCard title="Solved Crimes" value={solvedCrimes} icon={<CheckCircle2 className="w-4 h-4" />} trend="up" trendValue={`${summary?.resolution_rate_percent ?? 0}%`} subtext="resolution rate" glowColor="teal" />
-        <StatCard title="Active Cases" value={openCrimes} icon={<ShieldAlert className="w-4 h-4" />} trend="down" trendValue="5.3%" subtext="under investigation" glowColor="coral" />
-        <StatCard title="Crime Hotspots" value={crimeHotspotCount} icon={<MapPin className="w-4 h-4" />} trend="stable" trendValue="Live" subtext="active zones tracked" glowColor="amber" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        <StatCard
+          title="Total Crimes"
+          value={totalCrimes}
+          icon={<Shield className="w-4 h-4" />}
+          trend="up"
+          trendValue="8.6%"
+          subtext="vs last month"
+          glowColor="blue"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'crime_cases' } }))}
+        />
+        <StatCard
+          title="Solved Crimes"
+          value={solvedCrimes}
+          icon={<CheckCircle2 className="w-4 h-4" />}
+          trend="up"
+          trendValue={`${summary?.resolution_rate_percent ?? 0}%`}
+          subtext="resolution rate"
+          glowColor="teal"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'fir' } }))}
+        />
+        <StatCard
+          title="Active Cases"
+          value={openCrimes}
+          icon={<ShieldAlert className="w-4 h-4" />}
+          trend="down"
+          trendValue="5.3%"
+          subtext="under investigation"
+          glowColor="coral"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'crime_cases' } }))}
+        />
+        <StatCard
+          title="Crime Hotspots"
+          value={crimeHotspotCount}
+          icon={<MapPin className="w-4 h-4" />}
+          trend="stable"
+          trendValue="Live"
+          subtext="active zones tracked"
+          glowColor="amber"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'hotspot' } }))}
+        />
+        <StatCard
+          title="High Risk Areas"
+          value={highRiskCount}
+          icon={<NavIcon className="w-4 h-4" />}
+          trend="up"
+          trendValue="2 New"
+          subtext="monitored regions"
+          glowColor="indigo"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'hotspot' } }))}
+        />
+        <StatCard
+          title="Missing Persons"
+          value={missingPersonsCount}
+          icon={<Users className="w-4 h-4" />}
+          trend="down"
+          trendValue="7.2%"
+          subtext="active inquiries"
+          glowColor="purple"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'victims' } }))}
+        />
+        <StatCard
+          title="Repeat Offenders"
+          value={repeatOffenderCount}
+          icon={<UserMinus className="w-4 h-4" />}
+          trend="up"
+          trendValue="5 New"
+          subtext="surveillance lists"
+          glowColor="emerald"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'offenders' } }))}
+        />
       </div>
 
       {/* Trends + category mix */}
@@ -492,8 +558,15 @@ export const Overview: React.FC = () => {
         <div className="lg:col-span-8 min-h-[300px]">
           <TrendChart data={trendChartData} />
         </div>
+
+        {/* Donut Chart - 4-cols */}
         <div className="lg:col-span-4 min-h-[300px]">
-          <DonutChart data={donutChartData} />
+          <DonutChart 
+            data={donutChartData} 
+            onCategoryClick={() => {
+              window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'crime_cases' } }));
+            }}
+          />
         </div>
       </div>
 

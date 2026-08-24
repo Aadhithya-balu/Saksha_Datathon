@@ -1609,6 +1609,8 @@ export async function getEmergingTrends() {
   return apiRequest<any[]>('/strategic/emerging-trends');
 }
 
+export const getStrategicEmergingTrends = getEmergingTrends;
+
 export async function getResourceAllocation() {
   return apiRequest<ResourceAllocation>('/strategic/resource-allocation');
 }

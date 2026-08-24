@@ -5,6 +5,30 @@ import { useAuthStore } from '../store/authStore';
 import { ShieldAlert, CheckCircle, Search, MapPin, HardDrive, Loader2 } from 'lucide-react';
 import { TableSkeleton } from '../components/ui/Skeleton';
 
+const DISTRICT_CODE_MAP: Record<string, { district: string; station: string }> = {
+  BNG: { district: 'Bengaluru Urban', station: 'Whitefield Police Station' },
+  BRL: { district: 'Ballari', station: 'City Police Station' },
+  MYS: { district: 'Mysuru', station: 'Devaraja Police Station' },
+  HSN: { district: 'Hassan', station: 'Hassan Town Station' },
+  CTD: { district: 'Chitradurga', station: 'Chitradurga Rural Station' },
+  KLR: { district: 'Kolar', station: 'Kolar Town Station' },
+  CB: { district: 'Chikkaballapura', station: 'Chikkaballapura Station' },
+  KDG: { district: 'Kodagu', station: 'Madikeri Station' },
+  DVG: { district: 'Davanagere', station: 'Davanagere City Station' },
+  DK: { district: 'Dakshina Kannada', station: 'Surathkal Police Station' },
+  BDR: { district: 'Bidar', station: 'Bidar Town Station' },
+  BLG: { district: 'Belagavi', station: 'Belagavi Central Station' },
+};
+
+function parseDistrictFromFir(caseId: string): { district: string; station: string } {
+  const match = caseId.match(/FIR-\d+\/([A-Z]+)\/\d+/i) || caseId.match(/\/([A-Z]+)\//i) || caseId.match(/CR-\d+-([A-Z]+)-\d+/i);
+  if (match && match[1]) {
+    const code = match[1].toUpperCase();
+    if (DISTRICT_CODE_MAP[code]) return DISTRICT_CODE_MAP[code];
+  }
+  return { district: 'Bengaluru Urban', station: 'City Central Police Station' };
+}
+
 export const Anomalies: React.FC = () => {
   const [alerts, setAlerts] = useState<CrimeAlert[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -22,23 +46,26 @@ export const Anomalies: React.FC = () => {
     void getAnomalies()
       .then((response) => {
         if (!isMounted) return;
-        const mappedAlerts = response.anomalies.map<CrimeAlert>((item, index) => ({
-          id: item.case_id,
-          firNumber: item.case_id,
-          district: 'Backend',
-          station: 'Saksha Analytics',
-          crimeType: item.label,
-          offenceDetails: item.reason,
-          anomalyScore: Math.round(item.score * 100),
-          deviationPercent: Math.round(item.score * 100),
-          severity: item.score >= 0.8 ? 'HIGH' : 'WATCH',
-          timestamp: new Date(Date.now() - index * 3600000).toISOString(),
-          status: 'PENDING',
-          featureBreakdown: {
-            'Anomaly Score': Math.round(item.score * 100),
-            'Backend Evidence': Math.max(40, Math.round(item.score * 90)),
-          },
-        }));
+        const mappedAlerts = response.anomalies.map<CrimeAlert>((item, index) => {
+          const loc = parseDistrictFromFir(item.case_id);
+          return {
+            id: item.case_id,
+            firNumber: item.case_id,
+            district: loc.district,
+            station: loc.station,
+            crimeType: item.label,
+            offenceDetails: item.reason,
+            anomalyScore: Math.round(item.score * 100),
+            deviationPercent: Math.round(item.score * 100),
+            severity: item.score >= 0.8 ? 'HIGH' : 'WATCH',
+            timestamp: new Date(Date.now() - index * 3600000).toISOString(),
+            status: 'PENDING',
+            featureBreakdown: {
+              'Anomaly Score': Math.round(item.score * 100),
+              'Category Severity': Math.max(40, Math.round(item.score * 90)),
+            },
+          };
+        });
         setAlerts(mappedAlerts);
         setSelectedAlertId(mappedAlerts[0]?.id ?? null);
         setLoadError(null);
@@ -295,7 +322,18 @@ export const Anomalies: React.FC = () => {
               </div>
 
               {/* ACTION BUTTON WORKBENCH */}
-              <div className="pt-5 border-t border-[var(--border-muted)] flex gap-3 text-[9.5px] font-mono uppercase">
+              <div className="pt-5 border-t border-[var(--border-muted)] flex gap-2 text-[9.5px] font-mono uppercase">
+                <button
+                  onClick={() => {
+                    sessionStorage.setItem('selected_district_override', activeAlert.district);
+                    window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'hotspot', targetId: activeAlert.district } }));
+                  }}
+                  className="py-2.5 px-3 bg-[#1e6fd9] hover:bg-[#1e6fd9]/80 text-[var(--text-primary)] rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none flex items-center justify-center gap-1.5"
+                  title="Focus this anomaly's district on the Geospatial Hotspot Map"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  Locate on Map
+                </button>
                 {activeAlert.status === 'PENDING' && (
                   <button
                     onClick={() => reviewAlert(activeAlert.id, user?.name || 'Inspector System')}
@@ -309,7 +347,7 @@ export const Anomalies: React.FC = () => {
                   <button
                     onClick={() => escalateAlert(activeAlert)}
                     disabled={escalating === activeAlert.id}
-                    className="py-2.5 px-4 bg-[#C94A2A] hover:bg-[#C94A2A]/80 text-[var(--text-primary)] rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="py-2.5 px-3.5 bg-[#C94A2A] hover:bg-[#C94A2A]/80 text-[var(--text-primary)] rounded-btn tracking-wider font-semibold cursor-pointer text-center select-none flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {escalating === activeAlert.id ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />

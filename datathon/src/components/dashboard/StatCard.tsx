@@ -12,6 +12,7 @@ interface StatCardProps {
   trendValue: string;
   subtext: string;
   glowColor: 'blue' | 'teal' | 'amber' | 'coral' | 'purple' | 'indigo' | 'emerald';
+  onClick?: () => void;
 }
 
 const ACCENTS: Record<StatCardProps['glowColor'], string> = {
@@ -33,7 +34,8 @@ export const StatCard: React.FC<StatCardProps> = ({
   trend,
   trendValue,
   subtext,
-  glowColor
+  glowColor,
+  onClick
 }) => {
   const accent = ACCENTS[glowColor] ?? ACCENTS.blue;
 
@@ -44,9 +46,10 @@ export const StatCard: React.FC<StatCardProps> = ({
       : trend === 'down'
       ? 'var(--tone-error-text)'
       : 'var(--tone-info-text)';
+  const interactive = Boolean(onClick);
 
-  return (
-    <div className="sk-panel p-4 flex flex-col gap-3 select-none">
+  const content = (
+    <>
       <div className="flex items-start justify-between w-full">
         <span className="text-[13px] font-medium text-[var(--text-secondary)]">{title}</span>
         <div
@@ -78,6 +81,24 @@ export const StatCard: React.FC<StatCardProps> = ({
         className="absolute bottom-0 left-0 right-0 h-px"
         style={{ backgroundColor: `color-mix(in srgb, ${accent} 35%, transparent)` }}
       />
+    </>
+  );
+
+  if (interactive) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="sk-panel p-4 flex flex-col gap-3 select-none relative overflow-hidden transition-all duration-200 cursor-pointer hover:border-[var(--accent-blue)]/60 hover:-translate-y-0.5 text-left w-full"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className="sk-panel p-4 flex flex-col gap-3 select-none relative overflow-hidden transition-all duration-200">
+      {content}
     </div>
   );
 };
