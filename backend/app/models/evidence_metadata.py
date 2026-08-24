@@ -21,5 +21,8 @@ class EvidenceMetadata(Base, UUIDPKMixin, TimestampMixin):
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
     
     uploaded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    
+    # Supabase Storage public/signed URL — set when the file is stored in the
+    # cloud bucket. Takes precedence over `filepath` for downloads.
+    storage_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
     extracted_data: Mapped[dict[str, Any]] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default={})

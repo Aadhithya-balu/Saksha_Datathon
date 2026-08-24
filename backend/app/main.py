@@ -110,15 +110,46 @@ def _ensure_realtime_indexes():
         logger.warning(f"Real-time index creation skipped: {exc}")
 
 
+def _migrate_evidence_metadata_table():
+    """Add storage_url column to evidence_metadata if missing (issue #126).
+
+    Existing deployments get the column via idempotent DDL so create_all()
+    does not need to drop/recreate the table.
+    """
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'evidence_metadata'"
+            ))
+            existing = {row[0] for row in result}
+            if "storage_url" not in existing:
+                conn.execute(text("ALTER TABLE evidence_metadata ADD COLUMN storage_url VARCHAR(1000)"))
+                conn.commit()
+                logger.info("evidence_metadata table migration complete (storage_url added)")
+    except Exception as exc:
+        logger.warning(f"evidence_metadata table migration skipped: {exc}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
     logger.info(f"Starting {settings.APP_NAME} in {settings.APP_ENV} mode")
 
+    # Issue #126: warn when running with SQLite (data lost on container restart).
+    db_url = settings.DATABASE_URL or ""
+    if db_url.startswith("sqlite"):
+        logger.warning(
+            "[STORAGE] DATABASE_URL is SQLite (%s). "
+            "Set SUPABASE_DB_* or DATABASE_URL env vars for a persistent database. "
+            "SQLite data will be lost on container restart.",
+            db_url,
+        )
+
     try:
         Base.metadata.create_all(bind=engine)
         _migrate_notifications_table()
         _migrate_criminals_table()
+        _migrate_evidence_metadata_table()
         _ensure_realtime_indexes()
         with engine.connect():
             logger.info("PostgreSQL connection OK")

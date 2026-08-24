@@ -72,6 +72,15 @@ class Settings(BaseSettings):
     AUTO_RETRAIN_ENABLED: bool = True
     AUTO_RETRAIN_MIN_INTERVAL_SECONDS: int = 300
 
+    # --- File Storage ---
+    # When SUPABASE_STORAGE_BUCKET is set, uploaded evidence files are stored in
+    # Supabase Storage (persistent across restarts/deployments). When unset the
+    # backend falls back to the local UPLOAD_DIR (development only).
+    SUPABASE_STORAGE_BUCKET: str = "evidence-files"
+    # Override the local upload directory (used only when Supabase Storage is
+    # unavailable, e.g. during local development without a storage key).
+    UPLOAD_DIR: str = ""
+
     # --- CORS ---
     ALLOWED_ORIGINS: str = "https://saksha-datathon-csbcweuf.onslate.in,http://localhost:3000,http://localhost:5173"
 
