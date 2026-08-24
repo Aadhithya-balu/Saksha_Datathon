@@ -276,6 +276,29 @@ class TestLocalGeneration:
             assert char not in answer
         assert "---" not in answer
 
+    def test_streaming_preserves_line_structure(self, local_gen):
+        """Regression for issue #124: typing-effect chunking must keep newlines —
+        flattening the reply into one line left the chat UI with an unreadable
+        blob instead of a lead-in, one record per line, and a footer."""
+        context = (
+            "### Saksha PostgreSQL Database — Criminal Record\n"
+            "Name: Ramu Swamy | Status: at_large | Aliases: Ramu\n"
+            "Name: Vikram Yadav | Status: arrested | Aliases: Vicky"
+        )
+        answer = _collect_local(local_gen, "Who is Ramu Swamy?", context, "sys")
+        lines = [line.strip() for line in answer.split("\n") if line.strip()]
+        assert len(lines) >= 4  # lead-in + two records + footer
+        assert lines[0].startswith("Here are the matching")
+        assert lines[1].startswith("1. Name:")
+        assert lines[2].startswith("2. Name:")
+        assert lines[-1].startswith("Source: Saksha Database")
+
+    def test_stream_text_round_trips_whitespace_exactly(self):
+        text = "Lead-in:\n\n1. First record\n2. Second record\n\nSource: Saksha Database."
+        chunks = list(LLMGenerator._stream_text(text))
+        assert "".join(chunks) == text
+        assert len(chunks) > 1  # still delivered as multiple typing chunks
+
 
 class TestKeyFailover:
     """Groq primary with comma-separated fallback keys, then provider cascade."""

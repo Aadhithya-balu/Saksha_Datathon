@@ -425,12 +425,7 @@ class LLMGenerator:
                     response_parts.append(f"{emitted}. {self._format_line(clean)}")
             response_parts += ["", _FOOTER_MESSAGE]
             full_response = "\n".join(response_parts).strip()
-            words = full_response.split()
-            chunk_size = max(5, len(words) // 30)
-            for i in range(0, len(words), chunk_size):
-                chunk = " ".join(words[i:i + chunk_size])
-                if i + chunk_size < len(words):
-                    chunk += " "
+            for chunk in self._stream_text(full_response):
                 yield chunk
             return
 
@@ -476,13 +471,20 @@ class LLMGenerator:
 
         full_response = "\n".join(response_parts).strip()
 
-        words = full_response.split()
-        chunk_size = max(5, len(words) // 30)
-        for i in range(0, len(words), chunk_size):
-            chunk = " ".join(words[i:i + chunk_size])
-            if i + chunk_size < len(words):
-                chunk += " "
+        for chunk in self._stream_text(full_response):
             yield chunk
+
+    @staticmethod
+    def _stream_text(text: str) -> AsyncIterator[str]:
+        """Yields typing-effect chunks while preserving EVERY newline and blank
+        line — the chat UI's markdown renderer needs intact line breaks to lay
+        out headings, lists and record rows (issue #124)."""
+        segments = re.findall(r"\S+\s*|\s+", text)
+        if not segments:
+            return
+        chunk_size = max(5, len(segments) // 30)
+        for i in range(0, len(segments), chunk_size):
+            yield "".join(segments[i:i + chunk_size])
 
     @staticmethod
     def _is_smalltalk(message: str) -> bool:
