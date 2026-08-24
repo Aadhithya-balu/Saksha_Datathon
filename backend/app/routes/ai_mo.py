@@ -1,4 +1,4 @@
-"""AI modus-operandi routes — semantic MO similarity search + narrative NER (gap M6)."""
+import uuid
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -13,6 +13,13 @@ from app.auth.rbac import (
 )
 from app.database.postgres import get_db
 from app.models.user import User
+from app.services.mo_matching_service import (
+    compare_two_entities,
+    extract_case_mo_profile,
+    extract_criminal_mo_profile,
+    match_case_against_db,
+    match_criminal_against_db,
+)
 from app.services.mo_pattern_service import detect_recurring_mo_patterns, sync_mo_tags
 from app.services.mo_semantic_service import extract_case_entities, extract_entities, search_similar_mo
 
@@ -82,6 +89,71 @@ def recurring_mo_patterns(
     documented threat heuristic.
     """
     return detect_recurring_mo_patterns(db, min_support=min_support, max_patterns=k)
+
+
+@router.get("/match/case/{case_id}")
+def match_case(
+    case_id: str,
+    k: int = Query(5, ge=1, le=25),
+    min_similarity: float = Query(0.25, ge=0.0, le=1.0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Find real cases and real suspect leads matching a case's MO pattern.
+
+    Evaluates category, tactical methods, weapon signatures, temporal windows,
+    and geographic corridors with explainable matching/divergent factors.
+    """
+    try:
+        cid = uuid.UUID(case_id)
+    except ValueError:
+        return {"error": "Invalid case UUID"}
+    return match_case_against_db(db, cid, top_k=k, min_similarity=min_similarity)
+
+
+@router.get("/match/criminal/{criminal_id}")
+def match_criminal(
+    criminal_id: str,
+    k: int = Query(5, ge=1, le=25),
+    min_similarity: float = Query(0.25, ge=0.0, le=1.0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Find real unsolved/open cases and similar offenders matching a criminal's MO."""
+    try:
+        cid = uuid.UUID(criminal_id)
+    except ValueError:
+        return {"error": "Invalid criminal UUID"}
+    return match_criminal_against_db(db, cid, top_k=k, min_similarity=min_similarity)
+
+
+class ComparePayload(BaseModel):
+    entity_a_id: str
+    entity_a_type: str  # "case" | "criminal"
+    entity_b_id: str
+    entity_b_type: str  # "case" | "criminal"
+
+
+@router.post("/compare")
+def compare_entities(
+    payload: ComparePayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Side-by-side explainable MO comparison between any two real database entities."""
+    try:
+        aid = uuid.UUID(payload.entity_a_id)
+        bid = uuid.UUID(payload.entity_b_id)
+    except ValueError:
+        return {"error": "Invalid entity UUID format"}
+
+    return compare_two_entities(
+        db,
+        aid,
+        payload.entity_a_type.lower().strip(),
+        bid,
+        payload.entity_b_type.lower().strip(),
+    )
 
 
 @router.post("/sync-tags")

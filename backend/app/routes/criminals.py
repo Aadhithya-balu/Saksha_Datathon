@@ -123,24 +123,26 @@ def get_criminal(criminal_id: uuid.UUID, db: Session = Depends(get_db), current_
             "risk_factors": ["Database link analysis fallback"]
         }
         
-    # Load similar offenders
+    # Load similar offenders from real MO pattern matching engine
     try:
-        from app.ai.inference.criminal import find_similar_offenders
-        similar_res = find_similar_offenders(db, str(criminal_id), top_k=5)
-        if "error" in similar_res:
-            # Fallback to other criminals
-            other_criminals = db.query(Criminal).filter(Criminal.id != criminal_id).limit(3).all()
+        from app.services.mo_matching_service import match_criminal_against_db
+        mo_res = match_criminal_against_db(db, criminal_id, top_k=5, min_similarity=0.20)
+        if "error" not in mo_res:
             similar_res = {
                 "similar": [
                     {
-                        "criminal_id": str(c.id),
-                        "name": c.full_name,
-                        "similarity": 0.65,
-                        "rank": i + 1
+                        "criminal_id": sim["criminal_id"],
+                        "name": sim["full_name"],
+                        "similarity": sim["similarity_score"],
+                        "rank": i + 1,
+                        "matching_factors": sim.get("matching_factors", []),
+                        "match_level": sim.get("match_level", "medium"),
                     }
-                    for i, c in enumerate(other_criminals)
+                    for i, sim in enumerate(mo_res.get("similar_criminals", []))
                 ]
             }
+        else:
+            similar_res = {"similar": []}
     except Exception:
         similar_res = {"similar": []}
         

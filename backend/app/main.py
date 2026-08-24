@@ -26,6 +26,16 @@ import app.models  # ensure models are registered
 _migration_done = False
 
 
+def _get_table_columns(conn, table_name: str) -> set[str]:
+    if conn.dialect.name == "sqlite":
+        res = conn.execute(text(f"PRAGMA table_info({table_name})"))
+        return {row[1] for row in res}
+    res = conn.execute(text(
+        f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
+    ))
+    return {row[0] for row in res}
+
+
 def _migrate_notifications_table():
     """Add new columns to the notifications table if they don't exist.
     Uses a flag to ensure this only runs once per process lifetime,
@@ -51,10 +61,7 @@ def _migrate_notifications_table():
     ]
     try:
         with engine.connect() as conn:
-            result = conn.execute(text(
-                "SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications'"
-            ))
-            existing = {row[0] for row in result}
+            existing = _get_table_columns(conn, "notifications")
 
             alter_needed = False
             for col_name, col_def in new_columns:
@@ -80,10 +87,7 @@ def _migrate_criminals_table():
     """
     try:
         with engine.connect() as conn:
-            result = conn.execute(text(
-                "SELECT column_name FROM information_schema.columns WHERE table_name = 'criminals'"
-            ))
-            existing = {row[0] for row in result}
+            existing = _get_table_columns(conn, "criminals")
             if "gang_affiliation" not in existing:
                 conn.execute(text("ALTER TABLE criminals ADD COLUMN gang_affiliation VARCHAR(255)"))
                 conn.commit()

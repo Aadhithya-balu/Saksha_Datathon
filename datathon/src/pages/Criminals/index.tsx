@@ -16,6 +16,7 @@ import {
   FileText, 
   TrendingUp, 
   ArrowRight,
+  ArrowLeft,
   ExternalLink,
   Sparkles
 } from 'lucide-react';
@@ -308,7 +309,7 @@ export const Criminals: React.FC = () => {
     <div className="h-[84vh] flex flex-col gap-5 p-1 md:p-3 select-none">
       
       {/* Page Header banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[var(--border-muted)] pb-3">
         <div>
           <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-[#1E6FD9] animate-pulse" />
@@ -318,6 +319,27 @@ export const Criminals: React.FC = () => {
             SECURE INTEL REGISTRY — MACHINE LEARNING RECIDIVISM RISKS & BIO-ASSOCIATIVE NETWORKS
           </p>
         </div>
+
+        {/* Back / Return to Investigation Button */}
+        <button
+          onClick={() => {
+            const returnCaseId = sessionStorage.getItem('return_to_case_id');
+            window.dispatchEvent(
+              new CustomEvent('navigate-tab', {
+                detail: { tab: 'investigation', targetId: returnCaseId || undefined },
+              })
+            );
+          }}
+          className="flex items-center gap-2 px-3.5 py-1.5 bg-[#1E6FD9]/15 hover:bg-[#1E6FD9]/25 text-[#1E6FD9] border border-[#1E6FD9]/40 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-xs self-start sm:self-auto"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>
+            Return to Investigation
+            {sessionStorage.getItem('return_to_case_number')
+              ? ` (${sessionStorage.getItem('return_to_case_number')})`
+              : ''}
+          </span>
+        </button>
       </div>
 
       <div className="flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">
@@ -574,7 +596,14 @@ export const Criminals: React.FC = () => {
                         onClick={() => handleSelectCriminal(sim.criminal_id)}
                         className="p-2.5 bg-[var(--bg-tertiary)]/50 hover:bg-[#1E6FD9]/5 border border-[var(--border-primary)] hover:border-[#1E6FD9]/30 rounded font-mono text-left cursor-pointer transition-all flex flex-col justify-between"
                       >
-                        <span className="text-[10px] text-[var(--text-primary)] font-bold block truncate">{sim.name}</span>
+                        <div>
+                          <span className="text-[10px] text-[var(--text-primary)] font-bold block truncate">{sim.name}</span>
+                          {sim.matching_factors && sim.matching_factors.length > 0 && (
+                            <span className="text-[7px] text-emerald-400 block mt-1 line-clamp-1">
+                              ✓ {sim.matching_factors[0]}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex justify-between items-center mt-2.5">
                           <span className="text-[8px] text-[#0E9E78] font-bold">
                             {Math.round((sim.similarity || 0.6) * 100)}% Match
