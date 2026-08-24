@@ -35,6 +35,9 @@ class NetworkNode(BaseModel):
     lat: float | None = None
     lng: float | None = None
     extra: dict[str, Any] = Field(default_factory=dict)
+    # Issue #144 gap 132.4: True when this record originates from the bundled
+    # demo seed dataset rather than user-entered/live intelligence.
+    isSeed: bool = False
 
 
 class NetworkEdge(BaseModel):
@@ -52,6 +55,9 @@ class NetworkGraphResponse(BaseModel):
     total_nodes: int
     total_edges: int
     is_neo4j_backed: bool = False
+    # Issue #144 gap 132.4: provenance transparency about demo-seeded content.
+    seed_node_count: int = 0
+    dataset_scope: str = "live_records"  # or "contains_seed_demo_records"
 
 
 class GangHierarchyMember(BaseModel):
@@ -62,6 +68,7 @@ class GangHierarchyMember(BaseModel):
     riskScore: float
     status: str
     casesCount: int
+    isSeed: bool = False
 
 
 class GangNetworkSummary(BaseModel):
@@ -75,6 +82,9 @@ class GangNetworkSummary(BaseModel):
     primary_racket: str
     members: list[GangHierarchyMember]
     relationships: list[NetworkEdge]
+    # Issue #144 gap 132.4: True when all member offenders come from the
+    # bundled demo seed dataset.
+    is_demo_derived: bool = False
 
 
 class ShortestPathRequest(BaseModel):

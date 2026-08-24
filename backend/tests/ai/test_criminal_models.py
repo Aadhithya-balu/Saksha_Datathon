@@ -53,9 +53,16 @@ def _make_ids(n: int = 10) -> list[str]:
 
 class TestFeatureExtractor:
     def test_feature_names_stable(self):
-        assert len(FEATURE_NAMES) == 10
+        # Issue #144 gap 132.3: 10 legacy features + 4 MO signature features.
+        assert len(FEATURE_NAMES) == 14
         assert "fir_count" in FEATURE_NAMES
         assert "risk_score" not in FEATURE_NAMES  # not a raw feature
+        assert FEATURE_NAMES[-4:] == [
+            "mo_tag_count",
+            "mo_night_flag",
+            "mo_weapon_flag",
+            "mo_vehicle_flag",
+        ]
 
     def test_extract_for_criminal_no_firs(self, db_session):
         """Criminal with no FIR links should produce a zero-heavy vector."""

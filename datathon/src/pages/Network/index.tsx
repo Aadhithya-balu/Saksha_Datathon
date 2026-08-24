@@ -11,7 +11,7 @@ import AIGraphInsightsModal from '../../components/network/AIGraphInsightsModal'
 import { downloadSecureDossier } from '../../utils/downloader';
 import { useAuditStore } from '../../store/auditStore';
 import { useAuthStore } from '../../store/authStore';
-import { Network as NetIcon, Layers } from 'lucide-react';
+import { Network as NetIcon, Layers, Database } from 'lucide-react';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 
 export const NetworkPageWorkspace: React.FC = () => {
@@ -24,6 +24,7 @@ export const NetworkPageWorkspace: React.FC = () => {
     setMinRisk,
     graphData,
     isNeo4jBacked,
+    seedNodeCount,
     loading,
     error,
     selectedNode,
@@ -83,6 +84,14 @@ export const NetworkPageWorkspace: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* Gap 132.4: transparency banner for demo-seeded content */}
+      {seedNodeCount > 0 && (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-card border border-[var(--accent-purple)]/25 bg-[var(--accent-purple)]/5 text-[9.5px] font-mono text-[var(--accent-purple)] uppercase tracking-wider">
+          <Database className="w-3.5 h-3.5 flex-shrink-0" />
+          Dataset scope: contains {seedNodeCount} seeded demo record{seedNodeCount === 1 ? '' : 's'} — flagged nodes originate from the bundled training dataset, not live intelligence
+        </div>
+      )}
 
       {/* Global Explorer Navigation & Filter Toolbar */}
       <GraphExplorerToolbar

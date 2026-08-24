@@ -64,6 +64,21 @@ def get_temporal_demographics(
     return sociological_service.get_temporal_demographic_analysis(db)
 
 
+@router.get("/temporal-matrix")
+def get_temporal_matrix(
+    district: str | None = None,
+    location_id: str | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Hour x day-of-week incident matrix with optional district/station filter.
+
+    Closes issue #143 gap 131.3: true observed cross-tabulation (no synthetic
+    baseline) with statistically flagged peak cells for patrol planning.
+    """
+    return sociological_service.get_temporal_hotspot_matrix(db, district=district, location_id=location_id)
+
+
 @router.get("/offender-demographics")
 def get_offender_demographics(
     db: Session = Depends(get_db),

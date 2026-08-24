@@ -18,7 +18,9 @@ from app.models.criminal import Criminal
 from app.models.fir import FIR, FIRCriminalLink
 
 # ── stable feature column order ──────────────────────────────────────────────
-FEATURE_NAMES: list[str] = [
+# Issue #144 gap 132.3 appended four MO-derived features after the legacy ten.
+# Inference loaders retrain automatically when a stored artifact predates them.
+LEGACY_FEATURE_NAMES: list[str] = [
     "fir_count",           # total FIRs linked
     "open_fir_count",      # FIRs whose case is still open
     "distinct_districts",  # number of unique districts active in
@@ -30,6 +32,15 @@ FEATURE_NAMES: list[str] = [
     "avg_case_age_days",   # mean age of linked cases in days
     "multi_district_flag", # 1 if active in >1 district
 ]
+
+MO_FEATURE_NAMES: list[str] = [
+    "mo_tag_count",        # canonical MO tags across summary + linked cases
+    "mo_night_flag",       # 1 if night-operation signature present
+    "mo_weapon_flag",      # 1 if tool/weapon usage signature present
+    "mo_vehicle_flag",     # 1 if vehicle-based crime signature present
+]
+
+FEATURE_NAMES: list[str] = LEGACY_FEATURE_NAMES + MO_FEATURE_NAMES
 
 
 @dataclass(frozen=True)
@@ -56,6 +67,31 @@ def _days_since(dt: datetime | None) -> float:
         return 0.0
     now = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.now()
     return max(0.0, (now - dt).total_seconds() / 86400.0)
+
+
+def _mo_tags_for_criminal(criminal: Criminal, firs: list[FIR]) -> set[str]:
+    """Canonical + slug MO tags from the offender's summary and linked cases
+    (issue #144 gap 132.3). Lazy import keeps the AI layer decoupled at module
+    load time."""
+    from app.services.mo_pattern_service import slugify_phrase, tags_for_text
+
+    tags = set(tags_for_text(criminal.mo_summary))
+    for fir in firs:
+        case = fir.crime_case
+        if case is None or not case.mo_tags:
+            continue
+        for phrase in case.mo_tags.split(","):
+            phrase = phrase.strip()
+            if not phrase:
+                continue
+            matched = tags_for_text(phrase)
+            if matched:
+                tags.update(matched)
+            else:
+                slug = slugify_phrase(phrase)
+                if slug:
+                    tags.add(slug)
+    return tags
 
 
 def extract_for_criminal(db: Session, criminal: Criminal) -> CriminalFeatureVector:
@@ -93,6 +129,14 @@ def extract_for_criminal(db: Session, criminal: Criminal) -> CriminalFeatureVect
     recency_days = _days_since(most_recent_filed)
     multi_district_flag = 1.0 if distinct_districts > 1 else 0.0
 
+    from app.services.mo_pattern_service import (
+        NIGHT_TAG_NAMES,
+        VEHICLE_TAG_NAMES,
+        WEAPON_TAG_NAMES,
+    )
+
+    mo_tags = _mo_tags_for_criminal(criminal, firs)
+
     values = np.array(
         [
             fir_count,
@@ -105,6 +149,10 @@ def extract_for_criminal(db: Session, criminal: Criminal) -> CriminalFeatureVect
             recency_days,
             avg_case_age,
             multi_district_flag,
+            float(len(mo_tags)),
+            1.0 if mo_tags & NIGHT_TAG_NAMES else 0.0,
+            1.0 if mo_tags & WEAPON_TAG_NAMES else 0.0,
+            1.0 if mo_tags & VEHICLE_TAG_NAMES else 0.0,
         ],
         dtype=np.float64,
     )
@@ -115,6 +163,7 @@ def extract_for_criminal(db: Session, criminal: Criminal) -> CriminalFeatureVect
         "fir_count": int(fir_count),
         "districts": sorted(districts),
         "categories": sorted(categories),
+        "mo_tags": sorted(mo_tags),
     }
 
     return CriminalFeatureVector(

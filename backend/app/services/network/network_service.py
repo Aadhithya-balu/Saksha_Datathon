@@ -8,10 +8,14 @@ Gap #129.2: all fabricated seed nodes/edges and hardcoded syndicate rosters were
 removed — every node/edge is now derived from PostgreSQL records or Neo4j.
 Gap #129.3: full-graph reads prefer a live Neo4j instance and fall back to SQL;
 the silent FIR ``limit(100)`` truncation was removed.
+Issue #144 gap 132.4: records originating from the bundled demo seed dataset
+are flagged (``isSeed`` / ``is_demo_derived`` / ``dataset_scope``) so UIs can
+visually separate seeded demo content from live intelligence.
 """
 
 from collections import Counter, defaultdict, deque
 from datetime import datetime
+from functools import lru_cache
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.crime import CrimeCase
@@ -32,12 +36,53 @@ from app.models.network import (
 from app.services.neo4j.client import fetch_full_graph_neo4j, is_neo4j_available, query_shortest_path_neo4j
 
 
+@lru_cache(maxsize=1)
+def _seed_identity_sets() -> tuple[set[str], set[str], set[str]]:
+    """Names/numbers identifying bundled demo-seed records (gap 132.4).
+
+    Lazily imports the seed manifest so importing this service never pays the
+    cost (or risk) of loading the seeder module in production contexts where
+    it may be absent.
+    """
+    try:
+        from app.database.seed_db import CASES, CRIMINALS, VICTIMS
+
+        return (
+            {row[0] for row in CASES},      # exact case numbers
+            {c[0] for c in CRIMINALS},      # criminal full names
+            {v[0] for v in VICTIMS},        # victim full names
+        )
+    except Exception:  # pragma: no cover - manifest unavailable
+        return set(), set(), set()
+
+
+def _is_seed_case_number(case_number: str | None) -> bool:
+    if not case_number:
+        return False
+    case_numbers, _, _ = _seed_identity_sets()
+    return case_number in case_numbers or case_number.startswith("CR-2026-SYN-")
+
+
+def _apply_seed_flags(nodes: list[NetworkNode]) -> None:
+    """Flag demo-seed origin on already-built nodes (used for the Neo4j path
+    where nodes are constructed from graph payloads without ORM context)."""
+    _, criminal_names, victim_names = _seed_identity_sets()
+    if not criminal_names:
+        return
+    for node in nodes:
+        if node.category == NetworkNodeCategory.SUSPECT or node.category == NetworkNodeCategory.OFFENDER:
+            node.isSeed = node.name in criminal_names
+        elif node.category == NetworkNodeCategory.VICTIM:
+            node.isSeed = node.name in victim_names
+
+
 def _criminal_risk(criminal: Criminal) -> float:
     return min(100.0, 45.0 + len(criminal.fir_links) * 10)
 
 
 def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: float = 0.0) -> tuple[list[NetworkNode], list[NetworkEdge]]:
     """Construct complete graph from PostgreSQL database relations."""
+    _, seed_criminal_names, seed_victim_names = _seed_identity_sets()
     firs = (
         db.query(FIR)
         .options(
@@ -63,6 +108,7 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
             details=f"Sections: {fir.sections or 'IPC'}, Complainant: {fir.complainant_name}",
             casesCount=1,
             date=fir.filed_at.isoformat() if fir.filed_at else None,
+            isSeed=_is_seed_case_number(case.case_number) if case else False,
         )
 
         loc_node_id = None
@@ -96,6 +142,7 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
                     phone=None,
                     gangAffiliation=(criminal.gang_affiliation or "").strip() or None,
                     status=criminal.status,
+                    isSeed=criminal.full_name in seed_criminal_names,
                 )
             edges_list.append(NetworkEdge(source=crim_id, target=case_id, relationship="Accused in FIR"))
             if loc_node_id:
@@ -121,6 +168,7 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
                     riskScore=15.0,
                     details=victim.statement or "Victim named in FIR",
                     casesCount=len(victim.fir_links),
+                    isSeed=victim.full_name in seed_victim_names,
                 )
             edges_list.append(NetworkEdge(source=vic_id, target=case_id, relationship="Victim in FIR"))
 
@@ -162,11 +210,26 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
     return filtered_nodes, filtered_edges
 
 
+def _graph_response(nodes: list[NetworkNode], edges: list[NetworkEdge], is_neo4j_backed: bool) -> NetworkGraphResponse:
+    """Assemble the response with seed-provenance metadata (gap 132.4)."""
+    seed_node_count = sum(1 for node in nodes if node.isSeed)
+    return NetworkGraphResponse(
+        nodes=nodes,
+        edges=edges,
+        total_nodes=len(nodes),
+        total_edges=len(edges),
+        is_neo4j_backed=is_neo4j_backed,
+        seed_node_count=seed_node_count,
+        dataset_scope="contains_seed_demo_records" if seed_node_count else "live_records",
+    )
+
+
 def get_full_network_graph(db: Session, category_filter: str | None = None, min_risk: float = 0.0) -> NetworkGraphResponse:
     """Fetch complete or filtered relationship network (Neo4j-first, SQL fallback)."""
     neo4j_data = fetch_full_graph_neo4j() if is_neo4j_available() else None
     if neo4j_data:
         nodes = [NetworkNode(**n) for n in neo4j_data["nodes"]]
+        _apply_seed_flags(nodes)
         edges = [NetworkEdge(**e) for e in neo4j_data["edges"]]
         filtered_nodes = [
             n for n in nodes
@@ -174,22 +237,10 @@ def get_full_network_graph(db: Session, category_filter: str | None = None, min_
         ]
         valid_ids = {n.id for n in filtered_nodes}
         filtered_edges = [e for e in edges if e.source in valid_ids and e.target in valid_ids]
-        return NetworkGraphResponse(
-            nodes=filtered_nodes,
-            edges=filtered_edges,
-            total_nodes=len(filtered_nodes),
-            total_edges=len(filtered_edges),
-            is_neo4j_backed=True,
-        )
+        return _graph_response(filtered_nodes, filtered_edges, is_neo4j_backed=True)
 
     nodes, edges = _build_sql_graph(db, category_filter=category_filter, min_risk=min_risk)
-    return NetworkGraphResponse(
-        nodes=nodes,
-        edges=edges,
-        total_nodes=len(nodes),
-        total_edges=len(edges),
-        is_neo4j_backed=False,
-    )
+    return _graph_response(nodes, edges, is_neo4j_backed=False)
 
 
 def get_person_network_graph(db: Session, person_id: str, depth: int = 1) -> NetworkGraphResponse:
@@ -221,13 +272,7 @@ def get_person_network_graph(db: Session, person_id: str, depth: int = 1) -> Net
     sub_nodes = [n for n in nodes if n.id in visited_nodes]
     sub_edges = [e for e in edges if e.source in visited_nodes and e.target in visited_nodes]
 
-    return NetworkGraphResponse(
-        nodes=sub_nodes,
-        edges=sub_edges,
-        total_nodes=len(sub_nodes),
-        total_edges=len(sub_edges),
-        is_neo4j_backed=is_neo4j_available(),
-    )
+    return _graph_response(sub_nodes, sub_edges, is_neo4j_backed=is_neo4j_available())
 
 
 def get_case_network_graph(db: Session, case_id: str) -> NetworkGraphResponse:
@@ -251,10 +296,14 @@ def get_organization_gang_networks(db: Session) -> list[GangNetworkSummary]:
             by_gang[gang_name].append(criminal)
 
     summaries: list[GangNetworkSummary] = []
+    _, seed_criminal_names, _ = _seed_identity_sets()
     for gang_name, members in sorted(by_gang.items()):
         ranked = sorted(members, key=lambda c: (len(c.fir_links), _criminal_risk(c)), reverse=True)
         leader = ranked[0]
         avg_risk = sum(_criminal_risk(c) for c in members) / len(members)
+        # Gap 132.4: a gang is demo-derived when every member offender comes
+        # from the bundled seed dataset rather than live records.
+        all_seeded = bool(members) and all(m.full_name in seed_criminal_names for m in members)
 
         hierarchy_members = []
         hierarchy_edges = []
@@ -268,6 +317,7 @@ def get_organization_gang_networks(db: Session) -> list[GangNetworkSummary]:
                 riskScore=_criminal_risk(member),
                 status=member.status or "unknown",
                 casesCount=len(member.fir_links),
+                isSeed=member.full_name in seed_criminal_names,
             ))
             if idx > 0:
                 hierarchy_edges.append(NetworkEdge(
@@ -288,6 +338,7 @@ def get_organization_gang_networks(db: Session) -> list[GangNetworkSummary]:
             primary_racket="Derived from linked FIR categories" ,
             members=hierarchy_members,
             relationships=hierarchy_edges,
+            is_demo_derived=all_seeded,
         ))
     return summaries
 

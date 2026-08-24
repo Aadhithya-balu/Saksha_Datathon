@@ -1,6 +1,6 @@
 import React from 'react';
 import type { GraphNode } from './CriminalGraph3D';
-import { User, ShieldAlert, Phone, MapPin, Briefcase, X, Link2 } from 'lucide-react';
+import { User, ShieldAlert, Phone, MapPin, Briefcase, X, Link2, Database } from 'lucide-react';
 import { downloadSecureDossier } from '../../utils/downloader';
 import { useAuditStore } from '../../store/auditStore';
 import { useAuthStore } from '../../store/authStore';
@@ -45,6 +45,15 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose 
               <span className="text-[8.5px] font-mono text-[var(--text-muted)] uppercase tracking-wider block mt-0.5">
                 Clearance: {node.category}
               </span>
+              {node.isSeed && (
+                <span
+                  title="This record comes from the bundled demo seed dataset, not live intelligence."
+                  className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--accent-purple)]/10 border border-[var(--accent-purple)]/30 text-[var(--accent-purple)] text-[8px] font-mono uppercase tracking-widest"
+                >
+                  <Database className="w-2.5 h-2.5" />
+                  Seed demo record
+                </span>
+              )}
             </div>
           </div>
 

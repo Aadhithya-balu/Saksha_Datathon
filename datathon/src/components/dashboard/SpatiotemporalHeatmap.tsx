@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Flame } from 'lucide-react';
-import { getSociologicalTemporal, type TemporalDemographic } from '../../services/api';
+import {
+  getSociologicalTemporal,
+  getSociologicalTemporalMatrix,
+  type TemporalDemographic,
+  type TemporalMatrixResponse,
+} from '../../services/api';
 
 export interface HeatmapCell {
   day: string;
@@ -79,6 +84,31 @@ const buildCellsFromDemographics = (temporal?: TemporalDemographic | null): Heat
   return cells;
 };
 
+// Gap 131.3: build cells from the true observed hour x day incident matrix
+// served by GET /sociological/temporal-matrix (4-hour bins to anchor columns).
+const buildCellsFromMatrix = (matrix?: TemporalMatrixResponse | null): HeatmapCell[] => {
+  if (!matrix || !Array.isArray(matrix.matrix)) return [];
+  const bins: Record<string, number> = {};
+  matrix.matrix.forEach(row => {
+    const anchor = String(Math.floor((row.hour ?? 0) / 4) * 4).padStart(2, '0') + ':00';
+    row.cells?.forEach(cell => {
+      const short = DOW_FULL_TO_SHORT[cell.day] || (cell.day ? cell.day.slice(0, 3) : '');
+      if (!short) return;
+      const key = `${short}|${anchor}`;
+      bins[key] = (bins[key] ?? 0) + (cell.count ?? 0);
+    });
+  });
+  if (!Object.keys(bins).length) return [];
+  const cells: HeatmapCell[] = [];
+  DAYS.forEach(day => {
+    HOURS.forEach(hour => {
+      const cases = bins[`${day}|${hour}`] ?? 0;
+      cells.push({ day, hour, intensity: cases, cases });
+    });
+  });
+  return cells;
+};
+
 interface SpatiotemporalHeatmapProps {
   data?: HeatmapCell[];
   onCellClick?: (day: string, hour: string) => void;
@@ -101,24 +131,34 @@ const getStatusLabel = (cases: number) => {
 export const SpatiotemporalHeatmap: React.FC<SpatiotemporalHeatmapProps> = ({ data: propData, onCellClick, selectedHour }) => {
   const [hoveredCell, setHoveredCell] = useState<{ day: string; hour: string; cases: number } | null>(null);
   const [temporalData, setTemporalData] = useState<TemporalDemographic | null>(null);
+  const [matrixData, setMatrixData] = useState<TemporalMatrixResponse | null>(null);
 
   useEffect(() => {
     if (propData && propData.length > 0) return;
     let isMounted = true;
-    getSociologicalTemporal()
+    // Prefer the true observed hour x day matrix; fall back to marginals.
+    getSociologicalTemporalMatrix()
       .then(res => {
-        if (isMounted) setTemporalData(res);
+        if (isMounted) setMatrixData(res);
       })
       .catch(() => {
-        // Fallback to deterministic baseline if endpoint unavailable
+        getSociologicalTemporal()
+          .then(res => {
+            if (isMounted) setTemporalData(res);
+          })
+          .catch(() => {
+            // Fallback to deterministic baseline if endpoints unavailable
+          });
       });
     return () => { isMounted = false; };
   }, [propData]);
 
   const heatmapData = useMemo(() => {
     if (propData && propData.length > 0) return propData;
+    const fromMatrix = buildCellsFromMatrix(matrixData);
+    if (fromMatrix.length > 0) return fromMatrix;
     return buildCellsFromDemographics(temporalData);
-  }, [propData, temporalData]);
+  }, [propData, temporalData, matrixData]);
 
   return (
     <div className="w-full h-full bg-[var(--bg-secondary)]/80 border border-[var(--border-primary)] p-4 rounded-lg flex flex-col justify-between select-none font-mono relative overflow-hidden group">

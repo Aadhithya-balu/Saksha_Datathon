@@ -5,7 +5,7 @@ Production Feature Engineering Module
 Reproduces EXACTLY the transformations from the Colab training notebook so that
 inference features are identical to training features.
 
-Output feature order matches feature_columns.json (31 features):
+Output feature order matches feature_columns.json. Legacy artifact set (31):
     CrimeCount, NightCrime, WeekendCrime, AvgHour, UniqueStations,
     MajorCrimeTypes, GravityMean, Year, Month, Quarter, MonthSin, MonthCos,
     Lag_1, Lag_2, Lag_3, Lag_6, RollingMean3, RollingMean6, RollingStd3,
@@ -13,6 +13,13 @@ Output feature order matches feature_columns.json (31 features):
     GrowthRate, Momentum, Acceleration,
     NeighborCrimeCount, NeighborDensity, LocalDensityRatio,
     StationCrimeIntensity
+
+Temporal extension (issue #143 gap 131.2, appended after the legacy set):
+    EveningCrime, AfternoonCrime, LateNightCrime, MorningCrime,
+    HolidayCrime, HourSin, HourCos, DowSin, DowCos
+
+Older trained artifacts subset by their stored feature_columns.json, so the
+extra columns are simply ignored until the next full retraining.
 """
 
 from __future__ import annotations
@@ -46,7 +53,7 @@ REQUIRED_INPUT_COLUMNS: List[str] = [
     "CrimeMajorHeadID",
 ]
 
-FEATURE_COLUMNS: List[str] = [
+LEGACY_FEATURE_COLUMNS: List[str] = [
     "CrimeCount", "NightCrime", "WeekendCrime", "AvgHour",
     "UniqueStations", "MajorCrimeTypes", "GravityMean",
     "Year", "Month", "Quarter", "MonthSin", "MonthCos",
@@ -57,6 +64,36 @@ FEATURE_COLUMNS: List[str] = [
     "NeighborCrimeCount", "NeighborDensity", "LocalDensityRatio",
     "StationCrimeIntensity",
 ]
+
+TEMPORAL_FEATURE_COLUMNS: List[str] = [
+    "EveningCrime", "AfternoonCrime", "LateNightCrime", "MorningCrime",
+    "HolidayCrime", "HourSin", "HourCos", "DowSin", "DowCos",
+]
+
+FEATURE_COLUMNS: List[str] = LEGACY_FEATURE_COLUMNS + TEMPORAL_FEATURE_COLUMNS
+
+
+# ---------------------------------------------------------------------------
+# Holiday calendar (issue #143 gap 131.2)
+# ---------------------------------------------------------------------------
+
+# Fixed-date Karnataka / national public holidays as (month, day).
+# Lunar-calendar festivals (Ugadi, Diwali, Ganesh Chaturthi, Eid...) shift
+# every year and are intentionally excluded to stay deterministic.
+KARNATAKA_FIXED_HOLIDAYS: set[tuple[int, int]] = {
+    (1, 1),    # New Year's Day
+    (1, 26),   # Republic Day
+    (5, 1),    # Labour Day / May Day
+    (8, 15),   # Independence Day
+    (10, 2),   # Gandhi Jayanti
+    (11, 1),   # Karnataka Rajyotsava
+    (12, 25),  # Christmas
+}
+
+
+def is_karnataka_holiday(ts: pd.Timestamp) -> bool:
+    """True when the timestamp falls on a fixed-date Karnataka/national holiday."""
+    return (ts.month, ts.day) in KARNATAKA_FIXED_HOLIDAYS
 
 
 # ---------------------------------------------------------------------------
@@ -118,13 +155,29 @@ def create_h3_cells(df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 def _add_time_flags(df: pd.DataFrame) -> pd.DataFrame:
-    """Add IsNight and IsWeekend flags needed for aggregation."""
+    """Add night/weekend flags, hour bins, holiday flag, and cyclical
+    hour/day-of-week encodings needed for aggregation (issue #143 gap 131.2)."""
     df = df.copy()
     hour = df["IncidentFromDate"].dt.hour
     weekday = df["IncidentFromDate"].dt.weekday
     df["IsNight"] = ((hour >= 20) | (hour <= 5)).astype(int)
     df["IsWeekend"] = weekday.isin([5, 6]).astype(int)
     df["Hour"] = hour
+
+    # Hour-of-day bins (4 x 6-hour blocks)
+    df["IsLateNight"] = hour.between(0, 5).astype(int)
+    df["IsMorning"] = hour.between(6, 11).astype(int)
+    df["IsAfternoon"] = hour.between(12, 17).astype(int)
+    df["IsEvening"] = hour.between(18, 23).astype(int)
+
+    # Fixed-date Karnataka/national holiday calendar
+    df["IsHoliday"] = df["IncidentFromDate"].map(is_karnataka_holiday).astype(int)
+
+    # Cyclical encodings for circular means over the aggregation window
+    df["HourSinRaw"] = np.sin(2 * np.pi * hour / 24.0)
+    df["HourCosRaw"] = np.cos(2 * np.pi * hour / 24.0)
+    df["DowSinRaw"] = np.sin(2 * np.pi * weekday / 7.0)
+    df["DowCosRaw"] = np.cos(2 * np.pi * weekday / 7.0)
     return df
 
 
@@ -152,6 +205,16 @@ def aggregate_monthly(df: pd.DataFrame) -> pd.DataFrame:
             UniqueStations=("PoliceStationID", "nunique"),
             MajorCrimeTypes=("CrimeMajorHeadID", "nunique"),
             GravityMean=("GravityOffenceID", "mean"),
+            # Temporal hotspot features (issue #143 gap 131.2)
+            EveningCrime=("IsEvening", "sum"),
+            AfternoonCrime=("IsAfternoon", "sum"),
+            LateNightCrime=("IsLateNight", "sum"),
+            MorningCrime=("IsMorning", "sum"),
+            HolidayCrime=("IsHoliday", "sum"),
+            HourSin=("HourSinRaw", "mean"),
+            HourCos=("HourCosRaw", "mean"),
+            DowSin=("DowSinRaw", "mean"),
+            DowCos=("DowCosRaw", "mean"),
         )
         .reset_index()
         .sort_values(["H3Cell", "YearMonth"])
@@ -293,10 +356,9 @@ def build_features(df: pd.DataFrame, include_target: bool = True) -> pd.DataFram
     Returns
     -------
     pd.DataFrame
-        Monthly H3-cell dataframe with all 31 model features plus
-        H3Cell and YearMonth identifier columns.
-        Feature columns are in the same order as FEATURE_COLUMNS /
-        feature_columns.json.
+        Monthly H3-cell dataframe with all model features (legacy 31 plus the
+        temporal extension, in FEATURE_COLUMNS order) plus H3Cell and
+        YearMonth identifier columns.
     """
     logger.info("build_features: starting pipeline (include_target=%s).", include_target)
 

@@ -24,6 +24,7 @@ from app.models.investigation_note import InvestigationNote
 from app.models.chat import ChatConversation, ChatMessage
 from app.models.import_job import ImportJob
 from app.models.intervention import Intervention
+from app.models.mo_tag import MOTag, CaseMOTag, CriminalMOTag
 
 __all__ = [
     "Role", "User", "Location", "CrimeCategory", "Officer", "Criminal",
@@ -31,6 +32,6 @@ __all__ = [
     "Evidence", "EvidenceMetadata", "EvidenceTimeline", "EvidenceAssignment",
     "ChainOfCustody", "EvidenceAISummary", "Report", "AuditLog",
     "Notification", "InvestigationNote", "ChatConversation", "ChatMessage",
-    "ImportJob", "Intervention",
+    "ImportJob", "Intervention", "MOTag", "CaseMOTag", "CriminalMOTag",
 ]
 

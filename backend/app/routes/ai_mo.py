@@ -13,6 +13,7 @@ from app.auth.rbac import (
 )
 from app.database.postgres import get_db
 from app.models.user import User
+from app.services.mo_pattern_service import detect_recurring_mo_patterns, sync_mo_tags
 from app.services.mo_semantic_service import extract_case_entities, extract_entities, search_similar_mo
 
 router = APIRouter(
@@ -65,3 +66,31 @@ def extract_case_narrative_entities(
     if result is None:
         return {"error": "Case not found"}
     return result
+
+
+@router.get("/patterns")
+def recurring_mo_patterns(
+    min_support: int = Query(2, ge=2, le=20),
+    k: int = Query(10, ge=1, le=25),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Recurring modus-operandi patterns across cases and offenders (gap 132.2).
+
+    Groups entities whose normalized MO signatures overlap (Jaccard similarity
+    over canonical tags + union-find) and ranks the resulting patterns by a
+    documented threat heuristic.
+    """
+    return detect_recurring_mo_patterns(db, min_support=min_support, max_patterns=k)
+
+
+@router.post("/sync-tags")
+def sync_normalized_mo_tags(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Backfill normalized mo_tags relations from legacy fields (gap 132.1).
+
+    Idempotent — safe to call repeatedly; returns creation/skip counts.
+    """
+    return sync_mo_tags(db)

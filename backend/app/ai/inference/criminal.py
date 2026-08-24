@@ -1,20 +1,25 @@
 """Criminal intelligence inference layer.
 
 Loads trained models once per process and exposes typed functions used by
-the API route.  Falls back to on-the-fly training when no saved model exists.
+the API route.  Falls back to on-the-fly training when no saved model exists,
+or when a saved artifact predates the current FEATURE_NAMES set (e.g. the
+MO-feature extension added in issue #144 gap 132.3).
 """
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 
-from app.ai.features.criminal.extractor import extract_for_criminal
+from app.ai.features.criminal.extractor import FEATURE_NAMES, extract_for_criminal
 from app.ai.models.criminal.clustering import CriminalClusteringModel
 from app.ai.models.criminal.repeat_offender import RepeatOffenderPredictor
 from app.ai.models.criminal.risk_scorer import CriminalRiskScorer
 from app.ai.models.criminal.similarity import SimilarOffenderModel
+
+logger = logging.getLogger(__name__)
 
 _MODEL_DIR = Path(__file__).parent.parent / "models" / "criminal"
 
@@ -61,10 +66,23 @@ def _cluster_model() -> CriminalClusteringModel:
 
 
 def _load_model(path: Path, loader, db_session=None):
-    """Load a model from path, training first if the artifact is missing."""
+    """Load a model from path, training first if the artifact is missing —
+    or stale relative to the current FEATURE_NAMES (auto-migrates artifacts
+    saved before the MO-feature extension, gap 132.3)."""
     if not path.exists():
         _ensure_trained(db_session=db_session)
-    return loader(path)
+    model = loader(path)
+    stored = list(getattr(model, "feature_names", None) or [])
+    if stored and stored != list(FEATURE_NAMES):
+        logger.info(
+            "Artifact %s has %d features, current FEATURE_NAMES has %d — retraining.",
+            path.name, len(stored), len(FEATURE_NAMES),
+        )
+        from app.ai.pipelines.criminal.train import run_training
+        run_training(db_session=db_session)
+        _invalidate_cache()
+        model = loader(path)
+    return model
 
 
 def _invalidate_cache() -> None:
@@ -186,7 +204,9 @@ def find_similar_offenders(db, criminal_id: str, top_k: int = 5) -> dict[str, An
     fv = extract_for_criminal(db, criminal)
     pred = sim.predict(fv.values, query_id=criminal_id, top_k=top_k)
 
-    # Enrich with names
+    # Enrich with names + shared canonical MO tags (gap 132.3)
+    from app.services.mo_pattern_service import shared_mo_tags
+
     similar_enriched = []
     for s in pred.similar:
         sid = _to_uuid(s.criminal_id)
@@ -196,6 +216,7 @@ def find_similar_offenders(db, criminal_id: str, top_k: int = 5) -> dict[str, An
             "name": c.full_name if c else "Unknown",
             "similarity": s.similarity,
             "rank": s.rank,
+            "shared_mo_tags": shared_mo_tags(db, uid, sid) if sid else [],
         })
 
     return {

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { GangNetworkSummary, GangHierarchyMember } from '../../services/api';
-import { Users, Crosshair, MapPin, ArrowRight, UserCheck } from 'lucide-react';
+import { Users, Crosshair, MapPin, ArrowRight, UserCheck, Database } from 'lucide-react';
 import type { GraphNode } from './CriminalGraph3D';
 
 interface GangNetworkViewProps {
@@ -74,7 +74,18 @@ export const GangNetworkView: React.FC<GangNetworkViewProps> = ({
 
                 <div className="flex items-center justify-between text-[9.5px] text-[var(--text-muted)] pt-2 border-t border-[var(--border-primary)]">
                   <span>{g.active_members} Active Operatives</span>
-                  <ArrowRight className={`w-3.5 h-3.5 ${isSelected ? 'text-[var(--accent-blue)]' : 'text-[var(--text-primary)]/20'}`} />
+                  {g.is_demo_derived && (
+                    <span
+                      title="All members of this syndicate come from the bundled demo seed dataset."
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--accent-purple)]/10 border border-[var(--accent-purple)]/30 text-[var(--accent-purple)] uppercase tracking-widest font-bold"
+                    >
+                      <Database className="w-2.5 h-2.5" />
+                      Demo
+                    </span>
+                  )}
+                  {!g.is_demo_derived && (
+                    <ArrowRight className={`w-3.5 h-3.5 ${isSelected ? 'text-[var(--accent-blue)]' : 'text-[var(--text-primary)]/20'}`} />
+                  )}
                 </div>
               </div>
             );
@@ -115,6 +126,7 @@ export const GangNetworkView: React.FC<GangNetworkViewProps> = ({
                         riskScore: member.riskScore,
                         details: member.role,
                         casesCount: member.casesCount,
+                        isSeed: member.isSeed,
                       })
                     }
                     className="p-3 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-elevated)] border border-[var(--border-secondary)] rounded-card transition-colors cursor-pointer flex flex-col gap-2"
