@@ -1,7 +1,7 @@
 ﻿"""Rule-based AI support endpoints backed by live database records."""
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -49,8 +49,13 @@ def anomalies(db: Session = Depends(get_db), current_user: User = Depends(get_cu
 # The role-gated AI endpoints (POST predict, etc.) are in their respective route modules.
 
 @router.get("/hotspots")
-def hotspots(district_id: str | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return build_hotspots(db, district_id=district_id)
+def hotspots(
+    district_id: str | None = None,
+    hour: int | None = Query(default=None, ge=0, le=23, description="Hour-of-day drill-down (issue #146 gap 128.2)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return build_hotspots(db, district_id=district_id, hour=hour)
 
 
 @router.get(

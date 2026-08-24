@@ -118,6 +118,11 @@ def validate_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df["IncidentFromDate"] = pd.to_datetime(df["IncidentFromDate"], errors="coerce")
 
+    # GravityOffenceID feeds the GravityMean aggregate; API callers may send
+    # string IDs ("G-1") instead of numeric CCTNS gravity codes — coerce to
+    # numeric (NaN for purely categorical IDs) so mean() never crashes (#146).
+    df["GravityOffenceID"] = pd.to_numeric(df["GravityOffenceID"], errors="coerce")
+
     invalid_dates = df["IncidentFromDate"].isna().sum()
     if invalid_dates:
         logger.warning("Dropping %d rows with unparseable IncidentFromDate.", invalid_dates)

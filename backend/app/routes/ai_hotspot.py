@@ -34,6 +34,16 @@ class HotspotPredictRequest(BaseModel):
     records: list[dict[str, Any]] = Field(
         ..., min_length=1, description="Raw crime records (CaseMaster fields)."
     )
+    default_hour: int | None = Field(
+        default=None,
+        ge=0,
+        le=23,
+        description=(
+            "Hour-of-day drill-down (issue #146 gap 131.2): records with a blank "
+            "IncidentFromDate are stamped with today's date at this hour before "
+            "feature building, so predictions answer 'what happens at 22:00?'."
+        ),
+    )
 
 
 class HotspotPrediction(BaseModel):
@@ -53,6 +63,22 @@ class HotspotPredictResponse(BaseModel):
 # Routes
 # ---------------------------------------------------------------------------
 
+def _apply_default_hour(records: list[dict[str, Any]], default_hour: int | None) -> list[dict[str, Any]]:
+    """Stamp blank IncidentFromDate values with today's date at ``default_hour``."""
+    if default_hour is None:
+        return records
+    from datetime import datetime
+
+    stamped = [dict(record) for record in records]
+    for record in stamped:
+        raw = record.get("IncidentFromDate")
+        if not raw or not str(raw).strip():
+            record["IncidentFromDate"] = datetime.now().replace(
+                hour=default_hour, minute=0, second=0, microsecond=0
+            ).isoformat()
+    return stamped
+
+
 @router.post("/predict", response_model=HotspotPredictResponse, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
 def hotspot_predict(
     payload: HotspotPredictRequest,
@@ -62,7 +88,7 @@ def hotspot_predict(
 
     maybe_refresh_async("hotspot", reason="inference")
     try:
-        results = predict(payload.records)
+        results = predict(_apply_default_hour(payload.records, payload.default_hour))
     except Exception:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Hotspot prediction failed. Ensure records contain required fields.")
     return HotspotPredictResponse(predictions=results, total=len(results))
@@ -75,7 +101,7 @@ def hotspot_predict_batch(
 ):
     """Alias of /predict – accepts larger record batches."""
     try:
-        results = predict(payload.records)
+        results = predict(_apply_default_hour(payload.records, payload.default_hour))
     except Exception:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Hotspot prediction failed. Ensure records contain required fields.")
     return HotspotPredictResponse(predictions=results, total=len(results))

@@ -347,13 +347,16 @@ def gaussian_kde_density(
     return density
 
 
-def hotspots(db: Session, district_id: str | None = None) -> dict[str, Any]:
+def hotspots(db: Session, district_id: str | None = None, hour: int | None = None) -> dict[str, Any]:
     """Statistically scored spatial hotspots (issue #143 gap 131.1).
 
     Replaces ad-hoc counting with Getis-Ord Gi* cluster significance,
     Gaussian kernel density estimation, and a global Moran's I test.
     Legacy response fields (score/category/trend ordering contract) are kept;
     new fields are additive only.
+
+    ``hour`` (issue #146 gap 128.2/131.2) restricts the analysis to incidents
+    whose occurred_at hour-of-day matches, powering the TimeSlider drill-down.
     """
     query = db.query(Location).join(CrimeCase, CrimeCase.location_id == Location.id)
     if district_id:
@@ -368,6 +371,15 @@ def hotspots(db: Session, district_id: str | None = None) -> dict[str, Any]:
         crimes = [case for case in location.crimes]
         if not crimes:
             continue
+        day_total = len(crimes)
+        if hour is not None:
+            crimes = [
+                case
+                for case in crimes
+                if case.occurred_at is not None and case.occurred_at.hour == hour
+            ]
+            if not crimes:
+                continue
         categories = Counter(case.category.name for case in crimes if case.category)
         recent = sum(1 for case in crimes if _within_days(case.occurred_at, 30))
         previous = max(len(crimes) - recent, 0)
@@ -382,6 +394,7 @@ def hotspots(db: Session, district_id: str | None = None) -> dict[str, Any]:
                 "lat": location.latitude,
                 "lng": location.longitude,
                 "count": len(crimes),
+                "day_total": day_total if hour is not None else len(crimes),
                 "recent_count": recent,
                 "category": categories.most_common(1)[0][0] if categories else "Unclassified",
                 "trend": trend,
@@ -390,6 +403,7 @@ def hotspots(db: Session, district_id: str | None = None) -> dict[str, Any]:
 
     if not prepared:
         return {
+            "hour": hour,
             "hotspots": [],
             "statistics": {
                 "method": "getis_ord_gi_star+kde+morans_i",
@@ -449,6 +463,7 @@ def hotspots(db: Session, district_id: str | None = None) -> dict[str, Any]:
     }
 
     return {
+        "hour": hour,
         "hotspots": sorted(rows, key=lambda row: (row["score"], row["count"]), reverse=True),
         "statistics": statistics,
     }
