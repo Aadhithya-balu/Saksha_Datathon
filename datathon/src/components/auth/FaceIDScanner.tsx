@@ -1,18 +1,26 @@
+/**
+ * Issue #118 — FaceIDScanner
+ *
+ * Real biometric authentication UI.  Captures a webcam frame and sends it
+ * to the backend for server-side matching against the KSP officer database.
+ * No demo data, no Math.random(), no hardcoded faces.
+ */
 import React, { useRef, useState, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { useFaceAuth } from '../../hooks/useFaceAuth';
-import { Eye, ShieldAlert, Loader2, CheckCircle2, ScanFace, RotateCcw } from 'lucide-react';
+import {
+  Eye,
+  ShieldAlert,
+  Loader2,
+  CheckCircle2,
+  ScanFace,
+  RotateCcw,
+  AlertTriangle,
+} from 'lucide-react';
 
 interface FaceIDScannerProps {
   onVerifySuccess: () => void;
 }
-
-const CANVAS_COLORS = {
-  idle: 'rgba(88, 148, 232, 0.85)',
-  scanning: 'rgba(88, 148, 232, 0.9)',
-  success: '#2fb984',
-  failure: '#e06055',
-};
 
 export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess }) => {
   const {
@@ -20,85 +28,36 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
     isScanning,
     scanProgress,
     scanSuccess,
-    landmarks,
+    errorMessage,
     startScanning,
     resetScanner,
   } = useFaceAuth();
 
   const [hasCameraError, setHasCameraError] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const webcamRef = useRef<Webcam>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  /* Trigger success callback after in-frame confirmation */
+  /* Trigger success callback after brief confirmation display */
   useEffect(() => {
     if (scanSuccess === true) {
-      const timer = setTimeout(() => {
-        onVerifySuccess();
-      }, 1400);
+      const timer = setTimeout(() => onVerifySuccess(), 1400);
       return () => clearTimeout(timer);
     }
   }, [scanSuccess, onVerifySuccess]);
 
-  /* Bounding-box + target overlay drawn over the camera feed */
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (landmarks.length > 0) {
-      const color =
-        scanSuccess === true
-          ? CANVAS_COLORS.success
-          : scanSuccess === false
-            ? CANVAS_COLORS.failure
-            : CANVAS_COLORS.scanning;
-
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.25;
-      ctx.setLineDash([5, 4]);
-
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      landmarks.forEach(([x, y]) => {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-      });
-
-      const padding = 16;
-      minX -= padding;
-      maxX += padding;
-      minY -= padding;
-      maxY += padding;
-      const width = maxX - minX;
-      const height = maxY - minY;
-
-      ctx.strokeRect(minX, minY, width, height);
-      ctx.setLineDash([]);
-
-      /* Center reticle */
-      ctx.beginPath();
-      ctx.arc(minX + width / 2, minY + height / 2, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-
-      /* Tick marks on box edges */
-      ctx.beginPath();
-      ctx.moveTo(minX + width / 2 - 6, minY);
-      ctx.lineTo(minX + width / 2 + 6, minY);
-      ctx.moveTo(minX + width / 2 - 6, maxY);
-      ctx.lineTo(minX + width / 2 + 6, maxY);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.75;
-      ctx.stroke();
+  const handleStartScan = () => {
+    if (!hasCameraError) {
+      startScanning(webcamRef);
     }
-  }, [landmarks, scanSuccess]);
+  };
 
   const frameColor =
-    scanSuccess === true ? 'var(--lp-green)' : scanSuccess === false ? 'var(--lp-red)' : 'var(--lp-border-strong)';
+    scanSuccess === true
+      ? 'var(--lp-green)'
+      : scanSuccess === false
+        ? 'var(--lp-red)'
+        : 'var(--lp-border-strong)';
+
   const frameGlow =
     scanSuccess === true
       ? '0 0 0 1px rgba(47,185,132,0.35), 0 0 24px rgba(47,185,132,0.12)'
@@ -126,6 +85,7 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
             ref={webcamRef}
             audio={false}
             screenshotFormat="image/jpeg"
+            screenshotQuality={0.85}
             videoConstraints={{ width: 320, height: 320, facingMode: 'user' }}
             onUserMediaError={() => setHasCameraError(true)}
             className="absolute inset-0 w-full h-full object-cover"
@@ -133,7 +93,7 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
           />
         )}
 
-        {/* Offline / calibration backdrop */}
+        {/* Camera offline backdrop */}
         {(hasCameraError || isModelLoading) && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             <ScanFace
@@ -142,16 +102,16 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
             />
             {hasCameraError && (
               <span
-                className="text-[8px] font-mono uppercase tracking-[0.18em]"
+                className="text-[8px] font-mono uppercase tracking-[0.18em] text-center px-3"
                 style={{ color: 'var(--lp-amber)' }}
               >
-                Camera offline · simulation active
+                Camera unavailable · use Badge ID
               </span>
             )}
           </div>
         )}
 
-        {/* Overlay canvas */}
+        {/* Overlay canvas (kept for alignment brackets) */}
         <canvas
           ref={canvasRef}
           width={320}
@@ -170,23 +130,17 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
           <div
             key={pos}
             className={`absolute w-4 h-4 z-20 transition-colors duration-300 ${pos}`}
-            style={{ borderColor: scanSuccess === true ? 'var(--lp-green)' : scanSuccess === false ? 'var(--lp-red)' : 'var(--lp-accent-hi)' }}
+            style={{
+              borderColor:
+                scanSuccess === true
+                  ? 'var(--lp-green)'
+                  : scanSuccess === false
+                    ? 'var(--lp-red)'
+                    : 'var(--lp-accent-hi)',
+            }}
             aria-hidden="true"
           />
         ))}
-
-        {/* Module calibrating */}
-        {isModelLoading && (
-          <div
-            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2.5"
-            style={{ background: 'var(--lp-surface-2)' }}
-          >
-            <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--lp-accent-hi)' }} />
-            <span className="font-mono text-[8.5px] uppercase tracking-[0.18em]" style={{ color: 'var(--lp-text-3)' }}>
-              Calibrating biometric module
-            </span>
-          </div>
-        )}
 
         {/* Verified overlay */}
         {scanSuccess === true && (
@@ -196,7 +150,7 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
           >
             <CheckCircle2 className="w-11 h-11" style={{ color: 'var(--lp-green)' }} strokeWidth={1.6} />
             <span className="font-sans text-[13px] font-bold uppercase tracking-wide" style={{ color: 'var(--lp-text)' }}>
-              Identity Matched
+              Identity Verified
             </span>
             <span className="font-mono text-[8.5px] uppercase tracking-[0.18em]" style={{ color: 'var(--lp-green)' }}>
               Clearance granted
@@ -207,24 +161,23 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
         {/* Rejected overlay */}
         {scanSuccess === false && (
           <div
-            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2"
+            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 px-3"
             style={{ background: 'color-mix(in srgb, var(--lp-red) 14%, rgba(4,10,18,0.84))' }}
           >
             <ShieldAlert className="w-11 h-11" style={{ color: 'var(--lp-red)' }} strokeWidth={1.6} />
-            <span className="font-sans text-[13px] font-bold uppercase tracking-wide" style={{ color: 'var(--lp-text)' }}>
-              Not Recognized
+            <span className="font-sans text-[12px] font-bold uppercase tracking-wide text-center" style={{ color: 'var(--lp-text)' }}>
+              Identity Not Verified
             </span>
-            <span className="font-mono text-[8.5px] uppercase tracking-[0.18em]" style={{ color: 'var(--lp-text-2)' }}>
-              No matching personnel record
+            <span
+              className="font-mono text-[8px] uppercase tracking-[0.14em] text-center leading-relaxed"
+              style={{ color: 'var(--lp-text-2)' }}
+            >
+              {errorMessage ?? 'Your face could not be matched with an authorized KSP officer.'}
             </span>
             <button
               onClick={resetScanner}
               className="mt-2 px-3 py-1.5 rounded-md border flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-widest cursor-pointer transition-colors hover:bg-[color:var(--lp-accent-soft)]"
-              style={{
-                borderColor: 'var(--lp-border-strong)',
-                color: 'var(--lp-text)',
-                background: 'transparent',
-              }}
+              style={{ borderColor: 'var(--lp-border-strong)', color: 'var(--lp-text)', background: 'transparent' }}
             >
               <RotateCcw className="w-3 h-3" />
               Retry Scan
@@ -239,8 +192,11 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
           {isScanning ? (
             <div aria-live="polite">
               <div className="flex items-baseline justify-between mb-1.5">
-                <span className="font-sans text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--lp-text-3)' }}>
-                  Analyzing facial geometry
+                <span
+                  className="font-sans text-[9px] font-semibold uppercase tracking-[0.14em]"
+                  style={{ color: 'var(--lp-text-3)' }}
+                >
+                  {scanProgress < 65 ? 'Capturing frame' : 'Verifying identity'}
                 </span>
                 <span className="font-mono text-[9px]" style={{ color: 'var(--lp-accent-hi)' }}>
                   {scanProgress}%
@@ -265,8 +221,9 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
             </div>
           ) : (
             <button
-              onClick={startScanning}
-              className="lp-primary-btn relative flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl font-sans text-xs font-bold uppercase tracking-[0.18em] transition-all duration-200"
+              onClick={handleStartScan}
+              disabled={hasCameraError}
+              className="lp-primary-btn relative flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl font-sans text-xs font-bold uppercase tracking-[0.18em] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 background: 'linear-gradient(135deg, var(--lp-accent), #2467c2)',
                 color: '#f2f6fc',
@@ -285,7 +242,8 @@ export const FaceIDScanner: React.FC<FaceIDScannerProps> = ({ onVerifySuccess })
         className="mx-auto mt-4 inline-flex max-w-[280px] items-center gap-1.5 rounded-full border px-3 py-1 text-center font-mono text-[8px] uppercase tracking-[0.16em]"
         style={{ borderColor: 'var(--lp-border)', background: 'var(--lp-surface-3)', color: 'var(--lp-text-3)' }}
       >
-        Prototype · simulated verification · SCRB-7740
+        <AlertTriangle className="w-2.5 h-2.5 shrink-0" style={{ color: 'var(--lp-amber)' }} />
+        Basic face matching · no liveness detection
       </p>
     </div>
   );

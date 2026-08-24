@@ -1134,6 +1134,37 @@ export async function listOfficers(page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<OfficerRecord>>(`/officers${buildQueryString({ page, page_size: pageSize })}`);
 }
 
+// Issue #107: person image upload helpers
+export async function uploadCriminalImage(criminalId: string, file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  return apiRequest<{ image_url: string }>(`/criminals/${criminalId}/image`, { method: 'POST', body: form });
+}
+
+export async function uploadVictimImage(victimId: string, file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  return apiRequest<{ image_url: string }>(`/victims/${victimId}/image`, { method: 'POST', body: form });
+}
+
+export async function uploadOfficerImage(officerId: string, file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  return apiRequest<{ image_url: string }>(`/officers/${officerId}/image`, { method: 'POST', body: form });
+}
+
+// Issue #118: face enrollment (admin only)
+export async function enrollOfficerFace(officerId: string, imageB64: string) {
+  return apiRequest<{ message: string; officer_id: string; badge_number: string }>('/auth/face-enroll', {
+    method: 'POST',
+    body: JSON.stringify({ officer_id: officerId, image_b64: imageB64 }),
+  });
+}
+
+export async function unenrollOfficerFace(officerId: string) {
+  return apiRequest<{ message: string }>(`/auth/face-enroll/${officerId}`, { method: 'DELETE' });
+}
+
 export async function listVictims(q?: string, page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<VictimRecord>>(`/victims${buildQueryString({ q, page, page_size: pageSize })}`);
 }

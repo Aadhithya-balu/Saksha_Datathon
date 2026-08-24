@@ -15,6 +15,7 @@ class OfficerBase(BaseModel):
     phone: str | None = Field(default=None, max_length=20)
     email: EmailStr | None = None
     status: str = Field(default="active", pattern="^(active|inactive|suspended)$")
+    image_url: str | None = None
 
 
 class OfficerCreate(OfficerBase):
@@ -40,6 +41,8 @@ class OfficerOut(OfficerBase):
     user_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime | None = None
+    face_enabled: bool = False
+    face_enrolled_at: datetime | None = None
 
 
 class OfficerPerformance(BaseModel):

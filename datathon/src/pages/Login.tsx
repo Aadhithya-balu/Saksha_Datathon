@@ -43,7 +43,7 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
             : 'Local Channel',
       },
       { icon: Lock, tone: 'var(--lp-accent-hi)', label: 'Activity Audited' },
-      { icon: ScanFace, tone: 'var(--lp-amber)', label: 'Biometrics: Prototype' },
+      { icon: ScanFace, tone: 'var(--lp-amber)', label: 'Biometrics: DB-Verified' },
     ],
     []
   );
@@ -67,8 +67,8 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
       icon: ScanFace,
       tone: 'var(--lp-amber)',
       soft: 'var(--lp-amber-soft)',
-      title: 'Face ID Ready',
-      sub: 'Prototype biometrics module',
+      title: 'Face ID',
+      sub: 'KSP officer biometric auth',
     },
   ];
 
@@ -87,7 +87,12 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
       ok = false;
     }
     if (ok) {
-      showSecureEntry('SCRB-7740', 'INTELLIGENCE ANALYST');
+      // Use the real authenticated user's badge and role from the store
+      const authUser = useAuthStore.getState().user;
+      showSecureEntry(
+        authUser?.badgeId ?? 'KSP',
+        authUser?.role ?? 'AUTHORIZED',
+      );
       onSuccess?.();
     } else {
       setFaceError(

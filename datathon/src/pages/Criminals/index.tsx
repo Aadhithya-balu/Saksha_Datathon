@@ -10,7 +10,6 @@ import {
   ShieldAlert, 
   Activity, 
   MapPin, 
-  Fingerprint, 
   AlertTriangle, 
   Users, 
   FileText, 
@@ -20,6 +19,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import { CardSkeleton } from '../../components/ui/Skeleton';
+import { PersonAvatar } from '../../components/ui/PersonAvatar';
+import { PersonAvatar } from '../../components/ui/PersonAvatar';
 
 interface CriminalSummary {
   id: string;
@@ -394,10 +395,13 @@ export const Criminals: React.FC = () => {
               
               {/* Offender Identity banner */}
               <div className="p-4 bg-[var(--bg-tertiary)]/40 border border-[var(--border-primary)] rounded flex flex-col md:flex-row gap-4 items-center md:items-start select-none">
-                <div className="w-20 h-24 bg-[var(--bg-secondary)] border border-[#1E6FD9]/30 rounded flex items-center justify-center text-[#1E6FD9] relative shrink-0 overflow-hidden">
-                  <Fingerprint className="w-10 h-10 animate-pulse text-[#1E6FD9]/80" />
-                  <div className="absolute inset-0 border border-dashed border-[#1E6FD9]/20 pointer-events-none" />
-                </div>
+                <PersonAvatar
+                  imageUrl={criminalDetails.image_url}
+                  name={criminalDetails.full_name}
+                  size={88}
+                  accentColor="#1E6FD9"
+                  shape="square"
+                />
                 
                 <div className="flex-1 w-full text-center md:text-left">
                   <div className="flex flex-col md:flex-row md:justify-between items-center md:items-start gap-2">

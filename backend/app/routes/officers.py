@@ -105,3 +105,48 @@ def delete_officer(officer_id: uuid.UUID, db: Session = Depends(get_db), current
     db.add(officer)
     audit_service.log_action(db, current_user, "DELETE", "Officer", str(officer_id))
     return {"detail": "Officer deactivated successfully"}
+
+
+# ---------------------------------------------------------------------------
+# Issue #107 — Officer image upload
+# ---------------------------------------------------------------------------
+
+from fastapi import UploadFile, File as FastAPIFile  # noqa: E402
+
+
+@router.post("/{officer_id}/image", dependencies=[Depends(require_roles(ROLE_ADMIN))])
+def upload_officer_image(
+    officer_id: uuid.UUID,
+    file: UploadFile = FastAPIFile(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload a profile image for an officer record (admin only)."""
+    from app.services.evidence_service import _upload_to_supabase_storage, UPLOAD_DIR  # noqa: PLC0415
+    import os  # noqa: PLC0415
+    import uuid as _uuid  # noqa: PLC0415
+
+    officer = officer_crud.get(db, officer_id)
+    allowed = {"image/jpeg", "image/png", "image/webp"}
+    if file.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="Only JPEG/PNG/WebP images are accepted.")
+
+    ext = os.path.splitext(file.filename or "img.jpg")[1].lower() or ".jpg"
+    unique_name = f"{officer_id}_{_uuid.uuid4()}{ext}"
+    local_path = UPLOAD_DIR / unique_name
+    with open(local_path, "wb") as fh:
+        fh.write(file.file.read())
+
+    storage_key = f"persons/officers/{unique_name}"
+    storage_url = _upload_to_supabase_storage(str(local_path), storage_key, file.content_type or "image/jpeg")
+    if storage_url:
+        os.remove(local_path)
+        image_url = storage_url
+    else:
+        image_url = f"/api/v2/officers/{officer_id}/image-file"
+
+    officer.image_url = image_url
+    db.add(officer)
+    db.commit()
+    audit_service.log_action(db, current_user, "IMAGE_UPLOAD", "Officer", str(officer_id))
+    return {"image_url": image_url}

@@ -18,4 +18,7 @@ class Victim(Base, UUIDPKMixin, TimestampMixin):
 
     neo4j_node_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
 
+    # Issue #107: person image reference
+    image_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
     fir_links: Mapped[list["FIRVictimLink"]] = relationship(back_populates="victim")

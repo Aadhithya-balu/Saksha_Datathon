@@ -122,7 +122,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   loginWithFace: async () => {
-    return get().login('SCRB-7740', '123456');
+    // Issue #118: tokens are already stored by useFaceAuth after server-side
+    // biometric verification.  We just need to hydrate the session from /auth/me.
+    try {
+      const currentUser = await getMe();
+      set({
+        user: {
+          name: currentUser.full_name,
+          badgeId: currentUser.username,
+          role: mapBackendRoleToUiRole(currentUser.role),
+        },
+        isAuthenticated: true,
+        loginError: null,
+        sessionTimeRemaining: 1800,
+      });
+      return true;
+    } catch {
+      clearStoredTokens();
+      set({ loginError: 'Face verification session could not be established.' });
+      return false;
+    }
   },
 
   logout: (expired = false) => {

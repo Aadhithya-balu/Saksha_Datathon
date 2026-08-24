@@ -80,6 +80,7 @@ def get_victim(victim_id: uuid.UUID, db: Session = Depends(get_db), current_user
         "gender": victim.gender,
         "age": victim.age,
         "statement": victim.statement,
+        "image_url": victim.image_url,
         "created_at": victim.created_at.isoformat() if victim.created_at else None,
         "neo4j_node_id": victim.neo4j_node_id,
         "firs": linked_firs,
@@ -101,3 +102,48 @@ def update_victim(victim_id: uuid.UUID, payload: VictimUpdate, db: Session = Dep
     audit_service.log_action(db, current_user, "UPDATE", "Victim", str(victim_id))
     mark_data_changed("victim", db=db)
     return victim
+
+
+# ---------------------------------------------------------------------------
+# Issue #107 — Victim image upload
+# ---------------------------------------------------------------------------
+
+from fastapi import UploadFile, File as FastAPIFile, HTTPException  # noqa: E402
+
+
+@router.post("/{victim_id}/image", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR))])
+def upload_victim_image(
+    victim_id: uuid.UUID,
+    file: UploadFile = FastAPIFile(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload a profile image for a victim record."""
+    from app.services.evidence_service import _upload_to_supabase_storage, UPLOAD_DIR  # noqa: PLC0415
+    import os  # noqa: PLC0415
+    import uuid as _uuid  # noqa: PLC0415
+
+    victim = victim_crud.get(db, victim_id)
+    allowed = {"image/jpeg", "image/png", "image/webp"}
+    if file.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="Only JPEG/PNG/WebP images are accepted.")
+
+    ext = os.path.splitext(file.filename or "img.jpg")[1].lower() or ".jpg"
+    unique_name = f"{victim_id}_{_uuid.uuid4()}{ext}"
+    local_path = UPLOAD_DIR / unique_name
+    with open(local_path, "wb") as fh:
+        fh.write(file.file.read())
+
+    storage_key = f"persons/victims/{unique_name}"
+    storage_url = _upload_to_supabase_storage(str(local_path), storage_key, file.content_type or "image/jpeg")
+    if storage_url:
+        os.remove(local_path)
+        image_url = storage_url
+    else:
+        image_url = f"/api/v2/victims/{victim_id}/image-file"
+
+    victim.image_url = image_url
+    db.add(victim)
+    db.commit()
+    audit_service.log_action(db, current_user, "IMAGE_UPLOAD", "Victim", str(victim_id))
+    return {"image_url": image_url}

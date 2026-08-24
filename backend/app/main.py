@@ -130,6 +130,39 @@ def _migrate_evidence_metadata_table():
         logger.warning(f"evidence_metadata table migration skipped: {exc}")
 
 
+def _migrate_person_image_fields():
+    """Issue #107: add image_url to criminals, victims, officers.
+    Issue #118: add face biometric columns to officers.
+    All DDL is idempotent — safe to run on every startup.
+    """
+    migrations: list[tuple[str, str, str]] = [
+        ("criminals", "image_url", "VARCHAR(1000)"),
+        ("victims",   "image_url", "VARCHAR(1000)"),
+        ("officers",  "image_url", "VARCHAR(1000)"),
+        ("officers",  "face_embedding",         "TEXT"),
+        ("officers",  "face_embedding_version",  "VARCHAR(50)"),
+        ("officers",  "face_enabled",            "BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("officers",  "face_enrolled_at",         "TIMESTAMPTZ"),
+        ("officers",  "face_verified_at",         "TIMESTAMPTZ"),
+    ]
+    try:
+        with engine.connect() as conn:
+            changed = False
+            for table, col, col_def in migrations:
+                result = conn.execute(text(
+                    "SELECT column_name FROM information_schema.columns "
+                    f"WHERE table_name = '{table}' AND column_name = '{col}'"
+                ))
+                if not result.fetchone():
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}"))
+                    changed = True
+            if changed:
+                conn.commit()
+                logger.info("Person image / face biometric migration complete (#107 #118)")
+    except Exception as exc:
+        logger.warning(f"Person image / face biometric migration skipped: {exc}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
@@ -150,6 +183,7 @@ async def lifespan(app: FastAPI):
         _migrate_notifications_table()
         _migrate_criminals_table()
         _migrate_evidence_metadata_table()
+        _migrate_person_image_fields()
         _ensure_realtime_indexes()
         with engine.connect():
             logger.info("PostgreSQL connection OK")
