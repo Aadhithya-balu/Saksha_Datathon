@@ -22,6 +22,7 @@ from app.schemas.common import PaginatedResponse
 from app.schemas.crime import CrimeCaseCreate, CrimeCaseOut, CrimeCaseUpdate
 from app.schemas.fir import FIROut
 from app.schemas.officer import OfficerOut
+from app.ai.inference.refresh import mark_data_changed
 from app.services import audit_service
 from app.services.crime_service import crime_crud
 from app.services.realtime.bus import realtime_bus
@@ -405,6 +406,7 @@ def create_case(
     except Exception:
         pass
 
+    mark_data_changed("crime_case", db=db)
     return case
 
 
@@ -418,6 +420,7 @@ def update_case(
     """Update a crime case with priority, progress, status, and assigned officer."""
     case = crime_crud.update(db, case_id, payload.model_dump(exclude_unset=True))
     audit_service.log_action(db, current_user, "UPDATE", "CrimeCase", str(case_id))
+    mark_data_changed("crime_case", db=db)
     return case
 
 
@@ -430,6 +433,7 @@ def delete_case(
     """Delete a crime case."""
     crime_crud.delete(db, case_id)
     audit_service.log_action(db, current_user, "DELETE", "CrimeCase", str(case_id))
+    mark_data_changed("crime_case", db=db)
     return {"message": "Crime case deleted successfully"}
 
 
@@ -515,4 +519,5 @@ def link_firs_to_case(
     audit_service.log_action(
         db, current_user, "UPDATE", "CrimeCase", f"Linked {len(payload.fir_ids)} FIRs to case {case_id}"
     )
+    mark_data_changed("fir", db=db)
     return {"message": f"Successfully linked {len(payload.fir_ids)} FIRs"}

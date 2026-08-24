@@ -16,6 +16,7 @@ from app.models.location import Location
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.fir import FIRCreate, FIROut, FIRUpdate, FIRDetailOut
+from app.ai.inference.refresh import mark_data_changed
 from app.services import audit_service
 from app.services.base_service import BaseCRUDService
 
@@ -169,6 +170,7 @@ def create_fir(payload: FIRCreate, db: Session = Depends(get_db), current_user: 
     db.flush()
 
     audit_service.log_action(db, current_user, "CREATE", "FIR", str(fir.id))
+    mark_data_changed("fir", db=db)
     return fir
 
 
@@ -193,6 +195,7 @@ def update_fir(fir_id: uuid.UUID, payload: FIRUpdate, db: Session = Depends(get_
 
     db.flush()
     audit_service.log_action(db, current_user, "UPDATE", "FIR", str(fir_id))
+    mark_data_changed("fir", db=db)
     return fir
 
 
@@ -203,5 +206,6 @@ def delete_fir(fir_id: uuid.UUID, db: Session = Depends(get_db), current_user: U
     
     fir_crud.delete(db, fir_id)
     audit_service.log_action(db, current_user, "DELETE", "FIR", str(fir_id))
+    mark_data_changed("fir", db=db)
     return {"message": "FIR deleted successfully"}
 

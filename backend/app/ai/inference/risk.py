@@ -79,6 +79,14 @@ def _load_training_metrics() -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def invalidate_caches() -> None:
+    """Drop cached artifacts so retrained/promoted models are reloaded (issue #145)."""
+    _load_risk_model.cache_clear()
+    _load_forecast_model.cache_clear()
+    _load_metadata.cache_clear()
+    _load_training_metrics.cache_clear()
+
+
 # ---------------------------------------------------------------------------
 # Rule-based fallback (no trained model required)
 # ---------------------------------------------------------------------------

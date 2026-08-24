@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = None
     OPENAI_MODEL: str = "gpt-4o-mini"
 
+    # --- AI model auto-refresh (issue #145) ---
+    # When enabled, inference entrypoints compare each trained artifact's
+    # training timestamp against the newest relevant database record and kick
+    # off a throttled background retrain when the data has moved forward.
+    AUTO_RETRAIN_ENABLED: bool = True
+    AUTO_RETRAIN_MIN_INTERVAL_SECONDS: int = 300
+
     # --- CORS ---
     ALLOWED_ORIGINS: str = "https://saksha-datathon-csbcweuf.onslate.in,http://localhost:3000,http://localhost:5173"
 

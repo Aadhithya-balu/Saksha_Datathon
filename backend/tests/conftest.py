@@ -4,6 +4,8 @@ import os
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("DEBUG", "false")
 os.environ.setdefault("APP_DEBUG", "false")
+# Tests must never trigger production background retrains (issue #145).
+os.environ.setdefault("AUTO_RETRAIN_ENABLED", "false")
 
 import pytest
 from fastapi.testclient import TestClient

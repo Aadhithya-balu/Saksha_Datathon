@@ -43,6 +43,11 @@ def _load_default_model(model_path: str | None = None) -> AnomalyDetectorModel:
     return AnomalyDetectorModel.load_model(path)
 
 
+def invalidate_caches() -> None:
+    """Drop cached artifacts so retrained/promoted models are reloaded (issue #145)."""
+    _load_default_model.cache_clear()
+
+
 def run_anomaly_inference(events: list[dict[str, Any]], *, model_path: str | None = None) -> list[dict[str, Any]]:
     model = _load_default_model(model_path)
     pipeline = AnomalyPipeline(model)
