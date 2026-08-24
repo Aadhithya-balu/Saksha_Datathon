@@ -146,7 +146,6 @@ interface KarnatakaMapProps {
   emergingTrends?: EmergingTrendItem[];
   crimeCases?: any[];
   socioEconomicData?: any[];
-  anomaliesList?: any[];
 }
 
 export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({ 
@@ -1200,4 +1199,3 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
 };
 
 export default KarnatakaMap;
-

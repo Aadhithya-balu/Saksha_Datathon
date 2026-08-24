@@ -305,7 +305,7 @@ export default function Strategic() {
 
                         <button
                           onClick={() => {
-                            window.dispatchEvent(new CustomEvent('navigate-tab', { detail: 'hotspot' }));
+                            window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'hotspot' } }));
                           }}
                           className="px-3 py-1.5 bg-[var(--accent-blue)]/10 hover:bg-[var(--accent-blue)]/20 border border-[var(--accent-blue)]/30 text-[var(--accent-blue)] text-xs font-mono font-bold rounded-btn transition-colors cursor-pointer flex items-center gap-1"
                           title="Locate this surge on the Spatiotemporal Hotspots Vector Map"

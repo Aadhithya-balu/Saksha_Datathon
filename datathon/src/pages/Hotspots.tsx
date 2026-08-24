@@ -12,7 +12,7 @@ import { useMapStore } from '../store/mapStore';
 import { useNotificationStore } from '../store/notificationStore';
 import { 
   getDistrictComparison, getHotspots, getRiskScores, getEmergingTrends, getRecentIncidents, getCrimeCases,
-  getSociologicalSocioeconomic, getAnomalies,
+  getSociologicalSocioeconomic,
   type DistrictComparisonPoint, type HotspotPoint, type RiskScoresResponse
 } from '../services/api';
 import type { DistrictInfo } from '../store/mapStore';
@@ -40,7 +40,6 @@ export const Hotspots: React.FC = () => {
   const [emergingTrends, setEmergingTrends] = useState<EmergingTrendItem[]>([]);
   const [recentCases, setRecentCases] = useState<any[]>([]);
   const [socioEconomicData, setSocioEconomicData] = useState<any[]>([]);
-  const [anomaliesList, setAnomaliesList] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<'map' | 'matrix'>('map');
   const [selectedCategoryFilter] = useState<string>('ALL');
 
@@ -49,6 +48,8 @@ export const Hotspots: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
+    setLoading(true);
+    setError(null);
 
     // Check if navigating from Anomaly "Locate on Map"
     const override = sessionStorage.getItem('selected_district_override');
@@ -64,6 +65,15 @@ export const Hotspots: React.FC = () => {
       getDistrictComparison(),
     ]).then(([hotspotRes, districtRes]) => {
       if (!isMounted) return;
+      const hotspotsFailed = hotspotRes.status === 'rejected';
+      const districtFailed = districtRes.status === 'rejected';
+      if (hotspotsFailed && districtFailed) {
+        setHotspots([]);
+        setDistrictMetrics({});
+        setError('Unable to load hotspot and district intelligence data. Please retry.');
+        setLoading(false);
+        return;
+      }
       const hsList = hotspotRes.status === 'fulfilled' && hotspotRes.value.hotspots?.length > 0 ? hotspotRes.value.hotspots : BASELINE_HOTSPOTS;
       const distList = districtRes.status === 'fulfilled' ? districtRes.value : [];
       setHotspots(hsList);
@@ -71,7 +81,14 @@ export const Hotspots: React.FC = () => {
         ...prev,
         ...buildDistrictMetrics(distList, { district_id: null, window: 'next_7d', grid_predictions: [], model_version: '' }, hsList)
       }));
-    }).catch(() => undefined);
+      setLoading(false);
+    }).catch(() => {
+      if (!isMounted) return;
+      setLoading(false);
+      setHotspots([]);
+      setDistrictMetrics({});
+      setError('Unable to load hotspot and district intelligence data. Please retry.');
+    });
 
     // 2. Secondary progressive load: Emerging Trends, Recent Cases, Socio-Economic, & Anomalies
     void getEmergingTrends().then(trendsData => {
@@ -98,12 +115,6 @@ export const Hotspots: React.FC = () => {
     void getSociologicalSocioeconomic().then(socioRes => {
       if (isMounted && Array.isArray(socioRes?.districts)) {
         setSocioEconomicData(socioRes.districts);
-      }
-    }).catch(() => undefined);
-
-    void getAnomalies().then(anomRes => {
-      if (isMounted && Array.isArray(anomRes?.anomalies)) {
-        setAnomaliesList(anomRes.anomalies);
       }
     }).catch(() => undefined);
 
@@ -355,7 +366,6 @@ export const Hotspots: React.FC = () => {
             emergingTrends={emergingTrends}
             crimeCases={recentCases}
             socioEconomicData={socioEconomicData}
-            anomaliesList={anomaliesList}
           />
         ) : (
           <div className="w-full h-full">
