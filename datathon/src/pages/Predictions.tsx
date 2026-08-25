@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import ForecastChart from '../components/charts/ForecastChart';
 import CorrelationChart from '../components/charts/CorrelationChart';
 import WeatherCorrelationChart from '../components/charts/WeatherCorrelationChart';
+import IntelligenceStatusBadges from '../components/ui/IntelligenceStatusBadges';
 import { Cpu, RefreshCw, ShieldAlert, Sparkles, Sun, CloudRain, Wind, Snowflake, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { getAnomalies, getRiskScores, getModelInfo, getSeasonBreakdown, getEmergingTrends, type AnomalyRecord, type RiskScoresResponse, type ModelInfo, type SeasonData, type EmergingTypology } from '../services/api';
+import { getAnomalies, getRiskScores, getModelInfo, getSeasonBreakdown, getEmergingTrends, trainRiskModels, type AnomalyRecord, type RiskScoresResponse, type ModelInfo, type SeasonData, type EmergingTypology } from '../services/api';
+import { getIntelligenceStatus, getPredictionLabel, getConfidenceLabel } from '../services/intelligenceStatus';
 import { PageSkeleton } from '../components/ui/Skeleton';
 
 const SEASON_ICONS: Record<string, React.ReactNode> = {
@@ -34,6 +36,7 @@ export const Predictions: React.FC = () => {
   const [typologies, setTypologies] = useState<EmergingTypology[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retrainState, setRetrainState] = useState<'idle' | 'running' | 'ok' | 'failed'>('idle');
 
   useEffect(() => {
     let isMounted = true;
@@ -68,6 +71,34 @@ export const Predictions: React.FC = () => {
   }, []);
 
   const predictionRows = riskScores?.grid_predictions ?? [];
+
+  // Intelligence status derived ONLY from backend metadata (issue 9 §3/§11):
+  // a numeric risk score never implies live ML by itself.
+  const statusBadges = getIntelligenceStatus({
+    predictionMode: riskScores?.prediction_mode,
+    modelLoaded: modelInfo ? modelInfo.risk_model_loaded : undefined,
+    dataProvenance: riskScores?.data_provenance,
+  });
+  const predictionLabel = getPredictionLabel({
+    predictionMode: riskScores?.prediction_mode,
+    dataProvenance: riskScores?.data_provenance,
+    modelVersion: riskScores?.model_version ?? modelInfo?.version ?? null,
+  });
+  const hasPredictionStatus = Boolean(riskScores?.prediction_mode);
+
+  const handleRetrain = async () => {
+    setRetrainState('running');
+    try {
+      await trainRiskModels();
+      setRetrainState('ok');
+      // Refresh status metadata so a stale LIVE ML badge never survives (issue 9 §24).
+      const [riskResponse, modelResponse] = await Promise.all([getRiskScores(), getModelInfo()]);
+      setRiskScores(riskResponse);
+      setModelInfo(modelResponse);
+    } catch {
+      setRetrainState('failed');
+    }
+  };
 
   if (loading) {
     return (
@@ -125,19 +156,35 @@ export const Predictions: React.FC = () => {
             <Cpu className="w-5 h-5 text-[#0E9E78] animate-pulse" />
             AI Crime Predictive Intelligence
           </h2>
-          <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
-            D3 REGRESSION SCATTER MODELS — AUTO-PREDICTOR TIMELINES & ANOMALY DETECTION
-          </p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {hasPredictionStatus ? (
+              <IntelligenceStatusBadges badges={statusBadges} withInfo={false} />
+            ) : (
+              <IntelligenceStatusBadges
+                badges={{ kind: 'UNKNOWN', label: 'STATUS UNAVAILABLE', tooltip: 'The backend did not report prediction status for this result.', tone: 'muted', priority: 7 }}
+              />
+            )}
+            <span className="text-[9.5px] font-mono text-[var(--text-muted)]">
+              {predictionLabel}
+              {riskScores?.data_provenance ? ` · Source: ${riskScores.data_provenance === 'LIVE_DB' ? 'SAKSHA Crime Records' : riskScores.data_provenance}` : ''}
+            </span>
+          </div>
         </div>
 
         <button
-          onClick={() => {
-            alert(`Backend model  is active for  forecasts.`);
-          }}
-          className="px-2.5 py-1.5 bg-[#0E9E78]/10 hover:bg-[#0E9E78]/20 border border-[#0e9e78]/30 text-[#0E9E78] font-mono text-[9px] uppercase rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
+          onClick={handleRetrain}
+          disabled={retrainState === 'running'}
+          title="Retrains the district risk models from live records (admin only)."
+          className={`px-2.5 py-1.5 border font-mono text-[9px] uppercase rounded-btn transition-colors flex items-center gap-1.5 ${
+            retrainState === 'running'
+              ? 'bg-[#0E9E78]/5 border-[#0e9e78]/20 text-[#0E9E78]/60 cursor-wait'
+              : retrainState === 'failed'
+              ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-400'
+              : 'bg-[#0E9E78]/10 hover:bg-[#0E9E78]/20 border border-[#0e9e78]/30 text-[#0E9E78]'
+          }`}
         >
-          <RefreshCw className="w-3 h-3 animate-spin" />
-          Retrain Model Net
+          <RefreshCw className={`w-3 h-3 ${retrainState === 'running' ? 'animate-spin' : ''}`} />
+          {retrainState === 'running' ? 'Retraining…' : retrainState === 'ok' ? 'Retrain Complete' : retrainState === 'failed' ? 'Retrain Failed — Retry?' : 'Retrain Model Net'}
         </button>
       </div>
 
@@ -155,8 +202,12 @@ export const Predictions: React.FC = () => {
       {/* SEASONAL CRIME BREAKDOWN */}
       {seasons.length > 0 && (
         <div className="bg-secondary-bg/25 border border-border-color p-5 rounded-card">
-          <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-widest block border-b border-[var(--border-muted)] pb-2 mb-4">
-            Karnataka Seasonal Crime Intelligence
+          <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-widest block border-b border-[var(--border-muted)] pb-2 mb-4 flex items-center justify-between">
+            <span>Karnataka Seasonal Crime Intelligence</span>
+            <IntelligenceStatusBadges
+              badges={{ kind: 'HISTORICAL', label: 'HISTORICAL', tooltip: 'Seasonal totals summarize recorded incidents — this is not a forecast.', tone: 'muted', priority: 6 }}
+              withInfo={false}
+            />
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {seasons.map((s) => (
@@ -186,6 +237,10 @@ export const Predictions: React.FC = () => {
             <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-widest">
               Emerging Crime Typologies • Last 30 Days vs Prior Period
             </span>
+            <IntelligenceStatusBadges
+              badges={{ kind: 'HISTORICAL', label: 'HISTORICAL', tooltip: 'Observed change between two past windows — this is not a prediction.', tone: 'muted', priority: 6 }}
+              withInfo={false}
+            />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {typologies.map((t) => {
@@ -219,17 +274,36 @@ export const Predictions: React.FC = () => {
           </span>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
-            {predictionRows.slice(0, 2).map((row) => (
-              <div key={row.district} className="p-3.5 bg-[var(--bg-secondary)]/45 border border-[var(--border-primary)] rounded-btn flex gap-3 relative overflow-hidden">
-                <ShieldAlert className="w-5 h-5 text-[#C94A2A] shrink-0" />
-                <div>
-                  <span className="text-[var(--text-primary)] font-bold uppercase text-[10.5px]">{row.district} risk score {row.risk_score}%</span>
-                  <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed mt-1">
-                    Confidence {Math.round((row.confidence ?? 0.8) * 100)}% • Backend forecast window {riskScores?.window ?? 'No backend window'}.
-                  </p>
+            {predictionRows.slice(0, 2).map((row) => {
+              const confidence = getConfidenceLabel(row.confidence);
+              const rowBadges = getIntelligenceStatus({
+                predictionMode: riskScores?.prediction_mode,
+                dataProvenance: riskScores?.data_provenance,
+              }).filter((b) => b.kind !== 'UNKNOWN');
+              return (
+                <div key={row.district} className="p-3.5 bg-[var(--bg-secondary)]/45 border border-[var(--border-primary)] rounded-btn flex gap-3 relative overflow-hidden">
+                  <ShieldAlert className="w-5 h-5 text-[#C94A2A] shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[var(--text-primary)] font-bold uppercase text-[10.5px]">{row.district} risk score {row.risk_score}%</span>
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <IntelligenceStatusBadges badges={rowBadges} withInfo={false} />
+                      {confidence?.lowConfidence && (
+                        <IntelligenceStatusBadges
+                          badges={{ kind: 'LOW_CONFIDENCE', label: 'LOW CONFIDENCE', tooltip: 'Interpret this result cautiously because the underlying evidence or model status is incomplete.', tone: 'warn', priority: 5 }}
+                          withInfo={false}
+                        />
+                      )}
+                    </div>
+                    <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed mt-1">
+                      {/* Confidence is shown only when the backend supplies it —
+                          never defaulted or derived from the score (issue 9 §7). */}
+                      {confidence ? `${confidence.label} (${confidence.level}) • ` : ''}
+                      Backend forecast window {riskScores?.window ?? 'No backend window'}.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {anomalies.slice(0, 2).map((anomaly) => (
               <div key={anomaly.case_id} className="p-3.5 bg-[var(--bg-secondary)]/45 border border-[var(--border-primary)] rounded-btn flex gap-3 relative overflow-hidden">

@@ -108,9 +108,21 @@ export const CorrelationChart: React.FC = () => {
     <div className="w-full bg-[var(--bg-tertiary)]/40 border border-border-color p-4 rounded-card relative overflow-hidden flex flex-col justify-between h-[360px] select-none">
 
       {/* Chart Title */}
-      <div className="flex justify-between items-center mb-1">
-        <span className="text-[10px] font-mono text-[var(--accent-teal)] uppercase font-bold tracking-wider">
-          SOCIO-ECONOMIC CORRELATION
+      <div className="flex justify-between items-center mb-3">
+        <span className="flex items-center gap-2">
+          <span className="text-[10px] font-mono text-[var(--accent-teal)] uppercase font-bold tracking-wider">
+            SOCIO-ECONOMIC CORRELATION
+          </span>
+          {analysis?.dataset?.demo_data && (
+            <span
+              title="Some records used in this analysis are seeded/demo data and should not be treated as live operational intelligence."
+              aria-label="Demo data: analysis includes seeded/demo records"
+              role="status"
+              className="inline-flex items-center px-1.5 py-0.5 rounded border bg-amber-500/15 border-amber-500/40 text-amber-400 font-mono text-[8px] font-bold uppercase tracking-wide cursor-help"
+            >
+              Demo Data
+            </span>
+          )}
         </span>
         <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase select-none">
           Unemployment Vs Crime Risk{analysis?.correlations.unemployment_vs_crime !== null && analysis?.correlations.unemployment_vs_crime !== undefined ? ` · r=${analysis.correlations.unemployment_vs_crime.toFixed(2)}` : ''}

@@ -59,10 +59,13 @@ class RiskScoresResponse(BaseModel):
     district_id: str | None = None
     window: str
     model_version: str
-    prediction_mode: str = "ML"
     validation_status: str | None = None
     baseline_comparison: dict[str, Any] | None = None
     grid_predictions: list[dict[str, Any]]
+    # Authoritative status metadata (issue 9) — additive, backward compatible.
+    prediction_mode: str = "UNKNOWN"  # "ML" | "FALLBACK" | "UNKNOWN"
+    risk_model_loaded: bool | None = None
+    data_provenance: str = "LIVE_DB"  # recorded cases from the operational DB
 
 
 class ForecastItem(BaseModel):
@@ -106,9 +109,10 @@ def get_risk_scores(
                 district_id=district_id,
                 window=window,
                 model_version=info.get("version", "untrained"),
-                prediction_mode=info.get("prediction_mode", "UNAVAILABLE"),
                 validation_status=info.get("validation_status", "INSUFFICIENT_DATA"),
                 grid_predictions=[],
+                prediction_mode="UNAVAILABLE",
+                risk_model_loaded=bool(info.get("risk_model_loaded")),
             )
         
         records = [
@@ -133,6 +137,7 @@ def get_risk_scores(
             validation_status=info.get("validation_status", "VALIDATED" if pred_mode == "ML" else "FALLBACK"),
             baseline_comparison=info.get("risk_baseline_comparison"),
             grid_predictions=results,
+            risk_model_loaded=bool(info.get("risk_model_loaded")),
         )
     except Exception:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Risk prediction service unavailable.")
@@ -160,6 +165,7 @@ def predict_risk_scores(
         validation_status=info.get("validation_status", "VALIDATED" if pred_mode == "ML" else "FALLBACK"),
         baseline_comparison=info.get("risk_baseline_comparison"),
         grid_predictions=results,
+        risk_model_loaded=bool(info.get("risk_model_loaded")),
     )
 
 
