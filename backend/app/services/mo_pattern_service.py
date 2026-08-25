@@ -322,7 +322,6 @@ def detect_recurring_mo_patterns(
 
     uf = _UnionFind()
     keys = [entity[0] for entity in entities]
-    tags_by_key = {entity[0]: entity[3] for entity in entities}
     for i in range(len(entities)):
         for j in range(i + 1, len(entities)):
             if _linked(entities[i][3], entities[j][3]):

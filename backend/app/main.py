@@ -10,13 +10,11 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="joblib")
 
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.api.v2 import api_router
-from app.auth.dependencies import get_current_user
-from app.auth.rbac import ROLE_ADMIN, require_roles
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging_config import configure_logging, logger

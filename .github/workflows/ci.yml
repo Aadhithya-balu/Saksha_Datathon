@@ -112,8 +112,24 @@ jobs:
         run: python -m compileall app tests -q
       - name: Ruff lint (default rule set)
         run: ruff check .
-      - name: Run test suite
-        run: pytest tests -q --tb=short
+      - name: Run test suite (unit + integration + acceptance)
+        run: pytest tests -q --tb=short --junitxml=test-results.xml
+      - name: Run acceptance suite explicitly (merge-blocking gate, issue 8)
+        run: |
+          pytest tests/acceptance -m acceptance -v \
+            --junitxml=acceptance-results.xml \
+            | tee acceptance-output.txt
+          exit ${PIPESTATUS[0]}
+      - name: Upload backend test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: |
+            test-results.xml
+            acceptance-results.xml
+            acceptance-output.txt
+          retention-days: 7
 
   security-scan:
     name: Security scan (dependencies + secrets)

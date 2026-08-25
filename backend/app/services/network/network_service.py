@@ -100,6 +100,10 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
     for fir in firs:
         case = fir.crime_case
         case_id = f"case-{fir.id}"
+        # Provenance honesty (issue 8 §10): records whose DB row carries
+        # non-live dataset provenance (e.g. "demo" / "migrated") must be
+        # identifiable in the graph, not silently presented as LIVE intel.
+        case_is_demo = bool(case) and getattr(case, "dataset_provenance", "live") not in ("live", None, "")
         nodes_map[case_id] = NetworkNode(
             id=case_id,
             name=f"FIR #{fir.fir_number}",
@@ -108,7 +112,7 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
             details=f"Sections: {fir.sections or 'IPC'}, Complainant: {fir.complainant_name}",
             casesCount=1,
             date=fir.filed_at.isoformat() if fir.filed_at else None,
-            isSeed=_is_seed_case_number(case.case_number) if case else False,
+            isSeed=(_is_seed_case_number(case.case_number) or case_is_demo) if case else False,
         )
 
         loc_node_id = None
@@ -129,6 +133,10 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
         fir_criminal_ids: list[str] = []
         for link in fir.criminal_links:
             criminal = link.criminal
+            if criminal is None:
+                # Issue 8 §11: dangling FIR->criminal reference (record deleted
+                # or partial import). Skip safely — never fabricate a node.
+                continue
             crim_id = f"criminal-{criminal.id}"
             fir_criminal_ids.append(crim_id)
             if crim_id not in nodes_map:
@@ -159,6 +167,9 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
 
         for vlink in fir.victim_links:
             victim = vlink.victim
+            if victim is None:
+                # Issue 8 §11: dangling FIR->victim reference — skip safely.
+                continue
             vic_id = f"victim-{victim.id}"
             if vic_id not in nodes_map:
                 nodes_map[vic_id] = NetworkNode(

@@ -108,7 +108,7 @@ def update_victim(victim_id: uuid.UUID, payload: VictimUpdate, db: Session = Dep
 # Issue #107 — Victim image upload
 # ---------------------------------------------------------------------------
 
-from fastapi import UploadFile, File as FastAPIFile, HTTPException  # noqa: E402
+from fastapi import UploadFile, File as FastAPIFile  # noqa: E402
 
 
 @router.post("/{victim_id}/image", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR))])
