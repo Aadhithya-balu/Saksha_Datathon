@@ -52,13 +52,126 @@ _DATASET_NUMERIC_COLUMNS = (
 _INDICATOR_TABLE = "socioeconomic_indicators"
 _DATASET_VERSION = "2.0.0"
 
+# Explicit data states — the frontend must be able to distinguish a real zero
+# from missing/unknown evidence (issue 7 §6). Values are never fabricated.
+DATA_AVAILABLE = "AVAILABLE"
+DATA_UNAVAILABLE = "DATA_UNAVAILABLE"
+MAPPING_MATCHED = "MATCHED"
+MAPPING_UNMAPPED = "UNMAPPED"
+
+# Indicator registry — provenance metadata for every analytic field (issue 7 §8).
+# `source_dataset` documents where the value originates; `approximated` marks
+# indicators that are documented approximations rather than census figures.
+INDICATOR_META: dict[str, dict[str, Any]] = {
+    "population_lakhs": {"name": "Population", "unit": "lakhs", "source_dataset": "Census of India 2011", "approximated": False},
+    "area_sq_km": {"name": "Area", "unit": "sq km", "source_dataset": "Census of India 2011", "approximated": False},
+    "literacy_rate": {"name": "Literacy Rate", "unit": "%", "source_dataset": "Census of India 2011", "approximated": False},
+    "sex_ratio": {"name": "Sex Ratio", "unit": "females per 1000 males", "source_dataset": "Census of India 2011", "approximated": False},
+    "avg_income_lakhs": {"name": "Average Income", "unit": "lakhs INR", "source_dataset": "Economic Survey approximation", "approximated": True},
+    "unemployment_rate": {"name": "Unemployment Rate", "unit": "%", "source_dataset": "PLFS approximation", "approximated": True},
+    "urbanization_share_pct": {"name": "Urbanization Share", "unit": "%", "source_dataset": "Census of India 2011", "approximated": False},
+}
+
+# District alias table (issue 7 §4): alternate/historical spellings and DB-side
+# naming variants resolved to the canonical dataset key. Matching is done on a
+# normalized (lowercase, collapsed-whitespace) form; display names are never
+# mutated silently — every resolved row reports its match method.
+DISTRICT_ALIASES: dict[str, str] = {
+    "bangalore": "Bengaluru Urban",
+    "bengaluru": "Bengaluru Urban",
+    "bangalore urban": "Bengaluru Urban",
+    "bengaluru urban": "Bengaluru Urban",
+    "chikkaballapura": "Chikkaballapur",
+    "chikballapur": "Chikkaballapur",
+    "bagalkote": "Bagalkot",
+    "yadagir": "Yadgir",
+    "shimoga": "Shivamogga",
+    "bellary": "Ballari",
+    "gulbarga": "Kalaburagi",
+    "tumkur": "Tumkuru",
+    "tumakuru": "Tumkuru",
+    "mangalore": "Mangaluru",
+    # The dataset's "Mangaluru" row carries Dakshina Kannada district figures
+    # (Census 2011: 20.9 lakh pop / 4866 sq km), so the official district name
+    # resolves to that canonical key.
+    "dakshina kannada": "Mangaluru",
+}
+
+
+def _normalize_district_name(name: Any) -> str:
+    return " ".join(str(name or "").strip().lower().split())
+
+
+def resolve_district(name: Any, reference: dict[str, dict[str, Any]] | None = None) -> tuple[str | None, str]:
+    """Resolve a raw district string to a canonical dataset key.
+
+    Returns (canonical_key | None, match_method) where match_method is one of
+    ``exact``, ``case_insensitive``, ``alias`` or ``unmapped``. Unresolvable
+    names are NEVER silently reassigned (issue 7 §5).
+    """
+    reference = district_reference() if reference is None else reference
+    needle = _normalize_district_name(name)
+    if not needle:
+        return None, "unmapped"
+    raw_key = str(name).strip() if name is not None else ""
+    if raw_key in reference:
+        return raw_key, "exact"
+    by_normalized = {_normalize_district_key(k): k for k in reference}
+    if needle in by_normalized:
+        return by_normalized[needle], "case_insensitive"
+    canonical = DISTRICT_ALIASES.get(needle)
+    if canonical and canonical in reference:
+        return canonical, "alias"
+    return None, "unmapped"
+
+
+def _normalize_district_key(key: str) -> str:
+    return " ".join(key.lower().replace("_", " ").split())
+
+
+def _indicator_period_label(entry: dict[str, Any]) -> tuple[Any, str]:
+    """Return (period_value, human_label) from the record's data_year.
+
+    The label preserves the actual source period (issue 7 §7) — e.g.
+    Census-year data is labelled 'Census 2011', never presented as current.
+    """
+    year = entry.get("data_year")
+    if year is None:
+        return None, DATA_UNAVAILABLE
+    try:
+        year_int = int(year)
+    except (TypeError, ValueError):
+        return None, DATA_UNAVAILABLE
+    if year_int <= 2011:
+        return year_int, f"Census {year_int}"
+    return year_int, str(year_int)
+
+
+def _indicator_state(entry: dict[str, Any] | None, column: str) -> tuple[str, Any]:
+    """Return (status, value) for one indicator cell.
+
+    status is DATA_AVAILABLE only when a real recorded numeric value exists;
+    missing values surface as DATA_UNAVAILABLE and are never coerced to zero.
+    """
+    if entry is None:
+        return DATA_UNAVAILABLE, None
+    value = entry.get(column)
+    if value is None:
+        return DATA_UNAVAILABLE, None
+    return DATA_AVAILABLE, value
+
 
 def _coerce_indicator_entry(row: dict[str, Any]) -> dict[str, Any]:
-    """Normalize one indicator row (CSV or DB) into the module's entry shape."""
+    """Normalize one indicator row (CSV or DB) into the module's entry shape.
+
+    Missing/unparseable values stay None (issue 7 §6) — no fabricated zeros.
+    """
     urban_type = row.get("urbanization_type")
-    if not isinstance(urban_type, str) or not urban_type.strip():
-        urban_type = "rural"
-    entry: dict[str, Any] = {"type": urban_type.strip(), "unemployment_rate": None}
+    if isinstance(urban_type, str) and urban_type.strip():
+        entry_type: str | None = urban_type.strip()
+    else:
+        entry_type = None
+    entry: dict[str, Any] = {"type": entry_type, "unemployment_rate": None}
     for column in _DATASET_NUMERIC_COLUMNS:
         raw = row.get(column)
         if raw is None or (isinstance(raw, str) and not raw.strip()):
@@ -71,9 +184,6 @@ def _coerce_indicator_entry(row: dict[str, Any]) -> dict[str, Any]:
             continue
         # Smallint columns arrive as floats from NUMERIC — keep ints integral.
         entry[column] = int(value) if column in ("sex_ratio", "data_year") and value == int(value) else value
-    # Back-compat defaults used across this module.
-    for key in ("population_lakhs", "area_sq_km", "literacy_rate", "sex_ratio", "avg_income_lakhs"):
-        entry[key] = entry.get(key) or 0
     return entry
 
 
@@ -154,6 +264,22 @@ def dataset_info() -> dict[str, Any]:
     """Provenance metadata for the active socio-economic dataset."""
     reference, source = _load_socioeconomic_dataset()
     years = sorted({int(v["data_year"]) for v in reference.values() if v.get("data_year")})
+    records_without_year = [d for d, v in reference.items() if not v.get("data_year")]
+    partial_records = [
+        {"district": d, "available_indicators": sum(1 for c in _DATASET_NUMERIC_COLUMNS if v.get(c) is not None),
+         "total_indicators": len(_DATASET_NUMERIC_COLUMNS)}
+        for d, v in sorted(reference.items())
+        if any(v.get(c) is None for c in _DATASET_NUMERIC_COLUMNS)
+    ]
+    # Duplicate detection on normalized names (issue 7 §4).
+    seen: dict[str, str] = {}
+    duplicates: list[str] = []
+    for district in reference:
+        normalized = _normalize_district_name(district)
+        if normalized in seen:
+            duplicates.append(f"{seen[normalized]} / {district}")
+        else:
+            seen[normalized] = district
     return {
         "source": source,
         "file": "backend/data/socioeconomic/karnataka_socioeconomic_indicators.csv",
@@ -161,15 +287,25 @@ def dataset_info() -> dict[str, Any]:
         "version": _DATASET_VERSION,
         "demo_data": True,
         "data_years": years,
+        "records_missing_period": sorted(records_without_year),
         "districts": sorted(reference.keys()),
         "district_count": len(reference),
+        "duplicate_district_keys": duplicates,
         "indicators": [
-            "population_lakhs", "area_sq_km", "literacy_rate", "sex_ratio",
-            "avg_income_lakhs", "unemployment_rate", "urbanization_share_pct",
+            {
+                "column": column,
+                "name": meta["name"],
+                "unit": meta["unit"],
+                "source_dataset": meta["source_dataset"],
+                "approximated": meta["approximated"],
+            }
+            for column, meta in INDICATOR_META.items()
         ],
-        "approximations": ["avg_income_lakhs", "unemployment_rate"],
+        "approximations": [c for c, m in INDICATOR_META.items() if m["approximated"]],
+        "partial_records": partial_records,
         "notes": [
             "Census 2011 base figures; income and unemployment are documented approximations.",
+            "Indicator values are reported as recorded; missing values surface as DATA_UNAVAILABLE, never as zero.",
             f"Updatable in Supabase via backend/scripts/socioeconomic_indicators.sql ({_INDICATOR_TABLE} table).",
         ],
     }
@@ -179,7 +315,131 @@ URBANIZATION_TIERS = {
     "urban": {"label": "Urban", "crime_multiplier": 1.35, "color": "#C94A2A"},
     "semi_urban": {"label": "Semi-Urban", "crime_multiplier": 1.0, "color": "#D4820A"},
     "rural": {"label": "Rural", "crime_multiplier": 0.75, "color": "#1E6FD9"},
+    # Districts with no valid socio-economic mapping are reported explicitly
+    # instead of being silently defaulted to a classification (issue 7 §5).
+    "unmapped": {"label": "Unmapped", "crime_multiplier": None, "color": "#64748B"},
 }
+
+
+def get_data_quality_report(db: Session) -> dict[str, Any]:
+    """Dataset coverage + district-mapping validation report (issue 7 §3-§7).
+
+    Everything is computed from the live database and the active indicator
+    dataset — expected counts, coverage percentages, missing districts and
+    unmapped rows are never hardcoded.
+    """
+    from datetime import datetime, timezone
+
+    reference, source = _load_socioeconomic_dataset()
+    source_block = _overlay_source_block(reference, source)
+
+    # Operational universe = every district actually referenced by locations.
+    db_districts = sorted({d for (d,) in db.query(Location.district).distinct() if d})
+    expected_count = len(db_districts)
+
+    matched: list[dict[str, Any]] = []
+    unmapped_db: list[dict[str, Any]] = []
+    resolved_keys: set[str] = set()
+    for district in db_districts:
+        resolved, method = resolve_district(district, reference)
+        if resolved:
+            matched.append({"district": district, "canonical_district": resolved, "match_method": method})
+            resolved_keys.add(resolved)
+        else:
+            unmapped_db.append({
+                "district": district,
+                "mapping_status": MAPPING_UNMAPPED,
+                "limitation": "No socio-economic record maps to this district; its indicators are reported as DATA_UNAVAILABLE.",
+            })
+
+    # Dataset rows that no operational district resolves to (informational).
+    orphan_dataset_rows = sorted(set(reference) - resolved_keys)
+
+    # Per-indicator coverage over the operational universe (issue 7 §3).
+    indicator_coverage = []
+    for column in _DATASET_NUMERIC_COLUMNS:
+        meta = INDICATOR_META[column]
+        available_districts, missing_districts = [], []
+        for district in db_districts:
+            resolved, _method = resolve_district(district, reference)
+            status, _value = _indicator_state(reference.get(resolved) if resolved else None, column)
+            if status == DATA_AVAILABLE:
+                available_districts.append(district)
+            else:
+                missing_districts.append(district)
+        coverage_pct = round(len(available_districts) / expected_count * 100, 1) if expected_count else 0.0
+        indicator_coverage.append({
+            "indicator": column,
+            "name": meta["name"],
+            "unit": meta["unit"],
+            "source_dataset": meta["source_dataset"],
+            "approximated": meta["approximated"],
+            "expected": expected_count,
+            "available": len(available_districts),
+            "missing": len(missing_districts),
+            "missing_districts": missing_districts,
+            "coverage_pct": coverage_pct,
+        })
+
+    # Per-record completeness for every matched operational district.
+    record_completeness = []
+    for item in matched:
+        entry = reference[item["canonical_district"]]
+        available_cols = [c for c in _DATASET_NUMERIC_COLUMNS if entry.get(c) is not None]
+        period_value, period_label = _indicator_period_label(entry)
+        record_completeness.append({
+            "district": item["district"],
+            "canonical_district": item["canonical_district"],
+            "match_method": item["match_method"],
+            "available_indicators": len(available_cols),
+            "total_indicators": len(_DATASET_NUMERIC_COLUMNS),
+            "missing_indicators": [c for c in _DATASET_NUMERIC_COLUMNS if c not in available_cols],
+            "completeness_pct": round(len(available_cols) / len(_DATASET_NUMERIC_COLUMNS) * 100, 1),
+            "partial_record": len(available_cols) < len(_DATASET_NUMERIC_COLUMNS),
+            "source_period": period_value,
+            "period_label": period_label,
+        })
+
+    overall_available = sum(i["available"] for i in indicator_coverage)
+    overall_expected = sum(i["expected"] for i in indicator_coverage)
+    years = sorted({int(v["data_year"]) for v in reference.values() if v.get("data_year")})
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "dataset": {
+            **source_block,
+            "version": _DATASET_VERSION,
+            "record_count": len(reference),
+            "data_years": years,
+            "records_missing_period": sorted(d for d, v in reference.items() if not v.get("data_year")),
+        },
+        "expected_districts": {
+            "count": expected_count,
+            "basis": "distinct districts in the locations table",
+            "districts": db_districts,
+        },
+        "mapping_validation": {
+            "matched_count": len(matched),
+            "matched": matched,
+            "unmapped_count": len(unmapped_db),
+            "unmapped_districts": unmapped_db,
+            "orphan_dataset_rows": {
+                "count": len(orphan_dataset_rows),
+                "note": "Dataset records that no operational district currently maps to.",
+                "districts": orphan_dataset_rows,
+            },
+            "duplicate_canonical_keys": dataset_info().get("duplicate_district_keys", []),
+        },
+        "indicator_coverage": indicator_coverage,
+        "overall_coverage_pct": round(overall_available / overall_expected * 100, 1) if overall_expected else 0.0,
+        "record_completeness": record_completeness,
+        "limitations": [
+            "Indicator base figures are Census 2011; they are historical and are labelled with their source period.",
+            "avg_income_lakhs and unemployment_rate are documented approximations, not survey measurements.",
+            "Districts without a mappable socio-economic record are reported UNMAPPED; their indicators are never estimated.",
+            "Derived per-lakh/per-sqkm rates are withheld when the required denominator evidence is missing.",
+        ],
+    }
 
 
 def get_demographic_analysis(db: Session) -> dict[str, Any]:
@@ -221,7 +481,11 @@ def get_demographic_analysis(db: Session) -> dict[str, Any]:
 
 
 def get_urban_rural_analysis(db: Session) -> dict[str, Any]:
-    """Crime distribution by urban vs rural classification."""
+    """Crime distribution by urban vs rural classification.
+
+    Districts that cannot be mapped to a socio-economic record are counted in
+    an explicit ``unmapped`` bucket and listed — never defaulted to rural.
+    """
     rows = (
         db.query(Location.district, func.count(CrimeCase.id))
         .join(CrimeCase, CrimeCase.location_id == Location.id)
@@ -230,12 +494,18 @@ def get_urban_rural_analysis(db: Session) -> dict[str, Any]:
     )
 
     reference = district_reference()
-    urban_rural_buckets = {"urban": 0, "semi_urban": 0, "rural": 0}
+    urban_rural_buckets = {"urban": 0, "semi_urban": 0, "rural": 0, "unmapped": 0}
     district_crimes = {}
+    unmapped_districts = []
     for district, count in rows:
         district_crimes[district] = count
-        ref = reference.get(district, {})
-        dtype = ref.get("type", "rural")
+        resolved, _method = resolve_district(district, reference)
+        ref = reference.get(resolved) if resolved else None
+        dtype = (ref or {}).get("type")
+        if dtype not in urban_rural_buckets:
+            dtype = "unmapped"
+            if district not in unmapped_districts:
+                unmapped_districts.append(district)
         urban_rural_buckets[dtype] += count
 
     total = sum(urban_rural_buckets.values()) or 1
@@ -248,16 +518,41 @@ def get_urban_rural_analysis(db: Session) -> dict[str, Any]:
                 "count": v,
                 "percentage": round(v / total * 100, 1),
                 "color": URBANIZATION_TIERS[k]["color"],
+                "classification_status": DATA_UNAVAILABLE if k == "unmapped" else DATA_AVAILABLE,
             }
             for k, v in urban_rural_buckets.items()
         ],
+        "unmapped_districts": sorted(unmapped_districts),
         "district_crime_density": _compute_district_density(district_crimes),
         "total_crimes": total,
     }
 
 
+def _overlay_source_block(reference: dict[str, dict[str, Any]], source: str | None) -> dict[str, Any]:
+    """Shared provenance block describing the active indicator dataset."""
+    if (source or "").startswith("supabase_"):
+        origin = f"Supabase table `{_INDICATOR_TABLE}`"
+    elif source == "versioned_csv":
+        origin = "backend/data/socioeconomic/karnataka_socioeconomic_indicators.csv"
+    else:
+        origin = "built-in reference constants (degraded fallback — not queryable source data)"
+    return {
+        "dataset_name": "Karnataka Socio-Economic Indicators",
+        "version": _DATASET_VERSION,
+        "origin": origin,
+        "source_key": source,
+    }
+
+
 def get_socioeconomic_overlay(db: Session) -> dict[str, Any]:
-    """Crime correlation with socio-economic indicators by district."""
+    """Crime correlation with socio-economic indicators by district.
+
+    Every row is evidence-backed (issue 7): it reports the mapping status of
+    the district, per-indicator data status, and the source period of the
+    underlying record. Missing indicators surface as DATA_UNAVAILABLE —
+    they are never coerced to zero or an estimate. Unmapped districts are
+    listed explicitly instead of being dropped or silently reclassified.
+    """
     rows = (
         db.query(Location.district, func.count(CrimeCase.id))
         .join(CrimeCase, CrimeCase.location_id == Location.id)
@@ -267,74 +562,211 @@ def get_socioeconomic_overlay(db: Session) -> dict[str, Any]:
 
     district_crimes = {d: c for d, c in rows}
     reference = district_reference()
-    overlays = []
+    _, dataset_source = _load_socioeconomic_dataset()
+    source_block = _overlay_source_block(reference, dataset_source)
 
-    for district, ref in reference.items():
-        crime_count = district_crimes.get(district, 0)
-        pop = ref["population_lakhs"]
-        area = ref["area_sq_km"]
-        density = round(pop * 100000 / area, 0) if area else 0
-        crime_per_lakh = round(crime_count / pop, 1) if pop else 0
-        crime_per_sqkm = round(crime_count / area, 4) if area else 0
-        # Normalize crime rate to a 0-100 risk index (top district == 100) so it can be
-        # plotted against socio-economic indicators on a common scale.
-        unemployment_rate = ref.get("unemployment_rate")
+    overlays = []
+    unmapped_districts = []
+
+    # 1. Operational universe first: every district that actually has crime records.
+    for district in sorted(district_crimes):
+        resolved, method = resolve_district(district, reference)
+        ref = reference.get(resolved) if resolved else None
+        crime_count = district_crimes[district]
+        if ref is None:
+            unmapped_districts.append(district)
+            overlays.append(_unmapped_overlay_row(district, crime_count, source_block))
+            continue
+
+        period_value, period_label = _indicator_period_label(ref)
+        statuses = {column: _indicator_state(ref, column)[0] for column in _DATASET_NUMERIC_COLUMNS}
+        pop_status, pop = _indicator_state(ref, "population_lakhs")
+        area_status, area = _indicator_state(ref, "area_sq_km")
+        lit_status, literacy = _indicator_state(ref, "literacy_rate")
+        income_status, income = _indicator_state(ref, "avg_income_lakhs")
+
+        density = round(pop * 100000 / area, 0) if pop and area else None
+        crime_per_lakh = round(crime_count / pop, 1) if pop else None
+        crime_per_sqkm = round(crime_count / area, 4) if area else None
 
         overlays.append({
             "district": district,
+            "canonical_district": resolved,
+            "mapping_status": MAPPING_MATCHED,
+            "match_method": method,
             "crime_count": crime_count,
+            # Derived rates are None when their denominator evidence is missing —
+            # a real zero is only reported when the recorded value is zero.
             "population_lakhs": pop,
             "area_sq_km": area,
             "population_density": density,
             "crime_per_lakh": crime_per_lakh,
             "crime_per_sqkm": crime_per_sqkm,
-            "urbanization_type": ref["type"],
-            "literacy_rate": ref["literacy_rate"],
-            "sex_ratio": ref["sex_ratio"],
-            "avg_income_lakhs": ref["avg_income_lakhs"],
-            "unemployment_rate": unemployment_rate,
-            "urbanization_share_pct": ref.get("urbanization_share_pct"),
+            "derived_metric_status": {
+                "population_density": DATA_AVAILABLE if density is not None else DATA_UNAVAILABLE,
+                "crime_per_lakh": DATA_AVAILABLE if crime_per_lakh is not None else DATA_UNAVAILABLE,
+                "crime_per_sqkm": DATA_AVAILABLE if crime_per_sqkm is not None else DATA_UNAVAILABLE,
+            },
+            "data_status": statuses,
+            "urbanization_type": ref.get("type"),
+            "literacy_rate": literacy,
+            "sex_ratio": _indicator_state(ref, "sex_ratio")[1],
+            "avg_income_lakhs": income,
+            "unemployment_rate": _indicator_state(ref, "unemployment_rate")[1],
+            "urbanization_share_pct": _indicator_state(ref, "urbanization_share_pct")[1],
+            "source_dataset": source_block["dataset_name"],
+            "source_period": period_value,
+            "period_label": period_label,
+            "record_completeness_pct": round(
+                sum(1 for s in statuses.values() if s == DATA_AVAILABLE) / len(statuses) * 100, 1
+            ),
             "correlation_flags": _compute_correlation_flags(crime_per_lakh, ref),
+            "_status_fields": {
+                "population_lakhs": pop_status,
+                "area_sq_km": area_status,
+                "literacy_rate": lit_status,
+                "avg_income_lakhs": income_status,
+            },
         })
 
-    overlays.sort(key=lambda x: x["crime_per_lakh"], reverse=True)
+    # 2. Dataset-only districts (no crime records) so coverage gaps stay visible.
+    covered = {o["canonical_district"] for o in overlays if o["mapping_status"] == MAPPING_MATCHED}
+    for canonical in sorted(reference):
+        if canonical in covered:
+            continue
+        period_value, period_label = _indicator_period_label(reference[canonical])
+        statuses = {column: _indicator_state(reference[canonical], column)[0] for column in _DATASET_NUMERIC_COLUMNS}
+        pop = reference[canonical].get("population_lakhs")
+        area = reference[canonical].get("area_sq_km")
+        overlays.append({
+            "district": canonical,
+            "canonical_district": canonical,
+            "mapping_status": MAPPING_MATCHED,
+            "match_method": "dataset_only",
+            "crime_count": 0,
+            "crime_count_note": "NO_CRIME_RECORDS_IN_DB",
+            "population_lakhs": pop,
+            "area_sq_km": area,
+            "population_density": round(pop * 100000 / area, 0) if pop and area else None,
+            "crime_per_lakh": None,
+            "crime_per_sqkm": None,
+            "derived_metric_status": {
+                "population_density": DATA_AVAILABLE if pop and area else DATA_UNAVAILABLE,
+                "crime_per_lakh": DATA_UNAVAILABLE,
+                "crime_per_sqkm": DATA_UNAVAILABLE,
+            },
+            "data_status": statuses,
+            "urbanization_type": reference[canonical].get("type"),
+            "literacy_rate": reference[canonical].get("literacy_rate"),
+            "sex_ratio": reference[canonical].get("sex_ratio"),
+            "avg_income_lakhs": reference[canonical].get("avg_income_lakhs"),
+            "unemployment_rate": reference[canonical].get("unemployment_rate"),
+            "urbanization_share_pct": reference[canonical].get("urbanization_share_pct"),
+            "source_dataset": source_block["dataset_name"],
+            "source_period": period_value,
+            "period_label": period_label,
+            "record_completeness_pct": round(
+                sum(1 for s in statuses.values() if s == DATA_AVAILABLE) / len(statuses) * 100, 1
+            ),
+            "correlation_flags": [],
+            "_status_fields": {},
+        })
 
-    max_crime_per_lakh = max((o["crime_per_lakh"] for o in overlays), default=0)
+    # Rank matched districts with a usable crime rate; unmapped rows keep their
+    # explicit state at the end rather than fabricating a rankable zero.
+    ranked = [o for o in overlays if o["mapping_status"] == MAPPING_MATCHED]
+    ranked.sort(key=lambda x: x["crime_per_lakh"] if x["crime_per_lakh"] is not None else -1, reverse=True)
+    tail = [o for o in overlays if o["mapping_status"] != MAPPING_MATCHED]
+    overlays = ranked + tail
+
+    rateable = [o["crime_per_lakh"] for o in ranked if o["crime_per_lakh"] is not None]
+    max_crime_per_lakh = max(rateable) if rateable else None
     for overlay in overlays:
         overlay["risk_index"] = (
-            round(overlay["crime_per_lakh"] / max_crime_per_lakh * 100, 1) if max_crime_per_lakh else 0.0
+            round(overlay["crime_per_lakh"] / max_crime_per_lakh * 100, 1)
+            if max_crime_per_lakh and overlay["crime_per_lakh"] is not None else None
         )
 
     literacy_correlation = _compute_correlation(
-        [o["literacy_rate"] for o in overlays],
-        [o["crime_per_lakh"] for o in overlays],
+        [o["literacy_rate"] for o in ranked],
+        [o["crime_per_lakh"] for o in ranked],
+        require_pair=True,
     )
     income_correlation = _compute_correlation(
-        [o["avg_income_lakhs"] for o in overlays],
-        [o["crime_per_lakh"] for o in overlays],
+        [o["avg_income_lakhs"] for o in ranked],
+        [o["crime_per_lakh"] for o in ranked],
+        require_pair=True,
     )
-    unemployment_pairs = [
-        (o["unemployment_rate"], o["crime_per_lakh"]) for o in overlays if o["unemployment_rate"] is not None
-    ]
     unemployment_correlation = _compute_correlation(
-        [pair[0] for pair in unemployment_pairs],
-        [pair[1] for pair in unemployment_pairs],
+        [o["unemployment_rate"] for o in ranked],
+        [o["crime_per_lakh"] for o in ranked],
+        require_pair=True,
     )
 
     return {
         "districts": overlays,
         "correlations": {
+            "literacy_vs_crime": literacy_correlation["coefficient"],
+            "income_vs_crime": income_correlation["coefficient"],
+            "unemployment_vs_crime": unemployment_correlation["coefficient"],
+        },
+        "correlation_details": {
             "literacy_vs_crime": literacy_correlation,
             "income_vs_crime": income_correlation,
             "unemployment_vs_crime": unemployment_correlation,
         },
-        "insights": _generate_socio_insights(overlays),
+        "unmapped_districts": sorted(unmapped_districts),
+        "insights": _generate_socio_insights(ranked),
+        "provenance": source_block,
         "dataset": dataset_info(),
     }
 
 
+def _unmapped_overlay_row(district: str, crime_count: int, source_block: dict[str, Any]) -> dict[str, Any]:
+    """Explicit UNMAPPED row for a district with no socio-economic record."""
+    unavailable = {column: DATA_UNAVAILABLE for column in _DATASET_NUMERIC_COLUMNS}
+    return {
+        "district": district,
+        "canonical_district": None,
+        "mapping_status": MAPPING_UNMAPPED,
+        "match_method": "unmapped",
+        "limitation": (
+            f"No socio-economic record maps to district '{district}'. "
+            "Indicator values are withheld rather than estimated."
+        ),
+        "crime_count": crime_count,
+        "population_lakhs": None,
+        "area_sq_km": None,
+        "population_density": None,
+        "crime_per_lakh": None,
+        "crime_per_sqkm": None,
+        "derived_metric_status": {
+            "population_density": DATA_UNAVAILABLE,
+            "crime_per_lakh": DATA_UNAVAILABLE,
+            "crime_per_sqkm": DATA_UNAVAILABLE,
+        },
+        "data_status": unavailable,
+        "urbanization_type": None,
+        "literacy_rate": None,
+        "sex_ratio": None,
+        "avg_income_lakhs": None,
+        "unemployment_rate": None,
+        "urbanization_share_pct": None,
+        "source_dataset": source_block["dataset_name"],
+        "source_period": None,
+        "period_label": DATA_UNAVAILABLE,
+        "record_completeness_pct": 0.0,
+        "correlation_flags": [],
+        "_status_fields": {},
+    }
+
+
 def get_population_crime_correlation(db: Session) -> dict[str, Any]:
-    """Crime rate vs population density scatter data."""
+    """Crime rate vs population density scatter data.
+
+    Districts without a mappable socio-economic record are included with an
+    explicit UNMAPPED state instead of being silently dropped.
+    """
     rows = (
         db.query(Location.district, func.count(CrimeCase.id))
         .join(CrimeCase, CrimeCase.location_id == Location.id)
@@ -342,24 +774,59 @@ def get_population_crime_correlation(db: Session) -> dict[str, Any]:
         .all()
     )
 
-    scatter_data = []
     reference = district_reference()
+    scatter_data = []
+    unmapped_districts = []
     for district, count in rows:
-        ref = reference.get(district)
-        if ref:
-            pop = ref["population_lakhs"]
-            area = ref["area_sq_km"]
-            density = pop * 100000 / area
+        resolved, method = resolve_district(district, reference)
+        ref = reference.get(resolved) if resolved else None
+        if ref is None:
+            unmapped_districts.append(district)
             scatter_data.append({
                 "district": district,
                 "crime_count": count,
-                "crime_per_lakh": round(count / pop, 1) if pop else 0,
-                "population_density": round(density, 0),
-                "urbanization_type": ref["type"],
-                "color": URBANIZATION_TIERS[ref["type"]]["color"],
+                "crime_per_lakh": None,
+                "population_density": None,
+                "urbanization_type": None,
+                "color": URBANIZATION_TIERS["unmapped"]["color"],
+                "mapping_status": MAPPING_UNMAPPED,
+                "limitation": "No socio-economic record maps to this district; point excluded from correlation evidence.",
             })
+            continue
+        pop = ref.get("population_lakhs")
+        area = ref.get("area_sq_km")
+        density = (pop * 100000 / area) if pop and area else None
+        crime_per_lakh = round(count / pop, 1) if pop else None
+        urban_type = ref.get("type")
+        scatter_data.append({
+            "district": district,
+            "canonical_district": resolved,
+            "match_method": method,
+            "mapping_status": MAPPING_MATCHED,
+            "crime_count": count,
+            "crime_per_lakh": crime_per_lakh,
+            "population_density": round(density, 0) if density is not None else None,
+            "urbanization_type": urban_type,
+            "color": URBANIZATION_TIERS[urban_type]["color"] if urban_type in URBANIZATION_TIERS else URBANIZATION_TIERS["unmapped"]["color"],
+            "source_period": _indicator_period_label(ref)[0],
+        })
 
-    return {"scatter": scatter_data, "total_districts": len(scatter_data)}
+    matched_points = [
+        p for p in scatter_data
+        if p["mapping_status"] == MAPPING_MATCHED and p["population_density"] is not None and p["crime_per_lakh"] is not None
+    ]
+    correlation = _compute_correlation(
+        [p["population_density"] for p in matched_points],
+        [p["crime_per_lakh"] for p in matched_points],
+        require_pair=True,
+    )
+
+    return {
+        "scatter": scatter_data,
+        "total_districts": len(scatter_data),
+        "unmapped_districts": sorted(unmapped_districts),
+        "density_crime_correlation": correlation,
+    }
 
 
 def get_temporal_demographic_analysis(db: Session) -> dict[str, Any]:
@@ -439,40 +906,92 @@ def get_offender_demographics(db: Session) -> dict[str, Any]:
 
 
 def _compute_district_density(district_crimes: dict) -> list[dict]:
+    """Per-district crime density with explicit mapping/data states.
+
+    Districts that cannot be mapped are retained (mapping_status UNMAPPED)
+    instead of being dropped; derived rates are None when their denominator
+    evidence is missing.
+    """
     result = []
     reference = district_reference()
     for district, count in district_crimes.items():
-        ref = reference.get(district)
-        if ref:
-            pop = ref["population_lakhs"]
-            area = ref["area_sq_km"]
+        resolved, method = resolve_district(district, reference)
+        ref = reference.get(resolved) if resolved else None
+        if ref is None:
             result.append({
                 "district": district,
+                "canonical_district": None,
+                "match_method": "unmapped",
+                "mapping_status": MAPPING_UNMAPPED,
                 "crime_count": count,
-                "crime_per_lakh": round(count / pop, 1) if pop else 0,
-                "crime_per_sqkm": round(count / area, 4) if area else 0,
-                "population_lakhs": pop,
-                "area_sq_km": area,
-                "type": ref["type"],
+                "crime_per_lakh": None,
+                "crime_per_sqkm": None,
+                "population_lakhs": None,
+                "area_sq_km": None,
+                "type": None,
             })
-    result.sort(key=lambda x: x["crime_per_lakh"], reverse=True)
+            continue
+        pop = ref.get("population_lakhs")
+        area = ref.get("area_sq_km")
+        result.append({
+            "district": district,
+            "canonical_district": resolved,
+            "match_method": method,
+            "mapping_status": MAPPING_MATCHED,
+            "crime_count": count,
+            "crime_per_lakh": round(count / pop, 1) if pop else None,
+            "crime_per_sqkm": round(count / area, 4) if area else None,
+            "population_lakhs": pop,
+            "area_sq_km": area,
+            "type": ref.get("type"),
+        })
+    result.sort(key=lambda x: x["crime_per_lakh"] if x["crime_per_lakh"] is not None else -1, reverse=True)
     return result
 
 
-def _compute_correlation_flags(crime_per_lakh: float, ref: dict) -> list[str]:
+def _compute_correlation_flags(crime_per_lakh: float | None, ref: dict) -> list[str]:
+    """Rule flags computed only from actually-available evidence (issue 7 §2)."""
     flags = []
+    if crime_per_lakh is None:
+        return flags
     if crime_per_lakh > 30:
         flags.append("HIGH_CRIME_RATE")
-    if ref["literacy_rate"] < 75:
+    literacy = ref.get("literacy_rate")
+    if literacy is not None and literacy < 75:
         flags.append("LOW_LITERACY")
-    if ref["avg_income_lakhs"] < 2.0:
+    income = ref.get("avg_income_lakhs")
+    if income is not None and income < 2.0:
         flags.append("LOW_INCOME")
-    if ref["type"] == "urban" and crime_per_lakh > 25:
+    urban_type = ref.get("type")
+    if urban_type == "urban" and crime_per_lakh > 25:
         flags.append("URBAN_HOTSPOT")
     return flags
 
 
-def _compute_correlation(x: list[float], y: list[float]) -> float:
+def _compute_correlation(x: list[Any], y: list[Any], require_pair: bool = False) -> Any:
+    """Pearson correlation over recorded values only.
+
+    With ``require_pair`` (issue 7), rows where either side is missing are
+    excluded from the computation instead of being treated as zero, and the
+    result carries its sample size plus an explicit status.
+    """
+    if require_pair:
+        pairs = [(xi, yi) for xi, yi in zip(x, y) if xi is not None and yi is not None]
+        n = len(pairs)
+        if n < 3:
+            return {"coefficient": None, "sample_size": n, "status": "INSUFFICIENT_MATCHED_DATA"}
+        xs = [p[0] for p in pairs]
+        ys = [p[1] for p in pairs]
+        return {
+            "coefficient": _pearson(xs, ys),
+            "sample_size": n,
+            "excluded_missing": len(x) - n,
+            "status": DATA_AVAILABLE,
+        }
+    return _pearson(x, y)
+
+
+def _pearson(x: list[float], y: list[float]) -> float | None:
     n = len(x)
     if n < 3:
         return 0.0
@@ -487,42 +1006,62 @@ def _compute_correlation(x: list[float], y: list[float]) -> float:
 
 
 def _generate_socio_insights(overlays: list[dict]) -> list[dict[str, str]]:
-    insights = []
-    if not overlays:
-        return insights
+    """Insights derived strictly from available evidence (issue 7 §2).
 
-    top = overlays[0]
+    Descriptions cite the source period of the indicators they rely on; rows
+    with missing evidence are skipped rather than described with zeros.
+    """
+    rateable = [o for o in overlays if o["crime_per_lakh"] is not None]
+    if not rateable:
+        return []
+
+    period = rateable[0].get("period_label")
+    period_note = f" Indicators reflect {period}." if period and period != DATA_UNAVAILABLE else ""
+
+    insights = []
+    top = rateable[0]
+    literacy_desc = (
+        f" {top['literacy_rate']}% literacy ({period})." if top["literacy_rate"] is not None else ""
+    )
     insights.append({
         "type": "high_risk_district",
         "title": f"Highest Crime Rate: {top['district']}",
-        "description": f"{top['crime_per_lakh']} crimes per lakh population. {top['urbanization_type'].title()} area with {top['literacy_rate']}% literacy.",
+        "description": f"{top['crime_per_lakh']} crimes per lakh population."
+        f"{literacy_desc} {top['urbanization_type'].title()} area.{period_note}",
     })
 
-    low_income = [o for o in overlays if o["avg_income_lakhs"] < 2.0]
-    if low_income:
+    low_income = [o for o in overlays if o["avg_income_lakhs"] is not None and o["avg_income_lakhs"] < 2.0]
+    if len(low_income) >= 2:
         names = ", ".join(o["district"] for o in low_income[:3])
         insights.append({
             "type": "economic_correlation",
             "title": "Low-Income Districts with Elevated Crime",
-            "description": f"Districts with avg income below Rs. 2 lakh: {names}. Higher crime rates correlate with lower economic indicators.",
+            "description": f"Districts with recorded avg income below Rs. 2 lakh: {names}."
+            " Income figures are documented approximations — treat as indicative only.",
         })
 
-    urban_hotspots = [o for o in overlays if o["urbanization_type"] == "urban" and o["crime_per_lakh"] > 20]
+    urban_hotspots = [
+        o for o in overlays
+        if o["urbanization_type"] == "urban" and o["crime_per_lakh"] is not None and o["crime_per_lakh"] > 20
+    ]
     if urban_hotspots:
         names = ", ".join(o["district"] for o in urban_hotspots)
         insights.append({
             "type": "urban_crime",
             "title": "Urban Crime Concentration",
-            "description": f"Urban districts ({names}) show disproportionately high crime rates, consistent with population density effects.",
+            "description": f"Urban districts ({names}) show disproportionately high crime rates, consistent with population density effects.{period_note}",
         })
 
-    rural_high = [o for o in overlays if o["urbanization_type"] == "rural" and o["crime_per_lakh"] > 15]
+    rural_high = [
+        o for o in overlays
+        if o["urbanization_type"] == "rural" and o["crime_per_lakh"] is not None and o["crime_per_lakh"] > 15
+    ]
     if rural_high:
         names = ", ".join(o["district"] for o in rural_high)
         insights.append({
             "type": "rural_emerging",
             "title": "Emerging Rural Crime Patterns",
-            "description": f"Rural districts ({names}) showing elevated crime rates. May indicate emerging criminal activity in underserved areas.",
+            "description": f"Rural districts ({names}) showing elevated crime rates. May indicate emerging criminal activity in underserved areas.{period_note}",
         })
 
     return insights

@@ -19,6 +19,20 @@ def socioeconomic_dataset_info(current_user: User = Depends(get_current_user)):
     return dataset_info()
 
 
+@router.get("/data-quality")
+def socioeconomic_data_quality(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Coverage + district-mapping validation for the socio-economic pipeline.
+
+    Reports which districts each indicator covers, how records map to SAKSHA
+    districts, per-record period/completeness, and explicit limitations —
+    all computed live (issue 7 §3-§7).
+    """
+    return sociological_service.get_data_quality_report(db)
+
+
 @router.get("/demographics")
 def get_demographics(
     db: Session = Depends(get_db),
