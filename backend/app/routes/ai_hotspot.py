@@ -58,6 +58,10 @@ class HotspotPrediction(BaseModel):
 class HotspotPredictResponse(BaseModel):
     predictions: list[HotspotPrediction]
     total: int
+    # Issue 8 §12: honest inference provenance — "ML" only when a trained
+    # artifact is loaded, "FALLBACK" when rule-based heuristics were used.
+    prediction_mode: str = "UNKNOWN"
+    model_version: str | None = None
     prediction_mode: str = "ML"
     model_version: str | None = None
     validation_status: str | None = None
@@ -83,6 +87,16 @@ def _apply_default_hour(records: list[dict[str, Any]], default_hour: int | None)
     return stamped
 
 
+def _response_with_mode(predictions: list[dict]) -> HotspotPredictResponse:
+    info = get_model_info()
+    return HotspotPredictResponse(
+        predictions=predictions,
+        total=len(predictions),
+        prediction_mode="ML" if info.get("model_loaded") else "FALLBACK",
+        model_version=info.get("version"),
+    )
+
+
 @router.post("/predict", response_model=HotspotPredictResponse, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
 def hotspot_predict(
     payload: HotspotPredictRequest,
@@ -95,6 +109,7 @@ def hotspot_predict(
         results = predict(_apply_default_hour(payload.records, payload.default_hour))
     except Exception:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Hotspot prediction failed. Ensure records contain required fields.")
+    return _response_with_mode(results)
     
     info = get_model_info()
     pred_mode = results[0].get("prediction_mode", "ML") if results else info.get("prediction_mode", "FALLBACK")
@@ -117,6 +132,7 @@ def hotspot_predict_batch(
         results = predict(_apply_default_hour(payload.records, payload.default_hour))
     except Exception:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Hotspot prediction failed. Ensure records contain required fields.")
+    return _response_with_mode(results)
     
     info = get_model_info()
     pred_mode = results[0].get("prediction_mode", "ML") if results else info.get("prediction_mode", "FALLBACK")

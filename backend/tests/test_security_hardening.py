@@ -10,7 +10,6 @@ import pytest
 from jose import jwt as jose_jwt
 
 from app.core.config import settings
-from app.core.security import create_access_token, create_refresh_token, decode_token
 from app.models.role import Role
 from app.models.user import User
 
@@ -250,7 +249,6 @@ def test_rate_limit_returns_429(monkeypatch, client):
 # ---------------------------------------------------------------------------
 
 def test_sniff_detects_mime_spoofing():
-    from fastapi import UploadFile
 
     from app.services.evidence_service import validate_upload_file
 

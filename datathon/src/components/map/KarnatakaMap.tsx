@@ -300,16 +300,10 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
     if (resolvedDistrictData[selectedDistrict]) return resolvedDistrictData[selectedDistrict];
     const match = Object.entries(resolvedDistrictData).find(([k]) => k.toLowerCase() === selectedDistrict.toLowerCase());
     if (match) return match[1];
-    return {
-      name: selectedDistrict,
-      crimeCount: 145,
-      riskScore: 74,
-      beatRatio: 78,
-      topCrimeType: 'Theft & Burglaries',
-      weeklyTrend: 'stable' as const,
-      hotspotCount: 3,
-      criticalLocations: [`${selectedDistrict} Central Police Station`]
-    };
+    // Issue 161 §1: no fabricated placeholder intelligence — when the backend
+    // has no record for this district the panel renders an honest empty state
+    // instead of invented counts/risk scores/station names.
+    return null;
   }, [selectedDistrict, resolvedDistrictData]);
 
   // Get active district's complete police station registry
@@ -630,7 +624,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                   fill = shade.fill;
                   stroke = shade.stroke;
                 }
-              } else if (layers.riskScore && info) {
+              } else if (layers.riskScore && info && info.riskScore != null) {
                 const rs = info.riskScore;
                 fill = rs >= 80
                   ? `rgba(217, 52, 20, ${theme === 'dark' ? 0.35 : 0.28})`
@@ -699,7 +693,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                     fill={isSpiked ? '#EF4444' : map.label}
                     opacity={isSelected || isSpiked ? 1 : 0.9}
                   >
-                    {name} {isSpiked ? '⚠️' : ''} {layers.beatCoverage && info ? `(${info.beatRatio}%)` : ''}
+                    {name} {isSpiked ? '⚠️' : ''} {layers.beatCoverage && info?.beatRatio != null ? `(${info.beatRatio}%)` : ''}
                   </text>
                 </g>
               );
@@ -879,7 +873,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
 
       {/* 3-TIER DRILL-DOWN DETAILS PANEL DRAWER SLIDING IN (RIGHT SIDE) */}
       <AnimatePresence>
-        {panelOpen && (activeDistrictInfo || activeStationInfo) && (
+        {panelOpen && (activeDistrictInfo || activeStationInfo || selectedDistrict) && (
           <motion.div
             initial={{ x: 380, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
@@ -1098,26 +1092,41 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
               ) : activeDistrictInfo ? (
                 /* TIER 1: DISTRICT OVERVIEW */
                 <div className="space-y-3.5">
-                  {/* Risk gauge card */}
-                  <div className={`p-3.5 rounded-card border flex items-center justify-between ${
-                    activeDistrictInfo.riskScore >= 75 
-                      ? 'bg-[var(--accent-coral)]/5 border-[var(--accent-coral)]/20 text-[var(--accent-coral)]' 
-                      : 'bg-[var(--accent-teal)]/5 border-[var(--accent-teal)]/20 text-[var(--accent-teal)]'
-                  }`}>
-                    <div>
-                      <span className="text-[9px] font-mono uppercase tracking-widest text-[var(--text-muted)] block">
-                        District Threat Score
-                      </span>
-                      <span className="text-2xl font-mono font-extrabold mt-0.5 block">
-                        {activeDistrictInfo.riskScore}/100
-                      </span>
-                    </div>
-                    <div className={`p-2 rounded-full ${
-                      activeDistrictInfo.riskScore >= 75 ? 'bg-red-500/10' : 'bg-emerald-500/10'
+                  {/* Risk gauge card — renders only a backend-supplied score;
+                      missing model output shows an explicit empty state. */}
+                  {activeDistrictInfo.riskScore != null ? (
+                    <div className={`p-3.5 rounded-card border flex items-center justify-between ${
+                      activeDistrictInfo.riskScore >= 75
+                        ? 'bg-[var(--accent-coral)]/5 border-[var(--accent-coral)]/20 text-[var(--accent-coral)]'
+                        : 'bg-[var(--accent-teal)]/5 border-[var(--accent-teal)]/20 text-[var(--accent-teal)]'
                     }`}>
-                      <AlertTriangle className="w-6 h-6 animate-pulse" />
+                      <div>
+                        <span className="text-[9px] font-mono uppercase tracking-widest text-[var(--text-muted)] block">
+                          District Threat Score
+                        </span>
+                        <span className="text-2xl font-mono font-extrabold mt-0.5 block">
+                          {activeDistrictInfo.riskScore}/100
+                        </span>
+                      </div>
+                      <div className={`p-2 rounded-full ${
+                        activeDistrictInfo.riskScore >= 75 ? 'bg-red-500/10' : 'bg-emerald-500/10'
+                      }`}>
+                        <AlertTriangle className="w-6 h-6 animate-pulse" />
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="p-3.5 rounded-card border border-dashed border-[var(--border-primary)] flex items-center justify-between">
+                      <div>
+                        <span className="text-[9px] font-mono uppercase tracking-widest text-[var(--text-muted)] block">
+                          District Threat Score
+                        </span>
+                        <span className="text-sm font-mono font-bold mt-0.5 block text-[var(--text-muted)]">
+                          No backend risk model output for this district yet.
+                        </span>
+                      </div>
+                      <AlertTriangle className="w-5 h-5 text-[var(--text-disabled)]" />
+                    </div>
+                  )}
 
                   {/* Emerging Trend Alert Banner */}
                   {districtEmergingTrends.length > 0 && (
@@ -1195,7 +1204,8 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                     </div>
                   </div>
 
-                  {/* Primary Stats lists */}
+                  {/* Primary Stats lists — only backend-provided values render;
+                      missing metrics show an explicit "No data" state (issue 161). */}
                   <div className="space-y-2 font-mono text-xs pt-1">
                     <div className="flex justify-between py-1 border-b border-[var(--border-primary)]">
                       <span className="text-[var(--text-muted)]">Monthly FIR Total</span>
@@ -1203,7 +1213,11 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                     </div>
                     <div className="flex justify-between py-1 border-b border-[var(--border-primary)]">
                       <span className="text-[var(--text-muted)]">Beat Coverage Ratio</span>
-                      <span className="text-[var(--text-primary)] font-bold">{activeDistrictInfo.beatRatio}% efficiency</span>
+                      {activeDistrictInfo.beatRatio != null ? (
+                        <span className="text-[var(--text-primary)] font-bold" title="Derived from backend risk scores: 100 − district risk. Not a field-verified coverage metric.">{activeDistrictInfo.beatRatio}% estimate</span>
+                      ) : (
+                        <span className="text-[var(--text-muted)]">No data</span>
+                      )}
                     </div>
                     <div className="flex justify-between py-1 border-b border-[var(--border-primary)]">
                       <span className="text-[var(--text-muted)]">Dominant Category</span>
@@ -1211,15 +1225,17 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                     </div>
                     <div className="flex justify-between py-1 border-b border-[var(--border-primary)] items-center">
                       <span className="text-[var(--text-muted)]">Weekly Trend</span>
+                      {/* No invented percentages — the backend hotspot trend flag
+                          carries direction only (issue 161 §1). */}
                       {activeDistrictInfo.weeklyTrend === 'up' ? (
                         <span className="text-red-500 font-bold flex items-center gap-1">
                           <TrendingUp className="w-3.5 h-3.5" />
-                          SPIKING (+14%)
+                          RISING
                         </span>
                       ) : activeDistrictInfo.weeklyTrend === 'down' ? (
                         <span className="text-emerald-500 font-bold flex items-center gap-1">
                           <TrendingDown className="w-3.5 h-3.5" />
-                          DECLINING (-8%)
+                          DECLINING
                         </span>
                       ) : (
                         <span className="text-blue-400 font-bold">STABILIZED</span>
@@ -1255,6 +1271,31 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                     </p>
                   </div>
                 </div>
+              ) : selectedDistrict ? (
+                /* TIER 1 EMPTY STATE (issue 161): the backend has no records for
+                   this district — show an honest empty state instead of invented
+                   counts, scores or station names. */
+                <div className="space-y-3">
+                  <div className="p-4 bg-[var(--bg-primary)]/60 border border-dashed border-[var(--border-primary)] rounded-card text-center">
+                    <MapPin className="w-8 h-8 mx-auto mb-2 text-[var(--text-disabled)]" />
+                    <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                      No backend intelligence for {selectedDistrict}
+                    </p>
+                    <p className="text-[9px] font-mono text-[var(--text-muted)] mt-1">
+                      The Saksha database currently holds no crime records, stations or analytics for this district. Nothing is fabricated to fill this panel.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedDistrict(null);
+                      setSelectedStation(null);
+                      setSelectedCrimeId(null);
+                    }}
+                    className="w-full py-1.5 text-[9.5px] uppercase font-bold text-[var(--accent-blue)] bg-[var(--accent-blue)]/10 hover:bg-[var(--accent-blue)]/20 border border-[var(--accent-blue)]/30 rounded cursor-pointer transition-colors"
+                  >
+                    &larr; Back to Statewide View
+                  </button>
+                </div>
               ) : null}
 
             </div>
@@ -1263,17 +1304,17 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
             <div className="pt-3 border-t border-border-color mt-4">
               <button
                 onClick={() => {
-                  const targetName = activeCrimeCase 
+                  const targetName = activeCrimeCase
                     ? `Case_${activeCrimeCase.case_number}`
-                    : activeStationInfo 
+                    : activeStationInfo
                     ? `${activeStationInfo.name}_Station`
-                    : `${activeDistrictInfo?.name || 'Regional'}_District`;
+                    : `${activeDistrictInfo?.name || selectedDistrict || 'Regional'}_District`;
 
                   const targetData = activeCrimeCase || activeStationInfo || activeDistrictInfo;
 
                   downloadSecureDossier(
-                    `${targetName} SCRB Intelligence Dossier`, 
-                    targetData, 
+                    `${targetName} SCRB Intelligence Dossier`,
+                    targetData,
                     user ? `CONFIDENTIAL - ${user.badgeId}` : 'CONFIDENTIAL - STATE POLICE'
                   );
                   if (user) {
@@ -1285,7 +1326,13 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                     );
                   }
                 }}
-                className="w-full py-2.5 bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/80 text-white font-semibold text-[12px] uppercase rounded-md cursor-pointer text-center select-none transition-colors shadow-sm"
+                disabled={!activeCrimeCase && !activeStationInfo && !activeDistrictInfo}
+                title={(!activeCrimeCase && !activeStationInfo && !activeDistrictInfo) ? 'No backend intelligence available to export for this selection.' : undefined}
+                className={`w-full py-2.5 font-semibold text-[12px] uppercase rounded-md cursor-pointer text-center select-none transition-colors shadow-sm ${
+                  (!activeCrimeCase && !activeStationInfo && !activeDistrictInfo)
+                    ? 'bg-[var(--bg-tertiary)] text-[var(--text-disabled)] cursor-not-allowed'
+                    : 'bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/80 text-white'
+                }`}
               >
                 Export SCRB Dossier (PDF)
               </button>

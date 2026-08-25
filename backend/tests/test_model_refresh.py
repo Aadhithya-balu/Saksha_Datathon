@@ -4,7 +4,6 @@ import sys
 import types
 from datetime import datetime, timedelta, timezone
 
-import pytest
 
 from app.ai.inference import refresh as refresh_mod
 from app.models.crime import CrimeCase

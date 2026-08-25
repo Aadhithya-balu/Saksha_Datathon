@@ -11,8 +11,10 @@ export interface ViewState {
 export interface DistrictInfo {
   name: string;
   crimeCount: number;
-  riskScore: number;
-  beatRatio: number; // percentage coverage
+  // Issue 161: null when the backend has not supplied a model risk score.
+  riskScore: number | null;
+  // Issue 161: optional — only present when derivable from backend data.
+  beatRatio?: number | null; // percentage coverage
   topCrimeType: string;
   weeklyTrend: 'up' | 'down' | 'stable';
 }
@@ -70,17 +72,12 @@ export const useMapStore = create<MapState>((set) => ({
     riskScore: false,
     socioEconomic: false,
   },
-  districtData: {
-    'Bengaluru Urban': { name: 'Bengaluru Urban', crimeCount: 1420, riskScore: 88, beatRatio: 82, topCrimeType: 'Cyber Crime & Online Fraud', weeklyTrend: 'up' },
-    'Mysuru': { name: 'Mysuru', crimeCount: 450, riskScore: 54, beatRatio: 74, topCrimeType: 'Theft & Burglaries', weeklyTrend: 'down' },
-    'Kalaburagi': { name: 'Kalaburagi', crimeCount: 680, riskScore: 72, beatRatio: 56, topCrimeType: 'Property Disputes', weeklyTrend: 'up' },
-    'Belagavi': { name: 'Belagavi', crimeCount: 520, riskScore: 61, beatRatio: 65, topCrimeType: 'Smuggling & Excise Violations', weeklyTrend: 'stable' },
-    'Tumkuru': { name: 'Tumkuru', crimeCount: 390, riskScore: 49, beatRatio: 69, topCrimeType: 'Assault', weeklyTrend: 'down' },
-    'Dharwad': { name: 'Dharwad', crimeCount: 480, riskScore: 58, beatRatio: 70, topCrimeType: 'Attempted Theft', weeklyTrend: 'stable' },
-    'Ballari': { name: 'Ballari', crimeCount: 610, riskScore: 69, beatRatio: 48, topCrimeType: 'Illegal Mining Violations', weeklyTrend: 'up' },
-    'Hassan': { name: 'Hassan', crimeCount: 310, riskScore: 42, beatRatio: 63, topCrimeType: 'Domestic Violence', weeklyTrend: 'down' },
-    'Dakshina Kannada': { name: 'Dakshina Kannada', crimeCount: 570, riskScore: 66, beatRatio: 78, topCrimeType: 'Narcotics Smuggling Services', weeklyTrend: 'stable' },
-  },
+  // Issue 161 §1: NO hardcoded district intelligence. This store previously
+  // shipped invented counts/risk scores for nine districts; district metrics
+  // now come exclusively from real backend responses via
+  // `districtDataOverride` (Hotspots page builds it from
+  // /dashboard/district-comparison + /ai/predictions/risk-scores).
+  districtData: {},
 
   setViewState: (viewState) => set({ viewState }),
   setSelectedDistrict: (selectedDistrict) => set({ selectedDistrict, selectedStation: null, selectedCrimeId: null }),

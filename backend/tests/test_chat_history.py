@@ -1,4 +1,4 @@
-﻿"""Persistent AI chat history tests: CRUD, auto-titling, ownership security, persistence wiring."""
+"""Persistent AI chat history tests: CRUD, auto-titling, ownership security, persistence wiring."""
 import uuid
 
 import pytest
@@ -212,7 +212,7 @@ class TestOwnershipSecurity:
         from app.routes import ai_chat as ai_chat_route
 
         class FakeOrch:
-            def process_message_sync(self, message, sid, db, history=None):
+            def process_message_sync(self, message, sid, db, history=None, current_user=None):
                 return {"answer": "ok", "summary": "", "entities": [], "classification": "general"}
 
         monkeypatch.setattr(ai_chat_route, "_orchestrator", FakeOrch())
@@ -232,7 +232,7 @@ class TestChatPersistenceWiring:
     @staticmethod
     def _fake_orch(answer="Mocked analysis.", capture=None):
         class FakeOrch:
-            def process_message_sync(self, message, sid, db, history=None):
+            def process_message_sync(self, message, sid, db, history=None, current_user=None):
                 if capture is not None:
                     capture.append(history)
                 return {
@@ -291,7 +291,7 @@ class TestChatPersistenceWiring:
         c, _ = auth
 
         class FailingOrch:
-            def process_message_sync(self, message, sid, db, history=None):
+            def process_message_sync(self, message, sid, db, history=None, current_user=None):
                 raise RuntimeError("llm unavailable")
 
         monkeypatch.setattr(ai_chat_route, "_orchestrator", FailingOrch())
@@ -318,7 +318,7 @@ class TestChatPersistenceWiring:
         c, _ = auth
 
         class FakeStreamOrch:
-            async def process_message(self, message, sid, db, history=None):
+            async def process_message(self, message, sid, db, history=None, current_user=None):
                 yield b'{"type": "token", "content": "Hel"}\n'
                 yield b'{"type": "token", "content": "lo"}\n'
                 yield (

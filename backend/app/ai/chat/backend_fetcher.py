@@ -1,4 +1,12 @@
-"""Backend fetcher — executes query plans against PostgreSQL, Neo4j, and ML services."""
+"""Backend fetcher — executes query plans against PostgreSQL, Neo4j, and ML services.
+
+Issue 160 hardening:
+- PII (residential addresses, contact numbers) is REDACTED unless the caller's
+  role is authorized to view it.
+- ML prediction sections are built ONLY from real database records and always
+  declare whether output came from a trained model ("ML") or the rule-based
+  fallback ("FALLBACK") — fabricated inputs/defaults are never used.
+"""
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -8,6 +16,17 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.ai.chat.query_planner import BackendCall, QueryPlan
+
+# Roles authorized to see unredacted personal identifiers in chat answers.
+PII_PRIVILEGED_ROLES = {"admin", "crime_analyst", "investigator", "inspector"}
+
+_PII_REDACTED = "[REDACTED - insufficient role clearance]"
+
+
+def user_may_view_pii(user: Any) -> bool:
+    """True when the authenticated user's role permits unredacted PII."""
+    role = getattr(getattr(user, "role", None), "name", None)
+    return role in PII_PRIVILEGED_ROLES
 
 
 @dataclass
@@ -23,7 +42,8 @@ class BackendResult:
 class BackendFetcher:
     """Executes query plans by calling existing backend services directly."""
 
-    def execute(self, plan: QueryPlan, db: Session) -> list[BackendResult]:
+    def execute(self, plan: QueryPlan, db: Session, redact_pii: bool = False) -> list[BackendResult]:
+        self._redact_pii = redact_pii
         if plan.parallel and len(plan.backend_calls) > 1:
             return self._execute_parallel(plan, db)
         return self._execute_sequential(plan, db)
@@ -78,6 +98,7 @@ class BackendFetcher:
     def _exec_postgres(self, call: BackendCall, db: Session) -> BackendResult:
         method = call.method
         params = call.params
+        redact = getattr(self, "_redact_pii", False)
 
         if method == "get_fir":
             return self._pg_get_fir(db, params)
@@ -92,9 +113,9 @@ class BackendFetcher:
         if method == "list_cases":
             return self._pg_list_cases(db, params)
         if method == "get_criminal":
-            return self._pg_get_criminal(db, params)
+            return self._pg_get_criminal(db, params, redact_pii=redact)
         if method == "search_criminals":
-            return self._pg_search_criminals(db, params)
+            return self._pg_search_criminals(db, params, redact_pii=redact)
         if method == "get_officer":
             return self._pg_get_officer(db, params)
         if method == "list_officers":
@@ -192,7 +213,7 @@ class BackendFetcher:
             raw_data=[{"case_number": c.case_number, "id": str(c.id)} for c in cases],
         )
 
-    def _pg_get_criminal(self, db: Session, params: dict) -> BackendResult:
+    def _pg_get_criminal(self, db: Session, params: dict, redact_pii: bool = False) -> BackendResult:
         from app.models.criminal import Criminal
         name = params.get("name", "")
         criminals = db.query(Criminal).filter(Criminal.full_name.ilike(f"%{name}%")).all()
@@ -200,14 +221,14 @@ class BackendFetcher:
             criminals = db.query(Criminal).filter(Criminal.aliases.ilike(f"%{name}%")).all()
         if not criminals:
             return BackendResult(source="postgres", data_type="criminal", content="No criminal record found.")
-        parts = [self._format_criminal(c) for c in criminals]
+        parts = [self._format_criminal(c, redact_pii=redact_pii) for c in criminals]
         return BackendResult(
             source="postgres", data_type="criminal",
             content="\n---\n".join(parts),
             raw_data=[{"name": c.full_name, "id": str(c.id), "status": c.status} for c in criminals],
         )
 
-    def _pg_search_criminals(self, db: Session, params: dict) -> BackendResult:
+    def _pg_search_criminals(self, db: Session, params: dict, redact_pii: bool = False) -> BackendResult:
         from app.models.criminal import Criminal
         query = params.get("query", "")
         pattern = f"%{query}%"
@@ -223,7 +244,7 @@ class BackendFetcher:
                 source="postgres", data_type="criminals",
                 content=f"No criminal records match '{query}'.",
             )
-        parts = [self._format_criminal(c) for c in criminals]
+        parts = [self._format_criminal(c, redact_pii=redact_pii) for c in criminals]
         return BackendResult(
             source="postgres", data_type="criminals",
             content="\n---\n".join(parts),
@@ -370,9 +391,9 @@ class BackendFetcher:
         params = call.params
 
         if method == "risk_predict":
-            return self._ml_risk_predict(params)
+            return self._ml_risk_predict(params, db)
         if method == "forecast":
-            return self._ml_forecast(params)
+            return self._ml_forecast(params, db)
         if method == "hotspot_predict":
             return self._ml_hotspot_predict(params)
         if method == "find_similar_offenders":
@@ -381,44 +402,92 @@ class BackendFetcher:
             return self._ml_criminal_risk(params, db)
         return BackendResult(source="ml", data_type=method, content="ML method not implemented")
 
-    def _ml_risk_predict(self, params: dict) -> BackendResult:
-        from app.ai.inference.risk import predict_risk
-        from datetime import datetime
-        district = params.get("district", "Bengaluru Urban")
-        category = params.get("category", "Theft")
-        result = predict_risk([{
-            "district": district,
-            "category": category,
-            "occurred_at": datetime.now().isoformat(),
-            "crime_count": params.get("crime_count", 10),
-        }])
-        if not result:
+    def _ml_risk_predict(self, params: dict, db: Session) -> BackendResult:
+        """District risk from REAL database records only (issue 160).
+
+        The previous implementation fabricated default inputs ("Bengaluru
+        Urban", crime_count=10). Now the district's actual recorded cases are
+        used, and the answer declares ML vs FALLBACK mode.
+        """
+        from app.ai.inference.risk import get_prediction_mode, predict_risk
+        from app.models.crime import CrimeCase
+        from sqlalchemy.orm import joinedload
+
+        district = params.get("district", "")
+        q = db.query(CrimeCase).options(
+            joinedload(CrimeCase.location),
+            joinedload(CrimeCase.category),
+        )
+        cases = q.all()
+        if district:
+            cases = [c for c in cases if c.location and c.location.district == district]
+        if not cases:
+            return BackendResult(
+                source="ml", data_type="risk",
+                content=f"No crime records available for district '{district or 'any'}' — no risk prediction can be produced.",
+                raw_data=None,
+            )
+        records = [
+            {
+                "occurred_at": c.occurred_at.isoformat() if c.occurred_at else None,
+                "district": c.location.district if c.location else "Unknown",
+                "category": c.category.name if c.category else "Unknown",
+            }
+            for c in cases
+        ]
+        results = predict_risk(records)
+        if district:
+            results = [r for r in results if r.get("district") == district]
+        if not results:
             return BackendResult(source="ml", data_type="risk", content="No prediction available.")
-        r = result[0] if isinstance(result, list) else result
-        risk_score = r.get("risk_score", 0) if isinstance(r, dict) else getattr(r, "risk_score", 0)
-        risk_band = r.get("risk_band", "UNKNOWN") if isinstance(r, dict) else getattr(r, "risk_band", "UNKNOWN")
+        mode = get_prediction_mode()
+        parts = [
+            f"District {r['district']}: Risk Score {r['risk_score']}/100 ({r['risk_band']}) "
+            f"[prediction mode: {mode}]"
+            for r in results[:5]
+        ]
         return BackendResult(
             source="ml", data_type="risk",
-            content=f"District {district}: Risk Score {risk_score}/100 ({risk_band})",
-            raw_data=r if isinstance(r, dict) else {"risk_score": risk_score, "risk_band": risk_band},
+            content=". ".join(parts),
+            raw_data={"predictions": results, "prediction_mode": mode},
         )
 
-    def _ml_forecast(self, params: dict) -> BackendResult:
+    def _ml_forecast(self, params: dict, db: Session) -> BackendResult:
+        """Forecast from REAL database records only (issue 160)."""
         from app.ai.inference.risk import predict_forecast
-        from datetime import datetime
-        district = params.get("district", "Bengaluru Urban")
+        from app.models.crime import CrimeCase
+        from sqlalchemy.orm import joinedload
+
+        district = params.get("district", "")
         months = params.get("months", 6)
-        records = [{
-            "district": district,
-            "category": "General",
-            "occurred_at": datetime.now().isoformat(),
-            "crime_count": params.get("crime_count", 10),
-        }]
+        cases = db.query(CrimeCase).options(
+            joinedload(CrimeCase.location),
+        ).all()
+        if district:
+            cases = [c for c in cases if c.location and c.location.district == district]
+        if not cases:
+            return BackendResult(
+                source="ml", data_type="forecast",
+                content=f"No crime records available for district '{district or 'any'}' — no forecast can be produced.",
+                raw_data=None,
+            )
+        records = [
+            {
+                "occurred_at": c.occurred_at.isoformat() if c.occurred_at else None,
+                "district": c.location.district if c.location else "Unknown",
+                "category": c.category.name if c.category else "Unknown",
+            }
+            for c in cases
+        ]
         result = predict_forecast(records)
         if not result:
             return BackendResult(source="ml", data_type="forecast", content="No forecast available.")
         if isinstance(result, list):
-            parts = [f"Month {f.get('month', i+1)}: Predicted {f.get('predicted_count', f.get('predicted_crime_count', 'N/A'))} crimes" for i, f in enumerate(result[:months])]
+            parts = [
+                f"{f.get('district', 'Unknown')} month {i+1}: predicted {f.get('predicted_crime_count', 'N/A')} crimes "
+                f"(range {f.get('lower_bound', '?')}–{f.get('upper_bound', '?')})"
+                for i, f in enumerate(result[:months])
+            ]
         else:
             parts = [f"Forecast for {district}: {result}"]
         return BackendResult(source="ml", data_type="forecast", content="\n".join(parts), raw_data=result)
@@ -605,7 +674,7 @@ class BackendFetcher:
         return " | ".join(parts)
 
     @staticmethod
-    def _format_criminal(c: Any) -> str:
+    def _format_criminal(c: Any, redact_pii: bool = False) -> str:
         parts = [
             f"Name: {c.full_name}",
             f"Status: {c.status}",
@@ -615,7 +684,9 @@ class BackendFetcher:
         if c.gender:
             parts.append(f"Gender: {c.gender}")
         if c.address:
-            parts.append(f"Address: {c.address}")
+            parts.append(
+                f"Address: {_PII_REDACTED}" if redact_pii else f"Address: {c.address}"
+            )
         if c.mo_summary:
             mo = c.mo_summary[:200] + ("..." if len(c.mo_summary or "") > 200 else "")
             parts.append(f"MO: {mo}")

@@ -1,9 +1,28 @@
-"""Response validator — ensures LLM output is grounded in retrieved backend data."""
+"""Response validator — ensures LLM output is grounded in retrieved backend data.
+
+Issue 160 hardening:
+- When NO backend source returned usable data, the response is replaced with
+  an explicit refusal — an LLM (or template) must never free-style crime
+  intelligence without evidence.
+- Unverified case/FIR identifiers trigger a visible disclaimer appended to
+  the answer so analysts know which claims could not be traced to records.
+"""
 from __future__ import annotations
 
 import re
 
 from app.ai.chat.backend_fetcher import BackendResult
+
+_NO_EVIDENCE_RESPONSE = (
+    "I could not find matching records in the Saksha database for that query. "
+    "No verified data sources were available to ground an answer, so I will not "
+    "speculate. Please try rephrasing your question or check the case/FIR number."
+)
+
+_UNVERIFIED_DISCLAIMER = (
+    "\n\n> Note: Some identifiers in this response could not be verified "
+    "against current Saksha database records."
+)
 
 
 class ResponseValidator:
@@ -16,12 +35,12 @@ class ResponseValidator:
     ]
 
     def validate(self, response: str, results: list[BackendResult]) -> str:
-        if not results:
-            return response
-
         successful = [r for r in results if r.success and r.content.strip()]
+
+        # Grounding gate: with zero verified sources there is nothing the
+        # assistant may assert — replace whatever was generated.
         if not successful:
-            return response
+            return _NO_EVIDENCE_RESPONSE
 
         known_ids = self._collect_known_ids(successful)
         response_ids = self._extract_response_ids(response)
@@ -29,11 +48,7 @@ class ResponseValidator:
         unverified_ids = [rid for rid in response_ids if not self._id_in_known(rid, known_ids)]
 
         if unverified_ids and known_ids:
-            disclaimer = (
-                "\n\n> Note: Some identifiers in this response could not be verified "
-                "against current Saksha database records."
-            )
-            response = response.rstrip() + disclaimer
+            response = response.rstrip() + _UNVERIFIED_DISCLAIMER
 
         return response
 

@@ -439,10 +439,12 @@ class TestResponseValidator:
         validated = self.validator.validate(response, results)
         assert "Note:" in validated or "could not be verified" in validated
 
-    def test_validate_passes_with_no_results(self):
+    def test_validate_refuses_with_no_results(self):
+        # Issue 160: with zero grounded sources the assistant must refuse
+        # instead of passing unverified LLM output through.
         response = "Hello there"
         validated = self.validator.validate(response, [])
-        assert validated == response
+        assert "could not find matching records" in validated
 
     def test_validate_preserves_clean_response(self):
         response = "Based on the database, total crimes: 11."
