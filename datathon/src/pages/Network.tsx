@@ -17,7 +17,15 @@ export const Network: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    const personId = user?.badgeId ?? 'SCRB-7740';
+    // Issue 161 §1: never query a hardcoded demo officer's network. Without a
+    // real badge id there is no entity to expand — show that honestly.
+    const personId = user?.badgeId;
+
+    if (!personId) {
+      setGraphData(null);
+      setLoadError('No officer profile is linked to your account — network expansion unavailable.');
+      return;
+    }
 
     void getNetworkPerson(personId)
       .then((response) => {
@@ -107,7 +115,16 @@ export const Network: React.FC = () => {
         {/* Left Side: ThreeJS Scene (9 cols on lg) */}
         <div className="lg:col-span-8 h-full min-h-[400px]">
           {graphData ? (
-            <CriminalGraph3D onNodeSelect={setSelectedNode} graphData={graphData} />
+            graphData.nodes.length > 0 ? (
+              <CriminalGraph3D onNodeSelect={setSelectedNode} graphData={graphData} />
+            ) : (
+              /* Honest empty state — an empty backend graph is not an error,
+                 but it must not be dressed up as a populated network (issue 161). */
+              <div className="h-full flex flex-col items-center justify-center bg-[var(--bg-surface)] rounded-card border border-border-color text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider gap-2">
+                <NetIcon className="w-8 h-8 text-[var(--text-disabled)]" />
+                <span>No network relationships found for this officer in the Saksha database.</span>
+              </div>
+            )
           ) : (
             <div className="h-full flex items-center justify-center bg-[var(--bg-surface)] rounded-card border border-border-color text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider">
               {loadError ? 'Backend network unavailable' : 'Loading backend network telemetry...'}

@@ -132,6 +132,10 @@ export const SpatiotemporalHeatmap: React.FC<SpatiotemporalHeatmapProps> = ({ da
   const [hoveredCell, setHoveredCell] = useState<{ day: string; hour: string; cases: number } | null>(null);
   const [temporalData, setTemporalData] = useState<TemporalDemographic | null>(null);
   const [matrixData, setMatrixData] = useState<TemporalMatrixResponse | null>(null);
+  // Issue 161 §20/§32: track whether backend data actually arrived so the
+  // deterministic baseline can never masquerade as database-backed output.
+  const [backendFailed, setBackendFailed] = useState(false);
+  void backendFailed;
 
   useEffect(() => {
     if (propData && propData.length > 0) return;
@@ -147,7 +151,7 @@ export const SpatiotemporalHeatmap: React.FC<SpatiotemporalHeatmapProps> = ({ da
             if (isMounted) setTemporalData(res);
           })
           .catch(() => {
-            // Fallback to deterministic baseline if endpoints unavailable
+            if (isMounted) setBackendFailed(true);
           });
       });
     return () => { isMounted = false; };
@@ -160,6 +164,8 @@ export const SpatiotemporalHeatmap: React.FC<SpatiotemporalHeatmapProps> = ({ da
     return buildCellsFromDemographics(temporalData);
   }, [propData, temporalData, matrixData]);
 
+  const usingDemoBaseline = !propData?.length && !buildCellsFromMatrix(matrixData).length && !temporalData;
+
   return (
     <div className="w-full h-full bg-[var(--bg-secondary)]/80 border border-[var(--border-primary)] p-4 rounded-lg flex flex-col justify-between select-none font-mono relative overflow-hidden group">
       {/* Title */}
@@ -169,8 +175,20 @@ export const SpatiotemporalHeatmap: React.FC<SpatiotemporalHeatmapProps> = ({ da
             <Flame className="w-4 h-4 text-[var(--accent-coral)]" />
             Spatiotemporal Incident Heatmap
           </h4>
-          <span className="text-[9px] text-[var(--text-secondary)] uppercase font-semibold">Day x Hour Crime Density Grid (Database-Backed)</span>
+          <span className="text-[9px] text-[var(--text-secondary)] uppercase font-semibold">
+            Day x Hour Crime Density Grid {usingDemoBaseline ? '(Demo Baseline)' : '(Database-Backed)'}
+          </span>
         </div>
+        {usingDemoBaseline && (
+          <span
+            title="Backend heatmap endpoints are unavailable — this grid shows a static illustrative baseline, NOT recorded incidents."
+            aria-label="Demo data: static illustrative baseline, not recorded incidents"
+            role="status"
+            className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded border bg-amber-500/15 border-amber-500/40 text-amber-400 font-mono text-[8.5px] font-bold uppercase tracking-wide cursor-help"
+          >
+            Demo Data
+          </span>
+        )}
         {selectedHour !== null && selectedHour !== undefined && (
           <span className="text-[9.5px] text-[var(--accent-blue)] font-bold px-2 py-0.5 bg-[var(--accent-blue)]/10 border border-[var(--accent-blue)]/30 rounded">
             Selected: {String(selectedHour).padStart(2, '0')}:00

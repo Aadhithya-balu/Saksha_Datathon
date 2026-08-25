@@ -6,7 +6,7 @@ from typing import Any, AsyncIterator
 
 from sqlalchemy.orm import Session
 
-from app.ai.chat.backend_fetcher import BackendFetcher
+from app.ai.chat.backend_fetcher import BackendFetcher, user_may_view_pii
 from app.ai.chat.context_builder import ContextBuilder
 from app.ai.chat.entity_extractor import EntityExtractor
 from app.ai.chat.intent_router import IntentRouter
@@ -36,6 +36,7 @@ class ChatOrchestrator:
         session_id: str | None,
         db: Session,
         history: list[dict[str, str]] | None = None,
+        current_user: Any = None,
     ) -> AsyncIterator[bytes]:
         sid = session_id or "default"
         # When an explicit history is supplied (persistent chat), it replaces the
@@ -60,7 +61,9 @@ class ChatOrchestrator:
             "content": f"Querying {len(plan.backend_calls)} backend service(s)...",
         })
 
-        results = self.backend_fetcher.execute(plan, db)
+        results = self.backend_fetcher.execute(
+            plan, db, redact_pii=not user_may_view_pii(current_user),
+        )
 
         # Free-text vector recall over database records (FIRs, criminals,
         # evidence, cases) — augments structured intent-based fetching.
@@ -77,7 +80,7 @@ class ChatOrchestrator:
             + (f" {len(failed)} source(s) unavailable." if failed else ""),
         })
 
-        built_context = self.context_builder.build(results, entities, message)
+        built_context = self.context_builder.build(results, entities, message, current_user=current_user)
 
         yield self._ndjson({"type": "status", "content": "Generating response..."})
 
@@ -117,6 +120,7 @@ class ChatOrchestrator:
         session_id: str | None,
         db: Session,
         history: list[dict[str, str]] | None = None,
+        current_user: Any = None,
     ) -> dict[str, Any]:
         sid = session_id or "default"
         external_history = history is not None
@@ -125,11 +129,13 @@ class ChatOrchestrator:
         intent_result = self.intent_router.detect(message)
         entities = self.entity_extractor.extract(message)
         plan = self.query_planner.plan(intent_result.intents, entities)
-        results = self.backend_fetcher.execute(plan, db)
+        results = self.backend_fetcher.execute(
+            plan, db, redact_pii=not user_may_view_pii(current_user),
+        )
         rag_result = self.rag_retriever.fetch(db, message)
         if rag_result:
             results.append(rag_result)
-        built_context = self.context_builder.build(results, entities, message)
+        built_context = self.context_builder.build(results, entities, message, current_user=current_user)
 
         import asyncio
 

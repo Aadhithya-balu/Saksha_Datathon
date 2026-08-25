@@ -522,12 +522,14 @@ const buildDistrictMetrics = (
   return districtRows.reduce<Record<string, DistrictInfo>>((acc, row) => {
     const districtHotspots = hotspots.filter((hotspot) => hotspot.district_id === row.district);
     const topHotspot = districtHotspots[0];
-    const avgRisk = risks.get(row.district) ?? Math.round(districtHotspots.reduce((sum, hotspot) => sum + hotspot.score, 0) / Math.max(districtHotspots.length, 1));
+    // Risk comes ONLY from the backend risk model; hotspot-score averaging was
+    // a locally fabricated substitute (issue 161 §1).
+    const backendRisk = risks.get(row.district);
     acc[row.district] = {
       name: row.district,
       crimeCount: row.count,
-      riskScore: Number.isFinite(avgRisk) ? avgRisk : 0,
-      beatRatio: Math.max(35, 100 - (Number.isFinite(avgRisk) ? avgRisk : 0)),
+      riskScore: backendRisk != null ? Math.round(backendRisk) : null,
+      beatRatio: backendRisk != null ? Math.max(0, Math.round(100 - backendRisk)) : null,
       topCrimeType: topHotspot?.category ?? 'No active category',
       weeklyTrend: topHotspot?.trend === 'up' ? 'up' : topHotspot?.trend === 'down' ? 'down' : 'stable',
     };

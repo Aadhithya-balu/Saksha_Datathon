@@ -144,7 +144,7 @@ async def chat(
                         },
                     })
                 async for chunk in orch.process_message(
-                    payload.message, user_sid, db, history=llm_history,
+                    payload.message, user_sid, db, history=llm_history, current_user=current_user,
                 ):
                     yield chunk
                     try:
@@ -194,7 +194,7 @@ async def chat(
         return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 
     try:
-        result = orch.process_message_sync(payload.message, user_sid, db, history=llm_history)
+        result = orch.process_message_sync(payload.message, user_sid, db, history=llm_history, current_user=current_user)
     except Exception:
         # Generation failed — make sure no orphan empty conversation remains.
         db.rollback()
@@ -222,7 +222,7 @@ async def chat_query(
 ):
     user_sid = f"user:{current_user.username}:{payload.session_id or 'default'}"
     try:
-        result = _get_orchestrator().process_message_sync(payload.message, user_sid, db)
+        result = _get_orchestrator().process_message_sync(payload.message, user_sid, db, current_user=current_user)
         return _build_response(result)
     except Exception:
         raise HTTPException(status_code=422, detail="Failed to process chat message.")
@@ -236,7 +236,7 @@ async def investigation_chat(
 ):
     user_sid = f"user:{current_user.username}:{payload.session_id or 'default'}"
     try:
-        result = _get_orchestrator().process_message_sync(payload.message, user_sid, db)
+        result = _get_orchestrator().process_message_sync(payload.message, user_sid, db, current_user=current_user)
         return _build_response(result)
     except Exception:
         raise HTTPException(status_code=422, detail="Failed to process investigation chat.")
