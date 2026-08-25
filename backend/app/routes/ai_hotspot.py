@@ -52,6 +52,7 @@ class HotspotPrediction(BaseModel):
     predicted_crime_count: float
     risk_level: str
     confidence_score: float
+    prediction_mode: str | None = "ML"
 
 
 class HotspotPredictResponse(BaseModel):
@@ -61,6 +62,9 @@ class HotspotPredictResponse(BaseModel):
     # artifact is loaded, "FALLBACK" when rule-based heuristics were used.
     prediction_mode: str = "UNKNOWN"
     model_version: str | None = None
+    prediction_mode: str = "ML"
+    model_version: str | None = None
+    validation_status: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +110,16 @@ def hotspot_predict(
     except Exception:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Hotspot prediction failed. Ensure records contain required fields.")
     return _response_with_mode(results)
+    
+    info = get_model_info()
+    pred_mode = results[0].get("prediction_mode", "ML") if results else info.get("prediction_mode", "FALLBACK")
+    return HotspotPredictResponse(
+        predictions=results,
+        total=len(results),
+        prediction_mode=pred_mode,
+        model_version=info.get("version", "trained"),
+        validation_status=info.get("validation_status", "VALIDATED" if pred_mode == "ML" else "FALLBACK"),
+    )
 
 
 @router.post("/predict_batch", response_model=HotspotPredictResponse, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
@@ -119,6 +133,16 @@ def hotspot_predict_batch(
     except Exception:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Hotspot prediction failed. Ensure records contain required fields.")
     return _response_with_mode(results)
+    
+    info = get_model_info()
+    pred_mode = results[0].get("prediction_mode", "ML") if results else info.get("prediction_mode", "FALLBACK")
+    return HotspotPredictResponse(
+        predictions=results,
+        total=len(results),
+        prediction_mode=pred_mode,
+        model_version=info.get("version", "trained"),
+        validation_status=info.get("validation_status", "VALIDATED" if pred_mode == "ML" else "FALLBACK"),
+    )
 
 
 @router.get("/model-info")

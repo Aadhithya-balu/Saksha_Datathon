@@ -49,6 +49,7 @@ class RiskScoreItem(BaseModel):
     predicted_crime_count: float
     risk_band: str
     confidence: float
+    prediction_mode: str | None = "ML"
     top_factors: list[dict[str, Any]]
     resource_recommendation: str
 
@@ -58,6 +59,9 @@ class RiskScoresResponse(BaseModel):
     district_id: str | None = None
     window: str
     model_version: str
+    prediction_mode: str = "ML"
+    validation_status: str | None = None
+    baseline_comparison: dict[str, Any] | None = None
     grid_predictions: list[dict[str, Any]]
     # Authoritative status metadata (issue 9) — additive, backward compatible.
     prediction_mode: str = "UNKNOWN"  # "ML" | "FALLBACK" | "UNKNOWN"
@@ -72,11 +76,14 @@ class ForecastItem(BaseModel):
     lower_bound: float
     upper_bound: float
     trend: str
+    prediction_mode: str | None = "ML"
 
 
 class ForecastResponse(BaseModel):
     forecasts: list[ForecastItem]
     total: int
+    prediction_mode: str = "ML"
+    model_version: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -97,12 +104,14 @@ def get_risk_scores(
 
         maybe_refresh_async("risk", db=db, reason="inference")
         cases = db.query(CrimeCase).options(joinedload(CrimeCase.location), joinedload(CrimeCase.category)).all()
+        info = get_model_info()
         if not cases:
-            info = get_model_info()
             return RiskScoresResponse(
                 district_id=district_id,
                 window=window,
                 model_version=info.get("version", "untrained"),
+                prediction_mode=info.get("prediction_mode", "UNAVAILABLE"),
+                validation_status=info.get("validation_status", "INSUFFICIENT_DATA"),
                 grid_predictions=[],
                 prediction_mode="UNAVAILABLE",
                 risk_model_loaded=bool(info.get("risk_model_loaded")),
@@ -121,11 +130,14 @@ def get_risk_scores(
         if district_id:
             results = [r for r in results if r["district"] == district_id]
             
-        info = get_model_info()
+        pred_mode = results[0].get("prediction_mode", "ML") if results else info.get("prediction_mode", "FALLBACK")
         return RiskScoresResponse(
             district_id=district_id,
             window=window,
-            model_version=info.get("version", "rule-based"),
+            model_version=info.get("version", "trained"),
+            prediction_mode=pred_mode,
+            validation_status=info.get("validation_status", "VALIDATED" if pred_mode == "ML" else "FALLBACK"),
+            baseline_comparison=info.get("risk_baseline_comparison"),
             grid_predictions=results,
             prediction_mode=get_prediction_mode(),
             risk_model_loaded=bool(info.get("risk_model_loaded")),
@@ -147,10 +159,14 @@ def predict_risk_scores(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Risk score computation failed. Ensure records contain required fields.")
 
     info = get_model_info()
+    pred_mode = results[0].get("prediction_mode", "ML") if results else info.get("prediction_mode", "FALLBACK")
     return RiskScoresResponse(
         district_id=None,
         window=window,
-        model_version=info.get("version", "rule-based"),
+        model_version=info.get("version", "trained"),
+        prediction_mode=pred_mode,
+        validation_status=info.get("validation_status", "VALIDATED" if pred_mode == "ML" else "FALLBACK"),
+        baseline_comparison=info.get("risk_baseline_comparison"),
         grid_predictions=results,
         prediction_mode=get_prediction_mode(),
         risk_model_loaded=bool(info.get("risk_model_loaded")),
@@ -167,9 +183,13 @@ def predict_crime_forecast(
         results = predict_forecast(payload.records)
     except Exception:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Forecast computation failed. Ensure records contain required fields.")
+    info = get_model_info()
+    pred_mode = results[0].get("prediction_mode", "ML") if results else info.get("prediction_mode", "FALLBACK")
     return ForecastResponse(
         forecasts=[ForecastItem(**r) for r in results],
         total=len(results),
+        prediction_mode=pred_mode,
+        model_version=info.get("version", "trained"),
     )
 
 
