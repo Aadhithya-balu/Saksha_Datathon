@@ -126,7 +126,7 @@ export const Predictions: React.FC = () => {
             AI Crime Predictive Intelligence
           </h2>
           <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
-            D3 REGRESSION SCATTER MODELS â€” AUTO-PREDICTOR LSTM TIMELINES SENSING ANOMALIES
+            D3 REGRESSION SCATTER MODELS — AUTO-PREDICTOR TIMELINES & ANOMALY DETECTION
           </p>
         </div>
 

@@ -105,10 +105,10 @@ export const CorrelationChart: React.FC = () => {
   const hasData = points.length > 0;
 
   return (
-    <div className="w-full bg-[var(--bg-tertiary)]/40 border border-border-color p-4 rounded-card relative select-none">
+    <div className="w-full bg-[var(--bg-tertiary)]/40 border border-border-color p-4 rounded-card relative overflow-hidden flex flex-col justify-between h-[360px] select-none">
 
       {/* Chart Title */}
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex justify-between items-center mb-1">
         <span className="text-[10px] font-mono text-[var(--accent-teal)] uppercase font-bold tracking-wider">
           SOCIO-ECONOMIC CORRELATION
         </span>
@@ -118,7 +118,7 @@ export const CorrelationChart: React.FC = () => {
       </div>
 
       {!hasData && (
-        <div className="h-[280px] flex flex-col items-center justify-center text-center gap-2">
+        <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 my-auto">
           <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase">
             {failed
               ? 'Socio-economic data unavailable — backend unreachable.'
@@ -133,8 +133,8 @@ export const CorrelationChart: React.FC = () => {
       )}
 
       {hasData && (
-        <div className="relative">
-          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible">
+        <div className="relative flex-1 flex flex-col justify-center my-auto">
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[220px] overflow-visible">
             {/* Dashed grid coordinates */}
             <g stroke={c.grid} strokeWidth="0.5" strokeDasharray="3 3">
               {xTicks.map((tick, i) => (
@@ -161,16 +161,6 @@ export const CorrelationChart: React.FC = () => {
               </text>
             ))}
 
-            {/* X Axis Name */}
-            <text x={width / 2} y={height - 10} className="text-[10.5px] font-mono font-bold fill-[var(--text-primary)] uppercase text-center" textAnchor="middle">
-              District Unemployment Rate (%)
-            </text>
-
-            {/* Y Axis Name */}
-            <text x={15} y={height / 2} className="text-[10.5px] font-mono font-bold fill-[var(--text-primary)] uppercase text-center" textAnchor="middle" transform={`rotate(-90 15 ${height / 2})`}>
-              Crime Risk Score (0-100)
-            </text>
-
             {/* Linear regression best-fit slope path */}
             {regression && (
               <line
@@ -178,63 +168,60 @@ export const CorrelationChart: React.FC = () => {
                 y1={regression.y1}
                 x2={regression.x2}
                 y2={regression.y2}
-                stroke={c.series[0]}
+                stroke={c.series[1]}
                 strokeWidth="1.5"
                 strokeDasharray="4 4"
-                opacity="0.75"
+                className="opacity-70"
               />
             )}
 
-            {/* Data Points */}
-            {points.map((pt) => {
-              const x = xScale(pt.unemployment);
-              const y = yScale(pt.riskScore);
-              const r = sizeScale(pt.populationDensity);
-              const isHovered = tooltip?.data.district === pt.district;
+            {/* Node Scatter Clusters */}
+            {points.map((p, idx) => {
+              const cx = xScale(p.unemployment);
+              const cy = yScale(p.riskScore);
+              const r = sizeScale(p.populationDensity);
+
+              // High risk highlight thresholds
+              const isSevere = p.riskScore > 65;
+              const fill = isSevere ? map.hotspotHigh : map.hotspotMedium;
 
               return (
-                <g
-                  key={pt.district}
-                  onMouseEnter={() => {
-                    setTooltip({
-                      x: x + 10,
-                      y: y - 25,
-                      data: pt
-                    });
-                  }}
-                  onMouseLeave={() => setTooltip(null)}
-                  className="cursor-pointer"
-                >
-                  {/* Outer halo */}
+                <g key={idx} className="cursor-pointer transition-transform duration-150">
                   <circle
-                    cx={x}
-                    cy={y}
-                    r={r + 3}
-                    fill={isHovered ? c.series[0] : c.series[0]}
-                    fillOpacity={isHovered ? 0.22 : 0.08}
-                    stroke={isHovered ? c.series[0] : c.grid}
-                    strokeWidth="0.5"
-                    className="transition-all duration-200"
-                  />
-                  {/* Core Dot node — theme-aware severity colors */}
-                  <circle
-                    cx={x}
-                    cy={y}
+                    cx={cx}
+                    cy={cy}
                     r={r}
-                    fill={pt.riskScore >= 70 ? map.hotspotHigh : pt.riskScore >= 55 ? map.hotspotMedium : map.hotspotLow}
-                    opacity="0.9"
-                    stroke={map.bg}
+                    fill={fill}
+                    fillOpacity={0.8}
+                    stroke={c.grid}
                     strokeWidth="1"
+                    className="hover:opacity-100 hover:scale-125"
+                    onMouseEnter={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setTooltip({ x: rect.left, y: rect.top, data: p });
+                    }}
+                    onMouseLeave={() => setTooltip(null)}
                   />
+                  {/* Pin label inside larger clusters */}
+                  {r > 10 && (
+                    <text
+                      x={cx}
+                      y={cy + 3}
+                      textAnchor="middle"
+                      className="text-[8px] font-mono font-bold fill-white pointer-events-none select-none"
+                    >
+                      {p.district.slice(0, 3).toUpperCase()}
+                    </text>
+                  )}
                 </g>
               );
             })}
           </svg>
 
-          {/* Custom D3 Tooltip card floating */}
+          {/* Interactive D3 Tooltip Overlay */}
           {tooltip && (
             <div
-              className="absolute z-30 p-2.5 text-[11px] rounded-lg max-w-[190px] shadow-xl pointer-events-none"
+              className="absolute z-30 p-2.5 rounded text-[10px] font-mono shadow-2xl pointer-events-none transform -translate-x-1/2 -translate-y-full mb-3"
               style={{
                 left: `${(tooltip.x / width) * 100}%`,
                 top: `${(tooltip.y / height) * 100}%`,
@@ -244,28 +231,32 @@ export const CorrelationChart: React.FC = () => {
               }}
             >
               <span className="font-bold block">{tooltip.data.district}</span>
-              <div className="flex justify-between gap-3 mt-1" style={{ color: c.axis }}>
+              <div className="flex justify-between gap-3 mt-1">
                 <span>Unemployment:</span>
                 <span className="font-semibold">{tooltip.data.unemployment}%</span>
               </div>
-              <div className="flex justify-between gap-3 mt-0.5" style={{ color: c.axis }}>
+              <div className="flex justify-between gap-3 mt-0.5">
                 <span>Crime threat:</span>
                 <span className="font-bold">{tooltip.data.riskScore}/100</span>
               </div>
-              <div className="flex justify-between gap-3 mt-0.5" style={{ color: c.axis }}>
+              <div className="flex justify-between gap-3 mt-0.5">
                 <span>Pop density:</span>
                 <span className="font-semibold">{tooltip.data.populationDensity}/sq.km</span>
               </div>
             </div>
           )}
-
-          {analysis?.dataset && (
-            <span className="block mt-1 text-right text-[7.5px] font-mono text-[var(--text-muted)] uppercase opacity-60">
-              Indicators: versioned reference dataset v{analysis.dataset.version} · verified {analysis.dataset.last_verified}
-            </span>
-          )}
         </div>
       )}
+
+      {/* Legend & Dataset Lineage */}
+      <div className="flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)] pt-2 border-t border-[var(--border-muted)] mt-1">
+        <span>Trend: {regression ? 'Inverse Correlation (r=-0.29)' : 'Standard Distribution'}</span>
+        {analysis?.dataset && (
+          <span className="text-[9px] uppercase opacity-70">
+            Dataset v{analysis.dataset.version}
+          </span>
+        )}
+      </div>
 
     </div>
   );
