@@ -126,6 +126,10 @@ export interface RiskScoresResponse {
   window: string;
   grid_predictions: RiskScorePoint[];
   model_version: string;
+  /** Authoritative status metadata (issue 9) — 'ML' | 'FALLBACK' | 'UNAVAILABLE' | ... */
+  prediction_mode?: string;
+  risk_model_loaded?: boolean | null;
+  data_provenance?: string;
 }
 
 export interface HotspotPoint {
@@ -141,6 +145,15 @@ export interface HotspotPoint {
 export interface HotspotsResponse {
   hotspots: HotspotPoint[];
   hour?: number | null;
+  /** Authoritative status metadata (issue 9). */
+  analysis_mode?: string;
+  data_provenance?: string;
+  statistics?: {
+    method?: string;
+    locations_assessed?: number;
+    incidents_assessed?: number;
+    [key: string]: unknown;
+  };
 }
 
 export interface StationSummary {
@@ -1477,6 +1490,14 @@ export async function getModelInfo() {
   return apiRequest<ModelInfo>('/ai/predictions/model-info');
 }
 
+/** Admin-triggered risk model retrain (backend POST /ai/predictions/train). */
+export async function trainRiskModels() {
+  return apiRequest<{ status: string; retrained_by: string; metrics: Record<string, unknown> }>(
+    '/ai/predictions/train',
+    { method: 'POST' },
+  );
+}
+
 // ── Season Breakdown ────────────────────────────────────────────────────────
 
 export interface SeasonData {
@@ -1595,6 +1616,7 @@ export interface SocioeconomicAnalysis {
   dataset?: {
     version: string;
     file?: string;
+    demo_data?: boolean;
     notes?: string[];
     indicators?: unknown[];
     partial_records?: Array<{ district: string; available_indicators: number; total_indicators: number }>;

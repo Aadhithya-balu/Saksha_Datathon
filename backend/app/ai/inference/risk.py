@@ -220,3 +220,14 @@ def get_model_info() -> dict[str, Any]:
         "risk_model_loaded": risk_model is not None,
         "forecast_model_loaded": forecast_model is not None,
     }
+
+
+def get_prediction_mode() -> str:
+    """Authoritative inference mode for the risk pipeline (issue 9).
+
+    ``ML`` means validated trained-model inference; ``FALLBACK`` means the
+    rule-based aggregation fallback was used. Consumers (and the UI) must
+    treat these as materially different intelligence provenance instead of
+    inferring status from the presence of a numeric score.
+    """
+    return "ML" if _load_risk_model() is not None else "FALLBACK"

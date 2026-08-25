@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import KarnatakaMap, { type EmergingTrendItem } from '../components/map/KarnatakaMap';
 import SpatiotemporalHeatmap from '../components/dashboard/SpatiotemporalHeatmap';
+import IntelligenceStatusBadges from '../components/ui/IntelligenceStatusBadges';
 import { 
   Compass, Download, Flame, TrendingUp,
   BarChart3, Map as MapIcon, ChevronRight
@@ -16,10 +17,14 @@ import {
   getRedZones, getStationsSummary,
   type DistrictComparisonPoint, type HotspotPoint, type RiskScoresResponse, type RedZone
 } from '../services/api';
+import { getIntelligenceStatus } from '../services/intelligenceStatus';
 import type { DistrictInfo } from '../store/mapStore';
 import { PageHeader } from '../components/ui/PageHeader';
 import { PageSkeleton } from '../components/ui/Skeleton';
 
+// Static seed records kept ONLY for offline resilience (issue 9 §21). They are
+// never presented as live intelligence — any view using them carries an
+// explicit DEMO DATA status chip.
 const BASELINE_HOTSPOTS: HotspotPoint[] = [
   { district_id: 'Ballari', name: 'City Police Station', lat: 15.14, lng: 76.91, score: 96, category: 'Domestic Violence', trend: 'up' },
   { district_id: 'Bengaluru Urban', name: 'Whitefield Police Station', lat: 12.9698, lng: 77.75, score: 94, category: 'Cyber Crime & Online Fraud', trend: 'stable' },
@@ -31,12 +36,18 @@ const BASELINE_HOTSPOTS: HotspotPoint[] = [
   { district_id: 'Hassan', name: 'Hassan City Police Station', lat: 13.01, lng: 76.10, score: 76, category: 'Domestic Violence', trend: 'down' },
 ];
 
+type HotspotSource = 'backend' | 'stations' | 'demo';
+
 export const Hotspots: React.FC = () => {
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
   const { selectedDistrict, selectedStation, setSelectedDistrict, setSelectedStation, setTimeOfDay, timeOfDay } = useMapStore();
 
-  const [hotspots, setHotspots] = useState<HotspotPoint[]>(BASELINE_HOTSPOTS);
+  const [hotspots, setHotspots] = useState<HotspotPoint[]>([]);
+  // Provenance of the currently displayed hotspot list — reset on every load
+  // so a stale LIVE badge can never attach to new data (issue 9 §23/§24).
+  const [hotspotSource, setHotspotSource] = useState<HotspotSource | null>(null);
+  const [hotspotAnalysisMode, setHotspotAnalysisMode] = useState<string | null>(null);
   const [districtMetrics, setDistrictMetrics] = useState<Record<string, DistrictInfo>>({});
   const [emergingTrends, setEmergingTrends] = useState<EmergingTrendItem[]>([]);
   const [recentCases, setRecentCases] = useState<any[]>([]);
@@ -52,6 +63,9 @@ export const Hotspots: React.FC = () => {
     let isMounted = true;
     setLoading(true);
     setError(null);
+    // Clear stale status before the new request resolves (issue 9 §24).
+    setHotspotSource(null);
+    setHotspotAnalysisMode(null);
 
     // Check if navigating from Anomaly "Locate on Map"
     const override = sessionStorage.getItem('selected_district_override');
@@ -88,9 +102,20 @@ export const Hotspots: React.FC = () => {
         category: station.top_category,
         trend: station.trend,
       }));
-      const hsList = backendHotspots.length > 0
-        ? backendHotspots
-        : stationHotspots.length > 0 ? stationHotspots : BASELINE_HOTSPOTS;
+      let source: HotspotSource;
+      if (hotspotRes.status === 'fulfilled' && backendHotspots.length > 0) {
+        // Backend reports its own analysis mode (statistical Gi*/KDE over
+        // recorded incidents — see analytics_service.hotspots).
+        setHotspotAnalysisMode(hotspotRes.value.analysis_mode ?? null);
+        source = 'backend';
+      } else if (stationHotspots.length > 0) {
+        source = 'stations';
+      } else {
+        // Static seed records — must never masquerade as live intelligence.
+        source = 'demo';
+      }
+      const hsList = source === 'backend' ? backendHotspots : source === 'stations' ? stationHotspots : BASELINE_HOTSPOTS;
+      setHotspotSource(source);
       const distList = districtRes.status === 'fulfilled' ? districtRes.value : [];
       setHotspots(hsList);
       setDistrictMetrics(prev => ({
@@ -198,6 +223,24 @@ export const Hotspots: React.FC = () => {
     return emergingTrends.filter(t => t.direction === 'increasing' && t.change_percentage > 10);
   }, [emergingTrends]);
 
+  // Intelligence status — derived strictly from backend metadata / known
+  // provenance of the displayed list (issue 9 §4/§5). Hotspots are a
+  // statistical analysis of recorded history, never labelled as ML output.
+  const hotspotStatusBadges = useMemo(() => {
+    if (loading || !hotspotSource) return [];
+    if (hotspotSource === 'backend') {
+      return getIntelligenceStatus({
+        analysisMode: hotspotAnalysisMode ?? 'STATISTICAL',
+        dataProvenance: 'LIVE_DB',
+        historicalOnly: true,
+      });
+    }
+    if (hotspotSource === 'stations') {
+      return getIntelligenceStatus({ dataProvenance: 'LIVE_DB', historicalOnly: true });
+    }
+    return getIntelligenceStatus({ predictionMode: 'FALLBACK', dataProvenance: 'DEMO' });
+  }, [loading, hotspotSource, hotspotAnalysisMode]);
+
   // Top telemetry cards: Show active police station & district stations if selected, otherwise statewide top 3
   const displayedTopHotspots = useMemo(() => {
     const map = new Map<string, HotspotPoint>();
@@ -207,18 +250,10 @@ export const Hotspots: React.FC = () => {
       const match = filteredHotspots.find(
         (h) => (h.name || '').toLowerCase() === selectedStation.toLowerCase()
       );
+      // No fabricated entry for unmatched stations — only real records render
+      // a score (issue 9 §20).
       if (match) {
         map.set(match.name, match);
-      } else {
-        map.set(selectedStation, {
-          district_id: selectedDistrict || 'Karnataka',
-          name: selectedStation,
-          lat: 12.97,
-          lng: 77.59,
-          score: 88,
-          category: 'Active Patrol Beat Jurisdiction',
-          trend: 'up',
-        });
       }
     }
 
@@ -314,6 +349,10 @@ export const Hotspots: React.FC = () => {
         icon={<Compass className="w-5 h-5" />}
         actions={
           <div className="flex items-center gap-2">
+            {/* Intelligence status chip — compact, tooltip-backed (issue 9 §5) */}
+            {hotspotStatusBadges.length > 0 && (
+              <IntelligenceStatusBadges badges={hotspotStatusBadges} className="mr-1" />
+            )}
             {/* View Mode Toggle */}
             <div className="flex bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded p-0.5">
               <button
@@ -428,6 +467,11 @@ export const Hotspots: React.FC = () => {
                   )}
                 </div>
                 <p className="text-xs text-[var(--text-muted)] truncate">{hotspot.district_id} · {hotspot.category}</p>
+                {/* Explicit status on every card whose data is not live backend
+                    statistical output (issue 9 §21). */}
+                {hotspotSource !== 'backend' && hotspotStatusBadges.length > 0 && (
+                  <IntelligenceStatusBadges badges={hotspotStatusBadges} withInfo={false} className="mt-1" />
+                )}
               </div>
               <span
                 className={`sk-chip shrink-0 ${hotspot.score >= 80 ? 'sk-chip-error' : hotspot.score >= 70 ? 'sk-chip-warning' : 'sk-chip-success'}`}

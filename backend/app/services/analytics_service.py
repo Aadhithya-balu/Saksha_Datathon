@@ -405,6 +405,8 @@ def hotspots(db: Session, district_id: str | None = None, hour: int | None = Non
         return {
             "hour": hour,
             "hotspots": [],
+            "analysis_mode": "STATISTICAL",
+            "data_provenance": "LIVE_DB",
             "statistics": {
                 "method": "getis_ord_gi_star+kde+morans_i",
                 "locations_assessed": 0,
@@ -465,6 +467,10 @@ def hotspots(db: Session, district_id: str | None = None, hour: int | None = Non
     return {
         "hour": hour,
         "hotspots": sorted(rows, key=lambda row: (row["score"], row["count"]), reverse=True),
+        # Authoritative status metadata (issue 9): hotspot scores are a
+        # statistical analysis of recorded historical incidents, not ML output.
+        "analysis_mode": "STATISTICAL",
+        "data_provenance": "LIVE_DB",
         "statistics": statistics,
     }
 
