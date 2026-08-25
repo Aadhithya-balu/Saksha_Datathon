@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.api.v2 import api_router
@@ -132,18 +133,12 @@ def _migrate_evidence_metadata_table():
 
 def _migrate_person_image_fields():
     """Issue #107: add image_url to criminals, victims, officers.
-    Issue #118: add face biometric columns to officers.
     All DDL is idempotent — safe to run on every startup.
     """
     migrations: list[tuple[str, str, str]] = [
         ("criminals", "image_url", "VARCHAR(1000)"),
         ("victims",   "image_url", "VARCHAR(1000)"),
         ("officers",  "image_url", "VARCHAR(1000)"),
-        ("officers",  "face_embedding",         "TEXT"),
-        ("officers",  "face_embedding_version",  "VARCHAR(50)"),
-        ("officers",  "face_enabled",            "BOOLEAN NOT NULL DEFAULT FALSE"),
-        ("officers",  "face_enrolled_at",         "TIMESTAMPTZ"),
-        ("officers",  "face_verified_at",         "TIMESTAMPTZ"),
     ]
     try:
         with engine.connect() as conn:
@@ -158,9 +153,9 @@ def _migrate_person_image_fields():
                     changed = True
             if changed:
                 conn.commit()
-                logger.info("Person image / face biometric migration complete (#107 #118)")
+                logger.info("Person image migration complete (#107)")
     except Exception as exc:
-        logger.warning(f"Person image / face biometric migration skipped: {exc}")
+        logger.warning(f"Person image migration skipped: {exc}")
 
 
 @asynccontextmanager
@@ -221,6 +216,11 @@ app.add_middleware(
 register_exception_handlers(app)
 
 app.include_router(api_router, prefix=settings.API_V2_PREFIX)
+
+# Serve local evidence files only in development. Person profile images use
+# persistent Supabase Storage and never fall back to this directory.
+from app.services.evidence_service import UPLOAD_DIR  # noqa: E402
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 
 @app.get("/health", tags=["System"])

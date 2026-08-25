@@ -26,7 +26,6 @@ interface AuthState {
   isHydrating: boolean;
   initializeSession: () => Promise<void>;
   login: (badgeId: string, pin: string) => Promise<boolean>;
-  loginWithFace: () => Promise<boolean>;
   logout: (expired?: boolean) => void;
   tickSession: () => void;
   resetSessionTimer: () => void;
@@ -117,29 +116,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           ? 'Backend database is offline. Start PostgreSQL and Neo4j, then retry login.'
           : message,
       });
-      return false;
-    }
-  },
-
-  loginWithFace: async () => {
-    // Issue #118: tokens are already stored by useFaceAuth after server-side
-    // biometric verification.  We just need to hydrate the session from /auth/me.
-    try {
-      const currentUser = await getMe();
-      set({
-        user: {
-          name: currentUser.full_name,
-          badgeId: currentUser.username,
-          role: mapBackendRoleToUiRole(currentUser.role),
-        },
-        isAuthenticated: true,
-        loginError: null,
-        sessionTimeRemaining: 1800,
-      });
-      return true;
-    } catch {
-      clearStoredTokens();
-      set({ loginError: 'Face verification session could not be established.' });
       return false;
     }
   },

@@ -1,13 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldCheck, Lock, KeyRound, ScanFace, UserCheck } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ShieldCheck, Lock, UserCheck } from 'lucide-react';
 import SecureBackdrop from '../components/auth/SecureBackdrop';
 import BadgeLogin from '../components/auth/BadgeLogin';
-import FaceIDScanner from '../components/auth/FaceIDScanner';
-import { showSecureEntry } from '../components/auth/SecureEntryOverlay';
-import { useAuthStore } from '../store/authStore';
-
-type AuthMethod = 'badge' | 'face';
 
 const formatIstClock = (): string =>
   `${new Intl.DateTimeFormat('en-GB', {
@@ -19,10 +14,6 @@ const formatIstClock = (): string =>
   }).format(new Date())} IST`;
 
 export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
-  const loginWithFace = useAuthStore((state) => state.loginWithFace);
-
-  const [method, setMethod] = useState<AuthMethod>('badge');
-  const [faceError, setFaceError] = useState<string | null>(null);
   const [clock, setClock] = useState(formatIstClock);
 
   /* Live IST clock — honest system telemetry */
@@ -43,7 +34,6 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
             : 'Local Channel',
       },
       { icon: Lock, tone: 'var(--lp-accent-hi)', label: 'Activity Audited' },
-      { icon: ScanFace, tone: 'var(--lp-amber)', label: 'Biometrics: DB-Verified' },
     ],
     []
   );
@@ -63,49 +53,10 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
       title: 'Audited Sessions',
       sub: 'Every action accountable',
     },
-    {
-      icon: ScanFace,
-      tone: 'var(--lp-amber)',
-      soft: 'var(--lp-amber-soft)',
-      title: 'Face ID',
-      sub: 'KSP officer biometric auth',
-    },
   ];
 
   const handleBadgeSuccess = () => {
-    /* Session commit already triggers the dashboard swap in App.tsx;
-       the SecureEntryOverlay bridges the transition visually. */
     onSuccess?.();
-  };
-
-  const handleFaceVerified = async () => {
-    setFaceError(null);
-    let ok = false;
-    try {
-      ok = await loginWithFace();
-    } catch {
-      ok = false;
-    }
-    if (ok) {
-      // Use the real authenticated user's badge and role from the store
-      const authUser = useAuthStore.getState().user;
-      showSecureEntry(
-        authUser?.badgeId ?? 'KSP',
-        authUser?.role ?? 'AUTHORIZED',
-      );
-      onSuccess?.();
-    } else {
-      setFaceError(
-        'Secure sign-in could not be completed right now. Please try again or continue with your Badge ID.'
-      );
-    }
-  };
-
-  const switchMethod = (next: AuthMethod) => {
-    if (next !== method) {
-      setFaceError(null);
-      setMethod(next);
-    }
   };
 
   return (
@@ -292,79 +243,15 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
               </span>
             </div>
 
-            {/* Method selector */}
-            <div
-              role="tablist"
-              aria-label="Authentication method"
-              className="mb-5 grid grid-cols-2 gap-1 rounded-xl border p-1"
-              style={{ background: 'var(--lp-surface-3)', borderColor: 'var(--lp-border)' }}
+            {/* Badge ID login */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="flex flex-col"
             >
-              {(
-                [
-                  { id: 'badge', label: 'Badge ID', Icon: KeyRound },
-                  { id: 'face', label: 'Face ID', Icon: ScanFace },
-                ] as const
-              ).map(({ id, label, Icon }) => {
-                const active = method === id;
-                return (
-                  <button
-                    key={id}
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => switchMethod(id)}
-                    className="relative cursor-pointer rounded-lg py-2.5 font-sans text-[10.5px] font-bold uppercase tracking-[0.14em] transition-colors duration-200"
-                    style={{ color: active ? '#f2f6fc' : 'var(--lp-text-2)' }}
-                  >
-                    {active && (
-                      <motion.span
-                        layoutId="saksha-auth-method-pill"
-                        className="absolute inset-0 rounded-lg"
-                        style={{
-                          background: 'linear-gradient(135deg, var(--lp-accent), #2467c2)',
-                          boxShadow: '0 0 16px rgba(31, 92, 179, 0.4)',
-                        }}
-                        transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                      />
-                    )}
-                    <Icon className="relative z-10 mr-1.5 inline h-4 w-4" strokeWidth={2.2} />
-                    <span className="relative z-10">{label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Face-flow error (network / service failures) */}
-            {faceError && (
-              <div
-                role="alert"
-                className="lp-shake mb-4 rounded-lg border px-3 py-2.5 text-[11.5px] leading-snug"
-                style={{
-                  background: 'var(--lp-red-soft)',
-                  borderColor: 'rgba(224, 96, 85, 0.35)',
-                  color: 'var(--lp-red)',
-                }}
-              >
-                {faceError}
-              </div>
-            )}
-
-            {/* Active method panel */}
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={method}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="flex flex-col"
-              >
-                {method === 'badge' ? (
-                  <BadgeLogin onSuccess={handleBadgeSuccess} />
-                ) : (
-                  <FaceIDScanner onVerifySuccess={handleFaceVerified} />
-                )}
-              </motion.div>
-            </AnimatePresence>
+              <BadgeLogin onSuccess={handleBadgeSuccess} />
+            </motion.div>
 
             {/* Compliance footer */}
             <div

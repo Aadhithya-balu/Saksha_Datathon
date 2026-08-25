@@ -41,8 +41,6 @@ class OfficerOut(OfficerBase):
     user_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime | None = None
-    face_enabled: bool = False
-    face_enrolled_at: datetime | None = None
 
 
 class OfficerPerformance(BaseModel):

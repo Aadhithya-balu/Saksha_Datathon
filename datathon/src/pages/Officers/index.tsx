@@ -17,7 +17,6 @@ interface Officer {
   email: string | null;
   status: string;
   image_url: string | null;
-  face_enabled: boolean;
 }
 
 const OfficersPage: React.FC = () => {
@@ -197,11 +196,6 @@ const OfficersPage: React.FC = () => {
                     {officer.phone && <a href={`tel:${officer.phone}`} className="text-[var(--text-muted)] hover:text-[#1E6FD9] transition-colors" title={officer.phone}><Phone className="w-4 h-4" /></a>}
                   </div>
                   <div className="flex items-center gap-2">
-                    {officer.face_enabled && (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-[#1E6FD9]/15 text-[#1E6FD9] border border-[#1E6FD9]/30" title="Face ID enrolled">
-                        Face ID
-                      </span>
-                    )}
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${officer.status === 'active' ? 'bg-[#0E9E78]/20 text-[#0E9E78]' : 'bg-[#6A7A96]/20 text-[var(--text-muted)]'}`}>
                       {officer.status}
                     </span>

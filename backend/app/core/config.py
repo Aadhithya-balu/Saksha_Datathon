@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     # --- Supabase Auth (REST API) ---
     SUPABASE_URL: str | None = None
     SUPABASE_ANON_KEY: str | None = None
+    SUPABASE_SERVICE_ROLE_KEY: str | None = None
 
     # --- Neo4j ---
     NEO4J_URI: str = "bolt://localhost:7687"

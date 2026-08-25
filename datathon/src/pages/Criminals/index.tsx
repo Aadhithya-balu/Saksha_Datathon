@@ -3,7 +3,8 @@ import { useAuthStore } from '../../store/authStore';
 import { useAuditStore } from '../../store/auditStore';
 import { 
   listCriminals, 
-  getCriminal 
+  getCriminal,
+  uploadCriminalImage,
 } from '../../services/api';
 import { 
   Search, 
@@ -16,10 +17,10 @@ import {
   TrendingUp, 
   ArrowRight,
   ExternalLink,
-  Sparkles
+  Sparkles,
+  Camera,
 } from 'lucide-react';
 import { CardSkeleton } from '../../components/ui/Skeleton';
-import { PersonAvatar } from '../../components/ui/PersonAvatar';
 import { PersonAvatar } from '../../components/ui/PersonAvatar';
 
 interface CriminalSummary {
@@ -42,6 +43,9 @@ export const Criminals: React.FC = () => {
   const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
   const [criminalDetails, setCriminalDetails] = useState<any>(null);
   const [hoveredNode, setHoveredNode] = useState<any>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const imageInputRef = React.useRef<HTMLInputElement>(null);
 
   // Load criminals on mount or search
   useEffect(() => {
@@ -110,6 +114,23 @@ export const Criminals: React.FC = () => {
       isMounted = false;
     };
   }, [selectedId, user]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedId) return;
+    setUploadingImage(true);
+    setImageUploadError(null);
+    try {
+      const res = await uploadCriminalImage(selectedId, file);
+      setCriminalDetails((prev: any) => ({ ...prev, image_url: res.image_url }));
+    } catch (err: any) {
+      console.error('Image upload failed:', err.message);
+      setImageUploadError(err.message || 'Unable to upload the image.');
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  };
 
   const handleSelectCriminal = (id: string) => {
     setSelectedId(id);
@@ -395,13 +416,33 @@ export const Criminals: React.FC = () => {
               
               {/* Offender Identity banner */}
               <div className="p-4 bg-[var(--bg-tertiary)]/40 border border-[var(--border-primary)] rounded flex flex-col md:flex-row gap-4 items-center md:items-start select-none">
-                <PersonAvatar
-                  imageUrl={criminalDetails.image_url}
-                  name={criminalDetails.full_name}
-                  size={88}
-                  accentColor="#1E6FD9"
-                  shape="square"
-                />
+                <div className="relative group shrink-0">
+                  <PersonAvatar
+                    imageUrl={criminalDetails.image_url}
+                    name={criminalDetails.full_name}
+                    size={88}
+                    accentColor="#1E6FD9"
+                    shape="square"
+                  />
+                  <button
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    title="Upload photo"
+                    className="absolute inset-0 flex items-end justify-center pb-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-wait"
+                    style={{ background: 'linear-gradient(to top, rgba(4,10,18,0.75) 40%, transparent)' }}
+                  >
+                    <span className="flex items-center gap-1 font-mono text-[8px] uppercase tracking-widest text-white">
+                      {uploadingImage ? '…' : <><Camera className="w-2.5 h-2.5" /> Upload</>}
+                    </span>
+                  </button>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                </div>
                 
                 <div className="flex-1 w-full text-center md:text-left">
                   <div className="flex flex-col md:flex-row md:justify-between items-center md:items-start gap-2">
@@ -444,6 +485,10 @@ export const Criminals: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {imageUploadError && (
+                <p className="-mt-3 text-[9px] font-mono text-[#C94A2A]" role="alert">{imageUploadError}</p>
+              )}
 
               {/* Bio summary & Address */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">

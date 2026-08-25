@@ -238,33 +238,9 @@ def upload_criminal_image(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Upload a profile image for a criminal record.
-    Stored in Supabase Storage (or local uploads/ fallback).
-    """
-    from app.services.evidence_service import _upload_to_supabase_storage, UPLOAD_DIR  # noqa: PLC0415
-    import os  # noqa: PLC0415
-
     criminal = criminal_crud.get(db, criminal_id)
-    allowed = {"image/jpeg", "image/png", "image/webp"}
-    if file.content_type not in allowed:
-        from fastapi import HTTPException  # noqa: PLC0415
-        raise HTTPException(status_code=400, detail="Only JPEG/PNG/WebP images are accepted.")
-
-    import uuid as _uuid  # noqa: PLC0415
-    ext = os.path.splitext(file.filename or "img.jpg")[1].lower() or ".jpg"
-    unique_name = f"{criminal_id}_{_uuid.uuid4()}{ext}"
-    local_path = UPLOAD_DIR / unique_name
-    with open(local_path, "wb") as fh:
-        fh.write(file.file.read())
-
-    storage_key = f"persons/criminals/{unique_name}"
-    storage_url = _upload_to_supabase_storage(str(local_path), storage_key, file.content_type or "image/jpeg")
-    if storage_url:
-        os.remove(local_path)
-        image_url = storage_url
-    else:
-        image_url = f"/api/v2/criminals/{criminal_id}/image-file"
-        criminal._local_image_path = str(local_path)  # stored for local serving
+    from app.services.person_image_service import store_person_image
+    image_url = store_person_image(file, person_type="criminals", person_id=criminal_id)
 
     criminal.image_url = image_url
     db.add(criminal)
