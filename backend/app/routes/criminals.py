@@ -181,6 +181,7 @@ def get_criminal(criminal_id: uuid.UUID, db: Session = Depends(get_db), current_
         "identifying_marks": criminal.identifying_marks,
         "mo_summary": criminal.mo_summary,
         "status": criminal.status,
+        "image_url": criminal.image_url,
         "created_at": criminal.created_at.isoformat() if criminal.created_at else None,
         "neo4j_node_id": criminal.neo4j_node_id,
         "firs": linked_firs,
@@ -221,3 +222,41 @@ def update_criminal(criminal_id: uuid.UUID, payload: CriminalUpdate, db: Session
     audit_service.log_action(db, current_user, "UPDATE", "Criminal", str(criminal_id))
     mark_data_changed("criminal", db=db)
     return criminal
+
+
+# ---------------------------------------------------------------------------
+# Issue #107 — Criminal image upload / remove
+# ---------------------------------------------------------------------------
+
+from fastapi import UploadFile, File as FastAPIFile  # noqa: E402
+
+
+@router.post("/{criminal_id}/image", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR))])
+def upload_criminal_image(
+    criminal_id: uuid.UUID,
+    file: UploadFile = FastAPIFile(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    criminal = criminal_crud.get(db, criminal_id)
+    from app.services.person_image_service import store_person_image
+    image_url = store_person_image(file, person_type="criminals", person_id=criminal_id)
+
+    criminal.image_url = image_url
+    db.add(criminal)
+    db.commit()
+    audit_service.log_action(db, current_user, "IMAGE_UPLOAD", "Criminal", str(criminal_id))
+    return {"image_url": image_url}
+
+
+@router.delete("/{criminal_id}/image", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR))])
+def remove_criminal_image(
+    criminal_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    criminal = criminal_crud.get(db, criminal_id)
+    criminal.image_url = None
+    db.add(criminal)
+    db.commit()
+    return {"message": "Image removed"}

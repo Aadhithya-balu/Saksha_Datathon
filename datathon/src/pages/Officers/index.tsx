@@ -3,6 +3,7 @@ import { useRBAC } from '../../hooks/useRBAC';
 import { Search, Plus, Filter, ShieldCheck, Mail, Phone, Edit, Trash2 } from 'lucide-react';
 import { apiRequest } from '../../services/api';
 import { CardSkeleton } from '../../components/ui/Skeleton';
+import { PersonAvatar } from '../../components/ui/PersonAvatar';
 
 interface Officer {
   id: string;
@@ -15,6 +16,7 @@ interface Officer {
   phone: string | null;
   email: string | null;
   status: string;
+  image_url: string | null;
 }
 
 const OfficersPage: React.FC = () => {
@@ -162,9 +164,13 @@ const OfficersPage: React.FC = () => {
               <div key={officer.id} className="bg-secondary-bg border border-border-color rounded-lg p-5 flex flex-col gap-4 hover:border-[#1E6FD9]/50 transition-colors group">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#1E6FD9]/20 flex items-center justify-center text-[#1E6FD9] font-bold border border-[#1E6FD9]/40 shrink-0">
-                      {officer.name.charAt(0)}
-                    </div>
+                    <PersonAvatar
+                      imageUrl={officer.image_url}
+                      name={officer.name}
+                      size={40}
+                      accentColor="#1E6FD9"
+                      shape="circle"
+                    />
                     <div>
                       <h3 className="text-[var(--text-primary)] font-bold text-sm">{officer.name}</h3>
                       <p className="text-[#0E9E78] font-mono text-[10px] uppercase font-bold tracking-wider">{officer.badge_number}</p>
@@ -189,9 +195,11 @@ const OfficersPage: React.FC = () => {
                     {officer.email && <a href={`mailto:${officer.email}`} className="text-[var(--text-muted)] hover:text-[#1E6FD9] transition-colors" title={officer.email}><Mail className="w-4 h-4" /></a>}
                     {officer.phone && <a href={`tel:${officer.phone}`} className="text-[var(--text-muted)] hover:text-[#1E6FD9] transition-colors" title={officer.phone}><Phone className="w-4 h-4" /></a>}
                   </div>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${officer.status === 'active' ? 'bg-[#0E9E78]/20 text-[#0E9E78]' : 'bg-[#6A7A96]/20 text-[var(--text-muted)]'}`}>
-                    {officer.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${officer.status === 'active' ? 'bg-[#0E9E78]/20 text-[#0E9E78]' : 'bg-[#6A7A96]/20 text-[var(--text-muted)]'}`}>
+                      {officer.status}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}

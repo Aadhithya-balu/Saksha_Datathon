@@ -26,7 +26,6 @@ interface AuthState {
   isHydrating: boolean;
   initializeSession: () => Promise<void>;
   login: (badgeId: string, pin: string) => Promise<boolean>;
-  loginWithFace: () => Promise<boolean>;
   logout: (expired?: boolean) => void;
   tickSession: () => void;
   resetSessionTimer: () => void;
@@ -119,10 +118,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       return false;
     }
-  },
-
-  loginWithFace: async () => {
-    return get().login('SCRB-7740', '123456');
   },
 
   logout: (expired = false) => {

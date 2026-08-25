@@ -101,3 +101,9 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
 def change_password(payload: ChangePasswordRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     auth_service.change_password(db, current_user, payload.old_password, payload.new_password)
     return {"message": "Password updated successfully"}
+
+
+# ---------------------------------------------------------------------------
+# Issue #118 — Face ID authentication (server-side biometric verification)
+# ---------------------------------------------------------------------------
+

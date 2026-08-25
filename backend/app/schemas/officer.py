@@ -15,6 +15,7 @@ class OfficerBase(BaseModel):
     phone: str | None = Field(default=None, max_length=20)
     email: EmailStr | None = None
     status: str = Field(default="active", pattern="^(active|inactive|suspended)$")
+    image_url: str | None = None
 
 
 class OfficerCreate(OfficerBase):

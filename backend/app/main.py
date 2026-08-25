@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.api.v2 import api_router
@@ -130,6 +131,33 @@ def _migrate_evidence_metadata_table():
         logger.warning(f"evidence_metadata table migration skipped: {exc}")
 
 
+def _migrate_person_image_fields():
+    """Issue #107: add image_url to criminals, victims, officers.
+    All DDL is idempotent — safe to run on every startup.
+    """
+    migrations: list[tuple[str, str, str]] = [
+        ("criminals", "image_url", "VARCHAR(1000)"),
+        ("victims",   "image_url", "VARCHAR(1000)"),
+        ("officers",  "image_url", "VARCHAR(1000)"),
+    ]
+    try:
+        with engine.connect() as conn:
+            changed = False
+            for table, col, col_def in migrations:
+                result = conn.execute(text(
+                    "SELECT column_name FROM information_schema.columns "
+                    f"WHERE table_name = '{table}' AND column_name = '{col}'"
+                ))
+                if not result.fetchone():
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}"))
+                    changed = True
+            if changed:
+                conn.commit()
+                logger.info("Person image migration complete (#107)")
+    except Exception as exc:
+        logger.warning(f"Person image migration skipped: {exc}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
@@ -150,6 +178,7 @@ async def lifespan(app: FastAPI):
         _migrate_notifications_table()
         _migrate_criminals_table()
         _migrate_evidence_metadata_table()
+        _migrate_person_image_fields()
         _ensure_realtime_indexes()
         with engine.connect():
             logger.info("PostgreSQL connection OK")
@@ -187,6 +216,11 @@ app.add_middleware(
 register_exception_handlers(app)
 
 app.include_router(api_router, prefix=settings.API_V2_PREFIX)
+
+# Serve local evidence files only in development. Person profile images use
+# persistent Supabase Storage and never fall back to this directory.
+from app.services.evidence_service import UPLOAD_DIR  # noqa: E402
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 
 @app.get("/health", tags=["System"])

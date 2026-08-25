@@ -15,6 +15,7 @@ class CriminalBase(BaseModel):
     mo_summary: str | None = None
     status: str = "at_large"
     gang_affiliation: str | None = None
+    image_url: str | None = None
 
 
 class CriminalCreate(CriminalBase):

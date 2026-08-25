@@ -23,8 +23,6 @@ export const SettingsHelp: React.FC = () => {
   const { addLog, clearLogs } = useAuditStore();
 
   // Settings State variables
-  const [faceIDSensitivity, setFaceIDSensitivity] = useState(85);
-  const [biometricBypass, setBiometricBypass] = useState(false);
   const [sessionTimeout, setSessionTimeout] = useState('30m');
   const [mapPulseSpeed, setMapPulseSpeed] = useState('medium');
   const [realtimeAuditLogs, setRealtimeAuditLogs] = useState(true);
@@ -44,7 +42,7 @@ export const SettingsHelp: React.FC = () => {
       officerName,
       badgeId,
       'AUTH',
-      `Configured Settings: Bypass=${biometricBypass}, FaceIDSens=${faceIDSensitivity}%, Timeout=${sessionTimeout}`
+      `Configured Settings: SessionTimeout=${sessionTimeout}, MapPulse=${mapPulseSpeed}`
     );
 
     setSettingsSaved(true);
@@ -86,42 +84,7 @@ export const SettingsHelp: React.FC = () => {
           <div className="space-y-5">
             <div className="flex items-center gap-2 border-b border-[var(--border-muted)] pb-2 text-[var(--text-primary)] font-bold uppercase tracking-wider text-[10px]">
               <Settings className="w-4 h-4 text-[#0E9E78]" />
-              <span>Operational Tuning & Biometrics</span>
-            </div>
-
-            {/* FaceID sensitivity slider */}
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between text-[var(--text-secondary)]">
-                <span>Biometric FaceID Sensitivity Threshold</span>
-                <span className="text-emerald-400 font-bold">{faceIDSensitivity}% Match</span>
-              </div>
-              <input
-                type="range"
-                min="50"
-                max="99"
-                value={faceIDSensitivity}
-                onChange={(e) => setFaceIDSensitivity(Number(e.target.value))}
-                className="w-full h-1 bg-[var(--bg-tertiary)] rounded-lg appearance-none cursor-pointer accent-emerald-500"
-              />
-              <span className="text-[8px] text-[var(--text-muted)] uppercase">Values above 85% recommended for high-risk operations.</span>
-            </div>
-
-            {/* Toggle Biometric bypass switch */}
-            <div className="flex items-center justify-between p-3 bg-[var(--bg-secondary)]/40 rounded border border-[var(--border-primary)]">
-              <div>
-                <span className="block text-[var(--text-primary)] font-bold">Biometric Authentication Bypass</span>
-                <span className="text-[8.5px] text-[var(--text-muted)] block mt-0.5">Allows keypads PIN access directly during alerts lockouts.</span>
-              </div>
-              <button
-                onClick={() => setBiometricBypass(!biometricBypass)}
-                className={`w-10 h-5.5 rounded-full p-1 transition-colors duration-250 cursor-pointer outline-none shrink-0 ${
-                  biometricBypass ? 'bg-emerald-500' : 'bg-[var(--bg-elevated)]'
-                }`}
-              >
-                <div className={`w-3.5 h-3.5 rounded-full bg-white transition-transform duration-250 ${
-                  biometricBypass ? 'translate-x-4.5' : 'translate-x-0'
-                }`} />
-              </button>
+              <span>Operational Tuning</span>
             </div>
 
             {/* Session Timeout dropdown selector */}

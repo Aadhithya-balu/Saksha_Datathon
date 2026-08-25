@@ -24,4 +24,7 @@ class Criminal(Base, UUIDPKMixin, TimestampMixin):
     # Mirrors the corresponding node in Neo4j for cross-reference between the two stores
     neo4j_node_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
 
+    # Issue #107: person image reference (Supabase Storage URL or local path)
+    image_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
     fir_links: Mapped[list["FIRCriminalLink"]] = relationship(back_populates="criminal")

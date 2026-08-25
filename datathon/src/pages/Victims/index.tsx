@@ -9,7 +9,6 @@ import {
   Search, 
   Heart,
   Activity, 
-  User, 
   MapPin, 
   FileText, 
   Phone,
@@ -18,6 +17,7 @@ import {
 } from 'lucide-react';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 import { VictimologyPanel } from './VictimologyPanel';
+import { PersonAvatar } from '../../components/ui/PersonAvatar';
 
 interface VictimSummary {
   id: string;
@@ -376,9 +376,13 @@ export const Victims: React.FC = () => {
               
               {/* Victim Identity banner */}
               <div className="p-4 bg-[var(--bg-tertiary)]/40 border border-[var(--border-primary)] rounded flex flex-col md:flex-row gap-4 items-center md:items-start select-none">
-                <div className="w-16 h-16 rounded-full bg-[#0E9E78]/15 border border-[#0E9E78]/30 flex items-center justify-center text-[#0E9E78] shrink-0 font-bold font-mono text-xl">
-                  {victimDetails.full_name.split(' ').pop()?.charAt(0) || <User className="w-8 h-8" />}
-                </div>
+                <PersonAvatar
+                  imageUrl={victimDetails.image_url}
+                  name={victimDetails.full_name}
+                  size={72}
+                  accentColor="#0E9E78"
+                  shape="circle"
+                />
                 
                 <div className="flex-1 w-full text-center md:text-left font-mono">
                   <div className="flex flex-col md:flex-row md:justify-between items-center md:items-start gap-2">
