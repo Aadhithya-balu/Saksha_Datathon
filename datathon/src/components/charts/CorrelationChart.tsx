@@ -126,7 +126,8 @@ export const CorrelationChart: React.FC = () => {
           </span>
           {analysis?.dataset && (
             <span className="text-[8px] font-mono text-[var(--text-muted)] uppercase opacity-70">
-              Reference dataset v{analysis.dataset.version} · last verified {analysis.dataset.last_verified}
+              Reference dataset v{analysis.dataset.version}
+              {analysis.dataset.data_years?.length ? ` · source period ${analysis.dataset.data_years.join(', ')}` : ''}
             </span>
           )}
         </div>
@@ -244,6 +245,13 @@ export const CorrelationChart: React.FC = () => {
                 <span className="font-semibold">{tooltip.data.populationDensity}/sq.km</span>
               </div>
             </div>
+          )}
+
+          {analysis?.dataset && (
+            <span className="block mt-1 text-right text-[7.5px] font-mono text-[var(--text-muted)] uppercase opacity-60">
+              Indicators: versioned reference dataset v{analysis.dataset.version}
+              {analysis.dataset.data_years?.length ? ` · source period ${analysis.dataset.data_years.join(', ')}` : ''}
+            </span>
           )}
         </div>
       )}

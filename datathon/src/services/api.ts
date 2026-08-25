@@ -1575,54 +1575,85 @@ export interface UrbanRuralData {
   count: number;
   percentage: number;
   color: string;
+  classification_status?: 'AVAILABLE' | 'DATA_UNAVAILABLE';
 }
 
 export interface DistrictDensity {
   district: string;
+  canonical_district?: string | null;
+  match_method?: string;
+  mapping_status?: 'MATCHED' | 'UNMAPPED';
   crime_count: number;
-  crime_per_lakh: number;
-  crime_per_sqkm: number;
-  population_lakhs: number;
-  area_sq_km: number;
-  type: string;
+  crime_per_lakh: number | null;
+  crime_per_sqkm: number | null;
+  population_lakhs: number | null;
+  area_sq_km: number | null;
+  type: string | null;
 }
 
 export interface UrbanRuralAnalysis {
   urban_rural_distribution: UrbanRuralData[];
+  unmapped_districts?: string[];
   district_crime_density: DistrictDensity[];
   total_crimes: number;
 }
 
+export interface CorrelationDetail {
+  coefficient: number | null;
+  sample_size: number;
+  excluded_missing?: number;
+  status: string;
+}
+
 export interface DistrictOverlay {
   district: string;
+  canonical_district?: string | null;
+  mapping_status?: 'MATCHED' | 'UNMAPPED';
+  match_method?: string;
+  limitation?: string;
   crime_count: number;
-  population_lakhs: number;
-  area_sq_km: number;
-  population_density: number;
-  crime_per_lakh: number;
-  crime_per_sqkm: number;
-  urbanization_type: string;
-  literacy_rate: number;
-  sex_ratio: number;
-  avg_income_lakhs: number;
-  unemployment_rate: number;
-  risk_index: number | null;
+  population_lakhs: number | null;
+  area_sq_km: number | null;
+  population_density: number | null;
+  crime_per_lakh: number | null;
+  crime_per_sqkm: number | null;
+  data_status?: Record<string, 'AVAILABLE' | 'DATA_UNAVAILABLE'>;
+  urbanization_type: string | null;
+  literacy_rate: number | null;
+  sex_ratio: number | null;
+  avg_income_lakhs: number | null;
+  unemployment_rate: number | null;
+  risk_index?: number | null;
+  source_period?: number | null;
+  period_label?: string | null;
+  record_completeness_pct?: number;
   correlation_flags: string[];
 }
 
 export interface SocioeconomicAnalysis {
   districts: DistrictOverlay[];
   correlations: {
-    literacy_vs_crime: number;
-    income_vs_crime: number;
+    literacy_vs_crime: number | null;
+    income_vs_crime: number | null;
     unemployment_vs_crime: number | null;
+  };
+  correlation_details?: Record<string, CorrelationDetail>;
+  unmapped_districts?: string[];
+  provenance?: {
+    dataset_name: string;
+    version: string;
+    origin: string;
+    source_key: string | null;
   };
   dataset?: {
     version: string;
-    source_file: string;
-    last_verified: string;
-    notes: string[];
-    fields_available: string[];
+    file?: string;
+    notes?: string[];
+    indicators?: unknown[];
+    partial_records?: Array<{ district: string; available_indicators: number; total_indicators: number }>;
+    duplicate_district_keys?: string[];
+    records_missing_period?: string[];
+    data_years?: number[];
   } | null;
   insights: Array<{
     type: string;
@@ -1633,10 +1664,14 @@ export interface SocioeconomicAnalysis {
 
 export interface ScatterPoint {
   district: string;
+  canonical_district?: string | null;
+  match_method?: string;
+  mapping_status?: 'MATCHED' | 'UNMAPPED';
+  limitation?: string;
   crime_count: number;
-  crime_per_lakh: number;
-  population_density: number;
-  urbanization_type: string;
+  crime_per_lakh: number | null;
+  population_density: number | null;
+  urbanization_type: string | null;
   color: string;
 }
 
