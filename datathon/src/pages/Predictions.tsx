@@ -169,9 +169,6 @@ export const Predictions: React.FC = () => {
               {riskScores?.data_provenance ? ` · Source: ${riskScores.data_provenance === 'LIVE_DB' ? 'SAKSHA Crime Records' : riskScores.data_provenance}` : ''}
             </span>
           </div>
-          <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
-            D3 REGRESSION SCATTER MODELS — AUTO-PREDICTOR TIMELINES & ANOMALY DETECTION
-          </p>
         </div>
 
         <button

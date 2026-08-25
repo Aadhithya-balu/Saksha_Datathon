@@ -241,6 +241,16 @@ export interface NetworkNode {
   isSeed?: boolean;
 }
 
+export interface RelationshipEvidenceItem {
+  record_type?: string;
+  record_id?: string;
+  record_number?: string;
+  details?: string;
+  timestamp?: string | null;
+  sections?: string;
+  factors?: string[];
+}
+
 export interface NetworkEdge {
   source: string;
   target: string;
@@ -248,6 +258,25 @@ export interface NetworkEdge {
   weight?: number;
   first_seen?: string | null;
   last_seen?: string | null;
+  provenance?: 'DIRECT_DATABASE' | 'ANALYTICAL_INFERENCE' | 'DEMO_SEED' | 'MIXED' | 'UNKNOWN' | string;
+  verification_status?: 'VERIFIED' | 'POTENTIAL' | 'UNVERIFIED' | 'DEMO' | string;
+  relationship_type?: string;
+  evidence?: RelationshipEvidenceItem[];
+  confidence?: number | null;
+  confidence_level?: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN' | string;
+  is_demo_derived?: boolean;
+  operational_warning?: string | null;
+}
+
+export interface ProvenanceSummary {
+  total_nodes: number;
+  total_edges: number;
+  verified_relationships: number;
+  analytical_relationships: number;
+  potential_relationships: number;
+  demo_relationships: number;
+  mixed_relationships: number;
+  unknown_relationships: number;
 }
 
 export interface NetworkResponse {
@@ -263,6 +292,7 @@ export interface NetworkGraphResponse {
   is_neo4j_backed: boolean;
   seed_node_count?: number;
   dataset_scope?: 'live_records' | 'contains_seed_demo_records' | string;
+  provenance_summary?: ProvenanceSummary;
 }
 
 export interface GangHierarchyMember {
@@ -678,12 +708,35 @@ export async function broadcastRedZones(minCurrent = 3, ratioThreshold = 1.5) {
   return apiRequest<RedZoneNotifyResponse>(`/alerts/red-zones/notify${buildQueryString({ min_current: minCurrent, ratio_threshold: ratioThreshold })}`, { method: 'POST' });
 }
 
-export async function getNetworkPerson(personId: string, depth = 1) {
-  return apiRequest<NetworkResponse>(`/ai/network/person/${encodeURIComponent(personId)}${buildQueryString({ depth })}`);
+export async function getNetworkPerson(
+  personId: string,
+  depth = 1,
+  provenanceFilter?: string,
+  excludeDemo?: boolean
+) {
+  return apiRequest<NetworkGraphResponse>(
+    `/network/person/${encodeURIComponent(personId)}${buildQueryString({
+      depth,
+      provenance_filter: provenanceFilter,
+      exclude_demo: excludeDemo,
+    })}`
+  );
 }
 
-export async function getFullNetworkGraph(categoryFilter?: string, minRisk?: number) {
-  return apiRequest<NetworkGraphResponse>(`/network/graph${buildQueryString({ category_filter: categoryFilter, min_risk: minRisk })}`);
+export async function getFullNetworkGraph(
+  categoryFilter?: string,
+  minRisk?: number,
+  provenanceFilter?: string,
+  excludeDemo?: boolean
+) {
+  return apiRequest<NetworkGraphResponse>(
+    `/network/graph${buildQueryString({
+      category_filter: categoryFilter,
+      min_risk: minRisk,
+      provenance_filter: provenanceFilter,
+      exclude_demo: excludeDemo,
+    })}`
+  );
 }
 
 export async function getGangNetworks() {
@@ -2065,6 +2118,110 @@ export async function syncMOTags() {
   });
 }
 
+export interface MOMatchingCase {
+  case_id: string;
+  case_number: string;
+  category: string | null;
+  district: string | null;
+  station: string | null;
+  status: string;
+  occurred_at: string | null;
+  similarity_score: number;
+  similarity_percent: number;
+  match_level: 'high' | 'medium' | 'low' | 'none';
+  confidence: number;
+  is_confirmed_relationship?: boolean;
+  relationship_label?: string;
+  matching_factors: string[];
+  divergent_factors: string[];
+  insufficient_data: string[];
+}
+
+export interface MOMatchingSuspect {
+  criminal_id: string;
+  full_name: string;
+  aliases: string | null;
+  status: string;
+  gang_affiliation: string | null;
+  similarity_score: number;
+  similarity_percent: number;
+  match_level: 'high' | 'medium' | 'low' | 'none';
+  confidence: number;
+  is_confirmed_relationship: boolean;
+  relationship_label: string;
+  matching_factors: string[];
+  divergent_factors: string[];
+  insufficient_data: string[];
+}
+
+export interface MOMatchCaseResponse {
+  target_case: {
+    case_id: string;
+    case_number: string;
+    category: string | null;
+    district: string | null;
+    profile: Record<string, any>;
+  };
+  matching_cases: MOMatchingCase[];
+  matching_suspects: MOMatchingSuspect[];
+  total_cases_evaluated: number;
+  total_criminals_evaluated: number;
+  evaluated_at: string;
+  error?: string;
+}
+
+export interface MOMatchCriminalResponse {
+  target_criminal: {
+    criminal_id: string;
+    full_name: string;
+    status: string;
+    profile: Record<string, any>;
+  };
+  matching_cases: MOMatchingCase[];
+  similar_criminals: MOMatchingSuspect[];
+  total_cases_evaluated: number;
+  total_criminals_evaluated: number;
+  evaluated_at: string;
+  error?: string;
+}
+
+export interface MOCompareResponse {
+  entity_a: Record<string, any>;
+  entity_b: Record<string, any>;
+  similarity_score: number;
+  similarity_percent: number;
+  match_level: 'high' | 'medium' | 'low' | 'none';
+  confidence: number;
+  matching_factors: string[];
+  divergent_factors: string[];
+  insufficient_data: string[];
+  dimension_scores: Record<string, number>;
+  evaluated_at: string;
+  error?: string;
+}
+
+export async function getCaseMOMatches(caseId: string, minSimilarity = 0.25, k = 5) {
+  const params = new URLSearchParams({ min_similarity: String(minSimilarity), k: String(k) });
+  return apiRequest<MOMatchCaseResponse>(`/ai/mo/match/case/${caseId}?${params.toString()}`);
+}
+
+export async function getCriminalMOMatches(criminalId: string, minSimilarity = 0.25, k = 5) {
+  const params = new URLSearchParams({ min_similarity: String(minSimilarity), k: String(k) });
+  return apiRequest<MOMatchCriminalResponse>(`/ai/mo/match/criminal/${criminalId}?${params.toString()}`);
+}
+
+export async function compareMOEntities(params: {
+  entity_a_id: string;
+  entity_a_type: 'case' | 'criminal';
+  entity_b_id: string;
+  entity_b_type: 'case' | 'criminal';
+}) {
+  return apiRequest<MOCompareResponse>('/ai/mo/compare', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
 // ── Data Import / Legacy Ingestion (issue #139 M1/M2) ───────────────────────
 
 export interface ImportColumnSpec {
@@ -2168,3 +2325,29 @@ export async function commitImportFile(
 export async function listImportJobs(pageSize = 20) {
   return apiRequest<{ total: number; page: number; page_size: number; results: ImportJobSummary[] }>(`/data-import/jobs?page=1&page_size=${pageSize}`);
 }
+
+export async function downloadEvidencePDF(evidenceId: string, filename?: string): Promise<void> {
+  const tokens = getStoredTokens();
+  const response = await fetch(`${API_BASE_URL}/evidence/${evidenceId}/download?format=pdf`, {
+    headers: {
+      ...(tokens?.accessToken ? { Authorization: `Bearer ${tokens.accessToken}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to download evidence PDF (${response.statusText})`);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || `KSP_Evidence_${evidenceId.slice(0, 8)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 500);
+}
+

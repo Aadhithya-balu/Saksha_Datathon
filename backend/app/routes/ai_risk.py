@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, joinedload
 
-from app.ai.inference.risk import get_model_info, get_prediction_mode, invalidate_caches, predict_forecast, predict_risk
+from app.ai.inference.risk import get_model_info, invalidate_caches, predict_forecast, predict_risk
 from app.auth.dependencies import get_current_user
 from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
@@ -59,7 +59,6 @@ class RiskScoresResponse(BaseModel):
     district_id: str | None = None
     window: str
     model_version: str
-    prediction_mode: str = "ML"
     validation_status: str | None = None
     baseline_comparison: dict[str, Any] | None = None
     grid_predictions: list[dict[str, Any]]
@@ -110,7 +109,6 @@ def get_risk_scores(
                 district_id=district_id,
                 window=window,
                 model_version=info.get("version", "untrained"),
-                prediction_mode=info.get("prediction_mode", "UNAVAILABLE"),
                 validation_status=info.get("validation_status", "INSUFFICIENT_DATA"),
                 grid_predictions=[],
                 prediction_mode="UNAVAILABLE",
@@ -139,7 +137,6 @@ def get_risk_scores(
             validation_status=info.get("validation_status", "VALIDATED" if pred_mode == "ML" else "FALLBACK"),
             baseline_comparison=info.get("risk_baseline_comparison"),
             grid_predictions=results,
-            prediction_mode=get_prediction_mode(),
             risk_model_loaded=bool(info.get("risk_model_loaded")),
         )
     except Exception:
@@ -168,7 +165,6 @@ def predict_risk_scores(
         validation_status=info.get("validation_status", "VALIDATED" if pred_mode == "ML" else "FALLBACK"),
         baseline_comparison=info.get("risk_baseline_comparison"),
         grid_predictions=results,
-        prediction_mode=get_prediction_mode(),
         risk_model_loaded=bool(info.get("risk_model_loaded")),
     )
 

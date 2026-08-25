@@ -63,17 +63,30 @@ def _is_seed_case_number(case_number: str | None) -> bool:
     return case_number in case_numbers or case_number.startswith("CR-2026-SYN-")
 
 
-def _apply_seed_flags(nodes: list[NetworkNode]) -> None:
-    """Flag demo-seed origin on already-built nodes (used for the Neo4j path
-    where nodes are constructed from graph payloads without ORM context)."""
-    _, criminal_names, victim_names = _seed_identity_sets()
-    if not criminal_names:
-        return
+def _apply_seed_flags(nodes: list[NetworkNode], edges: list[NetworkEdge] | None = None) -> None:
+    """Flag demo-seed origin on already-built nodes and edges (used for Neo4j path)."""
+    case_numbers, criminal_names, victim_names = _seed_identity_sets()
+    seed_node_ids = set()
     for node in nodes:
-        if node.category == NetworkNodeCategory.SUSPECT or node.category == NetworkNodeCategory.OFFENDER:
+        if node.category in (NetworkNodeCategory.SUSPECT, NetworkNodeCategory.OFFENDER):
             node.isSeed = node.name in criminal_names
         elif node.category == NetworkNodeCategory.VICTIM:
             node.isSeed = node.name in victim_names
+        elif node.category == NetworkNodeCategory.CASE:
+            node.isSeed = any(cnum in node.name or cnum in node.details for cnum in case_numbers) or "SYN" in node.name
+        if node.isSeed:
+            seed_node_ids.add(node.id)
+
+    if edges:
+        for edge in edges:
+            src_seed = edge.source in seed_node_ids
+            tgt_seed = edge.target in seed_node_ids
+            if src_seed and tgt_seed:
+                edge.provenance = "DEMO_SEED"
+                edge.is_demo_derived = True
+            elif src_seed or tgt_seed:
+                edge.provenance = "MIXED"
+                edge.is_demo_derived = True
 
 
 def _criminal_risk(criminal: Criminal) -> float:
@@ -81,7 +94,7 @@ def _criminal_risk(criminal: Criminal) -> float:
 
 
 def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: float = 0.0) -> tuple[list[NetworkNode], list[NetworkEdge]]:
-    """Construct complete graph from PostgreSQL database relations."""
+    """Construct complete graph from PostgreSQL database relations with full provenance tracking."""
     _, seed_criminal_names, seed_victim_names = _seed_identity_sets()
     firs = (
         db.query(FIR)
@@ -96,14 +109,14 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
 
     nodes_map: dict[str, NetworkNode] = {}
     edges_list: list[NetworkEdge] = []
+    # Track co-accused pairs to aggregate multi-FIR links with calculated confidence
+    co_accused_tracker: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    co_accused_seed_flags: dict[tuple[str, str], tuple[bool, bool]] = {}
 
     for fir in firs:
         case = fir.crime_case
         case_id = f"case-{fir.id}"
-        # Provenance honesty (issue 8 §10): records whose DB row carries
-        # non-live dataset provenance (e.g. "demo" / "migrated") must be
-        # identifiable in the graph, not silently presented as LIVE intel.
-        case_is_demo = bool(case) and getattr(case, "dataset_provenance", "live") not in ("live", None, "")
+        case_is_seed = _is_seed_case_number(case.case_number) if case else False
         nodes_map[case_id] = NetworkNode(
             id=case_id,
             name=f"FIR #{fir.fir_number}",
@@ -112,7 +125,7 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
             details=f"Sections: {fir.sections or 'IPC'}, Complainant: {fir.complainant_name}",
             casesCount=1,
             date=fir.filed_at.isoformat() if fir.filed_at else None,
-            isSeed=(_is_seed_case_number(case.case_number) or case_is_demo) if case else False,
+            isSeed=case_is_seed,
         )
 
         loc_node_id = None
@@ -127,18 +140,33 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
                     details=f"District: {case.location.district}",
                     casesCount=len(case.location.crimes) if hasattr(case.location, "crimes") else 1,
                     district=case.location.district,
+                    isSeed=case_is_seed,
                 )
-            edges_list.append(NetworkEdge(source=case_id, target=loc_node_id, relationship="Occurred At Jurisdiction"))
+            edges_list.append(NetworkEdge(
+                source=case_id,
+                target=loc_node_id,
+                relationship="Occurred At Jurisdiction",
+                relationship_type="CASE_LOCATION",
+                provenance="DEMO_SEED" if case_is_seed else "DIRECT_DATABASE",
+                verification_status="DEMO" if case_is_seed else "VERIFIED",
+                confidence=1.0,
+                confidence_level="HIGH",
+                evidence=[{
+                    "record_type": "fir_location",
+                    "record_id": str(fir.id),
+                    "record_number": fir.fir_number,
+                    "details": f"FIR #{fir.fir_number} incident location jurisdiction in {case.location.district}",
+                    "timestamp": fir.filed_at.isoformat() if fir.filed_at else None,
+                }],
+                is_demo_derived=case_is_seed,
+            ))
 
-        fir_criminal_ids: list[str] = []
+        fir_criminals: list[tuple[str, bool]] = []
         for link in fir.criminal_links:
             criminal = link.criminal
-            if criminal is None:
-                # Issue 8 §11: dangling FIR->criminal reference (record deleted
-                # or partial import). Skip safely — never fabricate a node.
-                continue
             crim_id = f"criminal-{criminal.id}"
-            fir_criminal_ids.append(crim_id)
+            crim_is_seed = criminal.full_name in seed_criminal_names
+            fir_criminals.append((crim_id, crim_is_seed))
             if crim_id not in nodes_map:
                 nodes_map[crim_id] = NetworkNode(
                     id=crim_id,
@@ -150,27 +178,68 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
                     phone=None,
                     gangAffiliation=(criminal.gang_affiliation or "").strip() or None,
                     status=criminal.status,
-                    isSeed=criminal.full_name in seed_criminal_names,
+                    isSeed=crim_is_seed,
                 )
-            edges_list.append(NetworkEdge(source=crim_id, target=case_id, relationship="Accused in FIR"))
+            # Direct database relationship: Person -> Case
+            is_demo = crim_is_seed or case_is_seed
+            edges_list.append(NetworkEdge(
+                source=crim_id,
+                target=case_id,
+                relationship="Accused in FIR",
+                relationship_type="PERSON_CASE",
+                provenance="DEMO_SEED" if is_demo else "DIRECT_DATABASE",
+                verification_status="VERIFIED",
+                confidence=1.0,
+                confidence_level="HIGH",
+                evidence=[{
+                    "record_type": "fir_charge",
+                    "record_id": str(fir.id),
+                    "record_number": fir.fir_number,
+                    "details": f"Accused listed under sections {fir.sections or 'IPC'} in FIR #{fir.fir_number}",
+                    "timestamp": fir.filed_at.isoformat() if fir.filed_at else None,
+                }],
+                is_demo_derived=is_demo,
+            ))
             if loc_node_id:
-                edges_list.append(NetworkEdge(source=crim_id, target=loc_node_id, relationship="Operated in area"))
-
-        # Co-accused association edges between criminals sharing this FIR
-        for i in range(len(fir_criminal_ids)):
-            for j in range(i + 1, len(fir_criminal_ids)):
                 edges_list.append(NetworkEdge(
-                    source=fir_criminal_ids[i],
-                    target=fir_criminal_ids[j],
-                    relationship=f"Co-accused in {fir.fir_number}",
+                    source=crim_id,
+                    target=loc_node_id,
+                    relationship="Operated in area",
+                    relationship_type="PERSON_LOCATION",
+                    provenance="DEMO_SEED" if crim_is_seed else "DIRECT_DATABASE",
+                    verification_status="VERIFIED",
+                    confidence=1.0,
+                    confidence_level="HIGH",
+                    evidence=[{
+                        "record_type": "fir_jurisdiction",
+                        "record_id": str(fir.id),
+                        "record_number": fir.fir_number,
+                        "details": f"Offence committed in {case.location.district if case and case.location else 'district'} jurisdiction",
+                        "timestamp": fir.filed_at.isoformat() if fir.filed_at else None,
+                    }],
+                    is_demo_derived=crim_is_seed,
                 ))
+
+        # Record co-accused pairs for analytical inference
+        for i in range(len(fir_criminals)):
+            for j in range(i + 1, len(fir_criminals)):
+                c1_id, c1_seed = fir_criminals[i]
+                c2_id, c2_seed = fir_criminals[j]
+                pair_key = (min(c1_id, c2_id), max(c1_id, c2_id))
+                co_accused_tracker[pair_key].append({
+                    "record_type": "fir_co_accused",
+                    "record_id": str(fir.id),
+                    "record_number": fir.fir_number,
+                    "sections": fir.sections or "IPC",
+                    "timestamp": fir.filed_at.isoformat() if fir.filed_at else None,
+                    "factors": ["Co-accused in formal FIR charge", f"Shared FIR #{fir.fir_number}"],
+                })
+                co_accused_seed_flags[pair_key] = (c1_seed, c2_seed)
 
         for vlink in fir.victim_links:
             victim = vlink.victim
-            if victim is None:
-                # Issue 8 §11: dangling FIR->victim reference — skip safely.
-                continue
             vic_id = f"victim-{victim.id}"
+            vic_is_seed = victim.full_name in seed_victim_names
             if vic_id not in nodes_map:
                 nodes_map[vic_id] = NetworkNode(
                     id=vic_id,
@@ -179,9 +248,65 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
                     riskScore=15.0,
                     details=victim.statement or "Victim named in FIR",
                     casesCount=len(victim.fir_links),
-                    isSeed=victim.full_name in seed_victim_names,
+                    isSeed=vic_is_seed,
                 )
-            edges_list.append(NetworkEdge(source=vic_id, target=case_id, relationship="Victim in FIR"))
+            vic_is_demo = vic_is_seed or case_is_seed
+            edges_list.append(NetworkEdge(
+                source=vic_id,
+                target=case_id,
+                relationship="Victim in FIR",
+                relationship_type="PERSON_VICTIM",
+                provenance="DEMO_SEED" if vic_is_demo else "DIRECT_DATABASE",
+                verification_status="VERIFIED",
+                confidence=1.0,
+                confidence_level="HIGH",
+                evidence=[{
+                    "record_type": "fir_victim",
+                    "record_id": str(fir.id),
+                    "record_number": fir.fir_number,
+                    "details": f"Victim named in FIR #{fir.fir_number}",
+                    "timestamp": fir.filed_at.isoformat() if fir.filed_at else None,
+                }],
+                is_demo_derived=vic_is_demo,
+            ))
+
+    # Construct Analytical Co-Accused Links with Calculated Confidence
+    for (c1_id, c2_id), shared_evidences in co_accused_tracker.items():
+        c1_seed, c2_seed = co_accused_seed_flags.get((c1_id, c2_id), (False, False))
+        is_demo_pair = c1_seed and c2_seed
+        is_mixed_pair = (c1_seed != c2_seed)
+        
+        if is_demo_pair:
+            provenance = "DEMO_SEED"
+        elif is_mixed_pair:
+            provenance = "MIXED"
+        else:
+            provenance = "ANALYTICAL_INFERENCE"
+        status = "POTENTIAL"
+
+        shared_count = len(shared_evidences)
+        # Calculated confidence based on multi-incident corroboration
+        if shared_count >= 2:
+            confidence = min(0.95, round(0.70 + (shared_count * 0.08), 2))
+            conf_level = "HIGH"
+        else:
+            confidence = 0.70
+            conf_level = "MEDIUM"
+
+        edges_list.append(NetworkEdge(
+            source=c1_id,
+            target=c2_id,
+            relationship=f"Co-accused in {shared_count} FIR{'s' if shared_count > 1 else ''}",
+            relationship_type="SHARED_CASE",
+            provenance=provenance,
+            verification_status=status,
+            weight=round(1.0 + (shared_count - 1) * 0.5, 2),
+            confidence=confidence,
+            confidence_level=conf_level,
+            evidence=shared_evidences,
+            is_demo_derived=(c1_seed or c2_seed),
+            operational_warning="Analytical relationship identified from available records. This does not establish a confirmed association.",
+        ))
 
     # Investigating officers connected to their cases
     officer_ids_seen: set[str] = set()
@@ -200,11 +325,25 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
                 details=f"{officer.rank or 'Officer'}, {officer.station} ({officer.badge_number})",
                 casesCount=len(officer.firs),
                 district=officer.district,
+                isSeed=False,
             )
         edges_list.append(NetworkEdge(
             source=f"case-{fir.id}",
             target=officer_node_id,
             relationship="Investigated by",
+            relationship_type="PERSON_INVESTIGATION",
+            provenance="DIRECT_DATABASE",
+            verification_status="VERIFIED",
+            confidence=1.0,
+            confidence_level="HIGH",
+            evidence=[{
+                "record_type": "fir_assignment",
+                "record_id": str(fir.id),
+                "record_number": fir.fir_number,
+                "details": f"Investigating Officer assigned to FIR #{fir.fir_number}",
+                "timestamp": fir.filed_at.isoformat() if fir.filed_at else None,
+            }],
+            is_demo_derived=False,
         ))
 
     # Apply Category & Risk filters
@@ -221,9 +360,44 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
     return filtered_nodes, filtered_edges
 
 
-def _graph_response(nodes: list[NetworkNode], edges: list[NetworkEdge], is_neo4j_backed: bool) -> NetworkGraphResponse:
-    """Assemble the response with seed-provenance metadata (gap 132.4)."""
+def _graph_response(
+    nodes: list[NetworkNode],
+    edges: list[NetworkEdge],
+    is_neo4j_backed: bool,
+    provenance_filter: str | None = None,
+    exclude_demo: bool = False,
+) -> NetworkGraphResponse:
+    """Assemble the response with comprehensive provenance summary and filtering (Issue #159)."""
     seed_node_count = sum(1 for node in nodes if node.isSeed)
+    
+    # Baseline summary metrics reflecting full loaded subgraph for toolbar badge counts
+    summary = {
+        "total_nodes": len(nodes),
+        "total_edges": len(edges),
+        "verified_relationships": sum(1 for e in edges if e.verification_status == "VERIFIED" or e.relationship_type in ("PERSON_CASE", "PERSON_LOCATION", "CASE_LOCATION", "PERSON_INVESTIGATION", "PERSON_VICTIM")),
+        "analytical_relationships": sum(1 for e in edges if e.verification_status == "POTENTIAL" or e.relationship_type == "SHARED_CASE" or e.provenance == "ANALYTICAL_INFERENCE"),
+        "potential_relationships": sum(1 for e in edges if e.verification_status == "POTENTIAL" or e.relationship_type == "SHARED_CASE"),
+        "demo_relationships": sum(1 for e in edges if e.is_demo_derived or e.provenance in ("DEMO_SEED", "MIXED")),
+        "mixed_relationships": sum(1 for e in edges if e.provenance == "MIXED"),
+        "unknown_relationships": sum(1 for e in edges if e.provenance == "UNKNOWN" or e.verification_status == "UNVERIFIED"),
+    }
+
+    if exclude_demo:
+        nodes = [n for n in nodes if not n.isSeed]
+        valid_nids = {n.id for n in nodes}
+        edges = [e for e in edges if not e.is_demo_derived and e.source in valid_nids and e.target in valid_nids]
+
+    if provenance_filter:
+        p_filter = provenance_filter.upper()
+        if p_filter == "VERIFIED":
+            edges = [e for e in edges if e.verification_status == "VERIFIED" or (e.relationship_type in ("PERSON_CASE", "PERSON_LOCATION", "CASE_LOCATION", "PERSON_INVESTIGATION", "PERSON_VICTIM") and e.relationship_type != "SHARED_CASE")]
+        elif p_filter in ("POTENTIAL", "ANALYTICAL_INFERENCE"):
+            edges = [e for e in edges if e.verification_status == "POTENTIAL" or e.relationship_type == "SHARED_CASE" or e.provenance == "ANALYTICAL_INFERENCE"]
+        elif p_filter in ("DIRECT_DATABASE", "DEMO_SEED", "MIXED", "UNKNOWN", "UNVERIFIED", "DEMO"):
+            edges = [e for e in edges if e.provenance == p_filter or e.verification_status == p_filter]
+        connected_node_ids = {e.source for e in edges} | {e.target for e in edges}
+        nodes = [n for n in nodes if n.id in connected_node_ids]
+
     return NetworkGraphResponse(
         nodes=nodes,
         edges=edges,
@@ -231,30 +405,55 @@ def _graph_response(nodes: list[NetworkNode], edges: list[NetworkEdge], is_neo4j
         total_edges=len(edges),
         is_neo4j_backed=is_neo4j_backed,
         seed_node_count=seed_node_count,
-        dataset_scope="contains_seed_demo_records" if seed_node_count else "live_records",
+        dataset_scope="contains_seed_demo_records" if seed_node_count or summary["demo_relationships"] else "live_records",
+        provenance_summary=summary,
     )
 
 
-def get_full_network_graph(db: Session, category_filter: str | None = None, min_risk: float = 0.0) -> NetworkGraphResponse:
+def get_full_network_graph(
+    db: Session,
+    category_filter: str | None = None,
+    min_risk: float = 0.0,
+    provenance_filter: str | None = None,
+    exclude_demo: bool = False,
+) -> NetworkGraphResponse:
     """Fetch complete or filtered relationship network (Neo4j-first, SQL fallback)."""
     neo4j_data = fetch_full_graph_neo4j() if is_neo4j_available() else None
     if neo4j_data:
         nodes = [NetworkNode(**n) for n in neo4j_data["nodes"]]
-        _apply_seed_flags(nodes)
         edges = [NetworkEdge(**e) for e in neo4j_data["edges"]]
+        _apply_seed_flags(nodes, edges)
         filtered_nodes = [
             n for n in nodes
             if (not category_filter or n.category.value == category_filter) and n.riskScore >= min_risk
         ]
         valid_ids = {n.id for n in filtered_nodes}
         filtered_edges = [e for e in edges if e.source in valid_ids and e.target in valid_ids]
-        return _graph_response(filtered_nodes, filtered_edges, is_neo4j_backed=True)
+        return _graph_response(
+            filtered_nodes,
+            filtered_edges,
+            is_neo4j_backed=True,
+            provenance_filter=provenance_filter,
+            exclude_demo=exclude_demo,
+        )
 
     nodes, edges = _build_sql_graph(db, category_filter=category_filter, min_risk=min_risk)
-    return _graph_response(nodes, edges, is_neo4j_backed=False)
+    return _graph_response(
+        nodes,
+        edges,
+        is_neo4j_backed=False,
+        provenance_filter=provenance_filter,
+        exclude_demo=exclude_demo,
+    )
 
 
-def get_person_network_graph(db: Session, person_id: str, depth: int = 1) -> NetworkGraphResponse:
+def get_person_network_graph(
+    db: Session,
+    person_id: str,
+    depth: int = 1,
+    provenance_filter: str | None = None,
+    exclude_demo: bool = False,
+) -> NetworkGraphResponse:
     """Fetch relationship graph centered on a specific person or node."""
     nodes, edges = _build_sql_graph(db)
     if person_id not in {n.id for n in nodes}:
@@ -264,6 +463,11 @@ def get_person_network_graph(db: Session, person_id: str, depth: int = 1) -> Net
             total_nodes=0,
             total_edges=0,
             is_neo4j_backed=is_neo4j_available(),
+            provenance_summary={
+                "total_nodes": 0, "total_edges": 0, "verified_relationships": 0,
+                "analytical_relationships": 0, "potential_relationships": 0,
+                "demo_relationships": 0, "mixed_relationships": 0, "unknown_relationships": 0,
+            },
         )
     target_id = person_id
 
@@ -283,13 +487,30 @@ def get_person_network_graph(db: Session, person_id: str, depth: int = 1) -> Net
     sub_nodes = [n for n in nodes if n.id in visited_nodes]
     sub_edges = [e for e in edges if e.source in visited_nodes and e.target in visited_nodes]
 
-    return _graph_response(sub_nodes, sub_edges, is_neo4j_backed=is_neo4j_available())
+    return _graph_response(
+        sub_nodes,
+        sub_edges,
+        is_neo4j_backed=is_neo4j_available(),
+        provenance_filter=provenance_filter,
+        exclude_demo=exclude_demo,
+    )
 
 
-def get_case_network_graph(db: Session, case_id: str) -> NetworkGraphResponse:
+def get_case_network_graph(
+    db: Session,
+    case_id: str,
+    provenance_filter: str | None = None,
+    exclude_demo: bool = False,
+) -> NetworkGraphResponse:
     """Fetch case relationship graph."""
     normalized = case_id if case_id.startswith(("case-", "fir-")) else f"case-{case_id}"
-    return get_person_network_graph(db, normalized, depth=2)
+    return get_person_network_graph(
+        db,
+        normalized,
+        depth=2,
+        provenance_filter=provenance_filter,
+        exclude_demo=exclude_demo,
+    )
 
 
 def get_organization_gang_networks(db: Session) -> list[GangNetworkSummary]:
@@ -335,6 +556,17 @@ def get_organization_gang_networks(db: Session) -> list[GangNetworkSummary]:
                     source=f"criminal-{leader.id}",
                     target=f"criminal-{member.id}",
                     relationship="Reports to" if idx <= 2 else "Associated with",
+                    relationship_type="GANG_ASSOCIATION",
+                    provenance="DEMO_SEED" if all_seeded else "ANALYTICAL_INFERENCE",
+                    verification_status="DEMO" if all_seeded else "POTENTIAL",
+                    confidence=0.85 if idx <= 2 else 0.70,
+                    confidence_level="HIGH" if idx <= 2 else "MEDIUM",
+                    evidence=[{
+                        "record_type": "gang_affiliation",
+                        "details": f"Mutual recorded gang affiliation: '{gang_name}'",
+                    }],
+                    is_demo_derived=all_seeded,
+                    operational_warning="Analytical relationship identified from available records. This does not establish a confirmed association.",
                 ))
 
         risk_level = "CRITICAL" if avg_risk >= 80 else ("HIGH" if avg_risk >= 65 else "MODERATE")
@@ -432,7 +664,16 @@ def find_shortest_path(db: Session, source_id: str, target_id: str, max_depth: i
         if e:
             path_edges.append(e)
         else:
-            path_edges.append(NetworkEdge(source=u, target=v, relationship="Linked Relationship"))
+            path_edges.append(NetworkEdge(
+                source=u,
+                target=v,
+                relationship="Linked Relationship",
+                relationship_type="OTHER",
+                provenance="UNKNOWN",
+                verification_status="UNVERIFIED",
+                confidence=None,
+                confidence_level="UNKNOWN",
+            ))
 
     return ShortestPathResponse(
         found=True,

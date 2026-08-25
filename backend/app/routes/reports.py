@@ -355,125 +355,193 @@ def _generate_txt(title: str, filters: dict, headers: list[str], rows: list[dict
 
 def _generate_pdf(title: str, filters: dict, headers: list[str], rows: list[dict]) -> bytes:
     import os as _os
-    _font_name = "helvetica"
-    _unicode_font = None
+    import unicodedata
 
-    # Try to add a Unicode-capable TTF font for non-Latin scripts
-    for candidate in [
-        _os.path.join(_os.path.dirname(__file__), "..", "..", "fonts", "NotoSans-Regular.ttf"),
-        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "C:\\Windows\\Fonts\\arial.ttf",
-    ]:
-        if _os.path.isfile(candidate):
-            try:
-                _unicode_font = "NotoSans"
-                _font_name = "NotoSans"
-            except Exception:
-                _font_name = "helvetica"
-            break
+    # Typography replacements for PDF encoding safety
+    UNICODE_REPLACEMENTS = {
+        "\u2014": " - ",   # em-dash
+        "\u2013": " - ",   # en-dash
+        "\u2022": " * ",   # bullet
+        "\u2018": "'",     # left single quote
+        "\u2019": "'",     # right single quote
+        "\u201c": '"',     # left double quote
+        "\u201d": '"',     # right double quote
+        "\u2026": "...",   # ellipsis
+        "\u00a0": " ",     # non-breaking space
+        "\u2194": " <-> ", # left right arrow
+        "\u2192": " -> ",  # right arrow
+        "\u2190": " <- ",  # left arrow
+        "\u2264": "<=",
+        "\u2265": ">=",
+        "\u2260": "!=",
+    }
 
     def safe_text(text):
-        """Encode text safely — strip non-printable chars, keep Unicode if font supports it."""
-        s = str(text).strip()
-        # Remove control characters
-        s = ''.join(c for c in s if c.isprintable() or c in ('\n', '\t'))
-        return s
+        """Safely encode text for PDF by replacing typographic Unicode symbols and non-printables."""
+        if text is None:
+            return ""
+        s = str(text)
+        for u_char, r_char in UNICODE_REPLACEMENTS.items():
+            s = s.replace(u_char, r_char)
+        # Normalize and strip unprintable characters
+        s = unicodedata.normalize("NFKD", s)
+        # Encode transliterated latin-1
+        try:
+            s = s.encode("latin-1", "replace").decode("latin-1")
+        except Exception:
+            s = s.encode("ascii", "replace").decode("ascii")
+        return "".join(c for c in s if c.isprintable() or c in ("\n", "\t")).strip()
+
+    is_dossier = len(headers) == 2 and headers[0] == "Property" and headers[1] == "Value"
+    orientation = "P" if is_dossier else "L"
+
+    # Font setup
+    font_regular = "C:\\Windows\\Fonts\\arial.ttf" if _os.path.isfile("C:\\Windows\\Fonts\\arial.ttf") else None
+    font_bold = "C:\\Windows\\Fonts\\arialbd.ttf" if _os.path.isfile("C:\\Windows\\Fonts\\arialbd.ttf") else None
+    font_italic = "C:\\Windows\\Fonts\\ariali.ttf" if _os.path.isfile("C:\\Windows\\Fonts\\ariali.ttf") else None
+    _font = "Arial" if font_regular else "helvetica"
 
     class ReportPDF(FPDF):
+        def __init__(self, orientation="P"):
+            super().__init__(orientation=orientation)
+            if font_regular:
+                self.add_font("Arial", "", font_regular)
+                if font_bold:
+                    self.add_font("Arial", "B", font_bold)
+                if font_italic:
+                    self.add_font("Arial", "I", font_italic)
+
         def header(self):
-            self.set_font("helvetica", "B", 14)
+            self.set_font(_font, "B", 13)
             self.set_text_color(15, 23, 42)
-            self.cell(0, 8, "SAKSHA Police Intelligence & Analytics Platform", align="C", new_x="LMARGIN", new_y="NEXT")
-            self.set_font("helvetica", "B", 11)
+            self.cell(0, 7, "SAKSHA Police Intelligence & Analytics Platform", align="C", new_x="LMARGIN", new_y="NEXT")
+            self.set_font(_font, "B", 10.5)
             self.set_text_color(30, 111, 217)
             self.cell(0, 6, safe_text(title), align="C", new_x="LMARGIN", new_y="NEXT")
-            self.set_draw_color(200, 210, 225)
+            self.set_draw_color(203, 213, 225)
             self.line(10, self.get_y() + 2, self.w - 10, self.get_y() + 2)
-            self.ln(6)
+            self.ln(5)
 
         def footer(self):
             self.set_y(-15)
-            self.set_font("helvetica", "I", 8)
-            self.set_text_color(100, 115, 140)
+            self.set_font(_font, "I", 8)
+            self.set_text_color(100, 116, 139)
             self.cell(0, 10, f"SAKSHA Platform  |  Page {self.page_no()} of {{nb}}  |  CONFIDENTIAL LAW-ENFORCEMENT REPORT", align="C")
 
-    pdf = ReportPDF(orientation="L")
+    pdf = ReportPDF(orientation=orientation)
     pdf.alias_nb_pages()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
 
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     filter_str = ", ".join(f"{k}={v}" for k, v in filters.items()) if filters else "None"
 
-    pdf.set_font("helvetica", "B", 10)
-    pdf.set_text_color(30, 41, 59)
-    pdf.cell(0, 6, "REPORT SUMMARY & METADATA", new_x="LMARGIN", new_y="NEXT")
+    # Metadata Box
+    pdf.set_fill_color(248, 250, 252)
+    pdf.set_draw_color(226, 232, 240)
+    meta_y = pdf.get_y()
+    meta_w = pdf.w - 20
+    pdf.rect(10, meta_y, meta_w, 20, "DF")
+    pdf.set_xy(14, meta_y + 2)
     
-    pdf.set_font("helvetica", "", 9)
+    pdf.set_font(_font, "B", 8.5)
+    pdf.set_text_color(15, 23, 42)
+    pdf.cell(0, 5, "INTELLIGENCE REPORT METADATA & CONTROL", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_x(14)
+    pdf.set_font(_font, "", 8)
     pdf.set_text_color(71, 85, 105)
-    pdf.cell(0, 5, f"Generated At: {generated}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 5, safe_text(f"Applied Filters: {filter_str}"), new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 5, f"Total Records: {len(rows)}", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(4)
+    pdf.cell(90, 4.5, f"Generated At: {generated}")
+    pdf.cell(0, 4.5, safe_text(f"Classification / Watermark: {filter_str}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.set_x(14)
+    pdf.cell(0, 4.5, f"Total Data Attributes: {len(rows)}", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_y(meta_y + 23)
 
     if headers and rows:
-        formatted_headers = [safe_text(h.replace("_", " ").title()) for h in headers]
-        
-        pdf.set_font("helvetica", "", 8)
-        pdf.set_text_color(15, 23, 42)
+        if is_dossier:
+            # 2-Column Key-Value Dossier Layout
+            prop_w = 60
+            val_w = meta_w - prop_w
+            
+            # Header Row
+            pdf.set_fill_color(30, 41, 59)
+            pdf.set_draw_color(51, 65, 85)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_font(_font, "B", 8.5)
+            pdf.cell(prop_w, 7, "  PROPERTY / ATTRIBUTE", border=1, fill=True)
+            pdf.cell(val_w, 7, "  INTELLIGENCE VALUE & PARTICULARS", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
 
-        _MAX_CHARS_PER_CELL = 400
+            for row_idx, row in enumerate(rows):
+                prop_text = safe_text(row.get("Property", ""))
+                val_text = safe_text(row.get("Value", ""))
 
-        try:
-            with pdf.table(
-                first_row_as_headings=True,
-                line_height=5,
-                padding=2
-            ) as table:
-                header_row = table.row()
-                for h in formatted_headers:
-                    header_row.cell(h)
+                pdf.set_font(_font, "", 8)
+                lines = pdf.multi_cell(val_w - 4, 4.5, val_text, dry_run=True, output="LINES")
+                row_h = max(7, len(lines) * 4.5 + 3)
 
-                for row in rows:
-                    r_row = table.row()
-                    for h in headers:
-                        val = safe_text(row.get(h))
-                        if len(val) > _MAX_CHARS_PER_CELL:
-                            val = val[:_MAX_CHARS_PER_CELL] + "..."
-                        r_row.cell(val)
-        except ValueError:
-            pdf.set_font("helvetica", "B", 8)
-            pdf.set_text_color(15, 23, 42)
-            for h in formatted_headers:
-                pdf.cell(50, 6, h, border=1)
-            pdf.ln()
-            pdf.set_font("helvetica", "", 7)
-            for row in rows:
-                max_lines = 1
-                for h in headers:
-                    val = safe_text(row.get(h))
-                    if len(val) > 80:
-                        val = val[:80] + "..."
-                    lines_count = max(1, (len(val) // 25) + 1)
-                    max_lines = max(max_lines, lines_count)
-                row_h = max(6, min(max_lines * 4, 40))
-                y_before = pdf.get_y()
-                if y_before + row_h > pdf.h - 20:
+                if pdf.get_y() + row_h > pdf.h - 20:
                     pdf.add_page()
-                    pdf.set_font("helvetica", "B", 8)
-                    for fh in formatted_headers:
-                        pdf.cell(50, 6, fh, border=1)
+                    pdf.set_fill_color(30, 41, 59)
+                    pdf.set_draw_color(51, 65, 85)
+                    pdf.set_text_color(255, 255, 255)
+                    pdf.set_font(_font, "B", 8.5)
+                    pdf.cell(prop_w, 7, "  PROPERTY / ATTRIBUTE", border=1, fill=True)
+                    pdf.cell(val_w, 7, "  INTELLIGENCE VALUE & PARTICULARS", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
+
+                curr_x = 10
+                curr_y = pdf.get_y()
+
+                # Draw property cell
+                pdf.set_fill_color(241, 245, 249) if row_idx % 2 == 0 else pdf.set_fill_color(248, 250, 252)
+                pdf.set_draw_color(203, 213, 225)
+                pdf.rect(curr_x, curr_y, prop_w, row_h, "DF")
+                pdf.set_xy(curr_x + 2, curr_y + 1.5)
+                pdf.set_font(_font, "B", 8)
+                pdf.set_text_color(15, 23, 42)
+                pdf.multi_cell(prop_w - 4, 4.2, prop_text)
+
+                # Draw value cell
+                pdf.set_fill_color(255, 255, 255) if row_idx % 2 == 0 else pdf.set_fill_color(250, 250, 250)
+                pdf.rect(curr_x + prop_w, curr_y, val_w, row_h, "DF")
+                pdf.set_xy(curr_x + prop_w + 2, curr_y + 1.5)
+                pdf.set_font(_font, "", 8)
+                pdf.set_text_color(30, 41, 59)
+                pdf.multi_cell(val_w - 4, 4.5, val_text)
+
+                pdf.set_xy(curr_x, curr_y + row_h)
+
+        else:
+            # Multi-column Tabular Report Layout
+            col_w = max(22, (meta_w) / len(headers))
+            pdf.set_fill_color(30, 41, 59)
+            pdf.set_draw_color(51, 65, 85)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_font(_font, "B", 8)
+            for h in headers:
+                pdf.cell(col_w, 7, safe_text(h.replace("_", " ").title())[:20], border=1, fill=True)
+            pdf.ln()
+
+            pdf.set_text_color(30, 41, 59)
+            pdf.set_font(_font, "", 7.5)
+            for row in rows:
+                if pdf.get_y() + 7 > pdf.h - 20:
+                    pdf.add_page()
+                    pdf.set_fill_color(30, 41, 59)
+                    pdf.set_draw_color(51, 65, 85)
+                    pdf.set_text_color(255, 255, 255)
+                    pdf.set_font(_font, "B", 8)
+                    for h in headers:
+                        pdf.cell(col_w, 7, safe_text(h.replace("_", " ").title())[:20], border=1, fill=True)
                     pdf.ln()
-                    pdf.set_font("helvetica", "", 7)
+                    pdf.set_text_color(30, 41, 59)
+                    pdf.set_font(_font, "", 7.5)
+
                 for h in headers:
-                    val = safe_text(row.get(h))
-                    if len(val) > 80:
-                        val = val[:80] + "..."
-                    pdf.cell(50, row_h, val, border=1)
+                    val = safe_text(row.get(h, ""))[:40]
+                    pdf.cell(col_w, 6, val, border=1)
                 pdf.ln()
+
     else:
-        pdf.set_font("helvetica", "I", 9)
+        pdf.set_font(_font, "I", 9)
         pdf.cell(0, 8, "No records found matching the requested criteria.", new_x="LMARGIN", new_y="NEXT")
 
     return bytes(pdf.output())
@@ -665,6 +733,41 @@ class DossierPayload(BaseModel):
     watermark: str = ""
 
 
+IGNORED_INTERNAL_KEYS = {
+    "x", "y", "z", "vx", "vy", "vz", "index", "__threeObj", "__line", 
+    "__indexColor", "__nodeColor", "__isHovered", "isHovered", "selected",
+    "source", "target", "fx", "fy", "fz", "neo4j_node_id", "extra", "color"
+}
+
+KEY_TITLE_MAPPINGS = {
+    "id": "Profile Reference ID",
+    "name": "Subject Full Name",
+    "category": "Classification",
+    "riskScore": "Threat & Risk Assessment",
+    "risk_score": "Threat & Risk Assessment",
+    "details": "Modus Operandi & Narrative",
+    "casesCount": "Active FIR Cases",
+    "cases_count": "Active FIR Cases",
+    "phone": "Contact Telephone",
+    "gangAffiliation": "Gang / Syndicate Affiliation",
+    "gang_affiliation": "Gang / Syndicate Affiliation",
+    "status": "Operational Status",
+    "district": "Jurisdiction District",
+    "date": "Incident / Record Date",
+    "isSeed": "Intelligence Grounding Scope",
+    "is_seed": "Intelligence Grounding Scope",
+    "suspectName": "Subject Name",
+    "casesFilings": "Recorded FIR Filings",
+    "links": "Network Associations",
+    "activeSuspects": "Identified Suspect Entities",
+    "relationType": "Analysis Classification",
+    "totalNodes": "Total Network Nodes",
+    "totalEdges": "Total Relationship Edges",
+    "provenanceSummary": "Provenance Breakdown",
+    "relationEdges": "Verified & Analytical Linkages",
+}
+
+
 @router.post("/dossier/export/{export_format}")
 def export_dossier(
     export_format: str,
@@ -678,7 +781,31 @@ def export_dossier(
     audit_service.log_action(db, current_user, "DOSSIER_EXPORT", "Dossier", payload.title, details=export_format)
     
     headers = ["Property", "Value"]
-    rows = [{"Property": str(k).replace("_", " ").title(), "Value": _format_human_readable_value(v)} for k, v in payload.data.items()]
+    rows = []
+    for k, v in payload.data.items():
+        if k in IGNORED_INTERNAL_KEYS:
+            continue
+        if v is None or (isinstance(v, str) and not v.strip()):
+            continue
+        if isinstance(v, (list, dict)) and len(v) == 0:
+            continue
+
+        prop_name = KEY_TITLE_MAPPINGS.get(k, str(k).replace("_", " ").title())
+
+        if k in ("riskScore", "risk_score") and isinstance(v, (int, float)):
+            val_str = f"{v} / 100 ({'Critical Threat' if v >= 75 else 'High Threat' if v >= 50 else 'Moderate Risk'})"
+        elif k in ("category", "status") and isinstance(v, str):
+            val_str = v.replace("_", " ").upper()
+        elif k in ("isSeed", "is_seed") and isinstance(v, bool):
+            val_str = "Demonstration / Training Fixture" if v else "Live Police Operational Intelligence"
+        elif k in ("casesCount", "cases_count") and isinstance(v, (int, float)):
+            val_str = f"{int(v)} Registered FIR{'s' if v != 1 else ''}"
+        else:
+            val_str = _format_human_readable_value(v)
+
+        if val_str:
+            rows.append({"Property": prop_name, "Value": val_str})
+
     filters = {"Watermark": payload.watermark} if payload.watermark else {}
     filename = f"ksp_{payload.title.lower().replace(' ', '_')}"
     

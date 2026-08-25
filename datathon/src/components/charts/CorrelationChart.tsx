@@ -123,9 +123,6 @@ export const CorrelationChart: React.FC = () => {
               Demo Data
             </span>
           )}
-      <div className="flex justify-between items-center mb-1">
-        <span className="text-[10px] font-mono text-[var(--accent-teal)] uppercase font-bold tracking-wider">
-          SOCIO-ECONOMIC CORRELATION
         </span>
         <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase select-none">
           Unemployment Vs Crime Risk{analysis?.correlations.unemployment_vs_crime !== null && analysis?.correlations.unemployment_vs_crime !== undefined ? ` · r=${analysis.correlations.unemployment_vs_crime.toFixed(2)}` : ''}
