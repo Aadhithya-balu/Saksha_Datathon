@@ -13,6 +13,8 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy import inspect, text
 
 from app.api.v2 import api_router
 from app.auth.dependencies import get_current_user
@@ -55,10 +57,8 @@ def _migrate_notifications_table():
     ]
     try:
         with engine.connect() as conn:
-            result = conn.execute(text(
-                "SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications'"
-            ))
-            existing = {row[0] for row in result}
+            inspector = inspect(conn)
+            existing = {c["name"] for c in inspector.get_columns("notifications")}
 
             alter_needed = False
             for col_name, col_def in new_columns:
@@ -84,10 +84,8 @@ def _migrate_criminals_table():
     """
     try:
         with engine.connect() as conn:
-            result = conn.execute(text(
-                "SELECT column_name FROM information_schema.columns WHERE table_name = 'criminals'"
-            ))
-            existing = {row[0] for row in result}
+            inspector = inspect(conn)
+            existing = {c["name"] for c in inspector.get_columns("criminals")}
             if "gang_affiliation" not in existing:
                 conn.execute(text("ALTER TABLE criminals ADD COLUMN gang_affiliation VARCHAR(255)"))
                 conn.commit()
@@ -122,10 +120,8 @@ def _migrate_evidence_metadata_table():
     """
     try:
         with engine.connect() as conn:
-            result = conn.execute(text(
-                "SELECT column_name FROM information_schema.columns WHERE table_name = 'evidence_metadata'"
-            ))
-            existing = {row[0] for row in result}
+            inspector = inspect(conn)
+            existing = {c["name"] for c in inspector.get_columns("evidence_metadata")}
             if "storage_url" not in existing:
                 conn.execute(text("ALTER TABLE evidence_metadata ADD COLUMN storage_url VARCHAR(1000)"))
                 conn.commit()
@@ -145,13 +141,11 @@ def _migrate_person_image_fields():
     ]
     try:
         with engine.connect() as conn:
+            inspector = inspect(conn)
             changed = False
             for table, col, col_def in migrations:
-                result = conn.execute(text(
-                    "SELECT column_name FROM information_schema.columns "
-                    f"WHERE table_name = '{table}' AND column_name = '{col}'"
-                ))
-                if not result.fetchone():
+                existing = {c["name"] for c in inspector.get_columns(table)}
+                if col not in existing:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}"))
                     changed = True
             if changed:

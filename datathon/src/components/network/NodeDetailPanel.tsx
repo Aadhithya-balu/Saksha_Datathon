@@ -1,16 +1,18 @@
 import React from 'react';
-import type { GraphNode } from './CriminalGraph3D';
-import { User, ShieldAlert, Phone, MapPin, Briefcase, X, Link2, Database } from 'lucide-react';
+import type { GraphNode, GraphLink } from './CriminalGraph3D';
+import { User, ShieldAlert, Phone, MapPin, Briefcase, X, Database, FileText, Share2 } from 'lucide-react';
 import { downloadSecureDossier } from '../../utils/downloader';
 import { useAuditStore } from '../../store/auditStore';
 import { useAuthStore } from '../../store/authStore';
 
 interface NodeDetailPanelProps {
   node: GraphNode | null;
+  links?: GraphLink[];
+  nodes?: GraphNode[];
   onClose: () => void;
 }
 
-export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose }) => {
+export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, links = [], nodes = [], onClose }) => {
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
 
@@ -20,6 +22,37 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose 
   const isOffender = node.category === 'offender';
   const isLocation = node.category === 'location';
   const isVictim = node.category === 'victim';
+
+  // Compute connected graph relationships for this specific node
+  const connectedLinks = links.filter((l) => {
+    const sId = typeof l.source === 'object' ? l.source.id : l.source;
+    const tId = typeof l.target === 'object' ? l.target.id : l.target;
+    return sId === node.id || tId === node.id;
+  });
+
+  const coAccusedList: string[] = [];
+  const firList: string[] = [];
+  const officerList: string[] = [];
+  const locationList: string[] = [];
+
+  connectedLinks.forEach((link) => {
+    const sId = typeof link.source === 'object' ? link.source.id : link.source;
+    const tId = typeof link.target === 'object' ? link.target.id : link.target;
+    const otherId = sId === node.id ? tId : sId;
+    const otherNode = nodes.find((n) => n.id === otherId);
+    const otherName = otherNode?.name || otherId;
+
+    if (link.relationship_type === 'SHARED_CASE' || link.verification_status === 'POTENTIAL') {
+      const conf = link.confidence ? `${Math.round(link.confidence * 100)}%` : 'Analyzed';
+      coAccusedList.push(`${otherName} (${link.relationship}, Corroboration: ${conf})`);
+    } else if (link.relationship_type === 'PERSON_CASE' || otherNode?.category === 'case') {
+      firList.push(`${otherName} — ${link.relationship}`);
+    } else if (link.relationship_type === 'PERSON_INVESTIGATION' || otherNode?.category === 'officer') {
+      officerList.push(`${otherName} (${otherNode?.details || 'Investigating Officer'})`);
+    } else if (link.relationship_type === 'PERSON_LOCATION' || otherNode?.category === 'location') {
+      locationList.push(`${otherName} — ${link.relationship}`);
+    }
+  });
 
   return (
     <div className="h-full bg-secondary-bg border-l border-border-color p-5 flex flex-col justify-between select-none">
@@ -177,9 +210,23 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose 
       <div className="pt-4 border-t border-border-color flex flex-col gap-2 font-mono">
         <button
           onClick={() => {
+            const dossierData: Record<string, any> = {
+              "Subject Full Name": node.name,
+              "Entity Classification": node.category.toUpperCase(),
+              "Operational Status": node.status ? node.status.replace('_', ' ').toUpperCase() : 'AT LARGE',
+              "Threat & Risk Assessment": `${node.riskScore} / 100 (${node.riskScore >= 75 ? 'Critical Threat' : node.riskScore >= 50 ? 'High Threat' : 'Moderate Risk'})`,
+              "Active FIR Cases": `${node.casesCount ?? 0} Recorded Cases`,
+              "Modus Operandi & Narrative": node.details || 'No active MO notes on record',
+            };
+            if (node.phone) dossierData["Contact Telephone"] = node.phone;
+            if (node.gangAffiliation) dossierData["Gang / Syndicate Affiliation"] = node.gangAffiliation;
+            if (node.district) dossierData["Jurisdiction District"] = node.district;
+            if (node.date) dossierData["Incident / Filing Date"] = node.date;
+            dossierData["Intelligence Grounding Scope"] = node.isSeed ? "Seeded Demonstration Dataset" : "Live Police Database Record";
+
             downloadSecureDossier(
-              `${node.name} Dossier`, 
-              node, 
+              `${node.name} Criminal Subject Dossier`, 
+              dossierData, 
               user ? `CONFIDENTIAL - ${user.badgeId}` : 'CONFIDENTIAL - STATE POLICE'
             );
             if (user) {
@@ -187,24 +234,32 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose 
                 user.name,
                 user.badgeId,
                 'EXPORT',
-                `Exported police dossier dossier for ${node.name}`
+                `Exported criminal subject dossier for ${node.name}`
               );
             }
           }}
-          className="w-full py-2 bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/80 text-[var(--text-primary)] text-[10px] uppercase rounded-btn font-semibold cursor-pointer text-center select-none"
+          className="w-full py-2 bg-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/80 text-white text-[9.5px] uppercase rounded-btn font-bold cursor-pointer text-center select-none shadow-sm flex items-center justify-center gap-1.5"
         >
-          View Full Police Dossier
+          <FileText className="w-3.5 h-3.5" />
+          Download Criminal Dossier (PDF)
         </button>
+
         <button
           onClick={() => {
+            const matrixData: Record<string, any> = {
+              "Target Entity": `${node.name} (${node.category.toUpperCase()})`,
+              "Analysis Classification": "Subject Association Linkage Matrix",
+              "Total Connected Edges": `${connectedLinks.length} Network Connections`,
+              "Direct FIR Case Links": firList.length > 0 ? firList : ["No direct FIRs connected in active filter scope"],
+              "Co-Accused Criminal Associates": coAccusedList.length > 0 ? coAccusedList : ["No co-accused analytical leads identified in current dataset"],
+              "Assigned Investigating Officers": officerList.length > 0 ? officerList : ["No assigned officers linked directly"],
+              "Jurisdiction Locations": locationList.length > 0 ? locationList : [node.district || "Karnataka Statewide Jurisdiction"],
+              "Intelligence Grounding Scope": node.isSeed ? "Seeded Demonstration Dataset" : "Live Police Database Record",
+            };
+
             downloadSecureDossier(
-              `${node.name} Connection Map`, 
-              {
-                suspectName: node.name,
-                category: node.category,
-                casesFilings: node.casesCount,
-                links: ['Accomplice: Ramu Swamy', 'Funnels through Indo-Sector Checkpoints']
-              }, 
+              `${node.name} Association Network Matrix`, 
+              matrixData, 
               user ? `CONFIDENTIAL - ${user.badgeId}` : 'CONFIDENTIAL - STATE POLICE'
             );
             if (user) {
@@ -212,14 +267,14 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose 
                 user.name,
                 user.badgeId,
                 'EXPORT',
-                `Exported suspect association linkage map for ${node.name}`
+                `Exported suspect association linkage network matrix for ${node.name}`
               );
             }
           }}
-          className="w-full py-2 bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-[10px] uppercase rounded-btn font-semibold border border-[var(--border-primary)] hover:border-[var(--border-secondary)] cursor-pointer text-center select-none flex items-center justify-center gap-1.5"
+          className="w-full py-2 bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[9.5px] uppercase rounded-btn font-semibold border border-[var(--border-primary)] hover:border-[var(--border-secondary)] cursor-pointer text-center select-none flex items-center justify-center gap-1.5 transition-colors"
         >
-          <Link2 className="w-3.5 h-3.5" />
-          Export Connection Map
+          <Share2 className="w-3.5 h-3.5 text-amber-400" />
+          Export Association Matrix (PDF)
         </button>
       </div>
 

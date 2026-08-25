@@ -228,6 +228,16 @@ export interface NetworkNode {
   isSeed?: boolean;
 }
 
+export interface RelationshipEvidenceItem {
+  record_type?: string;
+  record_id?: string;
+  record_number?: string;
+  details?: string;
+  timestamp?: string | null;
+  sections?: string;
+  factors?: string[];
+}
+
 export interface NetworkEdge {
   source: string;
   target: string;
@@ -235,6 +245,25 @@ export interface NetworkEdge {
   weight?: number;
   first_seen?: string | null;
   last_seen?: string | null;
+  provenance?: 'DIRECT_DATABASE' | 'ANALYTICAL_INFERENCE' | 'DEMO_SEED' | 'MIXED' | 'UNKNOWN' | string;
+  verification_status?: 'VERIFIED' | 'POTENTIAL' | 'UNVERIFIED' | 'DEMO' | string;
+  relationship_type?: string;
+  evidence?: RelationshipEvidenceItem[];
+  confidence?: number | null;
+  confidence_level?: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN' | string;
+  is_demo_derived?: boolean;
+  operational_warning?: string | null;
+}
+
+export interface ProvenanceSummary {
+  total_nodes: number;
+  total_edges: number;
+  verified_relationships: number;
+  analytical_relationships: number;
+  potential_relationships: number;
+  demo_relationships: number;
+  mixed_relationships: number;
+  unknown_relationships: number;
 }
 
 export interface NetworkResponse {
@@ -250,6 +279,7 @@ export interface NetworkGraphResponse {
   is_neo4j_backed: boolean;
   seed_node_count?: number;
   dataset_scope?: 'live_records' | 'contains_seed_demo_records' | string;
+  provenance_summary?: ProvenanceSummary;
 }
 
 export interface GangHierarchyMember {
@@ -665,12 +695,35 @@ export async function broadcastRedZones(minCurrent = 3, ratioThreshold = 1.5) {
   return apiRequest<RedZoneNotifyResponse>(`/alerts/red-zones/notify${buildQueryString({ min_current: minCurrent, ratio_threshold: ratioThreshold })}`, { method: 'POST' });
 }
 
-export async function getNetworkPerson(personId: string, depth = 1) {
-  return apiRequest<NetworkResponse>(`/ai/network/person/${encodeURIComponent(personId)}${buildQueryString({ depth })}`);
+export async function getNetworkPerson(
+  personId: string,
+  depth = 1,
+  provenanceFilter?: string,
+  excludeDemo?: boolean
+) {
+  return apiRequest<NetworkGraphResponse>(
+    `/network/person/${encodeURIComponent(personId)}${buildQueryString({
+      depth,
+      provenance_filter: provenanceFilter,
+      exclude_demo: excludeDemo,
+    })}`
+  );
 }
 
-export async function getFullNetworkGraph(categoryFilter?: string, minRisk?: number) {
-  return apiRequest<NetworkGraphResponse>(`/network/graph${buildQueryString({ category_filter: categoryFilter, min_risk: minRisk })}`);
+export async function getFullNetworkGraph(
+  categoryFilter?: string,
+  minRisk?: number,
+  provenanceFilter?: string,
+  excludeDemo?: boolean
+) {
+  return apiRequest<NetworkGraphResponse>(
+    `/network/graph${buildQueryString({
+      category_filter: categoryFilter,
+      min_risk: minRisk,
+      provenance_filter: provenanceFilter,
+      exclude_demo: excludeDemo,
+    })}`
+  );
 }
 
 export async function getGangNetworks() {
