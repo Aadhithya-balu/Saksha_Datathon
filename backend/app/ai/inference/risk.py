@@ -29,6 +29,15 @@ from app.ai.features.risk.feature_engineering import (
 logger = logging.getLogger(__name__)
 
 MODEL_DIR = Path(__file__).resolve().parents[2] / "models" / "risk"
+ALT_MODEL_DIR = Path(__file__).resolve().parents[1] / "models" / "risk"
+
+
+def _find_file(filename: str) -> Path | None:
+    for d in (MODEL_DIR, ALT_MODEL_DIR):
+        p = d / filename
+        if p.exists():
+            return p
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -37,8 +46,8 @@ MODEL_DIR = Path(__file__).resolve().parents[2] / "models" / "risk"
 
 @lru_cache(maxsize=1)
 def _load_risk_model():
-    path = MODEL_DIR / "risk_model.pkl"
-    if not path.exists():
+    path = _find_file("risk_model.pkl")
+    if not path or not path.exists():
         return None
     try:
         from app.ai.models.risk.risk_model import DistrictRiskModel
@@ -51,8 +60,8 @@ def _load_risk_model():
 
 @lru_cache(maxsize=1)
 def _load_forecast_model():
-    path = MODEL_DIR / "forecast_model.pkl"
-    if not path.exists():
+    path = _find_file("forecast_model.pkl")
+    if not path or not path.exists():
         return None
     try:
         from app.ai.models.risk.forecast_model import DistrictForecastModel
@@ -65,18 +74,24 @@ def _load_forecast_model():
 
 @lru_cache(maxsize=1)
 def _load_metadata() -> dict[str, Any]:
-    path = MODEL_DIR / "model_metadata.json"
-    if not path.exists():
+    path = _find_file("model_metadata.json")
+    if not path or not path.exists():
         return {}
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
 
 
 @lru_cache(maxsize=1)
 def _load_training_metrics() -> dict[str, Any]:
-    path = MODEL_DIR / "training_metrics.json"
-    if not path.exists():
+    path = _find_file("training_metrics.json")
+    if not path or not path.exists():
         return {}
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
 
 
 def invalidate_caches() -> None:
@@ -111,7 +126,10 @@ def _rule_based_risk(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "predicted_crime_count": float(row.crime_count),
             "risk_band": band,
             "confidence": 0.5,
-            "top_factors": [],
+            "prediction_mode": "FALLBACK",
+            "top_factors": [
+                {"feature": "historical_volume_proportion", "importance": 1.0, "description": f"Computed via rule-based volume aggregation ({row.crime_count} incidents)"}
+            ],
             "resource_recommendation": _resource_recommendation(band),
         })
     return results
@@ -133,7 +151,8 @@ def _resource_recommendation(band: str) -> str:
 def predict_risk(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Run district risk inference on raw crime record dicts.
 
-    Falls back to rule-based scoring if no trained model is present.
+    Explicitly tags predictions with prediction_mode: "ML" (when model is present)
+    or "FALLBACK" (when rule-based scoring is used).
     """
     if not records:
         raise ValueError("records list is empty.")
@@ -155,6 +174,7 @@ def predict_risk(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "predicted_crime_count": p.predicted_crime_count,
             "risk_band": p.risk_band,
             "confidence": p.confidence,
+            "prediction_mode": "ML",
             "top_factors": p.top_factors,
             "resource_recommendation": _resource_recommendation(p.risk_band),
         }
@@ -163,13 +183,16 @@ def predict_risk(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def predict_forecast(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Run district crime count forecast on raw crime record dicts."""
+    """Run district crime count forecast on raw crime record dicts.
+
+    Explicitly tags predictions with prediction_mode: "ML" or "FALLBACK".
+    """
     if not records:
         raise ValueError("records list is empty.")
 
     forecast_model = _load_forecast_model()
     if forecast_model is None:
-        logger.warning("No trained forecast model found — returning aggregated counts.")
+        logger.warning("No trained forecast model found — returning aggregated counts in FALLBACK mode.")
         df = pd.DataFrame(records)
         df["occurred_at"] = pd.to_datetime(df.get("occurred_at", pd.Series(dtype=str)), errors="coerce")
         df["district"] = df.get("district", "Unknown")
@@ -182,6 +205,7 @@ def predict_forecast(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "lower_bound": float(row.crime_count * 0.8),
                 "upper_bound": float(row.crime_count * 1.2),
                 "trend": "stable",
+                "prediction_mode": "FALLBACK",
             }
             for row in counts.itertuples(index=False)
         ]
@@ -197,6 +221,7 @@ def predict_forecast(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "lower_bound": p.lower_bound,
             "upper_bound": p.upper_bound,
             "trend": p.trend,
+            "prediction_mode": "ML",
         }
         for p in points
     ]
@@ -208,15 +233,25 @@ def get_model_info() -> dict[str, Any]:
     metrics = _load_training_metrics()
     risk_model = _load_risk_model()
     forecast_model = _load_forecast_model()
+    
+    is_ml = risk_model is not None and forecast_model is not None
+    mode = "ML" if is_ml else ("HYBRID" if (risk_model or forecast_model) else "FALLBACK")
+    
     return {
         "model_name": meta.get("model_name", "SAKSHA District Risk & Forecast"),
         "risk_algorithm": meta.get("risk_algorithm", "RandomForest"),
         "forecast_algorithm": meta.get("forecast_algorithm", "XGBoost"),
-        "version": meta.get("version", "untrained"),
+        "version": meta.get("version", "untrained" if not is_ml else "trained"),
+        "prediction_mode": mode,
+        "validation_status": meta.get("validation_status", "VALIDATED" if is_ml else "FALLBACK"),
         "trained_on": meta.get("trained_on"),
+        "training_period": meta.get("training_period"),
+        "validation_period": meta.get("validation_period"),
         "training_rows": meta.get("training_rows", 0),
         "risk_metrics": metrics.get("risk", {}),
         "forecast_metrics": metrics.get("forecast", {}),
+        "risk_baseline_comparison": metrics.get("risk_baseline_comparison", meta.get("risk_baseline_comparison", {})),
+        "forecast_baseline_comparison": metrics.get("forecast_baseline_comparison", meta.get("forecast_baseline_comparison", {})),
         "risk_model_loaded": risk_model is not None,
         "forecast_model_loaded": forecast_model is not None,
     }
