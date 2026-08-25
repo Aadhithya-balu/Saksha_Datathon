@@ -22,6 +22,12 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if payload.get("type") != "access":
         raise UnauthorizedException("Provided token is not an access token")
 
+    # Server-side revocation (logout / incident response): reject tokens whose
+    # jti is on the denylist. Single indexed primary-key lookup per request.
+    from app.services.auth_service import is_jti_revoked
+    if is_jti_revoked(db, payload.get("jti")):
+        raise UnauthorizedException("Token has been revoked")
+
     username = payload.get("sub")
     user = db.query(User).filter(User.username == username).first()
     if user is None or not user.is_active:

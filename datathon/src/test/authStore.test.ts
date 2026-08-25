@@ -8,16 +8,16 @@ vi.mock('../services/api', () => ({
   getMe: vi.fn(),
   mapBackendRoleToUiRole: (role: string) => role.toUpperCase(),
   setStoredTokens: vi.fn((t: { accessToken: string; refreshToken: string }) => {
-    localStorage.setItem('saksha_access_token', t.accessToken);
-    localStorage.setItem('saksha_refresh_token', t.refreshToken);
+    sessionStorage.setItem('saksha_access_token', t.accessToken);
+    sessionStorage.setItem('saksha_refresh_token', t.refreshToken);
   }),
   getStoredTokens: vi.fn(() => ({
-    accessToken: localStorage.getItem('saksha_access_token'),
-    refreshToken: localStorage.getItem('saksha_refresh_token'),
+    accessToken: sessionStorage.getItem('saksha_access_token'),
+    refreshToken: sessionStorage.getItem('saksha_refresh_token'),
   })),
   clearStoredTokens: vi.fn(() => {
-    localStorage.removeItem('saksha_access_token');
-    localStorage.removeItem('saksha_refresh_token');
+    sessionStorage.removeItem('saksha_access_token');
+    sessionStorage.removeItem('saksha_refresh_token');
   }),
 }));
 
@@ -57,6 +57,7 @@ describe('authStore session lifecycle', () => {
     vi.clearAllMocks();
     resetStore();
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('logs in with valid credentials and stores tokens + user', async () => {
@@ -71,7 +72,7 @@ describe('authStore session lifecycle', () => {
     expect(s.isAuthenticated).toBe(true);
     expect(s.user?.badgeId).toBe('TEST-IO-001');
     expect(s.user?.role).toBe('INVESTIGATOR');
-    expect(localStorage.getItem('saksha_access_token')).toBe('acc');
+    expect(sessionStorage.getItem('saksha_access_token')).toBe('acc');
   });
 
   it('rejects invalid credentials and records the error', async () => {
@@ -81,12 +82,12 @@ describe('authStore session lifecycle', () => {
     const s = useAuthStore.getState();
     expect(s.isAuthenticated).toBe(false);
     expect(s.loginError).toContain('Invalid credentials');
-    expect(localStorage.getItem('saksha_access_token')).toBeNull();
+    expect(sessionStorage.getItem('saksha_access_token')).toBeNull();
   });
 
   it('restores an authenticated session from stored tokens on init', async () => {
-    localStorage.setItem('saksha_access_token', 'acc');
-    localStorage.setItem('saksha_refresh_token', 'ref');
+    sessionStorage.setItem('saksha_access_token', 'acc');
+    sessionStorage.setItem('saksha_refresh_token', 'ref');
     mockedGetMe.mockResolvedValue(backendUser);
     await useAuthStore.getState().initializeSession();
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
@@ -102,7 +103,7 @@ describe('authStore session lifecycle', () => {
   });
 
   it('logs out and discards local tokens', () => {
-    localStorage.setItem('saksha_access_token', 'a');
+    sessionStorage.setItem('saksha_access_token', 'a');
     useAuthStore.setState({ isAuthenticated: true, user: { name: 'X', badgeId: 'B', role: 'IO' } });
     useAuthStore.getState().logout();
     const s = useAuthStore.getState();

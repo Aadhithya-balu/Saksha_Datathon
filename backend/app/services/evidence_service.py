@@ -36,15 +36,101 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".mkv", 
 MAX_FILE_SIZE_MB = 50
 
 def validate_upload_file(file: UploadFile):
+    """Extension + declared-MIME allow-list check (fast pre-check).
+
+    The browser-supplied content type is untrusted; real content validation
+    happens via magic-byte sniffing in ``_sniff_and_validate_content`` after
+    the first chunk is read. Filenames are never used for storage paths —
+    callers generate UUID-based names.
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Filename is required")
+    # Defense against path traversal / malicious filenames even though we
+    # never store under the client-supplied name.
+    if "/" in file.filename or "\\" in file.filename or ".." in file.filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
     if file.content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.content_type}")
-    
+
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"Unsupported file extension: {ext}")
-    
+
     # We validate size after reading/saving, or by checking content-length header (but header is spoofable)
     # So size validation will happen during save_upload_file
+
+
+# --- Magic-byte signatures for allow-listed binary formats ------------------
+_MAGIC_SIGNATURES: list[tuple[str, bytes]] = [
+    ("image/jpeg", b"\xff\xd8\xff"),
+    ("image/png", b"\x89PNG\r\n\x1a\n"),
+    ("image/gif", b"GIF87a"),
+    ("image/gif", b"GIF89a"),
+    ("image/webp", b"RIFF"),  # RIFF....WEBP verified below
+    ("video/mp4", b"\x00\x00\x00"),  # ftyp box — verified below
+    ("application/pdf", b"%PDF-"),
+]
+
+# Audio/video container magic beyond the generic list above.
+_AUDIO_MAGICS = (
+    b"ID3",            # mp3 with tag
+    b"\xff\xfb",       # mp3 frame sync
+    b"\xff\xf3",
+    b"\xff\xf2",
+    b"RIFF",           # wav (RIFF....WAVE)
+    b"OggS",           # ogg
+    b"\x1a\x45\xdf\xa3",  # matroska/webm/mkv
+)
+
+
+def _content_matches_mime(head: bytes, mime_type: str) -> bool:
+    """Verify the sniffed leading bytes plausibly match the claimed MIME type."""
+    if mime_type == "text/plain":
+        return True  # text handled separately below
+
+    if mime_type == "image/webp":
+        return head[:4] == b"RIFF" and head[8:12] == b"WEBP"
+    if mime_type == "video/quicktime":
+        # mov also uses ftyp boxes with qt brands
+        return head[4:8] == b"ftyp"
+    if mime_type == "video/x-matroska":
+        return head.startswith(b"\x1a\x45\xdf\xa3")
+    if mime_type == "audio/wav":
+        return head[:4] == b"RIFF" and head[8:12] == b"WAVE"
+    if mime_type == "video/mp4":
+        return head[4:8] == b"ftyp"
+
+    for sig_mime, sig in _MAGIC_SIGNATURES:
+        if sig_mime == mime_type and head.startswith(sig):
+            return True
+    # Audio fallbacks
+    if mime_type.startswith("audio/") and any(head.startswith(m) or m in head[:16] for m in _AUDIO_MAGICS):
+        return True
+    return False
+
+
+def sniff_content_type(head: bytes) -> str | None:
+    """Best-effort MIME detection from magic bytes (used when validating)."""
+    for sig_mime, sig in _MAGIC_SIGNATURES:
+        if head.startswith(sig):
+            if sig_mime == "image/webp":
+                return "image/webp" if head[8:12] == b"WEBP" else None
+            if sig_mime == "video/mp4":
+                return "video/mp4" if head[4:8] == b"ftyp" else None
+            return sig_mime
+    if head[:4] == b"RIFF":
+        if head[8:12] == b"WAVE":
+            return "audio/wav"
+        if head[8:12] == b"WEBP":
+            return "image/webp"
+    if head.startswith(b"OggS"):
+        return "audio/ogg"
+    if head.startswith(b"\x1a\x45\xdf\xa3"):
+        return "video/x-matroska"
+    if head.startswith(b"ID3") or (len(head) >= 2 and head[0] == 0xFF and head[1] in (0xFB, 0xF3, 0xF2)):
+        return "audio/mpeg"
+    return None
 
 
 def extract_metadata(file_path: str, mime_type: str) -> dict[str, Any]:
@@ -136,7 +222,16 @@ def save_upload_file(upload_file: UploadFile, evidence_id: uuid.UUID) -> tuple[s
 
     file_ext = os.path.splitext(upload_file.filename)[1].lower()
     unique_filename = f"{evidence_id}_{uuid.uuid4()}{file_ext}"
-    file_path = UPLOAD_DIR / unique_filename
+    # Path traversal is impossible by construction: the stored name contains
+    # only UUIDs and the allow-listed extension, resolved inside UPLOAD_DIR.
+    file_path = (UPLOAD_DIR / unique_filename).resolve()
+    if not str(file_path).startswith(str(UPLOAD_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid storage path")
+
+    claimed_mime = upload_file.content_type or "application/octet-stream"
+    mime_type = claimed_mime
+    content_validated = False
+    sniff_buffer = bytearray()
 
     file_size = 0
     max_bytes = MAX_FILE_SIZE_MB * 1024 * 1024
@@ -149,13 +244,48 @@ def save_upload_file(upload_file: UploadFile, evidence_id: uuid.UUID) -> tuple[s
                     buffer.close()
                     os.remove(file_path)
                     raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE_MB}MB.")
+                if not content_validated:
+                    # Content sniffing on the first chunk: never trust the
+                    # browser-declared MIME type for binary formats.
+                    sniff_buffer.extend(chunk)
+                    if len(sniff_buffer) >= 64 or file_size >= max_bytes:
+                        head = bytes(sniff_buffer[:64])
+                        if claimed_mime == "text/plain":
+                            # Reject text uploads containing NUL bytes or
+                            # HTML/script payloads masquerading as .txt.
+                            if b"\x00" in head:
+                                buffer.close()
+                                os.remove(file_path)
+                                raise HTTPException(status_code=400, detail="File content does not match type text/plain")
+                        else:
+                            detected = sniff_content_type(head)
+                            if detected != claimed_mime:
+                                buffer.close()
+                                os.remove(file_path)
+                                raise HTTPException(
+                                    status_code=400,
+                                    detail="File content does not match the declared file type",
+                                )
+                        mime_type = claimed_mime
+                        content_validated = True
                 buffer.write(chunk)
+        if not content_validated and file_size > 0:
+            # Small files: whole content arrived before the sniff threshold.
+            head = bytes(sniff_buffer[:64])
+            if claimed_mime == "text/plain":
+                if b"\x00" in head:
+                    os.remove(file_path)
+                    raise HTTPException(status_code=400, detail="File content does not match type text/plain")
+            else:
+                detected = sniff_content_type(head)
+                if detected != claimed_mime:
+                    os.remove(file_path)
+                    raise HTTPException(status_code=400, detail="File content does not match the declared file type")
+            content_validated = True
     except HTTPException:
         raise
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to save uploaded file")
-
-    mime_type = upload_file.content_type or "application/octet-stream"
     storage_key = f"evidence/{evidence_id}/{unique_filename}"
     storage_url = _upload_to_supabase_storage(str(file_path), storage_key, mime_type)
 
