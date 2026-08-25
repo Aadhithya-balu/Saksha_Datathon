@@ -166,6 +166,7 @@ def predict(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "predicted_crime_count": round(count, 4),
                 "risk_level": _risk_level(count),
                 "confidence_score": 0.5,
+                "prediction_mode": "FALLBACK",
             })
         return results
 
@@ -186,6 +187,7 @@ def predict(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "predicted_crime_count": round(pred_count, 4),
             "risk_level": _risk_level(pred_count),
             "confidence_score": _confidence(pred_count, rmse),
+            "prediction_mode": "ML",
         })
 
     logger.info("predict: %d H3-cell predictions generated.", len(results))
@@ -197,16 +199,24 @@ def get_model_info() -> dict[str, Any]:
     meta = _load_metadata()
     metrics = _load_training_metrics()
     model = _load_model()
+    is_ml = model is not None
     return {
         "model_name": meta.get("model_name", "SAKSHA Hotspot Predictor"),
         "algorithm": meta.get("algorithm", "LightGBM"),
-        "version": meta.get("version", "untrained"),
-        "h3_resolution": meta.get("h3_resolution"),
-        "prediction_target": meta.get("prediction_target"),
-        "feature_count": meta.get("feature_count"),
+        "version": meta.get("version", "untrained" if not is_ml else "trained"),
+        "prediction_mode": "ML" if is_ml else "FALLBACK",
+        "validation_status": meta.get("validation_status", "VALIDATED" if is_ml else "FALLBACK"),
+        "h3_resolution": meta.get("h3_resolution", 7),
+        "prediction_target": meta.get("prediction_target", "Next Month Crime Count per H3 Cell"),
+        "feature_count": meta.get("feature_count", len(_load_feature_columns() or [])),
         "trained_on": meta.get("trained_on"),
-        "rmse": metrics.get("rmse"),
-        "mae": metrics.get("mae"),
-        "r2": metrics.get("r2"),
-        "model_loaded": model is not None,
+        "training_period": meta.get("training_period"),
+        "validation_period": meta.get("validation_period"),
+        "training_rows": meta.get("training_rows", 0),
+        "rmse": metrics.get("rmse", meta.get("rmse")),
+        "mae": metrics.get("mae", meta.get("mae")),
+        "r2": metrics.get("r2", meta.get("r2")),
+        "ranking_metrics": metrics.get("ranking_metrics", meta.get("ranking_metrics", {})),
+        "baseline_comparison": metrics.get("baseline_comparison", meta.get("baseline_comparison", {})),
+        "model_loaded": is_ml,
     }
