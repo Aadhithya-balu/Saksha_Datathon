@@ -7,6 +7,13 @@ This document specifies how Saksha ingests bulk legacy records and maps
 CCTNS/ICJS extract headers onto its internal schema, so state-level data can be
 brought into the platform without manual re-keying.
 
+> **Issue 5 (P1) update:** commits now run through the full ingestion
+> pipeline — staging, normalization, coded validation, duplicate detection,
+> reconciliation against trusted records, quality grading (A–D/REJECTED) and
+> admin-gated promotion with source provenance. Commits no longer write
+> production tables directly. See **INGESTION_PIPELINE.md** for the complete
+> workflow; the mapping profiles described below are unchanged.
+
 ---
 
 ## 1. Scope

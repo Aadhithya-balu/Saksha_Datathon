@@ -5,10 +5,11 @@ from sqlalchemy import Date, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
+from app.models.import_job import ImportProvenanceMixin
 from app.models.mixins import TimestampMixin, UUIDPKMixin
 
 
-class Criminal(Base, UUIDPKMixin, TimestampMixin):
+class Criminal(ImportProvenanceMixin, Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "criminals"
 
     full_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -23,5 +24,8 @@ class Criminal(Base, UUIDPKMixin, TimestampMixin):
 
     # Mirrors the corresponding node in Neo4j for cross-reference between the two stores
     neo4j_node_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+
+    # Issue #107: person image reference (Supabase Storage URL or local path)
+    image_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
     fir_links: Mapped[list["FIRCriminalLink"]] = relationship(back_populates="criminal")

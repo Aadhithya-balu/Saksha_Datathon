@@ -13,6 +13,7 @@ describe('apiRequest', () => {
   beforeEach(() => {
     fetchMock.mockReset();
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('sends JSON body without auth header for public endpoints (login)', async () => {
@@ -38,7 +39,7 @@ describe('apiRequest', () => {
     window.addEventListener('auth:session-expired', expired);
     fetchMock.mockResolvedValue(new Response('{}', { status: 401 }));
     await expect(apiRequest('/notifications')).rejects.toThrow(/Session expired/);
-    expect(localStorage.getItem('saksha_access_token')).toBeNull();
+    expect(sessionStorage.getItem('saksha_access_token')).toBeNull();
     expect(expired).toHaveBeenCalled();
     window.removeEventListener('auth:session-expired', expired);
   });
@@ -63,8 +64,8 @@ describe('apiRequest', () => {
   it('clearStoredTokens removes both tokens', () => {
     setStoredTokens({ accessToken: 'a', refreshToken: 'b' });
     clearStoredTokens();
-    expect(localStorage.getItem('saksha_access_token')).toBeNull();
-    expect(localStorage.getItem('saksha_refresh_token')).toBeNull();
+    expect(sessionStorage.getItem('saksha_access_token')).toBeNull();
+    expect(sessionStorage.getItem('saksha_refresh_token')).toBeNull();
   });
 });
 

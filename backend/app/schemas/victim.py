@@ -12,6 +12,8 @@ class VictimBase(BaseModel):
     gender: str | None = None
     age: int | None = None
     statement: str | None = None
+    image_url: str | None = None
+    image_url: str | None = None
 
 
 class VictimCreate(VictimBase):

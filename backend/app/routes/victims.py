@@ -80,6 +80,7 @@ def get_victim(victim_id: uuid.UUID, db: Session = Depends(get_db), current_user
         "gender": victim.gender,
         "age": victim.age,
         "statement": victim.statement,
+        "image_url": victim.image_url,
         "created_at": victim.created_at.isoformat() if victim.created_at else None,
         "neo4j_node_id": victim.neo4j_node_id,
         "firs": linked_firs,
@@ -101,3 +102,28 @@ def update_victim(victim_id: uuid.UUID, payload: VictimUpdate, db: Session = Dep
     audit_service.log_action(db, current_user, "UPDATE", "Victim", str(victim_id))
     mark_data_changed("victim", db=db)
     return victim
+
+
+# ---------------------------------------------------------------------------
+# Issue #107 — Victim image upload
+# ---------------------------------------------------------------------------
+
+from fastapi import UploadFile, File as FastAPIFile, HTTPException  # noqa: E402
+
+
+@router.post("/{victim_id}/image", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR))])
+def upload_victim_image(
+    victim_id: uuid.UUID,
+    file: UploadFile = FastAPIFile(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    victim = victim_crud.get(db, victim_id)
+    from app.services.person_image_service import store_person_image
+    image_url = store_person_image(file, person_type="victims", person_id=victim_id)
+
+    victim.image_url = image_url
+    db.add(victim)
+    db.commit()
+    audit_service.log_action(db, current_user, "IMAGE_UPLOAD", "Victim", str(victim_id))
+    return {"image_url": image_url}

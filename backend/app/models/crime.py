@@ -7,10 +7,11 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
+from app.models.import_job import ImportProvenanceMixin
 from app.models.mixins import TimestampMixin, UUIDPKMixin
 
 
-class CrimeCase(Base, UUIDPKMixin, TimestampMixin):
+class CrimeCase(ImportProvenanceMixin, Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "crime_cases"
     __table_args__ = (
         # Real-time feeds order the newest cases by creation timestamp.

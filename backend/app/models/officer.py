@@ -1,6 +1,5 @@
 """Officers table — investigating/station officers, linked 1:1 to a User login."""
 import uuid
-
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -25,5 +24,8 @@ class Officer(Base, UUIDPKMixin, TimestampMixin):
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
     status: Mapped[str] = mapped_column(String(50), default="active")
+
+    # Issue #107: officer profile image
+    image_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
     firs: Mapped[list["FIR"]] = relationship(back_populates="investigating_officer")

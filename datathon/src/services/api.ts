@@ -228,6 +228,16 @@ export interface NetworkNode {
   isSeed?: boolean;
 }
 
+export interface RelationshipEvidenceItem {
+  record_type?: string;
+  record_id?: string;
+  record_number?: string;
+  details?: string;
+  timestamp?: string | null;
+  sections?: string;
+  factors?: string[];
+}
+
 export interface NetworkEdge {
   source: string;
   target: string;
@@ -235,6 +245,25 @@ export interface NetworkEdge {
   weight?: number;
   first_seen?: string | null;
   last_seen?: string | null;
+  provenance?: 'DIRECT_DATABASE' | 'ANALYTICAL_INFERENCE' | 'DEMO_SEED' | 'MIXED' | 'UNKNOWN' | string;
+  verification_status?: 'VERIFIED' | 'POTENTIAL' | 'UNVERIFIED' | 'DEMO' | string;
+  relationship_type?: string;
+  evidence?: RelationshipEvidenceItem[];
+  confidence?: number | null;
+  confidence_level?: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN' | string;
+  is_demo_derived?: boolean;
+  operational_warning?: string | null;
+}
+
+export interface ProvenanceSummary {
+  total_nodes: number;
+  total_edges: number;
+  verified_relationships: number;
+  analytical_relationships: number;
+  potential_relationships: number;
+  demo_relationships: number;
+  mixed_relationships: number;
+  unknown_relationships: number;
 }
 
 export interface NetworkResponse {
@@ -250,6 +279,7 @@ export interface NetworkGraphResponse {
   is_neo4j_backed: boolean;
   seed_node_count?: number;
   dataset_scope?: 'live_records' | 'contains_seed_demo_records' | string;
+  provenance_summary?: ProvenanceSummary;
 }
 
 export interface GangHierarchyMember {
@@ -395,9 +425,13 @@ export interface AuthTokens {
 
 const hasWindow = typeof window !== 'undefined';
 
+// Security: tokens are kept in sessionStorage (per-tab, cleared when the
+// browser tab closes) rather than localStorage (indefinite persistence).
+// This shrinks the XSS theft window. The Bearer-token architecture keeps the
+// API immune to CSRF, so no cookie-based auth is used.
 export const getStoredTokens = (): AuthTokens => ({
-  accessToken: hasWindow ? window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? '' : '',
-  refreshToken: hasWindow ? window.localStorage.getItem(REFRESH_TOKEN_KEY) ?? '' : '',
+  accessToken: hasWindow ? window.sessionStorage.getItem(ACCESS_TOKEN_KEY) ?? '' : '',
+  refreshToken: hasWindow ? window.sessionStorage.getItem(REFRESH_TOKEN_KEY) ?? '' : '',
 });
 
 export const setStoredTokens = (tokens: AuthTokens) => {
@@ -405,8 +439,8 @@ export const setStoredTokens = (tokens: AuthTokens) => {
     return;
   }
 
-  window.localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
-  window.localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+  window.sessionStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+  window.sessionStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
 };
 
 export const clearStoredTokens = () => {
@@ -414,8 +448,8 @@ export const clearStoredTokens = () => {
     return;
   }
 
-  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+  window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  window.sessionStorage.removeItem(REFRESH_TOKEN_KEY);
 };
 
 export const mapBackendRoleToUiRole = (role: string): UserRole => {
@@ -519,9 +553,17 @@ export async function login(username: string, password: string) {
 }
 
 export async function logout() {
-  return apiRequest<{ message: string }>('/auth/logout', {
-    method: 'POST',
-  });
+  // Send the refresh token so the backend can revoke it server-side
+  // (rotation denylist) before the client discards its copy.
+  const { refreshToken } = getStoredTokens();
+  try {
+    return await apiRequest<{ message: string }>('/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify({ refresh_token: refreshToken || null }),
+    });
+  } finally {
+    clearStoredTokens();
+  }
 }
 
 export async function refreshSession(refreshToken: string) {
@@ -653,12 +695,35 @@ export async function broadcastRedZones(minCurrent = 3, ratioThreshold = 1.5) {
   return apiRequest<RedZoneNotifyResponse>(`/alerts/red-zones/notify${buildQueryString({ min_current: minCurrent, ratio_threshold: ratioThreshold })}`, { method: 'POST' });
 }
 
-export async function getNetworkPerson(personId: string, depth = 1) {
-  return apiRequest<NetworkResponse>(`/ai/network/person/${encodeURIComponent(personId)}${buildQueryString({ depth })}`);
+export async function getNetworkPerson(
+  personId: string,
+  depth = 1,
+  provenanceFilter?: string,
+  excludeDemo?: boolean
+) {
+  return apiRequest<NetworkGraphResponse>(
+    `/network/person/${encodeURIComponent(personId)}${buildQueryString({
+      depth,
+      provenance_filter: provenanceFilter,
+      exclude_demo: excludeDemo,
+    })}`
+  );
 }
 
-export async function getFullNetworkGraph(categoryFilter?: string, minRisk?: number) {
-  return apiRequest<NetworkGraphResponse>(`/network/graph${buildQueryString({ category_filter: categoryFilter, min_risk: minRisk })}`);
+export async function getFullNetworkGraph(
+  categoryFilter?: string,
+  minRisk?: number,
+  provenanceFilter?: string,
+  excludeDemo?: boolean
+) {
+  return apiRequest<NetworkGraphResponse>(
+    `/network/graph${buildQueryString({
+      category_filter: categoryFilter,
+      min_risk: minRisk,
+      provenance_filter: provenanceFilter,
+      exclude_demo: excludeDemo,
+    })}`
+  );
 }
 
 export async function getGangNetworks() {
@@ -1134,6 +1199,25 @@ export async function listOfficers(page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<OfficerRecord>>(`/officers${buildQueryString({ page, page_size: pageSize })}`);
 }
 
+// Issue #107: person image upload helpers
+export async function uploadCriminalImage(criminalId: string, file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  return apiRequest<{ image_url: string }>(`/criminals/${criminalId}/image`, { method: 'POST', body: form });
+}
+
+export async function uploadVictimImage(victimId: string, file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  return apiRequest<{ image_url: string }>(`/victims/${victimId}/image`, { method: 'POST', body: form });
+}
+
+export async function uploadOfficerImage(officerId: string, file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  return apiRequest<{ image_url: string }>(`/officers/${officerId}/image`, { method: 'POST', body: form });
+}
+
 export async function listVictims(q?: string, page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<VictimRecord>>(`/victims${buildQueryString({ q, page, page_size: pageSize })}`);
 }
@@ -1491,54 +1575,85 @@ export interface UrbanRuralData {
   count: number;
   percentage: number;
   color: string;
+  classification_status?: 'AVAILABLE' | 'DATA_UNAVAILABLE';
 }
 
 export interface DistrictDensity {
   district: string;
+  canonical_district?: string | null;
+  match_method?: string;
+  mapping_status?: 'MATCHED' | 'UNMAPPED';
   crime_count: number;
-  crime_per_lakh: number;
-  crime_per_sqkm: number;
-  population_lakhs: number;
-  area_sq_km: number;
-  type: string;
+  crime_per_lakh: number | null;
+  crime_per_sqkm: number | null;
+  population_lakhs: number | null;
+  area_sq_km: number | null;
+  type: string | null;
 }
 
 export interface UrbanRuralAnalysis {
   urban_rural_distribution: UrbanRuralData[];
+  unmapped_districts?: string[];
   district_crime_density: DistrictDensity[];
   total_crimes: number;
 }
 
+export interface CorrelationDetail {
+  coefficient: number | null;
+  sample_size: number;
+  excluded_missing?: number;
+  status: string;
+}
+
 export interface DistrictOverlay {
   district: string;
+  canonical_district?: string | null;
+  mapping_status?: 'MATCHED' | 'UNMAPPED';
+  match_method?: string;
+  limitation?: string;
   crime_count: number;
-  population_lakhs: number;
-  area_sq_km: number;
-  population_density: number;
-  crime_per_lakh: number;
-  crime_per_sqkm: number;
-  urbanization_type: string;
-  literacy_rate: number;
-  sex_ratio: number;
-  avg_income_lakhs: number;
-  unemployment_rate: number;
-  risk_index: number | null;
+  population_lakhs: number | null;
+  area_sq_km: number | null;
+  population_density: number | null;
+  crime_per_lakh: number | null;
+  crime_per_sqkm: number | null;
+  data_status?: Record<string, 'AVAILABLE' | 'DATA_UNAVAILABLE'>;
+  urbanization_type: string | null;
+  literacy_rate: number | null;
+  sex_ratio: number | null;
+  avg_income_lakhs: number | null;
+  unemployment_rate: number | null;
+  risk_index?: number | null;
+  source_period?: number | null;
+  period_label?: string | null;
+  record_completeness_pct?: number;
   correlation_flags: string[];
 }
 
 export interface SocioeconomicAnalysis {
   districts: DistrictOverlay[];
   correlations: {
-    literacy_vs_crime: number;
-    income_vs_crime: number;
+    literacy_vs_crime: number | null;
+    income_vs_crime: number | null;
     unemployment_vs_crime: number | null;
+  };
+  correlation_details?: Record<string, CorrelationDetail>;
+  unmapped_districts?: string[];
+  provenance?: {
+    dataset_name: string;
+    version: string;
+    origin: string;
+    source_key: string | null;
   };
   dataset?: {
     version: string;
-    source_file: string;
-    last_verified: string;
-    notes: string[];
-    fields_available: string[];
+    file?: string;
+    notes?: string[];
+    indicators?: unknown[];
+    partial_records?: Array<{ district: string; available_indicators: number; total_indicators: number }>;
+    duplicate_district_keys?: string[];
+    records_missing_period?: string[];
+    data_years?: number[];
   } | null;
   insights: Array<{
     type: string;
@@ -1549,10 +1664,14 @@ export interface SocioeconomicAnalysis {
 
 export interface ScatterPoint {
   district: string;
+  canonical_district?: string | null;
+  match_method?: string;
+  mapping_status?: 'MATCHED' | 'UNMAPPED';
+  limitation?: string;
   crime_count: number;
-  crime_per_lakh: number;
-  population_density: number;
-  urbanization_type: string;
+  crime_per_lakh: number | null;
+  population_density: number | null;
+  urbanization_type: string | null;
   color: string;
 }
 

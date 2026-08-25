@@ -1,46 +1,47 @@
 """
 Password hashing and JWT token creation / verification utilities.
 
-Uses SHA-256 (via Python's built-in hashlib) for password hashing —
-no external C dependencies, no 72-byte truncation limit (bcrypt issue).
+Security hardening (Round 2):
+- Passwords use Argon2id (see app.core.password_hashing). Legacy SHA-256
+  hashes remain verifiable for backward compatibility and are upgraded on
+  next successful login.
+- JWTs carry ``iss`` / ``aud`` claims that are validated on every decode,
+  include a per-token ``jti`` for revocation support, and are decoded with an
+  explicit algorithm allow-list (prevents algorithm-confusion attacks).
+- Token type (access vs refresh) is enforced by callers via the ``type`` claim.
 """
-import hashlib
-import secrets
+import uuid as _uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from jose import JWTError, jwt
 
 from app.core.config import settings
+from app.core.password_hashing import (  # noqa: F401 — re-exported for callers
+    hash_password,
+    is_legacy_hash,
+    needs_rehash,
+    verify_password,
+)
 
-
-def hash_password(password: str) -> str:
-    """
-    Hash a password using SHA-256 with a random salt.
-    Returns a string in the format: sha256$<salt>$<hex_digest>
-    """
-    salt = secrets.token_hex(16)
-    digest = hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
-    return f"sha256${salt}${digest}"
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """
-    Verify a plain-text password against a stored hash (format: sha256$<salt>$<hex_digest>).
-    """
-    try:
-        _, salt, stored_digest = hashed_password.split("$", 2)
-    except ValueError:
-        return False
-    computed_digest = hashlib.sha256((salt + plain_password).encode("utf-8")).hexdigest()
-    import hmac
-    return hmac.compare_digest(computed_digest, stored_digest)
+JWT_ISSUER = "saksha-backend"
+JWT_AUDIENCE = "saksha-clients"
 
 
 def create_token(data: dict, expires_delta: timedelta, token_type: str = "access") -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + expires_delta
-    to_encode.update({"exp": expire, "type": token_type})
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": datetime.now(timezone.utc),
+            "iss": JWT_ISSUER,
+            "aud": JWT_AUDIENCE,
+            "type": token_type,
+            # Unique token id — used by the revocation list on logout/rotation.
+            "jti": str(_uuid.uuid4()),
+        }
+    )
     return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
@@ -64,7 +65,21 @@ def create_refresh_token(subject: str) -> str:
 
 
 def decode_token(token: str) -> dict[str, Any]:
+    """
+    Decode and validate a JWT.
+
+    Rejects: malformed tokens, tampered signatures, expired tokens, tokens
+    signed with an unexpected algorithm, and tokens missing/wrong issuer or
+    audience. Raises ValueError with a generic message only (no internals).
+    """
     try:
-        return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        return jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],  # explicit allow-list
+            audience=JWT_AUDIENCE,
+            issuer=JWT_ISSUER,
+            options={"require": ["exp", "sub", "type"]},
+        )
     except JWTError as exc:
         raise ValueError("Invalid or expired token") from exc
