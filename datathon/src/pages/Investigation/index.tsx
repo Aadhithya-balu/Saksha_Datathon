@@ -10,6 +10,7 @@ import LinkedCriminals from '../../components/investigation/LinkedCriminals';
 import LinkedEvidence from '../../components/investigation/LinkedEvidence';
 import AIRecommendations from '../../components/investigation/AIRecommendations';
 import AIChatPanel from '../../components/investigation/AIChatPanel';
+import { MOPatternExplorer } from '../../components/investigation/MOPatternExplorer';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 
 type ViewState = 'list' | 'detail';
@@ -24,6 +25,15 @@ const InvestigationPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+
+  // Check if returning from Criminals / other tab with a target case ID
+  useEffect(() => {
+    const redirectId = sessionStorage.getItem('selected_entity_id') || sessionStorage.getItem('return_to_case_id');
+    if (redirectId) {
+      sessionStorage.removeItem('selected_entity_id');
+      loadInvestigation(redirectId);
+    }
+  }, []);
 
   // Fetch case list on mount
   const loadCases = async () => {
@@ -203,6 +213,24 @@ const InvestigationPage: React.FC = () => {
 
       {/* Progress */}
       <CaseProgress progress={caseInfo.progress} status={caseInfo.status} />
+
+      {/* MO Pattern Intelligence & Explainable Matching Section */}
+      <MOPatternExplorer
+        currentCaseId={selectedCaseId!}
+        currentCaseNumber={caseInfo.case_number}
+        onSelectCase={(caseId) => loadInvestigation(caseId)}
+        onSelectCriminal={(criminalId) => {
+          if (selectedCaseId) {
+            sessionStorage.setItem('return_to_case_id', selectedCaseId);
+            sessionStorage.setItem('return_to_case_number', caseInfo.case_number);
+          }
+          window.dispatchEvent(
+            new CustomEvent('navigate-tab', {
+              detail: { tab: 'criminals', targetId: criminalId },
+            })
+          );
+        }}
+      />
 
       {/* Main Grid: 3 columns */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

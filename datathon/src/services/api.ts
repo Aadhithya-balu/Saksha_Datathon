@@ -2096,6 +2096,110 @@ export async function syncMOTags() {
   });
 }
 
+export interface MOMatchingCase {
+  case_id: string;
+  case_number: string;
+  category: string | null;
+  district: string | null;
+  station: string | null;
+  status: string;
+  occurred_at: string | null;
+  similarity_score: number;
+  similarity_percent: number;
+  match_level: 'high' | 'medium' | 'low' | 'none';
+  confidence: number;
+  is_confirmed_relationship?: boolean;
+  relationship_label?: string;
+  matching_factors: string[];
+  divergent_factors: string[];
+  insufficient_data: string[];
+}
+
+export interface MOMatchingSuspect {
+  criminal_id: string;
+  full_name: string;
+  aliases: string | null;
+  status: string;
+  gang_affiliation: string | null;
+  similarity_score: number;
+  similarity_percent: number;
+  match_level: 'high' | 'medium' | 'low' | 'none';
+  confidence: number;
+  is_confirmed_relationship: boolean;
+  relationship_label: string;
+  matching_factors: string[];
+  divergent_factors: string[];
+  insufficient_data: string[];
+}
+
+export interface MOMatchCaseResponse {
+  target_case: {
+    case_id: string;
+    case_number: string;
+    category: string | null;
+    district: string | null;
+    profile: Record<string, any>;
+  };
+  matching_cases: MOMatchingCase[];
+  matching_suspects: MOMatchingSuspect[];
+  total_cases_evaluated: number;
+  total_criminals_evaluated: number;
+  evaluated_at: string;
+  error?: string;
+}
+
+export interface MOMatchCriminalResponse {
+  target_criminal: {
+    criminal_id: string;
+    full_name: string;
+    status: string;
+    profile: Record<string, any>;
+  };
+  matching_cases: MOMatchingCase[];
+  similar_criminals: MOMatchingSuspect[];
+  total_cases_evaluated: number;
+  total_criminals_evaluated: number;
+  evaluated_at: string;
+  error?: string;
+}
+
+export interface MOCompareResponse {
+  entity_a: Record<string, any>;
+  entity_b: Record<string, any>;
+  similarity_score: number;
+  similarity_percent: number;
+  match_level: 'high' | 'medium' | 'low' | 'none';
+  confidence: number;
+  matching_factors: string[];
+  divergent_factors: string[];
+  insufficient_data: string[];
+  dimension_scores: Record<string, number>;
+  evaluated_at: string;
+  error?: string;
+}
+
+export async function getCaseMOMatches(caseId: string, minSimilarity = 0.25, k = 5) {
+  const params = new URLSearchParams({ min_similarity: String(minSimilarity), k: String(k) });
+  return apiRequest<MOMatchCaseResponse>(`/ai/mo/match/case/${caseId}?${params.toString()}`);
+}
+
+export async function getCriminalMOMatches(criminalId: string, minSimilarity = 0.25, k = 5) {
+  const params = new URLSearchParams({ min_similarity: String(minSimilarity), k: String(k) });
+  return apiRequest<MOMatchCriminalResponse>(`/ai/mo/match/criminal/${criminalId}?${params.toString()}`);
+}
+
+export async function compareMOEntities(params: {
+  entity_a_id: string;
+  entity_a_type: 'case' | 'criminal';
+  entity_b_id: string;
+  entity_b_type: 'case' | 'criminal';
+}) {
+  return apiRequest<MOCompareResponse>('/ai/mo/compare', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
 // ── Data Import / Legacy Ingestion (issue #139 M1/M2) ───────────────────────
 
 export interface ImportColumnSpec {
@@ -2199,3 +2303,29 @@ export async function commitImportFile(
 export async function listImportJobs(pageSize = 20) {
   return apiRequest<{ total: number; page: number; page_size: number; results: ImportJobSummary[] }>(`/data-import/jobs?page=1&page_size=${pageSize}`);
 }
+
+export async function downloadEvidencePDF(evidenceId: string, filename?: string): Promise<void> {
+  const tokens = getStoredTokens();
+  const response = await fetch(`${API_BASE_URL}/evidence/${evidenceId}/download?format=pdf`, {
+    headers: {
+      ...(tokens?.accessToken ? { Authorization: `Bearer ${tokens.accessToken}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to download evidence PDF (${response.statusText})`);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || `KSP_Evidence_${evidenceId.slice(0, 8)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 500);
+}
+

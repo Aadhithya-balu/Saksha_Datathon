@@ -148,8 +148,8 @@ def _calculate_criminal_risk(criminal: Criminal, fir_count: int) -> int:
     return min(100, max(5, score))
 
 
-def _generate_ai_recommendations(case: CrimeCase, firs: list[FIR], evidence: list[Evidence]) -> list[InvestigationAIRecommendation]:
-    """Generate AI recommendations based on case data patterns."""
+def _generate_ai_recommendations(case: CrimeCase, firs: list[FIR], evidence: list[Evidence], db: Session | None = None) -> list[InvestigationAIRecommendation]:
+    """Generate AI recommendations based on case data patterns and MO matching."""
     recommendations = []
 
     # Check severity-based recommendations
@@ -160,6 +160,32 @@ def _generate_ai_recommendations(case: CrimeCase, firs: list[FIR], evidence: lis
             description="This case is classified as high severity. Prioritize resource allocation and periodic review.",
             priority="high",
         ))
+
+    # Real MO pattern matching leads
+    if db is not None:
+        try:
+            from app.services.mo_matching_service import match_case_against_db
+            mo_matches = match_case_against_db(db, case.id, top_k=2, min_similarity=0.60)
+            if "error" not in mo_matches:
+                for suspect in mo_matches.get("matching_suspects", []):
+                    if suspect.get("similarity_percent", 0) >= 65 and not suspect.get("is_confirmed_relationship"):
+                        factors = ", ".join(suspect.get("matching_factors", [])[:2])
+                        recommendations.append(InvestigationAIRecommendation(
+                            type="pattern",
+                            title=f"Potential Suspect Lead: {suspect['full_name']} ({suspect['similarity_percent']}% MO Match)",
+                            description=f"Investigative similarity detected based on: {factors}. Cross-reference alibi and whereabouts.",
+                            priority="high" if suspect["similarity_percent"] >= 75 else "medium",
+                        ))
+                for other_c in mo_matches.get("matching_cases", []):
+                    if other_c.get("similarity_percent", 0) >= 65:
+                        recommendations.append(InvestigationAIRecommendation(
+                            type="pattern",
+                            title=f"Serial Pattern Link: Case {other_c['case_number']} ({other_c['similarity_percent']}% Match)",
+                            description=f"Similar MO tactics identified in {other_c['district'] or 'district'}. Coordinate with investigating officers.",
+                            priority="medium",
+                        ))
+        except Exception:
+            pass
 
     # Evidence recommendations
     if evidence:
@@ -191,24 +217,16 @@ def _generate_ai_recommendations(case: CrimeCase, firs: list[FIR], evidence: lis
 
     # Case stale check
     if case.reported_at:
-        days_open = (datetime.now(timezone.utc) - case.reported_at).days
+        reported_at = case.reported_at
+        if reported_at.tzinfo is None:
+            reported_at = reported_at.replace(tzinfo=timezone.utc)
+        days_open = (datetime.now(timezone.utc) - reported_at).days
         if days_open > 30 and case.status not in ("closed", "charge sheet filed"):
             recommendations.append(InvestigationAIRecommendation(
                 type="aging",
                 title="Aging Case Alert",
                 description=f"This case has been open for {days_open} days. Review progress and consider escalation.",
                 priority="high",
-            ))
-
-    # MO pattern recommendations
-    if case.mo_tags:
-        tag_count = len([t for t in case.mo_tags.split(",") if t.strip()])
-        if tag_count >= 3:
-            recommendations.append(InvestigationAIRecommendation(
-                type="pattern",
-                title="Complex MO Pattern",
-                description=f"{tag_count} modus operandi tags detected. Cross-reference with district crime database.",
-                priority="medium",
             ))
 
     # Default recommendation if none generated
@@ -451,7 +469,7 @@ def get_investigation(db: Session, case_id: uuid.UUID) -> InvestigationData:
 
 
     # ── AI Recommendations ──
-    ai_recommendations = _generate_ai_recommendations(case, case.firs, all_evidence)
+    ai_recommendations = _generate_ai_recommendations(case, case.firs, all_evidence, db=db)
 
     return InvestigationData(
         case=case_info,
