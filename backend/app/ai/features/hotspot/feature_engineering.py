@@ -160,6 +160,24 @@ def _grid_disk(cell: str, k: int = 1) -> list[str]:
 # 2. H3 Cells
 # ---------------------------------------------------------------------------
 
+def _latlng_to_cell(lat: float, lon: float, res: int) -> str:
+    """Compatibility helper across h3-py v3 and v4."""
+    if hasattr(h3, "latlng_to_cell"):
+        return h3.latlng_to_cell(lat, lon, res)
+    elif hasattr(h3, "geo_to_h3"):
+        return h3.geo_to_h3(lat, lon, res)
+    return f"cell_{round(lat, 4)}_{round(lon, 4)}_{res}"
+
+
+def _grid_disk(cell: str, k: int) -> list[str]:
+    """Compatibility helper across h3-py v3 and v4."""
+    if hasattr(h3, "grid_disk"):
+        return list(h3.grid_disk(cell, k))
+    elif hasattr(h3, "k_ring"):
+        return list(h3.k_ring(cell, k))
+    return [cell]
+
+
 def create_h3_cells(df: pd.DataFrame) -> pd.DataFrame:
     """Assign H3 cell index (resolution 7) to every crime record."""
     df = df.copy()
@@ -322,6 +340,7 @@ def create_neighbor_features(df: pd.DataFrame) -> pd.DataFrame:
     neighbor_map: dict[str, list[str]] = {}
     for cell in unique_cells:
         try:
+            neighbors = list(_grid_disk(cell, 1))
             neighbors = _grid_disk(cell, 1)
             if cell in neighbors:
                 neighbors.remove(cell)
