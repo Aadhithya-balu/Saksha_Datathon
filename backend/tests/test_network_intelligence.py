@@ -180,3 +180,232 @@ def test_ai_insights_are_data_driven(analyst_client, network_fixture):
             assert target in known_ids or target.startswith(("criminal-", "victim-", "officer-", "location-", "case-", "vehicle-", "weapon-", "org-")), (
                 f"insight targets fabricated id: {target}"
             )
+
+
+# ==============================================================================
+# Issue #159: Comprehensive Provenance and Evidence Verification Tests
+# ==============================================================================
+
+def test_direct_database_relationship_provenance(analyst_client, network_fixture):
+    """Test 1 — Direct Database Relationship: source = DIRECT_DATABASE, verification_status = VERIFIED."""
+    c, _ = analyst_client
+    r = c.get(f"{NET}/graph")
+    assert r.status_code == 200
+    body = r.json()
+
+    case_edges = [e for e in body["edges"] if e["relationship_type"] == "PERSON_CASE"]
+    assert len(case_edges) >= 2, "Expected at least 2 PERSON_CASE edges"
+    
+    for edge in case_edges:
+        assert edge["provenance"] == "DIRECT_DATABASE"
+        assert edge["verification_status"] == "VERIFIED"
+        assert edge["confidence"] == 1.0
+        assert edge["confidence_level"] == "HIGH"
+        assert len(edge["evidence"]) >= 1
+        assert edge["evidence"][0]["record_number"] == network_fixture["fir"].fir_number
+
+
+def test_analytical_relationship_provenance_and_warning(analyst_client, network_fixture):
+    """Test 2 — Analytical Relationship: source = ANALYTICAL_INFERENCE, verification_status = POTENTIAL with warning."""
+    c, _ = analyst_client
+    r = c.get(f"{NET}/graph")
+    assert r.status_code == 200
+    body = r.json()
+
+    co_accused_edges = [e for e in body["edges"] if e["relationship_type"] == "SHARED_CASE"]
+    assert len(co_accused_edges) == 1, "Expected 1 co-accused analytical edge"
+    
+    co_edge = co_accused_edges[0]
+    assert co_edge["provenance"] == "ANALYTICAL_INFERENCE"
+    assert co_edge["verification_status"] == "POTENTIAL"
+    assert co_edge["confidence"] == 0.70
+    assert co_edge["confidence_level"] == "MEDIUM"
+    assert co_edge["operational_warning"] is not None
+    assert "Analytical relationship identified" in co_edge["operational_warning"]
+    assert len(co_edge["evidence"]) >= 1
+    assert "factors" in co_edge["evidence"][0]
+
+
+def test_seed_relationship_provenance(analyst_client, db_session):
+    """Test 3 — Seed Relationship: source = DEMO_SEED, verification_status = DEMO."""
+    category = CrimeCategory(name="Theft", section_code="IPC 379", severity="low")
+    loc = Location(district="Bengaluru", station="Central", latitude=12.97, longitude=77.59)
+    seed_crook = Criminal(full_name="Ramu Swamy", status="at_large")  # Ramu Swamy is in CRIMINALS seed manifest
+    db_session.add_all([category, loc, seed_crook])
+    db_session.flush()
+
+    case = CrimeCase(
+        case_number="CR-2026-SYN-001",
+        category_id=category.id,
+        location_id=loc.id,
+        status="open",
+        occurred_at=datetime(2026, 6, 10, tzinfo=timezone.utc),
+    )
+    db_session.add(case)
+    db_session.flush()
+
+    fir = FIR(
+        fir_number="FIR-SEED-001",
+        crime_case_id=case.id,
+        complainant_name="Demo Complainant",
+        filed_at=datetime(2026, 6, 11, tzinfo=timezone.utc),
+    )
+    db_session.add(fir)
+    db_session.flush()
+
+    db_session.add(FIRCriminalLink(fir_id=fir.id, criminal_id=seed_crook.id))
+    db_session.commit()
+
+    c, _ = analyst_client
+    r = c.get(f"{NET}/graph")
+    assert r.status_code == 200
+    body = r.json()
+
+    seed_node = next((n for n in body["nodes"] if n["name"] == "Ramu Swamy"), None)
+    assert seed_node is not None
+    assert seed_node["isSeed"] is True
+
+    seed_edges = [e for e in body["edges"] if e["source"] == f"criminal-{seed_crook.id}"]
+    assert len(seed_edges) >= 1
+    for edge in seed_edges:
+        assert edge["provenance"] == "DEMO_SEED"
+        assert edge["verification_status"] == "VERIFIED"
+        assert edge["is_demo_derived"] is True
+
+
+def test_mixed_relationship_provenance(analyst_client, db_session):
+    """Test 4 — Mixed Relationship: Live Person + Seed Person in shared FIR -> source = MIXED, status = POTENTIAL, is_demo_derived = True."""
+    category = CrimeCategory(name="Robbery", section_code="IPC 392", severity="high")
+    loc = Location(district="Mysuru", station="Central", latitude=12.3, longitude=76.6)
+    live_crook = Criminal(full_name="Real Live Suspect 99", status="at_large")
+    seed_crook = Criminal(full_name="Vikram Yadav", status="arrested")  # Vikram Yadav in seed manifest
+    db_session.add_all([category, loc, live_crook, seed_crook])
+    db_session.flush()
+
+    case = CrimeCase(
+        case_number="CR-MIX-001",
+        category_id=category.id,
+        location_id=loc.id,
+        status="open",
+        occurred_at=datetime(2026, 6, 10, tzinfo=timezone.utc),
+    )
+    db_session.add(case)
+    db_session.flush()
+
+    fir = FIR(
+        fir_number="FIR-MIX-001",
+        crime_case_id=case.id,
+        complainant_name="Victim Live",
+        filed_at=datetime(2026, 6, 11, tzinfo=timezone.utc),
+    )
+    db_session.add(fir)
+    db_session.flush()
+
+    db_session.add_all([
+        FIRCriminalLink(fir_id=fir.id, criminal_id=live_crook.id),
+        FIRCriminalLink(fir_id=fir.id, criminal_id=seed_crook.id),
+    ])
+    db_session.commit()
+
+    c, _ = analyst_client
+    r = c.get(f"{NET}/graph")
+    assert r.status_code == 200
+    body = r.json()
+
+    live_id = f"criminal-{live_crook.id}"
+    seed_id = f"criminal-{seed_crook.id}"
+    mixed_edge = next(
+        (e for e in body["edges"] if (e["source"] == live_id and e["target"] == seed_id) or (e["source"] == seed_id and e["target"] == live_id)),
+        None
+    )
+    assert mixed_edge is not None
+    assert mixed_edge["provenance"] == "MIXED"
+    assert mixed_edge["verification_status"] == "POTENTIAL"
+    assert mixed_edge["is_demo_derived"] is True
+
+
+def test_no_unsupported_edges(analyst_client, db_session):
+    """Test 5 — No Supporting Evidence: Isolated entities have no fabricated edges."""
+    category = CrimeCategory(name="Cyber", section_code="IT Act 66", severity="medium")
+    loc = Location(district="Udupi", station="Town", latitude=13.3, longitude=74.7)
+    loner = Criminal(full_name="Isolated Hacker", status="at_large")
+    db_session.add_all([category, loc, loner])
+    db_session.commit()
+
+    c, _ = analyst_client
+    r = c.get(f"{NET}/graph")
+    assert r.status_code == 200
+    body = r.json()
+
+    # The loner has no FIR links, so no edges should exist for this entity
+    loner_edges = [e for e in body["edges"] if e["source"] == f"criminal-{loner.id}" or e["target"] == f"criminal-{loner.id}"]
+    assert len(loner_edges) == 0
+
+
+def test_provenance_summary_and_api_filters(analyst_client, network_fixture):
+    """Test 6, 7 & 10 — Provenance Summary and Backend Filtering."""
+    c, _ = analyst_client
+    r = c.get(f"{NET}/graph")
+    assert r.status_code == 200
+    body = r.json()
+
+    summary = body.get("provenance_summary")
+    assert summary is not None
+    assert summary["total_edges"] == len(body["edges"])
+    assert summary["verified_relationships"] >= 1
+    assert summary["analytical_relationships"] >= 1
+
+    # Filter by VERIFIED
+    r_ver = c.get(f"{NET}/graph?provenance_filter=VERIFIED")
+    assert r_ver.status_code == 200
+    for edge in r_ver.json()["edges"]:
+        assert edge["verification_status"] == "VERIFIED"
+
+    # Filter by ANALYTICAL_INFERENCE
+    r_ana = c.get(f"{NET}/graph?provenance_filter=ANALYTICAL_INFERENCE")
+    assert r_ana.status_code == 200
+    for edge in r_ana.json()["edges"]:
+        assert edge["provenance"] == "ANALYTICAL_INFERENCE"
+
+
+def test_confidence_calculation_multi_fir(analyst_client, db_session, network_fixture):
+    """Test 8 — Confidence is calculated from multi-incident density (not hardcoded)."""
+    crook_a = network_fixture["crook_a"]
+    crook_b = network_fixture["crook_b"]
+    case = network_fixture["case"]
+
+    # Add a SECOND shared FIR between Crook A and Crook B
+    fir2 = FIR(
+        fir_number="FIR-NET-0002",
+        crime_case_id=case.id,
+        complainant_name="Store Owner",
+        sections="392 IPC",
+        filed_at=datetime(2026, 6, 20, 14, 0, tzinfo=timezone.utc),
+    )
+    db_session.add(fir2)
+    db_session.flush()
+
+    db_session.add_all([
+        FIRCriminalLink(fir_id=fir2.id, criminal_id=crook_a.id),
+        FIRCriminalLink(fir_id=fir2.id, criminal_id=crook_b.id),
+    ])
+    db_session.commit()
+
+    c, _ = analyst_client
+    r = c.get(f"{NET}/graph")
+    assert r.status_code == 200
+    body = r.json()
+
+    co_edge = next((e for e in body["edges"] if e["relationship_type"] == "SHARED_CASE"), None)
+    assert co_edge is not None
+    # 2 shared FIRs -> confidence = min(0.95, round(0.70 + 2*0.08, 2)) = 0.86
+    assert co_edge["confidence"] == 0.86
+    assert co_edge["confidence_level"] == "HIGH"
+    assert len(co_edge["evidence"]) == 2
+
+
+def test_authorization_enforcement(client):
+    """Test 9 — Unauthenticated requests are rejected."""
+    r = client.get(f"{NET}/graph")
+    assert r.status_code in (401, 403)
+

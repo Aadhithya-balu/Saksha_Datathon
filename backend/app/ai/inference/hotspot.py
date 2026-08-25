@@ -50,7 +50,11 @@ def _load_model():
         logger.warning("Hotspot model not found at %s — using rule-based fallback.", path)
         return None
     logger.info("Loading hotspot model from %s", path)
-    return joblib.load(path)
+    try:
+        return joblib.load(path)
+    except Exception as e:
+        logger.warning("Failed to load hotspot model from %s (%s) — using rule-based fallback.", path, e)
+        return None
 
 
 @lru_cache(maxsize=1)

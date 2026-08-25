@@ -28,32 +28,55 @@ router = APIRouter(prefix="/network", tags=["Network Graph Intelligence"], depen
 def get_full_graph(
     category_filter: str | None = Query(None, description="Filter nodes by category: suspect, offender, location, victim, case, gang"),
     min_risk: float = Query(0.0, ge=0.0, le=100.0, description="Minimum risk score threshold"),
+    provenance_filter: str | None = Query(None, description="Filter edges by provenance (DIRECT_DATABASE, ANALYTICAL_INFERENCE, DEMO_SEED, MIXED) or status (VERIFIED, POTENTIAL, DEMO)"),
+    exclude_demo: bool = Query(False, description="Exclude demo/seed records for pure live operational intelligence"),
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
 ):
-    """Retrieve full criminal relationship network graph with category and risk score filters."""
-    return network_service.get_full_network_graph(db, category_filter=category_filter, min_risk=min_risk)
+    """Retrieve full criminal relationship network graph with category, risk, and provenance filters."""
+    return network_service.get_full_network_graph(
+        db,
+        category_filter=category_filter,
+        min_risk=min_risk,
+        provenance_filter=provenance_filter,
+        exclude_demo=exclude_demo,
+    )
 
 
 @router.get("/person/{person_id}", response_model=NetworkGraphResponse)
 def get_person_network(
     person_id: str,
     depth: int = Query(1, ge=1, le=4, description="Graph traversal depth expansion"),
+    provenance_filter: str | None = Query(None, description="Filter edges by provenance or verification status"),
+    exclude_demo: bool = Query(False, description="Exclude demo/seed records"),
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
 ):
     """Retrieve relationship graph centered around a specific criminal, suspect, officer, or victim."""
-    return network_service.get_person_network_graph(db, person_id=person_id, depth=depth)
+    return network_service.get_person_network_graph(
+        db,
+        person_id=person_id,
+        depth=depth,
+        provenance_filter=provenance_filter,
+        exclude_demo=exclude_demo,
+    )
 
 
 @router.get("/case/{case_id}", response_model=NetworkGraphResponse)
 def get_case_network(
     case_id: str,
+    provenance_filter: str | None = Query(None, description="Filter edges by provenance or verification status"),
+    exclude_demo: bool = Query(False, description="Exclude demo/seed records"),
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
 ):
     """Retrieve relationship network associated with a specific crime case or FIR."""
-    return network_service.get_case_network_graph(db, case_id=case_id)
+    return network_service.get_case_network_graph(
+        db,
+        case_id=case_id,
+        provenance_filter=provenance_filter,
+        exclude_demo=exclude_demo,
+    )
 
 
 @router.get("/gangs", response_model=list[GangNetworkSummary])
