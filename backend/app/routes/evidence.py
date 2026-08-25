@@ -371,9 +371,6 @@ def download_evidence_file(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-@router.get("/{evidence_id}/download", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR, ROLE_INSPECTOR, ROLE_FORENSIC, ROLE_CRIME_ANALYST))])
-def download_evidence_file(evidence_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    from fastapi.responses import RedirectResponse
     evidence = evidence_crud.get(db, evidence_id)
     if not evidence:
         raise HTTPException(status_code=404, detail="Evidence record not found.")
@@ -415,18 +412,6 @@ def download_evidence_file(evidence_id: uuid.UUID, db: Session = Depends(get_db)
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{clean_filename}"'}
     )
-    if not metadata:
-        raise HTTPException(status_code=404, detail="Evidence file not found.")
-    add_timeline_event(db, evidence_id, "Evidence File Downloaded", current_user)
-    audit_service.log_action(db, current_user, "DOWNLOAD", "Evidence", str(evidence_id))
-    # Prefer Supabase Storage URL — survives restarts and redeployments.
-    if metadata.storage_url:
-        return RedirectResponse(url=metadata.storage_url)
-    # Fall back to local file (development / no-storage-bucket mode).
-    file_path = Path(metadata.filepath or evidence.storage_path or "")
-    if not file_path.exists() or not file_path.is_file():
-        raise HTTPException(status_code=404, detail="Evidence file not found on local storage. Re-upload required.")
-    return FileResponse(path=str(file_path), filename=metadata.filename, media_type=metadata.mime_type)
 
 @router.post("/{evidence_id}/assign", response_model=EvidenceAssignmentOut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR, ROLE_INSPECTOR, ROLE_CRIME_ANALYST))])
 def assign_evidence(
