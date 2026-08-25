@@ -425,9 +425,13 @@ export interface AuthTokens {
 
 const hasWindow = typeof window !== 'undefined';
 
+// Security: tokens are kept in sessionStorage (per-tab, cleared when the
+// browser tab closes) rather than localStorage (indefinite persistence).
+// This shrinks the XSS theft window. The Bearer-token architecture keeps the
+// API immune to CSRF, so no cookie-based auth is used.
 export const getStoredTokens = (): AuthTokens => ({
-  accessToken: hasWindow ? window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? '' : '',
-  refreshToken: hasWindow ? window.localStorage.getItem(REFRESH_TOKEN_KEY) ?? '' : '',
+  accessToken: hasWindow ? window.sessionStorage.getItem(ACCESS_TOKEN_KEY) ?? '' : '',
+  refreshToken: hasWindow ? window.sessionStorage.getItem(REFRESH_TOKEN_KEY) ?? '' : '',
 });
 
 export const setStoredTokens = (tokens: AuthTokens) => {
@@ -435,8 +439,8 @@ export const setStoredTokens = (tokens: AuthTokens) => {
     return;
   }
 
-  window.localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
-  window.localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+  window.sessionStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+  window.sessionStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
 };
 
 export const clearStoredTokens = () => {
@@ -444,8 +448,8 @@ export const clearStoredTokens = () => {
     return;
   }
 
-  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+  window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  window.sessionStorage.removeItem(REFRESH_TOKEN_KEY);
 };
 
 export const mapBackendRoleToUiRole = (role: string): UserRole => {
@@ -549,9 +553,17 @@ export async function login(username: string, password: string) {
 }
 
 export async function logout() {
-  return apiRequest<{ message: string }>('/auth/logout', {
-    method: 'POST',
-  });
+  // Send the refresh token so the backend can revoke it server-side
+  // (rotation denylist) before the client discards its copy.
+  const { refreshToken } = getStoredTokens();
+  try {
+    return await apiRequest<{ message: string }>('/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify({ refresh_token: refreshToken || null }),
+    });
+  } finally {
+    clearStoredTokens();
+  }
 }
 
 export async function refreshSession(refreshToken: string) {

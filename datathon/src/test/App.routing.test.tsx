@@ -23,16 +23,16 @@ vi.mock('../services/api', () => ({
   getMe: vi.fn().mockResolvedValue(backendUser),
   mapBackendRoleToUiRole: (role: string) => String(role).toUpperCase(),
   setStoredTokens: vi.fn((t: { accessToken: string; refreshToken: string }) => {
-    localStorage.setItem('saksha_access_token', t.accessToken);
-    localStorage.setItem('saksha_refresh_token', t.refreshToken);
+    sessionStorage.setItem('saksha_access_token', t.accessToken);
+    sessionStorage.setItem('saksha_refresh_token', t.refreshToken);
   }),
   getStoredTokens: vi.fn(() => ({
-    accessToken: localStorage.getItem('saksha_access_token'),
-    refreshToken: localStorage.getItem('saksha_refresh_token'),
+    accessToken: sessionStorage.getItem('saksha_access_token'),
+    refreshToken: sessionStorage.getItem('saksha_refresh_token'),
   })),
   clearStoredTokens: vi.fn(() => {
-    localStorage.removeItem('saksha_access_token');
-    localStorage.removeItem('saksha_refresh_token');
+    sessionStorage.removeItem('saksha_access_token');
+    sessionStorage.removeItem('saksha_refresh_token');
   }),
 }));
 
@@ -70,8 +70,8 @@ vi.mock('../components/ai/GlobalAIAssistant', () => ({ default: () => null }));
 import App from '../App';
 
 function seedSession() {
-  localStorage.setItem('saksha_access_token', 'acc');
-  localStorage.setItem('saksha_refresh_token', 'ref');
+  sessionStorage.setItem('saksha_access_token', 'acc');
+  sessionStorage.setItem('saksha_refresh_token', 'ref');
 }
 
 beforeEach(() => {

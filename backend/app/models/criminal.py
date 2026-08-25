@@ -5,10 +5,11 @@ from sqlalchemy import Date, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
+from app.models.import_job import ImportProvenanceMixin
 from app.models.mixins import TimestampMixin, UUIDPKMixin
 
 
-class Criminal(Base, UUIDPKMixin, TimestampMixin):
+class Criminal(ImportProvenanceMixin, Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "criminals"
 
     full_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

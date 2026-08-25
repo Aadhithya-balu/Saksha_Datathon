@@ -7,6 +7,7 @@ pydantic>=2.12.5
 pydantic-settings>=2.5.2
 email-validator>=2.2.0
 python-jose[cryptography]>=3.3.0
+argon2-cffi>=23.1.0
 python-multipart>=0.0.9
 neo4j>=5.24.0
 python-dotenv>=1.0.1

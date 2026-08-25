@@ -4,6 +4,10 @@ import os
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("DEBUG", "false")
 os.environ.setdefault("APP_DEBUG", "false")
+# Test environment: disables rate limiting and relaxes the JWT secret-length
+# guard (tests bootstrap their own throwaway key below).
+os.environ.setdefault("APP_ENV", "test")
+os.environ.setdefault("JWT_SECRET_KEY", "test-only-secret-key-not-for-production-use-0001")
 # Tests must never trigger production background retrains (issue #145).
 os.environ.setdefault("AUTO_RETRAIN_ENABLED", "false")
 

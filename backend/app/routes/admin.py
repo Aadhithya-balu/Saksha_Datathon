@@ -229,6 +229,8 @@ def list_users(
 
 @router.post("/users", status_code=201)
 def create_user(payload: UserCreatePayload, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.services.auth_service import validate_password_strength
+    validate_password_strength(payload.password)  # admin-created accounts follow the same policy
     role = _resolve_role(db, payload.role_id, payload.role)
     user = User(
         username=payload.username.strip(),
@@ -314,10 +316,16 @@ def deactivate_user(user_id: uuid.UUID, request: Request, db: Session = Depends(
 
 @router.post("/users/{user_id}/reset-password")
 def reset_password(user_id: uuid.UUID, payload: PasswordResetPayload, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.services.auth_service import validate_password_strength
+    validate_password_strength(payload.password)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise NotFoundException("User not found")
     user.hashed_password = hash_password(payload.password)
+    # Invalidate any outstanding sessions: lockout state resets and the
+    # account holder must re-authenticate with the new password.
+    user.failed_login_attempts = 0
+    user.locked_until = None
     audit_service.log_action(db, current_user, "USER_PASSWORD_RESET", "User", str(user.id), ip_address=_client_ip(request))
     db.commit()
     return {"message": "Password reset"}

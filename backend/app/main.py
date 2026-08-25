@@ -10,15 +10,20 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="joblib")
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 
 from app.api.v2 import api_router
+from app.auth.dependencies import get_current_user
+from app.auth.rbac import ROLE_ADMIN, require_roles
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging_config import configure_logging, logger
+from app.core.rate_limit import RateLimitMiddleware
+from app.core.security_headers import RequestSizeLimitMiddleware, SecurityHeadersMiddleware
 from app.database.neo4j import close_neo4j_driver, verify_neo4j_connectivity
 from app.database.postgres import Base, engine
 import app.models  # ensure models are registered
@@ -150,6 +155,30 @@ def _migrate_person_image_fields():
         logger.warning(f"Person image migration skipped: {exc}")
 
 
+def _migrate_user_lockout_columns():
+    """Round-2 security: brute-force lockout columns on users (idempotent DDL)."""
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'users'"
+            ))
+            existing = {row[0] for row in result}
+            changed = False
+            if "failed_login_attempts" not in existing:
+                conn.execute(text(
+                    "ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0"
+                ))
+                changed = True
+            if "locked_until" not in existing:
+                conn.execute(text("ALTER TABLE users ADD COLUMN locked_until TIMESTAMPTZ"))
+                changed = True
+            if changed:
+                conn.commit()
+                logger.info("Users table migration complete (lockout columns added)")
+    except Exception as exc:
+        logger.warning(f"Users lockout column migration skipped: {exc}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
@@ -172,6 +201,7 @@ async def lifespan(app: FastAPI):
         _migrate_evidence_metadata_table()
         _migrate_person_image_fields()
         _ensure_realtime_indexes()
+        _migrate_user_lockout_columns()  # revoked_tokens table comes via create_all
         with engine.connect():
             logger.info("PostgreSQL connection OK")
     except Exception as exc:
@@ -197,27 +227,40 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# --- Middleware stack (order = outermost first at request time) -------------
+# CORS outermost so preflight OPTIONS bypasses rate limiting; security headers
+# wrap every response including 429s from the rate limiter.
+app.add_middleware(RequestSizeLimitMiddleware)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    # Explicit method/header allow-lists — no wildcards on a credentialed API.
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
+    max_age=600,
 )
 
 register_exception_handlers(app)
 
 app.include_router(api_router, prefix=settings.API_V2_PREFIX)
 
-# Serve local evidence files only in development. Person profile images use
-# persistent Supabase Storage and never fall back to this directory.
-from app.services.evidence_service import UPLOAD_DIR  # noqa: E402
-app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
+@app.get("/health/live", tags=["System"])
+def liveness():
+    """Liveness probe: is the process running? No dependency detail exposed."""
+    return {"status": "ok"}
 
 
-@app.get("/health", tags=["System"])
-def health_check():
-    """Liveness/readiness probe for Docker/orchestration and uptime monitoring."""
+@app.get("/health/ready", tags=["System"])
+def readiness():
+    """Readiness probe: can the app serve requests?
+
+    Returns component status WITHOUT infrastructure internals (no hosts, no
+    error text) so it is safe to expose to load balancers / orchestrators.
+    """
     pg_ok = True
     try:
         with engine.connect():
@@ -227,12 +270,18 @@ def health_check():
 
     neo4j_ok = verify_neo4j_connectivity()
 
-    status_ok = pg_ok and neo4j_ok
+    status_ok = pg_ok  # Neo4j is optional (SQL fallback exists), PG is not
     return {
         "status": "ok" if status_ok else "degraded",
         "postgresql": "up" if pg_ok else "down",
-        "neo4j": "up" if neo4j_ok else "down",
+        "neo4j": "up" if neo4j_ok else "degraded",
     }
+
+
+@app.get("/health", tags=["System"], include_in_schema=False)
+def health_check():
+    """Backwards-compatible alias for the readiness probe."""
+    return readiness()
 
 
 @app.get("/", tags=["System"])

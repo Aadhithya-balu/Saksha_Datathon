@@ -150,7 +150,8 @@ def test_commit_crime_cases_with_relations(analyst_client, seed_reference):
     body = r.json()
     assert body["imported_rows"] == 2
     assert body["failed_rows"] == 1
-    assert body["status"] == "partial"
+    # Issue 5: partial success is reported via completed_with_warnings.
+    assert body["status"] == "completed_with_warnings"
     errors = [err for item in body["validation_report"] for err in item["errors"]]
     assert any("category_name" in err for err in errors)
 

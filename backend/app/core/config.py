@@ -16,8 +16,9 @@ class Settings(BaseSettings):
     APP_NAME: str = "SAKSHA Backend"
     APP_ENV: str = "development"
     API_V2_PREFIX: str = "/api/v2"
-    APP_DEBUG: bool = True
-    DEBUG: bool = True
+    # Debug defaults to OFF; must be explicitly enabled per environment.
+    APP_DEBUG: bool = False
+    DEBUG: bool = False
 
     # --- PostgreSQL / Supabase PostgreSQL ---
     DATABASE_URL: str | None = None
@@ -48,8 +49,24 @@ class Settings(BaseSettings):
     # --- JWT ---
     JWT_SECRET_KEY: str = ""
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # --- Brute-force protection (account lockout) ---
+    LOGIN_MAX_FAILED_ATTEMPTS: int = 5
+    LOGIN_LOCKOUT_MINUTES: int = 15
+
+    # --- Global API rate limiting (sliding window, per client IP) ---
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_MAX_REQUESTS: int = 300            # general API budget per IP/min
+    RATE_LIMIT_AUTH_MAX_REQUESTS: int = 20        # /auth/* (login, refresh, register)
+    RATE_LIMIT_UPLOAD_MAX_REQUESTS: int = 30      # evidence/file upload endpoints
+    RATE_LIMIT_AI_MAX_REQUESTS: int = 40          # AI chat / prediction endpoints
+
+    # --- Request body size limit (bytes). Evidence uploads are separately
+    # capped at MAX_FILE_SIZE_MB; this is a coarse DoS guard for JSON bodies.
+    MAX_REQUEST_BODY_BYTES: int = 2 * 1024 * 1024
 
     # --- LLM ---
     # "auto" (default) builds a failover chain in priority order: groq -> gemini -> openai,
@@ -91,6 +108,13 @@ class Settings(BaseSettings):
     def validate_jwt_secret(self):
         if not self.JWT_SECRET_KEY:
             raise ValueError("JWT_SECRET_KEY must be set in environment. Refusing to start with empty secret.")
+        # Enforce secret strength everywhere except the ephemeral test
+        # environment, where tests bootstrap their own throwaway key.
+        if self.APP_ENV != "test" and len(self.JWT_SECRET_KEY) < 32:
+            raise ValueError(
+                "JWT_SECRET_KEY must be at least 32 characters. "
+                "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+            )
         return self
 
     @field_validator("DEBUG", "APP_DEBUG", mode="before")

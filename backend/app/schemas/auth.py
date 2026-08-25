@@ -1,10 +1,12 @@
 """Auth request/response schemas."""
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    # Bounded lengths blunt credential-stuffing payload abuse; format errors
+    # are generic so we never leak which accounts exist.
+    username: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class TokenResponse(BaseModel):
@@ -15,12 +17,17 @@ class TokenResponse(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(min_length=1, max_length=4096)
+
+
+class LogoutRequest(BaseModel):
+    """Optional body for server-side refresh-token revocation on logout."""
+    refresh_token: str | None = Field(default=None, max_length=4096)
 
 
 class ChangePasswordRequest(BaseModel):
-    old_password: str
-    new_password: str
+    old_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class ForgotPasswordRequest(BaseModel):
