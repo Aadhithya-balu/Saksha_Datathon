@@ -35,18 +35,18 @@ export const ForecastChart: React.FC = () => {
   const predColor = c.series[5];
 
   return (
-    <div className="sk-panel sk-panel-pad w-full h-[280px] relative overflow-hidden flex flex-col">
-      <div className="flex justify-between items-center mb-2">
+    <div className="w-full bg-[var(--bg-tertiary)]/40 border border-border-color p-4 rounded-card relative overflow-hidden flex flex-col justify-between h-[360px] select-none">
+      <div className="flex justify-between items-center mb-1">
         <div>
-          <span className="text-xs font-semibold text-[var(--accent-purple)] flex items-center gap-1.5">
+          <span className="text-[10px] font-mono font-bold text-[var(--accent-purple)] uppercase flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5" />
             AI Predictive Timeline
           </span>
-          <h4 className="sk-panel-title mt-0.5">14-Day Forecast</h4>
+          <h4 className="text-xs font-semibold text-[var(--text-primary)] mt-0.5">14-Day Forecast Projection</h4>
         </div>
       </div>
 
-      <div className="flex-grow w-full min-h-[150px]">
+      <div className="flex-1 w-full min-h-[200px] my-auto">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={FORECAST_SERIES} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
             <defs>
@@ -82,7 +82,7 @@ export const ForecastChart: React.FC = () => {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 text-[11px] text-[var(--text-muted)] pt-2 border-t border-[var(--border-primary)] mt-2">
+      <div className="flex items-center gap-4 text-[10px] font-mono text-[var(--text-muted)] pt-2 border-t border-[var(--border-muted)] mt-1">
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: histColor }} /> Historical</span>
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: todayColor }} /> Today</span>
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: predColor }} /> AI Predicted</span>

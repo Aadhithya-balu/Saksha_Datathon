@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ForceGraph3D from 'react-force-graph-3d';
 import { Search, RotateCcw, AlertTriangle } from 'lucide-react';
 import type { NetworkNodeCategory } from '../../services/api';
@@ -11,7 +11,11 @@ export interface GraphNode {
   riskScore: number;
   details: string;
   casesCount: number;
-  phone?: string;
+  phone?: string | null;
+  gangAffiliation?: string | null;
+  status?: string | null;
+  district?: string | null;
+  date?: string | null;
   /** True when the record originates from the bundled demo seed dataset (gap 132.4). */
   isSeed?: boolean;
   /** Spatial coordinates assigned by the force-graph simulation at render time. */
@@ -21,22 +25,41 @@ export interface GraphNode {
 }
 
 export interface GraphLink {
-  source: string;
-  target: string;
+  source: string | any;
+  target: string | any;
   relationship: string;
+  weight?: number;
+  first_seen?: string | null;
+  last_seen?: string | null;
+  provenance?: 'DIRECT_DATABASE' | 'ANALYTICAL_INFERENCE' | 'DEMO_SEED' | 'MIXED' | 'UNKNOWN' | string;
+  verification_status?: 'VERIFIED' | 'POTENTIAL' | 'UNVERIFIED' | 'DEMO' | string;
+  relationship_type?: string;
+  evidence?: Array<{
+    record_type?: string;
+    record_id?: string;
+    record_number?: string;
+    details?: string;
+    timestamp?: string | null;
+    factors?: string[];
+  }>;
+  confidence?: number | null;
+  confidence_level?: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN' | string;
+  is_demo_derived?: boolean;
+  operational_warning?: string | null;
 }
 
 const EMPTY_GRAPH_DATA: { nodes: GraphNode[]; links: GraphLink[] } = { nodes: [], links: [] };
 
 interface CriminalGraph3DProps {
   onNodeSelect?: (node: GraphNode) => void;
+  onLinkSelect?: (link: GraphLink) => void;
   graphData?: {
     nodes: GraphNode[];
     links: GraphLink[];
   };
 }
 
-export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, graphData }) => {
+export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, onLinkSelect, graphData }) => {
   const fgRef = useRef<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const resolvedGraphData = useMemo(() => graphData ?? EMPTY_GRAPH_DATA, [graphData]);
@@ -45,7 +68,6 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
   const theme = useAppStore((s) => s.theme);
   const isLight = theme === 'light';
   const canvasBg = isLight ? '#f7f9fc' : '#080E1B';
-  const linkColor = isLight ? 'rgba(15, 42, 92, 0.28)' : 'rgba(255, 255, 255, 0.12)';
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
@@ -104,12 +126,11 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
 
   // Node Clicked Action
   const handleNodeClick = (node: any) => {
-    // Zoom camera on node click with spring bounce feel
     if (fgRef.current && fgRef.current.cameraPosition) {
       fgRef.current.cameraPosition(
-        { x: node.x * 1.5, y: node.y * 1.5, z: node.z * 1.5 + 60 }, // Move camera closer
-        node, // Look at node
-        1200 // Transition ms
+        { x: node.x * 1.5, y: node.y * 1.5, z: node.z * 1.5 + 60 },
+        node,
+        1200
       );
     }
     const fullNode = currentGraphData.nodes.find(n => n.id === node.id);
@@ -118,14 +139,38 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
     }
   };
 
-  // Color matching
+  // Link Clicked Action (Issue #159)
+  const handleLinkClick = (link: any) => {
+    if (onLinkSelect) {
+      onLinkSelect(link);
+    }
+  };
+
+  // Color matching for nodes
   const getNodeColor = (cat: string) => {
     switch (cat) {
       case 'suspect': return '#C94A2A'; // Red
       case 'offender': return '#D4820A'; // Amber
       case 'location': return '#1E6FD9'; // Blue
-      default: return '#6A7A96'; // Victim (Grey)
+      case 'case': return '#0E9E78'; // Green
+      case 'victim': return '#6A7A96'; // Grey
+      case 'officer': return '#14C997'; // Teal
+      default: return '#6C43CC';
     }
+  };
+
+  // Color matching for link provenance (Issue #159)
+  const getLinkColor = (link: GraphLink) => {
+    if (link.verification_status === 'VERIFIED' || link.provenance === 'DIRECT_DATABASE') {
+      return isLight ? 'rgba(5, 150, 105, 0.85)' : 'rgba(16, 185, 129, 0.85)';
+    }
+    if (link.verification_status === 'POTENTIAL' || link.provenance === 'ANALYTICAL_INFERENCE') {
+      return isLight ? 'rgba(217, 119, 6, 0.95)' : 'rgba(245, 158, 11, 0.95)';
+    }
+    if (link.is_demo_derived || link.provenance === 'DEMO_SEED' || link.provenance === 'MIXED') {
+      return isLight ? 'rgba(124, 58, 237, 0.75)' : 'rgba(168, 85, 247, 0.75)';
+    }
+    return isLight ? 'rgba(100, 116, 139, 0.6)' : 'rgba(148, 163, 184, 0.55)';
   };
 
   // Slow orbital rotation when idle
@@ -144,7 +189,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
         <form onSubmit={handleSearch} className="flex-grow flex items-center relative">
           <input
             type="text"
-            placeholder="Search suspect name (e.g. Ramu)..."
+            placeholder="Search suspect or entity name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-2 bg-secondary-bg/90 backdrop-blur-sm text-[var(--text-primary)] font-mono text-xs border border-border-color focus:border-[var(--accent-blue)] rounded-btn outline-none transition-colors"
@@ -156,7 +201,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
           type="button"
           onClick={() => {
             setSearchQuery('');
-              setCurrentGraphData(resolvedGraphData);
+            setCurrentGraphData(resolvedGraphData);
             if (fgRef.current) fgRef.current.zoomToFit(1000);
           }}
           className="px-3 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-border-color hover:border-[var(--accent-blue)]/30 rounded text-xs text-[var(--text-secondary)] cursor-pointer"
@@ -168,9 +213,9 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
       {/* GRAPH VIEWPORT */}
       <div ref={containerRef} className="flex-1 w-full h-full relative min-h-[300px]">
         {hasError ? (
-          <GraphFallback onNodeSelect={onNodeSelect} isLight={isLight} graphData={currentGraphData} />
+          <GraphFallback onNodeSelect={onNodeSelect} onLinkSelect={onLinkSelect} isLight={isLight} graphData={currentGraphData} />
         ) : (
-          <ErrorBoundary fallback={<GraphFallback onNodeSelect={onNodeSelect} isLight={isLight} graphData={currentGraphData} />} onError={() => setHasError(true)}>
+          <ErrorBoundary fallback={<GraphFallback onNodeSelect={onNodeSelect} onLinkSelect={onLinkSelect} isLight={isLight} graphData={currentGraphData} />} onError={() => setHasError(true)}>
             <ForceGraph3D
               ref={fgRef}
               graphData={currentGraphData}
@@ -180,39 +225,54 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
               showNavInfo={false}
               nodeLabel="name"
               nodeColor={node => getNodeColor(node.category)}
-              nodeVal={node => node.category === 'suspect' ? 9 : 6}
+              nodeVal={node => node.category === 'suspect' ? 10 : 7}
               nodeResolution={16}
-              linkColor={() => linkColor}
-              linkDirectionalParticles={1.5}
-              linkDirectionalParticleSpeed={0.012}
-              linkDirectionalParticleWidth={2}
-              linkWidth={0.8}
+              linkColor={link => getLinkColor(link as GraphLink)}
+              linkDirectionalParticles={link => ((link as GraphLink).verification_status === 'POTENTIAL' ? 3 : 1.5)}
+              linkDirectionalParticleSpeed={0.015}
+              linkDirectionalParticleWidth={3}
+              linkWidth={link => ((link as GraphLink).verification_status === 'VERIFIED' ? 2.6 : 2.0)}
               rendererConfig={{ antialias: true }}
               onNodeClick={handleNodeClick}
+              onLinkClick={handleLinkClick}
             />
           </ErrorBoundary>
         )}
 
-        {/* Legend overlays */}
-        <div className="absolute bottom-4 left-4 z-20 bg-secondary-bg/90 backdrop-blur-sm p-3.5 border border-border-color rounded-card font-mono text-[9px] flex flex-col gap-2 select-none pointer-events-none">
-          <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-            Clearance Categories
-          </span>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent-coral)] shadow-glow-coral" />
-            <span className="text-[var(--text-primary)] uppercase">HIGH RISK SUSPECTS</span>
+        {/* Provenance & Node Legend overlay (Issue #159) */}
+        <div className="absolute bottom-4 left-4 z-20 bg-[#0B1120] border border-[#334155] rounded-card shadow-2xl p-3 font-mono text-[9px] flex flex-col gap-2 select-none pointer-events-auto max-w-[210px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">
+              Network Map Legend
+            </span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent-amber)] shadow-glow-amber" />
-            <span className="text-[var(--text-primary)]">KNOWN OFFENDERS</span>
+
+          <div className="flex flex-col gap-1.5 pt-0.5">
+            <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
+              <span className="w-4 h-1 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+              <span className="text-emerald-300 font-semibold">Direct Fact (Verified)</span>
+            </div>
+            <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
+              <span className="w-4 h-1 border-t-2 border-dashed border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+              <span className="text-amber-300 font-semibold">Analytical Lead (Potential)</span>
+            </div>
+            <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
+              <span className="w-4 h-1 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+              <span className="text-purple-300 font-semibold">Demo / Seed Link</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent-blue)] shadow-glow-blue" />
-            <span className="text-[var(--text-primary)]">LOCATION COORDS</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[var(--text-muted)]" />
-            <span className="text-[var(--text-primary)]">VICTIMS/COMPLAINANTS</span>
+          
+          <div className="border-t border-[#1E293B] pt-2 mt-0.5 flex flex-col gap-1">
+            <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">
+              Entity Clearance
+            </span>
+            <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+              <span className="text-slate-200">Suspect</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_6px_rgba(245,158,11,0.8)] ml-1" />
+              <span className="text-slate-200">Offender</span>
+            </div>
           </div>
         </div>
 
@@ -220,6 +280,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
         <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-1.5 pointer-events-auto">
           <button
             onClick={() => fgRef.current?.zoomToFit(1200)}
+            title="Reset camera focus"
             className="p-2 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-border-color hover:border-[var(--accent-blue)]/30 rounded text-[var(--text-secondary)] cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
@@ -234,6 +295,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
 // Canvas-based fallback when WebGL crashes — renders the real graph data
 interface GraphFallbackProps {
   onNodeSelect?: (node: GraphNode) => void;
+  onLinkSelect?: (link: GraphLink) => void;
   isLight: boolean;
   graphData?: {
     nodes: GraphNode[];
@@ -253,7 +315,7 @@ const FALLBACK_NODE_COLORS: Record<string, string> = {
   officer: '#14C997',
 };
 
-const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, isLight, graphData }) => {
+const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, onLinkSelect, isLight, graphData }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
@@ -293,17 +355,35 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, isLight, gr
     const draw = () => {
       ctx.clearRect(0, 0, LOGICAL_W, LOGICAL_H);
 
-      // Draw particle flow animation lines
-      ctx.lineWidth = 1;
+      // Draw particle flow animation lines with provenance colors
       layoutLinks.forEach(link => {
-        const start = coords[link.source];
-        const end = coords[link.target];
+        const start = coords[typeof link.source === 'object' ? link.source.id : link.source];
+        const end = coords[typeof link.target === 'object' ? link.target.id : link.target];
         if (start && end) {
           ctx.beginPath();
           ctx.moveTo(start.x, start.y);
           ctx.lineTo(end.x, end.y);
-          ctx.strokeStyle = isLight ? 'rgba(15, 42, 92, 0.18)' : 'rgba(255,255,255,0.06)';
+          
+          if (link.verification_status === 'VERIFIED' || link.provenance === 'DIRECT_DATABASE') {
+            ctx.strokeStyle = isLight ? 'rgba(5, 150, 105, 0.9)' : 'rgba(16, 185, 129, 0.9)';
+            ctx.lineWidth = 2.8;
+            ctx.setLineDash([]);
+          } else if (link.verification_status === 'POTENTIAL' || link.provenance === 'ANALYTICAL_INFERENCE') {
+            ctx.strokeStyle = isLight ? 'rgba(217, 119, 6, 0.95)' : 'rgba(245, 158, 11, 0.95)';
+            ctx.lineWidth = 2.4;
+            ctx.setLineDash([5, 4]);
+          } else if (link.is_demo_derived || link.provenance === 'DEMO_SEED' || link.provenance === 'MIXED') {
+            ctx.strokeStyle = isLight ? 'rgba(124, 58, 237, 0.8)' : 'rgba(168, 85, 247, 0.8)';
+            ctx.lineWidth = 2.0;
+            ctx.setLineDash([]);
+          } else {
+            ctx.strokeStyle = isLight ? 'rgba(100, 116, 139, 0.6)' : 'rgba(148, 163, 184, 0.55)';
+            ctx.lineWidth = 1.6;
+            ctx.setLineDash([]);
+          }
+          
           ctx.stroke();
+          ctx.setLineDash([]);
 
           // Flow dot tracer
           const time = Date.now() / 1500;
@@ -313,7 +393,7 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, isLight, gr
 
           ctx.beginPath();
           ctx.arc(px, py, 2, 0, Math.PI * 2);
-          ctx.fillStyle = '#6c43cc';
+          ctx.fillStyle = link.verification_status === 'VERIFIED' ? '#10b981' : '#f59e0b';
           ctx.fill();
         }
       });
@@ -354,29 +434,52 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, isLight, gr
 
     draw();
 
-    // Attach click listener targeting coordinates
+    // Attach click listener targeting coordinates or links
     const handleCanvasClick = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
       const clickY = e.clientY - rect.top;
 
-      let found: GraphNode | null = null;
+      let foundNode: GraphNode | null = null;
 
-      // Match coordinate radius
+      // Match node coordinate radius
       for (const node of layoutNodes) {
         const pt = coords[node.id];
         if (pt) {
           const dist = Math.hypot(clickX - pt.x, clickY - pt.y);
           if (dist <= 20) {
-            found = node;
+            foundNode = node;
             break;
           }
         }
       }
 
-      if (found) {
-        setSelectedNodeId(found.id);
-        onNodeSelect?.(found);
+      if (foundNode) {
+        setSelectedNodeId(foundNode.id);
+        onNodeSelect?.(foundNode);
+        return;
+      }
+
+      // Check if click was close to any link line
+      if (onLinkSelect) {
+        for (const link of layoutLinks) {
+          const start = coords[typeof link.source === 'object' ? link.source.id : link.source];
+          const end = coords[typeof link.target === 'object' ? link.target.id : link.target];
+          if (start && end) {
+            // Distance from point to line segment
+            const l2 = (end.x - start.x) ** 2 + (end.y - start.y) ** 2;
+            if (l2 === 0) continue;
+            let t = ((clickX - start.x) * (end.x - start.x) + (clickY - start.y) * (end.y - start.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            const projX = start.x + t * (end.x - start.x);
+            const projY = start.y + t * (end.y - start.y);
+            const dist = Math.hypot(clickX - projX, clickY - projY);
+            if (dist <= 8) {
+              onLinkSelect(link);
+              break;
+            }
+          }
+        }
       }
     };
 
@@ -386,7 +489,7 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, isLight, gr
       cancelAnimationFrame(animId);
       canvas.removeEventListener('click', handleCanvasClick);
     };
-  }, [onNodeSelect, selectedNodeId, isLight, layout]);
+  }, [onNodeSelect, onLinkSelect, selectedNodeId, isLight, layout]);
 
   if (layout.nodes.length === 0) {
     return (

@@ -40,6 +40,34 @@ class NetworkNode(BaseModel):
     isSeed: bool = False
 
 
+class RelationshipProvenance(str, Enum):
+    DIRECT_DATABASE = "DIRECT_DATABASE"
+    ANALYTICAL_INFERENCE = "ANALYTICAL_INFERENCE"
+    DEMO_SEED = "DEMO_SEED"
+    MIXED = "MIXED"
+    UNKNOWN = "UNKNOWN"
+
+
+class VerificationStatus(str, Enum):
+    VERIFIED = "VERIFIED"
+    POTENTIAL = "POTENTIAL"
+    UNVERIFIED = "UNVERIFIED"
+    DEMO = "DEMO"
+
+
+class RelationshipType(str, Enum):
+    PERSON_CASE = "PERSON_CASE"
+    PERSON_LOCATION = "PERSON_LOCATION"
+    CASE_LOCATION = "CASE_LOCATION"
+    PERSON_INVESTIGATION = "PERSON_INVESTIGATION"
+    PERSON_VICTIM = "PERSON_VICTIM"
+    SHARED_CASE = "SHARED_CASE"
+    SHARED_LOCATION = "SHARED_LOCATION"
+    SHARED_MO = "SHARED_MO"
+    GANG_ASSOCIATION = "GANG_ASSOCIATION"
+    OTHER = "OTHER"
+
+
 class NetworkEdge(BaseModel):
     source: str
     target: str
@@ -47,6 +75,15 @@ class NetworkEdge(BaseModel):
     weight: float = 1.0
     first_seen: str | None = None
     last_seen: str | None = None
+    # Issue #159: Provenance and evidence verification metadata
+    provenance: str = "DIRECT_DATABASE"
+    verification_status: str = "VERIFIED"
+    relationship_type: str = "OTHER"
+    evidence: list[dict[str, Any]] = Field(default_factory=list)
+    confidence: float | None = 1.0
+    confidence_level: str = "HIGH"
+    is_demo_derived: bool = False
+    operational_warning: str | None = None
 
 
 class NetworkGraphResponse(BaseModel):
@@ -58,6 +95,8 @@ class NetworkGraphResponse(BaseModel):
     # Issue #144 gap 132.4: provenance transparency about demo-seeded content.
     seed_node_count: int = 0
     dataset_scope: str = "live_records"  # or "contains_seed_demo_records"
+    # Issue #159: Granular provenance summary
+    provenance_summary: dict[str, int] = Field(default_factory=dict)
 
 
 class GangHierarchyMember(BaseModel):
