@@ -74,6 +74,8 @@ class QueryPlanner:
             return self._plan_notifications()
         if intent == Intent.DASHBOARD_ANALYTICS:
             return self._plan_dashboard()
+        if intent == Intent.PLATFORM_GENERAL:
+            return []
         return self._plan_general()
 
     def _plan_fir(self, e: ExtractedEntities) -> list[BackendCall]:
@@ -81,14 +83,14 @@ class QueryPlanner:
             return [BackendCall("postgres", "get_fir", {"fir_number": e.fir_number}, 1)]
         if e.person_name:
             return [BackendCall("postgres", "search_firs", {"query": e.person_name}, 1)]
-        return [BackendCall("postgres", "list_firs", {"limit": 20}, 1)]
+        return [BackendCall("postgres", "list_firs", {"limit": 10}, 1)]
 
     def _plan_case(self, e: ExtractedEntities) -> list[BackendCall]:
         if e.case_id:
             return [BackendCall("postgres", "get_case", {"case_number": e.case_id}, 1)]
         if e.person_name:
             return [BackendCall("postgres", "search_cases", {"query": e.person_name}, 1)]
-        return [BackendCall("postgres", "list_cases", {"limit": 20}, 1)]
+        return [BackendCall("postgres", "list_cases", {"limit": 10}, 1)]
 
     def _plan_criminal(self, e: ExtractedEntities) -> list[BackendCall]:
         calls: list[BackendCall] = []

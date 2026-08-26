@@ -37,6 +37,7 @@ class BackendResult:
     raw_data: Any = None
     success: bool = True
     error: str | None = None
+    records: list[dict[str, Any]] | None = None
 
 
 class BackendFetcher:
@@ -129,11 +130,17 @@ class BackendFetcher:
     def _pg_get_fir(self, db: Session, params: dict) -> BackendResult:
         from app.models.fir import FIR
         fir_num = params.get("fir_number", "")
-        fir = db.query(FIR).filter(FIR.fir_number.ilike(f"%{fir_num}%")).first()
+        if fir_num.startswith("ordinal:"):
+            idx = int(fir_num.split(":", 1)[1]) - 1
+            if idx < 0:
+                idx = 0
+            fir = db.query(FIR).order_by(FIR.filed_at.desc()).offset(idx).first()
+        else:
+            fir = db.query(FIR).filter(FIR.fir_number.ilike(f"%{fir_num}%")).first()
         if not fir:
             return BackendResult(source="postgres", data_type="fir", content="No FIR found.", raw_data=None)
         content = self._format_fir(fir)
-        return BackendResult(source="postgres", data_type="fir", content=content, raw_data={"fir_number": fir.fir_number, "id": str(fir.id)})
+        return BackendResult(source="postgres", data_type="fir", content=content, raw_data={"fir_number": fir.fir_number, "id": str(fir.id)}, records=[{"type": "fir", "fir_number": fir.fir_number, "id": str(fir.id), "status": fir.status}])
 
     def _pg_search_firs(self, db: Session, params: dict) -> BackendResult:
         from app.models.fir import FIR
@@ -150,11 +157,12 @@ class BackendFetcher:
             source="postgres", data_type="firs",
             content="\n---\n".join(parts),
             raw_data=[{"fir_number": f.fir_number, "id": str(f.id)} for f in firs],
+            records=[{"type": "fir", "fir_number": f.fir_number, "id": str(f.id), "status": f.status} for f in firs],
         )
 
     def _pg_list_firs(self, db: Session, params: dict) -> BackendResult:
         from app.models.fir import FIR
-        limit = params.get("limit", 20)
+        limit = params.get("limit", 10)
         firs = db.query(FIR).order_by(FIR.filed_at.desc()).limit(limit).all()
         if not firs:
             return BackendResult(source="postgres", data_type="firs", content="No FIRs in the database.")
@@ -163,6 +171,7 @@ class BackendFetcher:
             source="postgres", data_type="firs",
             content="\n---\n".join(parts),
             raw_data=[{"fir_number": f.fir_number, "id": str(f.id)} for f in firs],
+            records=[{"type": "fir", "fir_number": f.fir_number, "id": str(f.id), "status": f.status} for f in firs],
         )
 
     def _pg_get_case(self, db: Session, params: dict) -> BackendResult:
@@ -172,7 +181,7 @@ class BackendFetcher:
         if not case:
             return BackendResult(source="postgres", data_type="case", content="No case found.")
         content = self._format_case(case)
-        return BackendResult(source="postgres", data_type="case", content=content, raw_data={"case_number": case.case_number, "id": str(case.id)})
+        return BackendResult(source="postgres", data_type="case", content=content, raw_data={"case_number": case.case_number, "id": str(case.id)}, records=[{"type": "case", "case_number": case.case_number, "id": str(case.id), "status": case.status}])
 
     def _pg_search_cases(self, db: Session, params: dict) -> BackendResult:
         from app.models.crime import CrimeCase
@@ -198,6 +207,7 @@ class BackendFetcher:
             source="postgres", data_type="cases",
             content="\n---\n".join(parts),
             raw_data=[{"case_number": c.case_number, "id": str(c.id)} for c in cases],
+            records=[{"type": "case", "case_number": c.case_number, "id": str(c.id), "status": c.status} for c in cases],
         )
 
     def _pg_list_cases(self, db: Session, params: dict) -> BackendResult:
@@ -211,6 +221,7 @@ class BackendFetcher:
             source="postgres", data_type="cases",
             content="\n---\n".join(parts),
             raw_data=[{"case_number": c.case_number, "id": str(c.id)} for c in cases],
+            records=[{"type": "case", "case_number": c.case_number, "id": str(c.id), "status": c.status} for c in cases],
         )
 
     def _pg_get_criminal(self, db: Session, params: dict, redact_pii: bool = False) -> BackendResult:
@@ -226,6 +237,7 @@ class BackendFetcher:
             source="postgres", data_type="criminal",
             content="\n---\n".join(parts),
             raw_data=[{"name": c.full_name, "id": str(c.id), "status": c.status} for c in criminals],
+            records=[{"type": "criminal", "name": c.full_name, "id": str(c.id), "status": c.status} for c in criminals],
         )
 
     def _pg_search_criminals(self, db: Session, params: dict, redact_pii: bool = False) -> BackendResult:
@@ -249,6 +261,7 @@ class BackendFetcher:
             source="postgres", data_type="criminals",
             content="\n---\n".join(parts),
             raw_data=[{"name": c.full_name, "id": str(c.id), "status": c.status} for c in criminals],
+            records=[{"type": "criminal", "name": c.full_name, "id": str(c.id), "status": c.status} for c in criminals],
         )
 
     def _pg_get_officer(self, db: Session, params: dict) -> BackendResult:
@@ -264,7 +277,7 @@ class BackendFetcher:
             f"Rank: {officer.rank or 'N/A'}, Station: {officer.station}, "
             f"District: {officer.district or 'N/A'}, Status: {officer.status}"
         )
-        return BackendResult(source="postgres", data_type="officer", content=content, raw_data={"name": officer.name, "badge": officer.badge_number})
+        return BackendResult(source="postgres", data_type="officer", content=content, raw_data={"name": officer.name, "badge": officer.badge_number}, records=[{"type": "officer", "name": officer.name, "badge": officer.badge_number, "district": officer.district}])
 
     def _pg_list_officers(self, db: Session, params: dict) -> BackendResult:
         from app.models.officer import Officer

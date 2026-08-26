@@ -191,7 +191,7 @@ class TestSystemPromptSafety:
     def test_prompt_requires_fact_analysis_prediction_labels(self):
         assert "ANALYSIS" in SYSTEM_PROMPT and "PREDICTION" in SYSTEM_PROMPT
 
-    def test_context_includes_authenticated_officer(self, db_session):
+    def test_context_does_not_leak_authenticated_officer(self, db_session):
         user = _make_user(db_session, "investigator")
         builder = ContextBuilder()
         built = builder.build(
@@ -200,7 +200,7 @@ class TestSystemPromptSafety:
             "any message",
             current_user=user,
         )
-        assert "Authenticated Officer" in built.context_block
-        assert "chat-investigator" in built.context_block
+        assert "Authenticated Officer" not in built.context_block
+        assert "Session user:" not in built.context_block
 
 

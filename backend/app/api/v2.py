@@ -30,6 +30,7 @@ from app.routes import (
     ai_support,
     ai_chat,
     ai_chat_history,
+    ai_chat_evaluation,
     ai_anomaly,
     ai_criminal,
     ai_hotspot,
@@ -78,6 +79,7 @@ api_router.include_router(notifications.router)
 api_router.include_router(ai_support.router)
 api_router.include_router(ai_chat.router)
 api_router.include_router(ai_chat_history.router)
+api_router.include_router(ai_chat_evaluation.router)
 api_router.include_router(ai_anomaly.router)
 api_router.include_router(ai_criminal.router)
 api_router.include_router(ai_hotspot.router)

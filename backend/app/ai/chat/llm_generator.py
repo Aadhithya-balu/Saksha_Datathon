@@ -23,7 +23,7 @@ _PROVIDER_KEY_ATTR = {"groq": "GROQ_API_KEY", "gemini": "GEMINI_API_KEY", "opena
 _PROVIDER_MODEL_ATTR = {"groq": "GROQ_MODEL", "gemini": "GEMINI_MODEL", "openai": "OPENAI_MODEL"}
 
 _REQUEST_TIMEOUT = 60.0
-_MAX_CONTEXT_LINES = 40
+_MAX_CONTEXT_LINES = 20
 _HISTORY_LIMIT = 10
 
 # HTTP statuses meaning "this key is done" — rotate to the next key.
@@ -69,11 +69,6 @@ _NO_DATA_MARKERS = (
 _REFUSAL_MESSAGE = (
     "I could not find matching records in the Saksha database for that query. "
     "Please try rephrasing your question or check the case/FIR number."
-)
-
-_NO_DIRECT_MATCH_PREFIX = (
-    "I could not find records directly matching your question in the Saksha database.\n"
-    "Here is what is currently on file for reference:"
 )
 
 _SYSTEM_CLOCK_HEADER = "System Clock"
@@ -167,6 +162,40 @@ def _strip_markdown(text: str) -> str:
     text = re.sub(r"`+", "", text)
     text = re.sub(r"^---+$", "", text, flags=re.MULTILINE)
     return text.strip()
+
+
+_PLATFORM_Q_RE = re.compile(
+    r"\b(?:what\s+is|about|tell\s+me\s+about|describe|explain|purpose|goal|"
+    r"who\s+(?:made|built|developed)|how\s+(?:does|do|did)|why\s+(?:is|was|are)|"
+    r"architecture|tech\s+stack|features|capabilities|modules)\b"
+    r".*?\b(?:saksha|platform|system|application|project|tool|crime\s+intelligence)\b",
+    re.I,
+)
+_PLATFORM_KNOWLEDGE_RE = re.compile(
+    r"SAKSHA PROJECT OVERVIEW.*?(?=RESPONSE FORMAT GUIDELINES|\Z)", re.S,
+)
+_PLATFORM_Q_LEAD = re.compile(
+    r"^(?:what\s+is|about|tell\s+me\s+about|describe|explain|purpose|goal|overview)\b",
+    re.I,
+)
+_PLATFORM_WORDS = {"saksha", "platform", "system", "application", "project", "crime intelligence"}
+
+
+def _is_platform_question(message: str) -> bool:
+    if _PLATFORM_Q_RE.search(message):
+        return True
+    lower = message.lower()
+    if _PLATFORM_Q_LEAD.match(lower):
+        return any(w in lower for w in _PLATFORM_WORDS)
+    return False
+
+
+def _extract_platform_knowledge(system_prompt: str) -> str:
+    """Extracts the SAKSHA PROJECT OVERVIEW section from the system prompt."""
+    match = _PLATFORM_KNOWLEDGE_RE.search(system_prompt)
+    if match:
+        return match.group(0).strip()
+    return ""
 
 
 class LLMGenerator:
@@ -380,7 +409,21 @@ class LLMGenerator:
             return
 
         sections = self._useful_sections(context)
+
         if not sections:
+            # No database records — try to answer from system prompt knowledge
+            # (project overview, general Saksha info).
+            if _is_platform_question(message):
+                platform_knowledge = _extract_platform_knowledge(system)
+                if platform_knowledge:
+                    answer = (
+                        f"SAKSHA — Crime Intelligence & Analytical Platform\n\n"
+                        f"{platform_knowledge}\n\n"
+                        f"{_FOOTER_MESSAGE}"
+                    )
+                    for chunk in self._stream_text(answer):
+                        yield chunk
+                    return
             yield _REFUSAL_MESSAGE
             return
 
@@ -402,28 +445,11 @@ class LLMGenerator:
         positive = [item for item in scored if item[0] > 0]
 
         if not positive:
-            # Nothing matches lexically, but the database DID return records —
-            # stay honest about the miss while showing what is on file instead
-            # of claiming there is no information (issue: "Bengaluru criminal
-            # lists" was refused although dossiers existed).
-            response_parts: list[str] = [_NO_DIRECT_MATCH_PREFIX, ""]
-            emitted = 0
-            seen_signatures: set[str] = set()
-            for _total, _max_score, _header, lines, _line_scores in scored:
-                if emitted >= _MAX_OVERVIEW_LINES:
-                    break
-                for line in lines:
-                    if emitted >= _MAX_OVERVIEW_LINES:
-                        break
-                    clean = _strip_markdown(line)
-                    signature = _record_signature(clean)
-                    if signature:
-                        if signature in seen_signatures:
-                            continue
-                        seen_signatures.add(signature)
-                    emitted += 1
-                    response_parts.append(f"{emitted}. {self._format_line(clean)}")
-            response_parts += ["", _FOOTER_MESSAGE]
+            response_parts: list[str] = [
+                "I could not find records directly matching your question in the Saksha database.",
+                "",
+                _REFUSAL_MESSAGE,
+            ]
             full_response = "\n".join(response_parts).strip()
             for chunk in self._stream_text(full_response):
                 yield chunk

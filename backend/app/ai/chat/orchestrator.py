@@ -54,22 +54,23 @@ class ChatOrchestrator:
             "content": f"Intent: {', '.join(i.value for i in intent_result.intents)}",
         })
 
-        plan = self.query_planner.plan(intent_result.intents, entities)
-
-        yield self._ndjson({
-            "type": "status",
-            "content": f"Querying {len(plan.backend_calls)} backend service(s)...",
-        })
-
-        results = self.backend_fetcher.execute(
-            plan, db, redact_pii=not user_may_view_pii(current_user),
+        # Platform knowledge questions ("What is Saksha?", "Why is AI used?")
+        # are answered from the system prompt project overview — no DB fetch needed.
+        is_platform_q = any(
+            i.value == "platform_general" for i in intent_result.intents
         )
 
-        # Free-text vector recall over database records (FIRs, criminals,
-        # evidence, cases) — augments structured intent-based fetching.
-        rag_result = self.rag_retriever.fetch(db, message)
-        if rag_result:
-            results.append(rag_result)
+        plan = self.query_planner.plan(intent_result.intents, entities)
+
+        if is_platform_q:
+            results: list = []
+        else:
+            results = self.backend_fetcher.execute(
+                plan, db, redact_pii=not user_may_view_pii(current_user),
+            )
+            rag_result = self.rag_retriever.fetch(db, message)
+            if rag_result:
+                results.append(rag_result)
 
         successful = [r for r in results if r.success]
         failed = [r for r in results if not r.success]
@@ -94,7 +95,8 @@ class ChatOrchestrator:
             full_response += chunk
             yield self._ndjson({"type": "token", "content": chunk})
 
-        validated_response = self.response_validator.validate(full_response, results)
+        validated_response = self.response_validator.validate(full_response, results, skip_grounding=is_platform_q)
+        provenance = self.response_validator.get_provenance(full_response, results)
 
         if not external_history:
             memory.add(sid, message, validated_response)
@@ -110,6 +112,16 @@ class ChatOrchestrator:
                 "chart_suggestion": self._suggest_chart(intent_result.intents),
                 "citations": built_context.citations,
                 "engine": self._engine_label(),
+                "provenance": {
+                    "source_records": provenance.source_records,
+                    "verified_ids": provenance.verified_ids,
+                    "unverified_ids": provenance.unverified_ids,
+                    "verified_names": provenance.verified_names,
+                    "unverified_names": provenance.unverified_names,
+                    "grounding_score": provenance.grounding_score,
+                    "has_fabricated_claims": provenance.has_fabricated_claims,
+                    "refusal_issued": provenance.refusal_issued,
+                },
             },
         }
         yield self._ndjson(final_payload)
@@ -129,12 +141,21 @@ class ChatOrchestrator:
         intent_result = self.intent_router.detect(message)
         entities = self.entity_extractor.extract(message)
         plan = self.query_planner.plan(intent_result.intents, entities)
-        results = self.backend_fetcher.execute(
-            plan, db, redact_pii=not user_may_view_pii(current_user),
+
+        is_platform_q = any(
+            i.value == "platform_general" for i in intent_result.intents
         )
-        rag_result = self.rag_retriever.fetch(db, message)
-        if rag_result:
-            results.append(rag_result)
+
+        if is_platform_q:
+            results: list = []
+        else:
+            results = self.backend_fetcher.execute(
+                plan, db, redact_pii=not user_may_view_pii(current_user),
+            )
+            rag_result = self.rag_retriever.fetch(db, message)
+            if rag_result:
+                results.append(rag_result)
+
         built_context = self.context_builder.build(results, entities, message, current_user=current_user)
 
         import asyncio
@@ -161,7 +182,8 @@ class ChatOrchestrator:
         except RuntimeError:
             full_response = asyncio.run(_collect())
 
-        validated_response = self.response_validator.validate(full_response, results)
+        validated_response = self.response_validator.validate(full_response, results, skip_grounding=is_platform_q)
+        provenance = self.response_validator.get_provenance(full_response, results)
         if not external_history:
             memory.add(sid, message, validated_response)
 
@@ -174,6 +196,16 @@ class ChatOrchestrator:
             "chart_suggestion": self._suggest_chart(intent_result.intents),
             "citations": built_context.citations,
             "engine": self._engine_label(),
+            "provenance": {
+                "source_records": provenance.source_records,
+                "verified_ids": provenance.verified_ids,
+                "unverified_ids": provenance.unverified_ids,
+                "verified_names": provenance.verified_names,
+                "unverified_names": provenance.unverified_names,
+                "grounding_score": provenance.grounding_score,
+                "has_fabricated_claims": provenance.has_fabricated_claims,
+                "refusal_issued": provenance.refusal_issued,
+            },
         }
 
     def _engine_label(self) -> str:
