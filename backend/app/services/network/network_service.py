@@ -16,6 +16,7 @@ visually separate seeded demo content from live intelligence.
 from collections import Counter, defaultdict, deque
 from datetime import datetime
 from functools import lru_cache
+from typing import Any
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.crime import CrimeCase
@@ -116,7 +117,10 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
     for fir in firs:
         case = fir.crime_case
         case_id = f"case-{fir.id}"
-        case_is_seed = _is_seed_case_number(case.case_number) if case else False
+        case_is_seed = (
+            _is_seed_case_number(case.case_number)
+            or (case and getattr(case, "dataset_provenance", None) == "demo")
+        ) if case else False
         nodes_map[case_id] = NetworkNode(
             id=case_id,
             name=f"FIR #{fir.fir_number}",
@@ -164,6 +168,8 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
         fir_criminals: list[tuple[str, bool]] = []
         for link in fir.criminal_links:
             criminal = link.criminal
+            if criminal is None:
+                continue
             crim_id = f"criminal-{criminal.id}"
             crim_is_seed = criminal.full_name in seed_criminal_names
             fir_criminals.append((crim_id, crim_is_seed))
@@ -367,7 +373,7 @@ def _graph_response(
     provenance_filter: str | None = None,
     exclude_demo: bool = False,
 ) -> NetworkGraphResponse:
-    """Assemble the response with comprehensive provenance summary and filtering (Issue #159)."""
+    """Assemble the response with comprehensive provenance summary and filtering (Issue #159, #166)."""
     seed_node_count = sum(1 for node in nodes if node.isSeed)
     
     # Baseline summary metrics reflecting full loaded subgraph for toolbar badge counts
@@ -398,6 +404,42 @@ def _graph_response(
         connected_node_ids = {e.source for e in edges} | {e.target for e in edges}
         nodes = [n for n in nodes if n.id in connected_node_ids]
 
+    # Issue #166: Entity type counts
+    entity_counts: dict[str, int] = Counter()
+    for node in nodes:
+        entity_counts[node.category.value] += 1
+
+    # Issue #166: Confidence summary
+    confidence_summary: dict[str, int] = {"HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}
+    for edge in edges:
+        level = (edge.confidence_level or "UNKNOWN").upper()
+        if level in confidence_summary:
+            confidence_summary[level] += 1
+        else:
+            confidence_summary["UNKNOWN"] += 1
+
+    # Issue #166: Provenance warnings
+    warnings: list[str] = []
+    demo_count = summary.get("demo_relationships", 0)
+    mixed_count = summary.get("mixed_relationships", 0)
+    unknown_count = summary.get("unknown_relationships", 0)
+
+    if demo_count > 0:
+        warnings.append(
+            f"Graph contains {demo_count} DEMO/seed-derived relationship(s). "
+            "Results should not be treated as live operational intelligence."
+        )
+    if mixed_count > 0:
+        warnings.append(
+            f"Graph contains {mixed_count} mixed-source relationship(s) involving both "
+            "LIVE and DEMO data. Interpret these connections with caution."
+        )
+    if unknown_count > 0:
+        warnings.append(
+            f"Graph contains {unknown_count} relationship(s) with unknown data provenance "
+            "that should be interpreted cautiously."
+        )
+
     return NetworkGraphResponse(
         nodes=nodes,
         edges=edges,
@@ -407,6 +449,9 @@ def _graph_response(
         seed_node_count=seed_node_count,
         dataset_scope="contains_seed_demo_records" if seed_node_count or summary["demo_relationships"] else "live_records",
         provenance_summary=summary,
+        entity_counts=dict(entity_counts),
+        warnings=warnings,
+        confidence_summary=confidence_summary,
     )
 
 

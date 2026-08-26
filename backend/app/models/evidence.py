@@ -6,10 +6,11 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
+from app.models.import_job import ImportProvenanceMixin
 from app.models.mixins import TimestampMixin, UUIDPKMixin
 
 
-class Evidence(Base, UUIDPKMixin, TimestampMixin):
+class Evidence(ImportProvenanceMixin, Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "evidence"
 
     case_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crime_cases.id", ondelete="CASCADE"), nullable=False, index=True)

@@ -1,6 +1,7 @@
 """Centralized application configuration."""
 from functools import lru_cache
 from pathlib import Path
+import secrets
 from typing import List
 from urllib.parse import quote_plus
 
@@ -164,6 +165,77 @@ class Settings(BaseSettings):
         self.DATABASE_URL = "sqlite:///./saksha.db"
         return self
 
+    @model_validator(mode="after")
+    def validate_production_config(self):
+        """Issue #167: Production configuration safety validation.
+
+        Enforces stricter requirements when APP_ENV=production to prevent
+        deployment with insecure defaults (weak secrets, wildcard CORS,
+        default DB passwords, debug mode enabled).
+        """
+        if self.APP_ENV not in ("production", "prod"):
+            return self  # Skip production checks in development/test
+
+        warnings: list[str] = []
+        errors: list[str] = []
+
+        # 1. JWT secret strength: production must have high-entropy secret
+        if self.JWT_SECRET_KEY:
+            entropy = _estimate_jwt_entropy(self.JWT_SECRET_KEY)
+            if entropy < 80:
+                errors.append(
+                    f"JWT_SECRET_KEY has insufficient entropy ({entropy:.0f} bits estimated). "
+                    "Production requires ≥80 bits. Generate with: "
+                    "python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+                )
+
+        # 2. CORS validation: no wildcard in production
+        origins = self.cors_origins
+        if "*" in origins:
+            errors.append("ALLOWED_ORIGINS must not contain '*' in production. Configure explicit origins.")
+
+        # 3. Debug mode must be OFF in production
+        if self.APP_DEBUG or self.DEBUG:
+            errors.append("APP_DEBUG and DEBUG must be False in production. Current configuration enables debug mode.")
+
+        # 4. Database credential validation
+        if self.DATABASE_URL and "sqlite" in self.DATABASE_URL:
+            warnings.append("Production is using SQLite. Use PostgreSQL for production deployments.")
+        if self.POSTGRES_PASSWORD and self.POSTGRES_PASSWORD in ("postgres", "password", "admin", "123456"):
+            warnings.append("POSTGRES_PASSWORD appears to be a default/common password. Use a strong password.")
+        if self.SUPABASE_DB_PASSWORD and self.SUPABASE_DB_PASSWORD in ("postgres", "password", "admin", "123456"):
+            warnings.append("SUPABASE_DB_PASSWORD appears to be a default/common password. Use a strong password.")
+
+        # 5. Neo4j default password warning
+        if self.NEO4J_PASSWORD == "neo4j":
+            warnings.append("NEO4J_PASSWORD is the default 'neo4j'. Use a strong password for production.")
+
+        # 6. File upload directory warning
+        if not self.UPLOAD_DIR and not self.SUPABASE_STORAGE_BUCKET:
+            warnings.append("No UPLOAD_DIR or SUPABASE_STORAGE_BUCKET configured. Evidence uploads will fail.")
+
+        # Store warnings and errors on the instance for startup logging
+        self._production_warnings = warnings  # type: ignore[attr-defined]
+        self._production_errors = errors  # type: ignore[attr-defined]
+
+        if errors:
+            import logging
+            logger = logging.getLogger(__name__)
+            for err in errors:
+                logger.error(f"PRODUCTION CONFIG ERROR: {err}")
+            raise ValueError(
+                "Production configuration validation failed:\n"
+                + "\n".join(f"  - {e}" for e in errors)
+            )
+
+        if warnings:
+            import logging
+            logger = logging.getLogger(__name__)
+            for warn in warnings:
+                logger.warning(f"PRODUCTION CONFIG WARNING: {warn}")
+
+        return self
+
     @property
     def cors_origins(self) -> List[str]:
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
@@ -171,6 +243,38 @@ class Settings(BaseSettings):
     @property
     def debug_enabled(self) -> bool:
         return bool(self.APP_DEBUG and self.DEBUG)
+
+    @property
+    def production_warnings(self) -> list[str]:
+        return getattr(self, "_production_warnings", [])
+
+    @property
+    def production_errors(self) -> list[str]:
+        return getattr(self, "_production_errors", [])
+
+
+def _estimate_jwt_entropy(secret: str) -> float:
+    """Estimate the entropy of a JWT secret in bits.
+
+    Uses a simple heuristic based on the character set size and length:
+    entropy = log2(charset_size) * length
+
+    This is a rough estimate; for cryptographic secrets generated with
+    ``secrets.token_urlsafe()`` the actual entropy will be higher.
+    """
+    import math
+    charset_size = 0
+    if any(c.islower() for c in secret):
+        charset_size += 26
+    if any(c.isupper() for c in secret):
+        charset_size += 26
+    if any(c.isdigit() for c in secret):
+        charset_size += 10
+    special_chars = set(secret) - set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+    charset_size += len(special_chars) * 4  # rough estimate for special chars
+    if charset_size == 0:
+        charset_size = 1  # avoid log2(0)
+    return math.log2(charset_size) * len(secret)
 
 
 @lru_cache

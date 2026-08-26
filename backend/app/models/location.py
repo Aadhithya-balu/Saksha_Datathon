@@ -3,10 +3,11 @@ from sqlalchemy import Float, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
+from app.models.import_job import ImportProvenanceMixin
 from app.models.mixins import TimestampMixin, UUIDPKMixin
 
 
-class Location(Base, UUIDPKMixin, TimestampMixin):
+class Location(ImportProvenanceMixin, Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "locations"
     __table_args__ = (UniqueConstraint("station", "address", name="uq_location_station_address"),)
 

@@ -5,10 +5,11 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
+from app.models.import_job import ImportProvenanceMixin
 from app.models.mixins import TimestampMixin, UUIDPKMixin
 
 
-class Officer(Base, UUIDPKMixin, TimestampMixin):
+class Officer(ImportProvenanceMixin, Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "officers"
 
     supabase_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)

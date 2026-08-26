@@ -53,7 +53,15 @@ def _load_model():
     try:
         return joblib.load(path)
     except Exception as e:
-        logger.warning("Failed to load hotspot model from %s (%s) — using rule-based fallback.", path, e)
+        logger.error("Hotspot model artifact corrupt at %s (%s) — rejecting.", path, e)
+        raise RuntimeError(f"Hotspot model artifact is corrupt: {e}") from e
+
+
+def _try_load_model():
+    """Load model, returning None if missing or corrupt (for inference fallback)."""
+    try:
+        return _load_model()
+    except RuntimeError:
         return None
 
 
@@ -195,10 +203,18 @@ def predict(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def get_model_info() -> dict[str, Any]:
-    """Return model metadata for health/info endpoints."""
+    """Return model metadata for health/info endpoints.
+
+    Raises RuntimeError if the model artifact file exists but is corrupt,
+    so the route handler can return a proper error to the client.
+    """
     meta = _load_metadata()
     metrics = _load_training_metrics()
-    model = _load_model()
+    path = MODEL_DIR / "hotspot_model.pkl"
+    if path.exists() and path.stat().st_size > 0:
+        model = _load_model()
+    else:
+        model = None
     is_ml = model is not None
     return {
         "model_name": meta.get("model_name", "SAKSHA Hotspot Predictor"),

@@ -1,17 +1,6 @@
 import React from 'react';
 import type { GraphLink, GraphNode } from './CriminalGraph3D';
-import { 
-  GitCommit, 
-  ShieldCheck, 
-  AlertTriangle, 
-  FileText, 
-  X, 
-  Database, 
-  CheckCircle2, 
-  HelpCircle,
-  Clock,
-  Layers
-} from 'lucide-react';
+import { GitCommit, ShieldCheck, AlertTriangle, FileText, X, Database, CheckCircle2, HelpCircle, Clock, Layers } from 'lucide-react';
 
 interface EdgeDetailPanelProps {
   link: GraphLink | null;
@@ -30,198 +19,144 @@ export const EdgeDetailPanel: React.FC<EdgeDetailPanelProps> = ({ link, nodes = 
 
   const provenance = link.provenance || 'DIRECT_DATABASE';
   const verificationStatus = link.verification_status || 'VERIFIED';
-  const relationshipType = link.relationship_type || 'OTHER';
   const confidence = link.confidence !== undefined && link.confidence !== null ? Math.round(link.confidence * 100) : null;
   const confidenceLevel = link.confidence_level || 'HIGH';
   const isDemo = link.is_demo_derived || provenance === 'DEMO_SEED' || provenance === 'MIXED';
-
   const isVerified = verificationStatus === 'VERIFIED';
   const isPotential = verificationStatus === 'POTENTIAL';
 
   return (
-    <div className="h-full bg-secondary-bg border-l border-border-color p-5 flex flex-col justify-between select-none overflow-y-auto custom-scrollbar">
-      {/* DRAWER HEADER */}
-      <div>
-        <div className="flex justify-between items-start pb-4 border-b border-border-color mb-4">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
-              isVerified 
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
-                : isPotential
-                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                : 'bg-purple-500/10 text-purple-400 border border-purple-500/30'
+    <div className="h-full bg-secondary-bg border-l border-border-color flex flex-col select-none overflow-hidden">
+      
+      {/* Header */}
+      <div className="p-4 pb-3 border-b border-border-color shrink-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center ${
+              isVerified ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 
+              isPotential ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' :
+              'bg-purple-500/10 text-purple-400 border border-purple-500/30'
             }`}>
               <GitCommit className="w-5 h-5" />
             </div>
-
-            <div>
-              <h4 className="text-xs font-mono font-bold text-[var(--text-primary)] uppercase max-w-[170px] truncate">
-                {link.relationship}
-              </h4>
-              <span className="text-[8.5px] font-mono text-[var(--text-muted)] uppercase tracking-wider block mt-0.5">
-                Type: {relationshipType}
-              </span>
-              {isDemo && (
-                <span
-                  title="This link involves bundled demo/seed data, not live operational intelligence."
-                  className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--accent-purple)]/10 border border-[var(--accent-purple)]/30 text-[var(--accent-purple)] text-[8px] font-mono uppercase tracking-widest"
-                >
-                  <Database className="w-2.5 h-2.5" />
-                  Demo Derived
-                </span>
-              )}
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate">{link.relationship}</h3>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5 capitalize">{verificationStatus.replace(/_/g, ' ').toLowerCase()}</p>
             </div>
           </div>
-
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-[var(--accent-blue)]/15 rounded text-[var(--text-secondary)] cursor-pointer"
-          >
+          <button onClick={onClose} className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer shrink-0 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
-
-        {/* PRIMARY BODY */}
-        <div className="flex flex-col gap-4 font-mono text-xs">
-          
-          {/* Connected Entities Banner */}
-          <div className="p-3 rounded-card bg-[var(--bg-tertiary)] border border-[var(--border-muted)] flex flex-col gap-2">
-            <span className="text-[8px] uppercase tracking-widest text-[var(--text-muted)]">
-              Connected Graph Entities
-            </span>
-            <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--text-primary)]">
-              <span className="truncate max-w-[100px]" title={sourceName}>{sourceName}</span>
-              <span className="text-[var(--accent-blue)]">↔</span>
-              <span className="truncate max-w-[100px]" title={targetName}>{targetName}</span>
-            </div>
+        {isDemo && (
+          <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--accent-purple)]/10 border border-[var(--accent-purple)]/20 text-[var(--accent-purple)] text-[10px]">
+            <Database className="w-3 h-3" />
+            Demo derived
           </div>
-
-          {/* Provenance & Verification Badges */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="p-2.5 rounded-card bg-[var(--bg-tertiary)] border border-[var(--border-muted)]">
-              <span className="text-[7.5px] uppercase tracking-widest text-[var(--text-muted)] block mb-1">
-                Data Provenance
-              </span>
-              <span className={`text-[9.5px] font-bold uppercase tracking-wider flex items-center gap-1 ${
-                provenance === 'DIRECT_DATABASE' ? 'text-emerald-400' :
-                provenance === 'ANALYTICAL_INFERENCE' ? 'text-amber-400' :
-                provenance === 'DEMO_SEED' ? 'text-purple-400' :
-                provenance === 'MIXED' ? 'text-purple-300' : 'text-slate-400'
-              }`}>
-                {provenance === 'DIRECT_DATABASE' && <CheckCircle2 className="w-3 h-3" />}
-                {provenance === 'ANALYTICAL_INFERENCE' && <Layers className="w-3 h-3" />}
-                {provenance === 'DEMO_SEED' && <Database className="w-3 h-3" />}
-                {provenance === 'MIXED' && <Database className="w-3 h-3" />}
-                {provenance.replace('_', ' ')}
-              </span>
-            </div>
-
-            <div className="p-2.5 rounded-card bg-[var(--bg-tertiary)] border border-[var(--border-muted)]">
-              <span className="text-[7.5px] uppercase tracking-widest text-[var(--text-muted)] block mb-1">
-                Verification Status
-              </span>
-              <span className={`text-[9.5px] font-bold uppercase tracking-wider flex items-center gap-1 ${
-                isVerified ? 'text-emerald-400' :
-                isPotential ? 'text-amber-400' :
-                'text-purple-400'
-              }`}>
-                {isVerified ? <ShieldCheck className="w-3 h-3" /> : <HelpCircle className="w-3 h-3" />}
-                {verificationStatus}
-              </span>
-            </div>
-          </div>
-
-          {/* Calculated Confidence Score */}
-          {confidence !== null && (
-            <div className="p-3 rounded-card bg-[var(--bg-tertiary)] border border-[var(--border-muted)] flex items-center justify-between">
-              <div>
-                <span className="text-[8px] uppercase tracking-widest text-[var(--text-muted)] block">
-                  Grounding Confidence ({confidenceLevel})
-                </span>
-                <span className="text-base font-bold text-[var(--text-primary)] mt-0.5 block">
-                  {confidence}%
-                </span>
-              </div>
-              <div className="w-20 bg-[var(--bg-primary)] h-2 rounded-full overflow-hidden border border-[var(--border-muted)]">
-                <div 
-                  className={`h-full ${
-                    confidence >= 80 ? 'bg-emerald-500' : confidence >= 60 ? 'bg-amber-500' : 'bg-slate-500'
-                  }`}
-                  style={{ width: `${confidence}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Operational Evidence Disclaimer Warning */}
-          {link.operational_warning && (
-            <div className="p-3 rounded-card bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-start gap-2.5">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-400" />
-              <div className="text-[8.5px] leading-relaxed">
-                <strong className="block font-bold text-amber-400 uppercase tracking-wider mb-0.5">
-                  Analytical Lead Advisory
-                </strong>
-                {link.operational_warning}
-              </div>
-            </div>
-          )}
-
-          {/* Supporting Evidence Records */}
-          <div className="space-y-2">
-            <span className="text-[8.5px] uppercase tracking-widest text-[var(--text-muted)] flex items-center gap-1 font-bold">
-              <FileText className="w-3 h-3 text-[var(--accent-blue)]" />
-              Supporting Database Evidence ({link.evidence?.length || 0})
-            </span>
-
-            {link.evidence && link.evidence.length > 0 ? (
-              <div className="space-y-2">
-                {link.evidence.map((ev, idx) => (
-                  <div 
-                    key={idx} 
-                    className="p-2.5 rounded bg-[var(--bg-primary)] border border-[var(--border-muted)] text-[9px] space-y-1"
-                  >
-                    <div className="flex justify-between items-center text-[var(--accent-blue)] font-bold">
-                      <span>{ev.record_number ? `Record: ${ev.record_number}` : ev.record_type?.toUpperCase()}</span>
-                      {ev.timestamp && (
-                        <span className="text-[7.5px] font-normal text-[var(--text-muted)] flex items-center gap-1">
-                          <Clock className="w-2.5 h-2.5" />
-                          {new Date(ev.timestamp).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                    {ev.details && <p className="text-[var(--text-secondary)]">{ev.details}</p>}
-                    {ev.factors && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {ev.factors.map((factor, fIdx) => (
-                          <span 
-                            key={fIdx} 
-                            className="px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-[7.5px]"
-                          >
-                            • {factor}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[8.5px] text-[var(--text-muted)] italic">
-                Direct relationship grounded in primary database schema linkage.
-              </p>
-            )}
-          </div>
-
-        </div>
+        )}
       </div>
 
-      {/* FOOTER ACTIONS */}
-      <div className="pt-4 border-t border-border-color mt-4">
-        <button
-          onClick={onClose}
-          className="w-full py-2 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-[var(--border-secondary)] hover:border-[var(--accent-blue)]/50 text-[var(--text-primary)] text-[9.5px] font-mono uppercase tracking-wider rounded-btn transition-colors cursor-pointer"
-        >
-          Dismiss Inspector
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-5 text-sm">
+
+        {/* Connected entities */}
+        <div className="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-color)]">
+          <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)] mb-2">Connected Entities</p>
+          <div className="flex items-center justify-between text-[13px] font-medium text-[var(--text-primary)]">
+            <span className="truncate max-w-[100px]" title={sourceName}>{sourceName}</span>
+            <span className="text-[var(--accent-blue)] mx-2">↔</span>
+            <span className="truncate max-w-[100px]" title={targetName}>{targetName}</span>
+          </div>
+        </div>
+
+        {/* Provenance & Status */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="p-2.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-color)]">
+            <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)] mb-1">Provenance</p>
+            <p className={`text-[11px] font-semibold uppercase flex items-center gap-1 ${
+              provenance === 'DIRECT_DATABASE' ? 'text-emerald-400' :
+              provenance === 'ANALYTICAL_INFERENCE' ? 'text-amber-400' :
+              'text-purple-400'
+            }`}>
+              {provenance === 'DIRECT_DATABASE' && <CheckCircle2 className="w-3 h-3" />}
+              {provenance === 'ANALYTICAL_INFERENCE' && <Layers className="w-3 h-3" />}
+              {(provenance === 'DEMO_SEED' || provenance === 'MIXED') && <Database className="w-3 h-3" />}
+              {provenance.replace(/_/g, ' ')}
+            </p>
+          </div>
+          <div className="p-2.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-color)]">
+            <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)] mb-1">Verification</p>
+            <p className={`text-[11px] font-semibold uppercase flex items-center gap-1 ${isVerified ? 'text-emerald-400' : isPotential ? 'text-amber-400' : 'text-purple-400'}`}>
+              {isVerified ? <ShieldCheck className="w-3 h-3" /> : <HelpCircle className="w-3 h-3" />}
+              {verificationStatus.replace(/_/g, ' ')}
+            </p>
+          </div>
+        </div>
+
+        {/* Confidence */}
+        {confidence !== null && (
+          <div className="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-color)]">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">Confidence ({confidenceLevel})</p>
+              <p className="text-lg font-bold text-[var(--text-primary)]">{confidence}%</p>
+            </div>
+            <div className="w-full bg-[var(--bg-primary)] h-2 rounded-full overflow-hidden border border-[var(--border-color)]">
+              <div className={`h-full ${confidence >= 80 ? 'bg-emerald-500' : confidence >= 60 ? 'bg-amber-500' : 'bg-slate-500'}`} style={{ width: `${confidence}%` }} />
+            </div>
+          </div>
+        )}
+
+        {/* Warning */}
+        {link.operational_warning && (
+          <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 text-amber-300 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+            <p className="text-[12px] leading-relaxed">{link.operational_warning}</p>
+          </div>
+        )}
+
+        {/* Evidence */}
+        {link.evidence && link.evidence.length > 0 && (
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)] mb-2 flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
+              Evidence ({link.evidence.length})
+            </p>
+            <div className="space-y-2">
+              {link.evidence.map((ev, idx) => (
+                <div key={idx} className="p-2.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-color)] space-y-1">
+                  <div className="flex justify-between items-center text-[12px]">
+                    <span className="font-medium text-[var(--accent-blue)]">{ev.record_number || ev.record_type?.toUpperCase()}</span>
+                    {ev.timestamp && (
+                      <span className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(ev.timestamp).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  {ev.details && <p className="text-[12px] text-[var(--text-secondary)]">{ev.details}</p>}
+                  {ev.factors && ev.factors.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {ev.factors.map((factor, fIdx) => (
+                        <span key={fIdx} className="px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-[10px]">{factor}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!link.evidence || link.evidence.length === 0 && (
+          <p className="text-[12px] text-[var(--text-muted)] italic">No additional evidence records for this link.</p>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="p-3 border-t border-border-color shrink-0">
+        <button onClick={onClose}
+          className="w-full py-2 bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] uppercase rounded-lg font-semibold border border-[var(--border-color)] cursor-pointer transition-colors">
+          Close
         </button>
       </div>
     </div>

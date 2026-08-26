@@ -293,6 +293,9 @@ export interface NetworkGraphResponse {
   seed_node_count?: number;
   dataset_scope?: 'live_records' | 'contains_seed_demo_records' | string;
   provenance_summary?: ProvenanceSummary;
+  entity_counts?: Record<string, number>;
+  warnings?: string[];
+  confidence_summary?: Record<string, number>;
 }
 
 export interface GangHierarchyMember {
@@ -717,6 +720,34 @@ export async function getNetworkPerson(
   return apiRequest<NetworkGraphResponse>(
     `/network/person/${encodeURIComponent(personId)}${buildQueryString({
       depth,
+      provenance_filter: provenanceFilter,
+      exclude_demo: excludeDemo,
+    })}`
+  );
+}
+
+export interface NetworkSearchResult {
+  id: string;
+  type: 'criminal' | 'victim' | 'officer' | 'case' | 'location';
+  name: string;
+  detail: string;
+  status?: string;
+  risk_score?: number;
+}
+
+export async function searchNetworkEntities(query: string, limit = 20) {
+  return apiRequest<{ results: NetworkSearchResult[]; query: string; total: number }>(
+    `/network/search${buildQueryString({ q: query, limit })}`
+  );
+}
+
+export async function getNetworkCase(
+  caseId: string,
+  provenanceFilter?: string,
+  excludeDemo?: boolean
+) {
+  return apiRequest<NetworkGraphResponse>(
+    `/network/case/${encodeURIComponent(caseId)}${buildQueryString({
       provenance_filter: provenanceFilter,
       exclude_demo: excludeDemo,
     })}`
@@ -2324,6 +2355,42 @@ export async function commitImportFile(
 
 export async function listImportJobs(pageSize = 20) {
   return apiRequest<{ total: number; page: number; page_size: number; results: ImportJobSummary[] }>(`/data-import/jobs?page=1&page_size=${pageSize}`);
+}
+
+export interface DataQualityReport {
+  summary: { total_records: number; by_provenance: Record<string, number> };
+  entity_breakdown: Record<string, Record<string, number>>;
+  warnings: { type: string; table: string; count: number; message: string; severity: string }[];
+  provenance_values: string[];
+}
+
+export interface ModelHealthReport {
+  hotspot: {
+    model: string;
+    overall_status: string;
+    checks: { valid: boolean; artifact: string; error?: string }[];
+    valid_count: number;
+    invalid_count: number;
+    model_loaded: boolean;
+  };
+  risk: {
+    model: string;
+    overall_status: string;
+    checks: { valid: boolean; artifact: string; error?: string }[];
+    valid_count: number;
+    invalid_count: number;
+    risk_model_loaded: boolean;
+    forecast_model_loaded: boolean;
+  };
+  overall_status: string;
+}
+
+export async function getAdminDataQuality() {
+  return apiRequest<DataQualityReport>('/admin/data-quality');
+}
+
+export async function getModelHealth() {
+  return apiRequest<ModelHealthReport>('/ai/model-health');
 }
 
 export async function downloadEvidencePDF(evidenceId: string, filename?: string): Promise<void> {

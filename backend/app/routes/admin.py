@@ -492,3 +492,31 @@ def save_settings(payload: SettingsPayload, request: Request, db: Session = Depe
     audit_service.log_action(db, current_user, "SETTINGS_UPDATE", "SystemSettings", "platform", ip_address=_client_ip(request))
     db.commit()
     return value
+
+
+# Issue #164: Admin data quality / provenance report
+@router.get("/data-quality")
+def data_quality_report(
+    request: Request,
+    provenance_filter: str | None = Query(None, description="Filter by provenance: live, migrated, demo, unknown"),
+    entity_type: str | None = Query(None, description="Filter by entity type: crime_cases, criminals, victims, etc."),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Admin-level data quality report showing dataset provenance across all core tables."""
+    from app.services.data_quality_service import get_admin_data_quality_report, get_provenance_by_entity
+
+    report = get_admin_data_quality_report(db)
+
+    # Apply optional entity filter
+    if entity_type and entity_type in report["entity_breakdown"]:
+        report["entity_breakdown"] = {entity_type: report["entity_breakdown"][entity_type]}
+
+    # Apply optional provenance filter on entity breakdown
+    if provenance_filter:
+        pf = provenance_filter.lower()
+        for entity, counts in report["entity_breakdown"].items():
+            report["entity_breakdown"][entity] = {k: v for k, v in counts.items() if k == pf}
+
+    audit_service.log_action(db, current_user, "DATA_QUALITY_REPORT", "SystemSettings", "data_quality", ip_address=_client_ip(request))
+    return report
