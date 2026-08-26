@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     APP_DEBUG: bool = False
     DEBUG: bool = False
 
+    # --- Data Mode (Issue #162) ---
+    # Controls whether fallback to demo/seed data is permitted and whether
+    # DEMO badges are shown.  Valid values: 'production', 'demo', 'test'.
+    # Production mode disables silent fallback to synthetic intelligence.
+    SAKSHA_DATA_MODE: str = "demo"
+
     # --- PostgreSQL / Supabase PostgreSQL ---
     DATABASE_URL: str | None = None
     POSTGRES_USER: str | None = None

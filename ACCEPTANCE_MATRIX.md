@@ -83,6 +83,21 @@
 
 ---
 
+## Issue #162 — Data Mode & Provenance Endpoint
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 1 | `SAKSHA_DATA_MODE` config env var (production/demo/test) | ✅ PASS | `core/config.py:28` — defaults to 'demo' |
+| 2 | `GET /api/v2/system/data-mode` endpoint | ✅ PASS | `routes/system.py` — returns mode, provenance, counts |
+| 3 | Production mode disables demo fallback | ✅ PASS | `allow_demo_fallback=False` when mode=production |
+| 4 | Provenance counts for 6 core tables | ✅ PASS | crime_cases, criminals, firs, locations, officers, victims |
+| 5 | Seed/live record counts returned | ✅ PASS | `seed_record_count`, `live_record_count` |
+| 6 | Demo badges always shown | ✅ PASS | `show_demo_badges=True` in all modes |
+| 7 | System route registered in v2 router | ✅ PASS | `api/v2.py:103` — `api_router.include_router(system.router)` |
+| 8 | Tests (8 data-mode tests) | ✅ PASS | `tests/test_data_mode.py` — 8/8 |
+
+---
+
 ## Cross-Cutting: Full Test Suite
 
 | Suite | Count | Status |
@@ -91,8 +106,9 @@
 | `tests/test_model_validation.py` | 12 | ✅ |
 | `tests/test_network_provenance.py` | 18 | ✅ |
 | `tests/test_config_production.py` | 13 | ✅ |
+| `tests/test_data_mode.py` | 8 | ✅ |
 | All other tests | 441 | ✅ |
-| **Total** | **495** | **✅ ALL PASS** |
+| **Total** | **503** | **✅ ALL PASS** |
 
 | Build | Status |
 |---|---|
@@ -105,11 +121,12 @@
 
 | Issue | Requirements | PASS | FAIL | PARTIAL |
 |---|---|---|---|---|
+| #162 Data Mode & Provenance | 8 | 8 | 0 | 0 |
 | #164 Data Provenance | 7 | 7 | 0 | 0 |
 | #165 ML Validation | 7 | 7 | 0 | 0 |
 | #166 Network Validation | 5 | 5 | 0 | 0 |
 | #167 Config Safety | 4 | 4 | 0 | 0 |
 | Sec. 25 Network UI | 8 | 8 | 0 | 0 |
-| **Total** | **31** | **31** | **0** | **0** |
+| **Total** | **39** | **39** | **0** | **0** |
 
-**RESULT: ALL 31 REQUIREMENTS PASS — ISSUES #163–#167 COMPLETE**
+**RESULT: ALL 39 REQUIREMENTS PASS — ISSUES #162–#167 COMPLETE**

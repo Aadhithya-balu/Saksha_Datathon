@@ -153,6 +153,7 @@ def score_criminal_risk(db, criminal_id: str) -> dict[str, Any]:
         "top_factors": pred.top_factors,
         "confidence": pred.confidence,
         "name": fv.raw.get("name"),
+        "prediction_mode": "RULE_BASED",
     }
 
 
@@ -197,6 +198,7 @@ def predict_repeat_offender(db, criminal_id: str) -> dict[str, Any]:
         "probability": pred.probability,
         "risk_factors": pred.risk_factors,
         "name": fv.raw.get("name"),
+        "prediction_mode": "RULE_BASED",
     }
 
 
@@ -264,6 +266,7 @@ def cluster_criminal(db, criminal_id: str) -> dict[str, Any]:
         "distance_to_centroid": pred.distance_to_centroid,
         "cluster_profile": pred.cluster_profile,
         "name": fv.raw.get("name"),
+        "prediction_mode": "RULE_BASED",
     }
 
 

@@ -54,6 +54,9 @@ from app.routes import (
     stations,
 )
 
+# Issue #162: system data-mode and provenance endpoint
+from app.routes import system
+
 
 api_router = APIRouter()
 
@@ -98,3 +101,6 @@ api_router.include_router(interventions.router)
 # Issue #146: station drill-down + red-zone spike alerts
 api_router.include_router(stations.router)
 api_router.include_router(alerts.router)
+
+# Issue #162: system data-mode and provenance endpoint
+api_router.include_router(system.router)
