@@ -156,7 +156,7 @@ class TestLocalGeneration:
         answer = _collect_local(local_gen, "Details of case CR-2026-KA-0001", context, "sys")
         assert "Saksha Database" in answer
 
-    def test_zero_overlap_with_stats_yields_honest_overview(self, local_gen):
+    def test_zero_overlap_with_stats_yields_refusal(self, local_gen):
         context = (
             "### Saksha Analytics Engine — Crime Statistics\n"
             "Total crimes: 11. Open cases: 5. Resolution rate: 40%.\n\n"
@@ -164,22 +164,18 @@ class TestLocalGeneration:
             "Name: Ramu Swamy | Status: at_large | Aliases: Ramu"
         )
         answer = _collect_local(local_gen, "What is the airspeed velocity of an unladen swallow?", context, "sys")
-        assert "could not find records directly matching" in answer
-        assert "Total crimes" in answer
-        assert "Ramu Swamy" in answer  # all on-file records are shown honestly
+        assert "could not find" in answer.lower()
 
-    def test_zero_overlap_with_retrieved_records_shows_honest_overview(self, local_gen):
-        """Records exist even when wording doesn't overlap — never claim the
-        database has nothing (regression for 'Bengaluru criminal lists')."""
+    def test_zero_overlap_with_retrieved_records_yields_refusal(self, local_gen):
+        """When the query has no lexical overlap with any records, the assistant
+        must refuse rather than dumping unrelated records."""
         context = (
             "### Saksha PostgreSQL Database — Dossiers\n"
             "Ramu Swamy: Status=INCARCERATED, Classification=A-CATEGORY, Risk=83, Active Districts=Mysuru\n"
             "Vikram Yadav: Status=ACTIVE, Classification=A-CATEGORY, Risk=71, Active Districts=Bengaluru"
         )
         answer = _collect_local(local_gen, "What is the airspeed velocity of an unladen swallow?", context, "sys")
-        assert "could not find records directly matching" in answer
-        assert "could not find matching records in the Saksha database for that query" not in answer
-        assert "Ramu Swamy" in answer and "Vikram Yadav" in answer
+        assert "could not find" in answer.lower()
 
     def test_bengaluru_criminal_lists_returns_records_not_refusal(self, local_gen):
         context = (

@@ -57,6 +57,18 @@ class ChatCitationOut(BaseModel):
     source: str
     title: str
     score: float
+    records: list[dict[str, Any]] | None = None
+
+
+class ChatProvenanceOut(BaseModel):
+    source_records: list[dict[str, Any]] = Field(default_factory=list)
+    verified_ids: list[str] = Field(default_factory=list)
+    unverified_ids: list[str] = Field(default_factory=list)
+    verified_names: list[str] = Field(default_factory=list)
+    unverified_names: list[str] = Field(default_factory=list)
+    grounding_score: float = 0.0
+    has_fabricated_claims: bool = False
+    refusal_issued: bool = False
 
 
 class ChatResponse(BaseModel):
@@ -71,6 +83,7 @@ class ChatResponse(BaseModel):
     conversation_id: uuid.UUID | None = None
     conversation_title: str | None = None
     engine: str | None = None
+    provenance: ChatProvenanceOut | None = None
 
 
 def _resolve_conversation(db: Session, current_user: User, payload: ChatRequest):
@@ -243,6 +256,10 @@ async def investigation_chat(
 
 
 def _build_response(result: dict[str, Any]) -> ChatResponse:
+    provenance_data = result.get("provenance")
+    provenance = None
+    if isinstance(provenance_data, dict):
+        provenance = ChatProvenanceOut(**provenance_data)
     return ChatResponse(
         answer=result.get("answer", ""),
         summary=result.get("summary", ""),
@@ -252,11 +269,18 @@ def _build_response(result: dict[str, Any]) -> ChatResponse:
         chart_suggestion=result.get("chart_suggestion"),
         engine=result.get("engine"),
         citations=[
-            ChatCitationOut(**c) for c in result.get("citations", [])
+            ChatCitationOut(
+                source=c.get("source", ""),
+                title=c.get("title", ""),
+                score=c.get("score", 0.0),
+                records=c.get("records"),
+            )
+            for c in result.get("citations", [])
             if isinstance(c, dict)
         ],
         data=[{
             "classification": result.get("classification", "general"),
             "entities": result.get("entities", []),
         }],
+        provenance=provenance,
     )

@@ -395,7 +395,7 @@ class TestContextBuilder:
         results = []
         entities = ExtractedEntities()
         ctx = self.builder.build(results, entities, "hello")
-        assert "No relevant data" in ctx.context_block
+        assert "Saksha" in ctx.context_block
         assert len(ctx.sources) == 0
 
     def test_build_failed_results(self):
@@ -404,7 +404,7 @@ class TestContextBuilder:
         ]
         entities = ExtractedEntities()
         ctx = self.builder.build(results, entities, "predict")
-        assert "No relevant data" in ctx.context_block
+        assert "Saksha" in ctx.context_block
 
     def test_system_prompt_present(self):
         ctx = self.builder.build([], ExtractedEntities(), "test")

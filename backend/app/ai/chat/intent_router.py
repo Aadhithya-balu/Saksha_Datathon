@@ -22,7 +22,37 @@ class Intent(Enum):
     PREDICTIONS = "predictions"
     NOTIFICATIONS = "notifications"
     DASHBOARD_ANALYTICS = "dashboard_analytics"
+    PLATFORM_GENERAL = "platform_general"
     GENERAL = "general"
+
+
+_PLATFORM_GENERAL_PATTERNS = re.compile(
+    r"\b(?:what\s+is|about|tell\s+me\s+about|describe|explain|introduction|overview\s+of|purpose|goal|"
+    r"who\s+(?:made|built|developed|designed)|how\s+(?:does|do|did)|why\s+(?:is|was|are|did)|"
+    r"architecture|tech\s+stack|features|capabilities|modules|who\s+is\s+saksha)\b"
+    r".*?\b(?:saksha|platform|system|application|project|tool|software|crime\s+intelligence)\b",
+    re.I,
+)
+_PLATFORM_GENERAL_WORDS = {
+    "saksha", "platform", "system", "application", "project", "tool", "software",
+    "crime intelligence", "crime intelligence platform",
+}
+_PLATFORM_GENERAL_LEAD = re.compile(
+    r"^(?:what\s+is|about|tell\s+me\s+about|describe|explain|introduction|purpose|goal|overview)\b",
+    re.I,
+)
+
+
+def _is_platform_question(message: str) -> bool:
+    """True when the user is asking about Saksha itself, not querying data."""
+    if _PLATFORM_GENERAL_PATTERNS.search(message):
+        return True
+    lower = message.lower()
+    if _PLATFORM_GENERAL_LEAD.match(lower):
+        for word in _PLATFORM_GENERAL_WORDS:
+            if word in lower:
+                return True
+    return False
 
 
 _INTENT_RULES: dict[Intent, dict] = {
@@ -186,6 +216,13 @@ class IntentRouter:
     """Classifies user queries into Saksha domain intents."""
 
     def detect(self, message: str) -> IntentResult:
+        if _is_platform_question(message):
+            return IntentResult(
+                intents=[Intent.PLATFORM_GENERAL],
+                confidence=1.0,
+                scores={"platform_general": 1.0},
+            )
+
         lower = message.lower()
         scores: dict[Intent, float] = {}
 

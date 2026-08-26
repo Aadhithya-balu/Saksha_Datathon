@@ -78,6 +78,9 @@ class EntityExtractor:
     _CASE_RE = re.compile(r"CR-\d{4}-[A-Z]{2,4}-\d+", re.I)
     _FIR_RE = re.compile(r"(?:FIR[-\s]*)?(\d{3,4}/[A-Z]{0,4}/?\d{3,4})", re.I)
     _FIR_PREFIX_RE = re.compile(r"\bFIR\b", re.I)
+    _FIR_ORDINAL_RE = re.compile(
+        r"\b(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\.?\s+fir\b", re.I,
+    )
     _VEHICLE_RE = re.compile(r"\b(KA[\s-]?\d{2}[\s-]?[A-Z]{1,2}[\s-]?\d{4})\b", re.I)
     _PHONE_RE = re.compile(r"(\+91\s*\d{5}[\s-]\d{5}|\+91\s*\d{10}|\b\d{10}\b)")
     _DATE_DMY_RE = re.compile(r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b")
@@ -104,6 +107,10 @@ class EntityExtractor:
             bare_num = re.search(r"\bFIR\s+(\d+)\b", message, re.I)
             if bare_num:
                 entities.fir_number = bare_num.group(1)
+            else:
+                ordinal = self._FIR_ORDINAL_RE.search(message)
+                if ordinal:
+                    entities.fir_number = f"ordinal:{ordinal.group(1)}"
 
         name_match = self._NAME_AFTER_RE.search(message)
         if name_match:
