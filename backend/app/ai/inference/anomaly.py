@@ -52,6 +52,7 @@ def run_anomaly_inference(events: list[dict[str, Any]], *, model_path: str | Non
     model = _load_default_model(model_path)
     pipeline = AnomalyPipeline(model)
     alerts = pipeline.run(events)
+    is_trained = model_path is not None or DEFAULT_MODEL_PATH.exists()
     return [
         {
             "event_id": a.event_id,
@@ -59,6 +60,7 @@ def run_anomaly_inference(events: list[dict[str, Any]], *, model_path: str | Non
             "score": a.score,
             "threshold": a.threshold,
             "explanation": a.explanation,
+            "prediction_mode": "ML" if is_trained else "RULE_BASED",
         }
         for a in alerts
     ]
