@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ForceGraph3D from 'react-force-graph-3d';
-import { Search, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Search, AlertTriangle, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import type { NetworkNodeCategory } from '../../services/api';
 import { useAppStore } from '../../store/appStore';
 
@@ -182,7 +182,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
   }, [hasError]);
 
   return (
-    <div className="w-full h-full min-h-[300px] relative bg-[var(--bg-surface)] rounded-card border border-border-color flex flex-col justify-between overflow-hidden">
+    <div className="w-full h-full relative bg-[var(--bg-surface)] rounded-card border border-border-color flex flex-col justify-between overflow-hidden" style={{ minHeight: '500px' }}>
       
       {/* SEARCH HEADER BAR */}
       <div className="absolute top-4 left-4 z-20 flex gap-2 w-full max-w-sm pointer-events-auto">
@@ -211,7 +211,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
       </div>
 
       {/* GRAPH VIEWPORT */}
-      <div ref={containerRef} className="flex-1 w-full h-full relative min-h-[300px]">
+      <div ref={containerRef} className="flex-1 w-full h-full relative" style={{ minHeight: '460px' }}>
         {hasError ? (
           <GraphFallback onNodeSelect={onNodeSelect} onLinkSelect={onLinkSelect} isLight={isLight} graphData={currentGraphData} />
         ) : (
@@ -274,16 +274,59 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
               <span className="text-slate-200">Offender</span>
             </div>
           </div>
+
+          {/* Graph Stats */}
+          <div className="border-t border-[#1E293B] pt-2 mt-0.5 flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
+            <span className="text-[8px] text-[#94A3B8]">
+              {currentGraphData.nodes.length} nodes, {currentGraphData.links.length} edges
+            </span>
+          </div>
         </div>
 
-        {/* Floating Zoom / Rotation HUD */}
+        {/* Floating Zoom Controls */}
         <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-1.5 pointer-events-auto">
           <button
-            onClick={() => fgRef.current?.zoomToFit(1200)}
-            title="Reset camera focus"
+            onClick={() => {
+              if (fgRef.current) {
+                const pos = fgRef.current.cameraPosition();
+                if (pos) {
+                  const scale = 0.7;
+                  fgRef.current.cameraPosition(
+                    { x: pos.x * scale, y: pos.y * scale, z: pos.z * scale },
+                    undefined, 400
+                  );
+                }
+              }
+            }}
+            title="Zoom in"
             className="p-2 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-border-color hover:border-[var(--accent-blue)]/30 rounded text-[var(--text-secondary)] cursor-pointer"
           >
-            <RotateCcw className="w-4 h-4" />
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => {
+              if (fgRef.current) {
+                const pos = fgRef.current.cameraPosition();
+                if (pos) {
+                  const scale = 1.4;
+                  fgRef.current.cameraPosition(
+                    { x: pos.x * scale, y: pos.y * scale, z: pos.z * scale },
+                    undefined, 400
+                  );
+                }
+              }
+            }}
+            title="Zoom out"
+            className="p-2 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-border-color hover:border-[var(--accent-blue)]/30 rounded text-[var(--text-secondary)] cursor-pointer"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => fgRef.current?.zoomToFit(1200)}
+            title="Fit all nodes in view"
+            className="p-2 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-border-color hover:border-[var(--accent-blue)]/30 rounded text-[var(--text-secondary)] cursor-pointer"
+          >
+            <Maximize2 className="w-4 h-4" />
           </button>
         </div>
       </div>

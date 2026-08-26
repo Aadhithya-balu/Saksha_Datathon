@@ -6,6 +6,7 @@ Link Analysis, Gang Networks, Shortest Path Analysis, and AI Graph Insights.
 from typing import Any
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.auth.dependencies import get_current_user
 from app.auth.rbac import ALL_ROLES, require_roles
@@ -60,6 +61,99 @@ def get_person_network(
         provenance_filter=provenance_filter,
         exclude_demo=exclude_demo,
     )
+
+
+@router.get("/search")
+def search_network_entities(
+    q: str = Query(..., min_length=1, max_length=200, description="Search term (name, FIR number, case number, station, district)"),
+    limit: int = Query(20, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user),
+):
+    """Search for criminals, victims, officers, FIRs, and cases by name/number/station/district."""
+    from app.models.criminal import Criminal
+    from app.models.victim import Victim
+    from app.models.officer import Officer
+    from app.models.fir import FIR
+    from app.models.crime import CrimeCase
+    from app.models.location import Location
+
+    pattern = f"%{q}%"
+    results: list[dict[str, Any]] = []
+
+    criminals = db.query(Criminal).filter(
+        or_(Criminal.full_name.ilike(pattern), Criminal.aliases.ilike(pattern))
+    ).limit(limit).all()
+    for c in criminals:
+        results.append({
+            "id": f"criminal-{c.id}",
+            "type": "criminal",
+            "name": c.full_name,
+            "detail": f"Status: {c.status or 'unknown'} | Cases: {len(c.fir_links)}",
+            "status": c.status,
+            "risk_score": min(100.0, 45.0 + len(c.fir_links) * 10),
+        })
+
+    victims = db.query(Victim).filter(Victim.full_name.ilike(pattern)).limit(limit).all()
+    for v in victims:
+        results.append({
+            "id": f"victim-{v.id}",
+            "type": "victim",
+            "name": v.full_name,
+            "detail": f"Contact: {v.contact_number or 'N/A'}",
+            "status": "victim",
+        })
+
+    officers = db.query(Officer).filter(
+        or_(Officer.name.ilike(pattern), Officer.badge_number.ilike(pattern))
+    ).limit(limit).all()
+    for o in officers:
+        results.append({
+            "id": f"officer-{o.id}",
+            "type": "officer",
+            "name": o.name,
+            "detail": f"Badge: {o.badge_number} | Rank: {o.rank or 'N/A'} | Station: {o.station or 'N/A'}",
+            "status": o.status,
+        })
+
+    firs = db.query(FIR).filter(
+        or_(FIR.fir_number.ilike(pattern), FIR.complainant_name.ilike(pattern))
+    ).limit(limit).all()
+    for f in firs:
+        results.append({
+            "id": f"case-{f.id}",
+            "type": "case",
+            "name": f"FIR #{f.fir_number}",
+            "detail": f"Complainant: {f.complainant_name} | Sections: {f.sections or 'N/A'}",
+            "status": "filed",
+        })
+
+    cases = db.query(CrimeCase).filter(
+        or_(CrimeCase.case_number.ilike(pattern), CrimeCase.description.ilike(pattern))
+    ).limit(limit).all()
+    for c in cases:
+        results.append({
+            "id": f"case-{c.id}",
+            "type": "case",
+            "name": f"Case {c.case_number}",
+            "detail": f"Status: {c.status or 'open'} | Priority: {c.priority or 'N/A'}",
+            "status": c.status,
+        })
+
+    locations = db.query(Location).filter(
+        or_(Location.station.ilike(pattern), Location.district.ilike(pattern))
+    ).limit(limit).all()
+    for loc in locations:
+        results.append({
+            "id": f"location-{loc.id}",
+            "type": "location",
+            "name": f"{loc.station}, {loc.district}",
+            "detail": f"District: {loc.district} | Lat: {loc.latitude}, Lon: {loc.longitude}",
+            "status": "active",
+        })
+
+    results.sort(key=lambda x: 0 if q.lower() in x["name"].lower() else 1)
+    return {"results": results[:limit], "query": q, "total": len(results[:limit])}
 
 
 @router.get("/case/{case_id}", response_model=NetworkGraphResponse)

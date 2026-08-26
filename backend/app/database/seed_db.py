@@ -2,6 +2,10 @@
 
 Expanded to cover all 31 Karnataka districts with realistic police stations,
 officers, victims, and cases for a production-grade demo.
+
+Issue #164: Every record created by this seed script is tagged with
+``dataset_provenance='demo'`` so operational intelligence pipelines can
+clearly distinguish seeded demonstration data from live or migrated records.
 """
 import random
 from datetime import date, datetime, timedelta
@@ -20,6 +24,9 @@ from app.models.role import Role
 from app.models.user import User
 from app.models.victim import Victim
 from app.models.chain_of_custody import ChainOfCustody
+
+# Issue #164: canonical provenance tag for seed data
+_SEED_PROVENANCE = "demo"
 
 ROLES = ["admin", "crime_analyst", "investigator", "policymaker"]
 
@@ -624,8 +631,12 @@ def _seed_officers(db, user_objs):
                 rank=payload.get("rank"),
                 district=payload.get("district") or "State HQ",
                 station=payload.get("station") or "KSP HQ",
+                dataset_provenance=_SEED_PROVENANCE,
             )
             db.add(officer)
+            db.flush()
+        elif getattr(officer, "dataset_provenance", None) in (None, "live", "unknown", ""):
+            officer.dataset_provenance = _SEED_PROVENANCE
             db.flush()
         officers[badge] = officer
 
@@ -645,6 +656,7 @@ def _seed_officers(db, user_objs):
                 phone=payload.get("phone"),
                 email=payload.get("email"),
                 status="active",
+                dataset_provenance=_SEED_PROVENANCE,
             )
             db.add(officer)
             db.flush()
@@ -670,8 +682,11 @@ def _seed_locations(db):
     for address, district, station, lat, lng, pincode in LOCATIONS:
         location = db.query(Location).filter(Location.station == station, Location.address == address).first()
         if not location:
-            location = Location(address=address, district=district, station=station, latitude=lat, longitude=lng, pincode=pincode)
+            location = Location(address=address, district=district, station=station, latitude=lat, longitude=lng, pincode=pincode, dataset_provenance=_SEED_PROVENANCE)
             db.add(location)
+            db.flush()
+        elif getattr(location, "dataset_provenance", None) in (None, "live", "unknown", ""):
+            location.dataset_provenance = _SEED_PROVENANCE
             db.flush()
         locations[station] = location
     return locations
@@ -690,8 +705,12 @@ def _seed_criminals(db):
                 identifying_marks=marks,
                 mo_summary=mo,
                 status=status,
+                dataset_provenance=_SEED_PROVENANCE,
             )
             db.add(criminal)
+            db.flush()
+        elif getattr(criminal, "dataset_provenance", None) in (None, "live", "unknown", ""):
+            criminal.dataset_provenance = _SEED_PROVENANCE
             db.flush()
         criminals[full_name] = criminal
     return criminals
@@ -702,8 +721,11 @@ def _seed_victims(db):
     for full_name, contact, address, gender, age, statement in VICTIMS:
         victim = db.query(Victim).filter(Victim.full_name == full_name, Victim.contact_number == contact).first()
         if not victim:
-            victim = Victim(full_name=full_name, contact_number=contact, address=address, gender=gender, age=age, statement=statement)
+            victim = Victim(full_name=full_name, contact_number=contact, address=address, gender=gender, age=age, statement=statement, dataset_provenance=_SEED_PROVENANCE)
             db.add(victim)
+            db.flush()
+        elif getattr(victim, "dataset_provenance", None) in (None, "live", "unknown", ""):
+            victim.dataset_provenance = _SEED_PROVENANCE
             db.flush()
         victims[full_name] = victim
     return victims
@@ -756,8 +778,12 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
                 priority=priority,
                 progress=progress,
                 assigned_officer_id=assigned_officer.id if assigned_officer else None,
+                dataset_provenance=_SEED_PROVENANCE,
             )
             db.add(crime)
+            db.flush()
+        elif getattr(crime, "dataset_provenance", None) in (None, "live", "unknown", ""):
+            crime.dataset_provenance = _SEED_PROVENANCE
             db.flush()
         else:
             crime.priority = priority
@@ -782,8 +808,12 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
                     {"name": f"complaint_copy_{case_number}.pdf", "size": 154200},
                     {"name": f"spot_mahazar_{case_number}.pdf", "size": 284100},
                 ]),
+                dataset_provenance=_SEED_PROVENANCE,
             )
             db.add(fir)
+            db.flush()
+        elif getattr(fir, "dataset_provenance", None) in (None, "live", "unknown", ""):
+            fir.dataset_provenance = _SEED_PROVENANCE
             db.flush()
 
         for criminal_name in criminal_names:
@@ -841,6 +871,7 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
                 created_by=officer_name,
                 status=ev_status,
                 storage_path=f"/evidence/{crime.id}/{ev_type}_packet",
+                dataset_provenance=_SEED_PROVENANCE,
             )
             db.add(evidence)
             db.flush()

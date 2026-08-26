@@ -161,6 +161,40 @@ def _migrate_person_image_fields():
         logger.warning(f"Person image migration skipped: {exc}")
 
 
+def _migrate_provenance_columns():
+    """Issue #164: add dataset_provenance and import lineage columns to core
+    tables that previously lacked ImportProvenanceMixin.
+
+    All DDL is idempotent — safe on every startup. Existing rows default to
+    ``'unknown'`` so they are never silently treated as live operational data.
+    """
+    provenance_tables = ["locations", "firs", "evidence", "officers"]
+    provenance_columns = [
+        ("dataset_provenance", "VARCHAR(20) NOT NULL DEFAULT 'unknown'"),
+        ("source_import_job_id", "UUID"),
+        ("source_file", "VARCHAR(500)"),
+        ("source_row_ref", "VARCHAR(100)"),
+    ]
+    try:
+        with engine.connect() as conn:
+            inspector = inspect(conn)
+            changed = False
+            for table in provenance_tables:
+                try:
+                    existing = {c["name"] for c in inspector.get_columns(table)}
+                except Exception:
+                    continue
+                for col_name, col_def in provenance_columns:
+                    if col_name not in existing:
+                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_def}"))
+                        changed = True
+                        logger.info(f"Provenance column '{col_name}' added to {table}")
+            if changed:
+                conn.commit()
+    except Exception as exc:
+        logger.warning(f"Provenance migration skipped: {exc}")
+
+
 def _migrate_user_lockout_columns():
     """Round-2 security: brute-force lockout columns on users (idempotent DDL)."""
     try:
@@ -200,12 +234,21 @@ async def lifespan(app: FastAPI):
             db_url,
         )
 
+    # Issue #167: Log production config warnings/errors at startup
+    if settings.production_errors:
+        for err in settings.production_errors:
+            logger.error(f"[CONFIG] Production config error: {err}")
+    if settings.production_warnings:
+        for warn in settings.production_warnings:
+            logger.warning(f"[CONFIG] Production config warning: {warn}")
+
     try:
         Base.metadata.create_all(bind=engine)
         _migrate_notifications_table()
         _migrate_criminals_table()
         _migrate_evidence_metadata_table()
         _migrate_person_image_fields()
+        _migrate_provenance_columns()
         _ensure_realtime_indexes()
         _migrate_user_lockout_columns()  # revoked_tokens table comes via create_all
         with engine.connect():

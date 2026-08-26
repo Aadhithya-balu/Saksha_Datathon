@@ -72,3 +72,14 @@ def offenders(db: Session = Depends(get_db), current_user: User = Depends(get_cu
 )
 def network_person(person_id: str, depth: int = 1, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return build_network_person(db, person_id=person_id, depth=depth)
+
+
+# Issue #165: ML Model Validation & Health endpoint
+@router.get(
+    "/model-health",
+    dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST))],
+)
+def model_health(current_user: User = Depends(get_current_user)):
+    """Full ML model validation: artifact integrity, feature schema, training state, metadata consistency."""
+    from app.services.model_validation_service import get_all_model_health
+    return get_all_model_health()

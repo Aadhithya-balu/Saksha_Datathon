@@ -97,6 +97,10 @@ class NetworkGraphResponse(BaseModel):
     dataset_scope: str = "live_records"  # or "contains_seed_demo_records"
     # Issue #159: Granular provenance summary
     provenance_summary: dict[str, int] = Field(default_factory=dict)
+    # Issue #166: Enhanced graph metadata
+    entity_counts: dict[str, int] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
+    confidence_summary: dict[str, int] = Field(default_factory=dict)
 
 
 class GangHierarchyMember(BaseModel):

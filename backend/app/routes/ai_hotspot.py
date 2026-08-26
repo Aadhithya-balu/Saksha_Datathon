@@ -154,6 +154,8 @@ def hotspot_model_info(current_user: User = Depends(get_current_user)):
         return get_model_info()
     except FileNotFoundError:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Hotspot model not available.")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Hotspot model artifact is corrupt or unreadable: {type(e).__name__}")
 
 
 @router.get("/health")

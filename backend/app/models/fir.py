@@ -7,10 +7,11 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
+from app.models.import_job import ImportProvenanceMixin
 from app.models.mixins import TimestampMixin, UUIDPKMixin
 
 
-class FIR(Base, UUIDPKMixin, TimestampMixin):
+class FIR(ImportProvenanceMixin, Base, UUIDPKMixin, TimestampMixin):
     __tablename__ = "firs"
 
     fir_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
