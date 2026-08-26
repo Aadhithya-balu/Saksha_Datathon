@@ -333,6 +333,21 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.error(f"PostgreSQL setup error: {exc}")
 
+    # Auto-seed demo data when running on SQLite (no real DB) and the
+    # users table is empty — gives operators a working login out of the box.
+    try:
+        from app.database.postgres import SessionLocal, engine as _eng
+        if _eng.url.drivername.startswith("sqlite"):
+            with SessionLocal() as _db:
+                from app.models.user import User
+                if _db.query(User).count() == 0:
+                    logger.info("SQLite DB has no users — seeding demo data...")
+                    from app.database.seed_db import seed
+                    seed()
+                    logger.info("Demo data seeded successfully")
+    except Exception as exc:
+        logger.warning(f"Auto-seed skipped: {exc}")
+
     # Neo4j connectivity is verified lazily on first use, not at startup.
     # This avoids blocking server readiness on a remote Neo4j Aura connection.
     logger.info("Neo4j will be verified lazily on first use")

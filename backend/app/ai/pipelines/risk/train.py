@@ -57,7 +57,7 @@ def load_data() -> pd.DataFrame:
         try:
             engine = create_engine(db_url)
             with engine.connect() as conn:
-                df = pd.read_sql_query(QUERY, conn.connection)
+                df = pd.read_sql_query(QUERY, conn)
             logger.info("Loaded %d crime records from %s.", len(df), db_url[:40])
             return df
         except Exception as exc:

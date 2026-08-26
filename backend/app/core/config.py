@@ -138,6 +138,16 @@ class Settings(BaseSettings):
             return False
         return False
 
+    @staticmethod
+    def _is_placeholder(value: str | None) -> bool:
+        """Detect placeholder env-var values like ``<your-supabase-db-host>``."""
+        if not value:
+            return True
+        stripped = value.strip()
+        if stripped.startswith("<") and stripped.endswith(">"):
+            return True
+        return False
+
     @model_validator(mode="after")
     def derive_database_url(self):
         if self.NEO4J_USERNAME and self.NEO4J_USER == "neo4j":
@@ -146,7 +156,14 @@ class Settings(BaseSettings):
         if self.DATABASE_URL:
             return self
 
-        if self.SUPABASE_DB_HOST and self.SUPABASE_DB_USER and self.SUPABASE_DB_PASSWORD:
+        if (
+            self.SUPABASE_DB_HOST
+            and self.SUPABASE_DB_USER
+            and self.SUPABASE_DB_PASSWORD
+            and not self._is_placeholder(self.SUPABASE_DB_HOST)
+            and not self._is_placeholder(self.SUPABASE_DB_USER)
+            and not self._is_placeholder(self.SUPABASE_DB_PASSWORD)
+        ):
             user = quote_plus(self.SUPABASE_DB_USER)
             password = quote_plus(self.SUPABASE_DB_PASSWORD)
             db_name = quote_plus(self.SUPABASE_DB_NAME or "postgres")
@@ -157,7 +174,14 @@ class Settings(BaseSettings):
             )
             return self
 
-        if self.POSTGRES_HOST and self.POSTGRES_USER and self.POSTGRES_PASSWORD:
+        if (
+            self.POSTGRES_HOST
+            and self.POSTGRES_USER
+            and self.POSTGRES_PASSWORD
+            and not self._is_placeholder(self.POSTGRES_HOST)
+            and not self._is_placeholder(self.POSTGRES_USER)
+            and not self._is_placeholder(self.POSTGRES_PASSWORD)
+        ):
             user = quote_plus(self.POSTGRES_USER)
             password = quote_plus(self.POSTGRES_PASSWORD)
             db_name = quote_plus(self.POSTGRES_DB or "postgres")

@@ -461,6 +461,7 @@ def get_full_network_graph(
     min_risk: float = 0.0,
     provenance_filter: str | None = None,
     exclude_demo: bool = False,
+    limit: int = 500,
 ) -> NetworkGraphResponse:
     """Fetch complete or filtered relationship network (Neo4j-first, SQL fallback)."""
     neo4j_data = fetch_full_graph_neo4j() if is_neo4j_available() else None
@@ -475,17 +476,20 @@ def get_full_network_graph(
         valid_ids = {n.id for n in filtered_nodes}
         filtered_edges = [e for e in edges if e.source in valid_ids and e.target in valid_ids]
         return _graph_response(
-            filtered_nodes,
-            filtered_edges,
+            filtered_nodes[:limit],
+            [e for e in filtered_edges if e.source in {n.id for n in filtered_nodes[:limit]} and e.target in {n.id for n in filtered_nodes[:limit]}],
             is_neo4j_backed=True,
             provenance_filter=provenance_filter,
             exclude_demo=exclude_demo,
         )
 
     nodes, edges = _build_sql_graph(db, category_filter=category_filter, min_risk=min_risk)
+    limited_nodes = nodes[:limit]
+    limited_ids = {n.id for n in limited_nodes}
+    limited_edges = [e for e in edges if e.source in limited_ids and e.target in limited_ids]
     return _graph_response(
-        nodes,
-        edges,
+        limited_nodes,
+        limited_edges,
         is_neo4j_backed=False,
         provenance_filter=provenance_filter,
         exclude_demo=exclude_demo,

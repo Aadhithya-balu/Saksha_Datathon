@@ -1,5 +1,5 @@
 {
-  "trained_at": "2026-08-24T10:47:35.997846+00:00",
+  "trained_at": "2026-08-26T20:12:27.040631+00:00",
   "n_criminals": 51,
   "n_features": 14,
   "feature_names": [
@@ -19,19 +19,19 @@
     "mo_vehicle_flag"
   ],
   "risk_scorer": {
-    "mean_risk_score": 30.883106792456548,
-    "std_risk_score": 25.76704098492575,
-    "high_risk_fraction": 0.13725490196078433
+    "mean_risk_score": 18.162782440320775,
+    "std_risk_score": 26.19509703032104,
+    "high_risk_fraction": 0.09803921568627451
   },
   "repeat_offender": {
-    "mean_probability": 0.9201755919326535
+    "mean_probability": 0.7026303814400245
   },
   "similarity": {
     "index_size": 51.0,
-    "mean_max_similarity": 0.9987717448728468
+    "mean_max_similarity": 0.9983127903005006
   },
   "clustering": {
-    "inertia": 28784.2538,
+    "inertia": 54833.2939,
     "n_clusters": 4.0,
     "mean_cluster_size": 12.75
   }
