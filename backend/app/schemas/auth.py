@@ -30,5 +30,12 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class UpdateProfileRequest(BaseModel):
+    full_name: str | None = Field(default=None, min_length=1, max_length=255)
+    email: EmailStr | None = None
+    district: str | None = Field(default=None, max_length=100)
+    station: str | None = Field(default=None, max_length=100)
+
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr

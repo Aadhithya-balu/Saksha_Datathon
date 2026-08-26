@@ -187,20 +187,25 @@ def refresh_access_token(db: Session, refresh_token: str) -> dict:
     return issue_tokens(user)
 
 
-def revoke_all_user_tokens(db: Session, refresh_token: str | None = None) -> None:
-    """Logout: revoke the presented refresh token's family marker.
+def revoke_token(db: Session, token: str | None) -> None:
+    """Denylist one valid JWT until its natural expiry.
 
-    Access tokens are short-lived (default 30 min) so revoking refresh tokens
-    plus client-side discard gives bounded exposure without a per-request
-    lookup cost beyond the refresh path.
+    This is used for both the current access token and an optional refresh
+    token at logout, so a stolen bearer token cannot continue to call APIs
+    after the account holder signs out.
     """
-    if refresh_token:
+    if token:
         try:
-            payload = decode_token(refresh_token)
+            payload = decode_token(token)
             _revoke_jti(db, payload.get("jti"), payload.get("exp"))
             db.commit()
         except ValueError:
             pass  # already-expired/malformed tokens need no revocation
+
+
+def revoke_all_user_tokens(db: Session, refresh_token: str | None = None) -> None:
+    """Backward-compatible logout helper for callers with a refresh token."""
+    revoke_token(db, refresh_token)
 
 
 def register_user(db: Session, payload: UserCreate) -> User:

@@ -117,10 +117,10 @@ class Settings(BaseSettings):
             raise ValueError("JWT_SECRET_KEY must be set in environment. Refusing to start with empty secret.")
         # Enforce secret strength everywhere except the ephemeral test
         # environment, where tests bootstrap their own throwaway key.
-        if self.APP_ENV != "test" and len(self.JWT_SECRET_KEY) < 32:
+        if self.APP_ENV != "test" and len(self.JWT_SECRET_KEY) < 64:
             raise ValueError(
-                "JWT_SECRET_KEY must be at least 32 characters. "
-                "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+                "JWT_SECRET_KEY must be at least 64 characters. "
+                "Generate one with: py -c \"import secrets; print(secrets.token_hex(64))\""
             )
         return self
 
@@ -172,6 +172,16 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def validate_cors_no_wildcard(self):
+        """Reject wildcard CORS in all environments — credentialed API must never use '*'."""
+        if "*" in self.cors_origins:
+            raise ValueError(
+                "ALLOWED_ORIGINS must not contain '*'. "
+                "Configure explicit origins (e.g. http://localhost:5173)."
+            )
+        return self
+
+    @model_validator(mode="after")
     def validate_production_config(self):
         """Issue #167: Production configuration safety validation.
 
@@ -204,17 +214,20 @@ class Settings(BaseSettings):
         if self.APP_DEBUG or self.DEBUG:
             errors.append("APP_DEBUG and DEBUG must be False in production. Current configuration enables debug mode.")
 
-        # 4. Database credential validation
+        # 4. Database credential validation.  A local SQLite database has no
+        # access-control boundary suitable for police records, and known
+        # defaults must never be accepted merely because they were supplied
+        # through environment variables.
         if self.DATABASE_URL and "sqlite" in self.DATABASE_URL:
-            warnings.append("Production is using SQLite. Use PostgreSQL for production deployments.")
+            errors.append("Production must use PostgreSQL; SQLite is not supported for sensitive production data.")
         if self.POSTGRES_PASSWORD and self.POSTGRES_PASSWORD in ("postgres", "password", "admin", "123456"):
-            warnings.append("POSTGRES_PASSWORD appears to be a default/common password. Use a strong password.")
+            errors.append("POSTGRES_PASSWORD appears to be a default/common password. Use a strong password.")
         if self.SUPABASE_DB_PASSWORD and self.SUPABASE_DB_PASSWORD in ("postgres", "password", "admin", "123456"):
-            warnings.append("SUPABASE_DB_PASSWORD appears to be a default/common password. Use a strong password.")
+            errors.append("SUPABASE_DB_PASSWORD appears to be a default/common password. Use a strong password.")
 
-        # 5. Neo4j default password warning
+        # 5. Neo4j default credentials are a production startup failure.
         if self.NEO4J_PASSWORD == "neo4j":
-            warnings.append("NEO4J_PASSWORD is the default 'neo4j'. Use a strong password for production.")
+            errors.append("NEO4J_PASSWORD must not use the default 'neo4j' password in production.")
 
         # 6. File upload directory warning
         if not self.UPLOAD_DIR and not self.SUPABASE_STORAGE_BUCKET:

@@ -86,51 +86,48 @@ class TestProductionConfigValidation:
         assert s.APP_ENV == "production"
         assert len(s.production_errors) == 0
 
-    def test_production_warns_default_neo4j_password(self):
+    def test_production_rejects_default_neo4j_password(self):
         from app.core.config import Settings
-        s = Settings(
-            _env_file=None,
-            APP_ENV="production",
-            JWT_SECRET_KEY="a" * 48,
-            DATABASE_URL="postgresql+psycopg2://u:p@h:5432/db",
-            ALLOWED_ORIGINS="https://saksha.example.com",
-            APP_DEBUG=False,
-            DEBUG=False,
-            NEO4J_PASSWORD="neo4j",
-        )
-        neo4j_warnings = [w for w in s.production_warnings if "NEO4J_PASSWORD" in w]
-        assert len(neo4j_warnings) == 1
+        with pytest.raises(ValidationError, match="NEO4J_PASSWORD must not use"):
+            Settings(
+                _env_file=None,
+                APP_ENV="production",
+                JWT_SECRET_KEY="a" * 48,
+                DATABASE_URL="postgresql+psycopg2://u:p@h:5432/db",
+                ALLOWED_ORIGINS="https://saksha.example.com",
+                APP_DEBUG=False,
+                DEBUG=False,
+                NEO4J_PASSWORD="neo4j",
+            )
 
-    def test_production_warns_default_db_password(self):
+    def test_production_rejects_default_db_password(self):
         from app.core.config import Settings
-        s = Settings(
-            _env_file=None,
-            APP_ENV="production",
-            JWT_SECRET_KEY="a" * 48,
-            DATABASE_URL="postgresql+psycopg2://u:p@h:5432/db",
-            ALLOWED_ORIGINS="https://saksha.example.com",
-            APP_DEBUG=False,
-            DEBUG=False,
-            POSTGRES_PASSWORD="password",
-            NEO4J_PASSWORD="strong-neo4j-pass-123",
-        )
-        db_warnings = [w for w in s.production_warnings if "POSTGRES_PASSWORD" in w]
-        assert len(db_warnings) == 1
+        with pytest.raises(ValidationError, match="POSTGRES_PASSWORD appears"):
+            Settings(
+                _env_file=None,
+                APP_ENV="production",
+                JWT_SECRET_KEY="a" * 48,
+                DATABASE_URL="postgresql+psycopg2://u:p@h:5432/db",
+                ALLOWED_ORIGINS="https://saksha.example.com",
+                APP_DEBUG=False,
+                DEBUG=False,
+                POSTGRES_PASSWORD="password",
+                NEO4J_PASSWORD="strong-neo4j-pass-123",
+            )
 
-    def test_production_warns_sqlite(self):
+    def test_production_rejects_sqlite(self):
         from app.core.config import Settings
-        s = Settings(
-            _env_file=None,
-            APP_ENV="production",
-            JWT_SECRET_KEY="a" * 48,
-            DATABASE_URL="sqlite:///./saksha.db",
-            ALLOWED_ORIGINS="https://saksha.example.com",
-            APP_DEBUG=False,
-            DEBUG=False,
-            NEO4J_PASSWORD="strong-neo4j-pass-123",
-        )
-        sqlite_warnings = [w for w in s.production_warnings if "SQLite" in w]
-        assert len(sqlite_warnings) == 1
+        with pytest.raises(ValidationError, match="must use PostgreSQL"):
+            Settings(
+                _env_file=None,
+                APP_ENV="production",
+                JWT_SECRET_KEY="a" * 48,
+                DATABASE_URL="sqlite:///./saksha.db",
+                ALLOWED_ORIGINS="https://saksha.example.com",
+                APP_DEBUG=False,
+                DEBUG=False,
+                NEO4J_PASSWORD="strong-neo4j-pass-123",
+            )
 
 
 class TestEstimateJwtEntropy:

@@ -7,7 +7,6 @@ Responsibilities
 - feature_columns.json
 - model_metadata.json  (includes training_rows, rmse, mae, r2)
 - training_metrics.json
-- Versioned output directory
 
 No training. No inference. No FastAPI.
 """
@@ -27,14 +26,6 @@ logger = logging.getLogger(__name__)
 AI_MODEL_DIR = Path(__file__).resolve().parents[2] / "models" / "hotspot"
 APP_MODEL_DIR = Path(__file__).resolve().parents[3] / "models" / "hotspot"
 H3_RESOLUTION = 7
-
-
-def _versioned_dir() -> Path:
-    """Return a timestamped sub-directory for versioned saves."""
-    version = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    path = AI_MODEL_DIR / version
-    path.mkdir(parents=True, exist_ok=True)
-    return path
 
 
 def _write_json(path: Path, data: Any) -> None:
@@ -75,20 +66,11 @@ def save_artifacts(
     Path to the directory where artifacts were saved.
     """
     try:
-        out = version_dir or _versioned_dir()
-        out.mkdir(parents=True, exist_ok=True)
-
-        # 1. Model pickle
-        joblib.dump(model, out / "hotspot_model.pkl")
-
-        # 2. Feature columns
-        _write_json(out / "feature_columns.json", feature_columns)
-
-        # 3. Model metadata (includes metrics for quick inspection)
+        version = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         metadata = {
             "model_name": "SAKSHA Hotspot Predictor",
             "algorithm": "LightGBM",
-            "version": out.name if out != AI_MODEL_DIR else datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S"),
+            "version": version_dir.name if version_dir else version,
             "h3_resolution": H3_RESOLUTION,
             "prediction_target": "Next Month Crime Count per H3 Cell",
             "features": feature_columns,
@@ -105,25 +87,21 @@ def save_artifacts(
             "baseline_comparison": baseline_comparison or {},
             "trained_on": datetime.now(timezone.utc).isoformat(),
         }
-        _write_json(out / "model_metadata.json", metadata)
-
-        # 4. Training metrics
         full_metrics = {
             **metrics,
             "ranking_metrics": ranking_metrics or {},
             "baseline_comparison": baseline_comparison or {},
         }
-        _write_json(out / "training_metrics.json", full_metrics)
 
-        # 5. Overwrite canonical model dirs (AI_MODEL_DIR and APP_MODEL_DIR)
-        for canonical_dir in (AI_MODEL_DIR, APP_MODEL_DIR):
-            canonical_dir.mkdir(parents=True, exist_ok=True)
-            joblib.dump(model, canonical_dir / "hotspot_model.pkl")
-            _write_json(canonical_dir / "feature_columns.json", feature_columns)
-            _write_json(canonical_dir / "model_metadata.json", metadata)
-            _write_json(canonical_dir / "training_metrics.json", full_metrics)
+        for target_dir in ({version_dir} if version_dir else {AI_MODEL_DIR, APP_MODEL_DIR}):
+            target_dir.mkdir(parents=True, exist_ok=True)
+            joblib.dump(model, target_dir / "hotspot_model.pkl")
+            _write_json(target_dir / "feature_columns.json", feature_columns)
+            _write_json(target_dir / "model_metadata.json", metadata)
+            _write_json(target_dir / "training_metrics.json", full_metrics)
 
-        logger.info("Artifacts saved to %s (and canonical %s).", out, AI_MODEL_DIR)
+        out = version_dir or AI_MODEL_DIR
+        logger.info("Artifacts saved to %s.", out)
         return out
 
     except Exception:

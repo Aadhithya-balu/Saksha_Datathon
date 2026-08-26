@@ -1,0 +1,42 @@
+{
+    "risk": {
+        "rmse": 2.2830133953429925,
+        "mae": 1.5380552489177488,
+        "r2": -0.07467013676609091
+    },
+    "forecast": {
+        "rmse": 2.3854303129158434,
+        "mae": 1.5,
+        "r2": -0.17325315005727404
+    },
+    "risk_baseline_comparison": {
+        "model_metrics": {
+            "rmse": 2.2830133953429925,
+            "mae": 1.5380552489177488,
+            "r2": -0.07467013676609091
+        },
+        "baseline_metrics": {
+            "rmse": 2.3854303129158434,
+            "mae": 1.5,
+            "r2": -0.17325315005727404
+        },
+        "rmse_improvement_pct": 4.29,
+        "mae_improvement_pct": -2.54,
+        "outperforms_baseline": true
+    },
+    "forecast_baseline_comparison": {
+        "model_metrics": {
+            "rmse": 2.3854303129158434,
+            "mae": 1.5,
+            "r2": -0.17325315005727404
+        },
+        "baseline_metrics": {
+            "rmse": 2.280350850198276,
+            "mae": 1.6,
+            "r2": -0.07216494845360821
+        },
+        "rmse_improvement_pct": -4.61,
+        "mae_improvement_pct": 6.25,
+        "outperforms_baseline": false
+    }
+}

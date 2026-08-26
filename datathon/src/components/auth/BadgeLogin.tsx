@@ -25,8 +25,10 @@ interface DemoProfile {
   tone: 'blue' | 'teal' | 'amber' | 'green';
 }
 
-/* Development/demo access profiles — clearly labelled as demo data. */
-const DEMO_PROFILES: DemoProfile[] = [
+/* Development/demo access profiles — only shown in non-production environments. */
+const IS_PROD = import.meta.env.VITE_APP_ENV === 'production' || import.meta.env.PROD;
+
+const DEMO_PROFILES: DemoProfile[] = IS_PROD ? [] : [
   { badge: 'admin', pin: '564738', title: 'Administrator', rank: 'System Administration', initials: 'AD', tone: 'blue' },
   { badge: 'SP-0088', pin: '987654', title: 'Superintendent', rank: 'District Command · SP', initials: 'SP', tone: 'amber' },
   { badge: 'IO-3921', pin: '456789', title: 'Investigator', rank: 'Investigation Officer · DSP', initials: 'IO', tone: 'green' },
@@ -435,6 +437,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
       </button>
 
       {/* Authorized access profiles (demo environment only) */}
+      {DEMO_PROFILES.length > 0 && (
       <div className="bl-profiles pt-1">
         <div className="mb-2.5 flex items-center gap-2.5">
           <span className="text-[9px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--lp-text-3)' }}>
@@ -488,6 +491,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
           })}
         </div>
       </div>
+      )}
     </form>
   );
 };

@@ -593,6 +593,25 @@ export async function getMe() {
   return apiRequest<BackendUser>('/auth/me');
 }
 
+export async function updateProfile(payload: {
+  full_name?: string;
+  email?: string;
+  district?: string;
+  station?: string;
+}) {
+  return apiRequest<BackendUser>('/auth/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function changePassword(oldPassword: string, newPassword: string) {
+  return apiRequest<{ message: string }>('/auth/change-password', {
+    method: 'PUT',
+    body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+  });
+}
+
 export interface DashboardFilters {
   date_from?: string;
   date_to?: string;
@@ -949,7 +968,17 @@ export async function listCriminals(q?: string, page = 1, pageSize = 100) {
 }
 
 export async function getCriminal(criminalId: string) {
-  return apiRequest<any>(`/criminals/${criminalId}`);
+  return apiRequest<CriminalRecord & {
+    firs: Array<{ id: string; fir_number: string; complainant_name: string; status: string; filed_at: string | null; sections: string | null; crime_case_id: string | null; crime_case_number: string | null }>;
+    ai_risk: { risk_score: number; risk_band: string; confidence: number; top_factors: string[] };
+    ai_repeat: { will_reoffend: boolean; probability: number; risk_factors: string[] };
+    ai_similar: { similar: Array<{ criminal_id: string; name: string; similarity: number; rank: number; matching_factors: string[]; match_level: string }> };
+    ai_recommendations: string[];
+    network: { nodes: NetworkNode[]; edges: NetworkEdge[] };
+    neo4j_node_id: string | null;
+    gang_affiliation: string | null;
+    image_url: string | null;
+  }>(`/criminals/${criminalId}`);
 }
 
 export async function getOffenderDossiers() {
@@ -1267,7 +1296,10 @@ export async function listVictims(q?: string, page = 1, pageSize = 100) {
 }
 
 export async function getVictim(victimId: string) {
-  return apiRequest<any>(`/victims/${victimId}`);
+  return apiRequest<VictimRecord & {
+    firs: Array<{ id: string; fir_number: string; status: string; filed_at: string | null }>;
+    image_url: string | null;
+  }>(`/victims/${victimId}`);
 }
 
 // ── Unified Investigation Interface ──
@@ -1377,7 +1409,7 @@ export async function getInvestigationHistory(caseId: string) {
 }
 
 export async function investigationChat(caseId: string, message: string, sessionId?: string) {
-  return apiRequest<any>(`/investigation/chat`, {
+  return apiRequest<{ answer: string; sources: string[]; citations?: ChatCitation[] }>(`/investigation/chat`, {
     method: 'POST',
     body: JSON.stringify({ case_id: caseId, message, session_id: sessionId ?? null }),
   });

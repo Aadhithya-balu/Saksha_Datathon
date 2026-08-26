@@ -27,20 +27,22 @@ router = APIRouter(prefix="/network", tags=["Network Graph Intelligence"], depen
 
 @router.get("/graph", response_model=NetworkGraphResponse)
 def get_full_graph(
-    category_filter: str | None = Query(None, description="Filter nodes by category: suspect, offender, location, victim, case, gang"),
-    min_risk: float = Query(0.0, ge=0.0, le=100.0, description="Minimum risk score threshold"),
-    provenance_filter: str | None = Query(None, description="Filter edges by provenance (DIRECT_DATABASE, ANALYTICAL_INFERENCE, DEMO_SEED, MIXED) or status (VERIFIED, POTENTIAL, DEMO)"),
-    exclude_demo: bool = Query(False, description="Exclude demo/seed records for pure live operational intelligence"),
+    category_filter: str | None = Query(None),
+    min_risk: float = Query(0.0, ge=0.0, le=100.0),
+    provenance_filter: str | None = Query(None),
+    exclude_demo: bool = Query(False),
+    limit: int = Query(500, ge=1, le=2000, description="Max nodes returned. Large values may be slow."),
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
 ):
-    """Retrieve full criminal relationship network graph with category, risk, and provenance filters."""
+    """Retrieve full criminal relationship network graph."""
     return network_service.get_full_network_graph(
         db,
         category_filter=category_filter,
         min_risk=min_risk,
         provenance_filter=provenance_filter,
         exclude_demo=exclude_demo,
+        limit=limit,
     )
 
 

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 
+import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
 
@@ -52,24 +53,17 @@ JOIN crime_categories cat ON cc.category_id = cat.id
 
 def load_data() -> pd.DataFrame:
     """Load real crime records from PostgreSQL (or local fallback DB)."""
-    try:
-        engine = create_engine(settings.DATABASE_URL)
-        with engine.connect() as conn:
-            df = pd.read_sql(QUERY, conn)
-        logger.info("Loaded %d crime records from primary database.", len(df))
-        return df
-    except Exception as exc:
-        logger.warning("Primary DB connection failed (%s), trying SQLite fallback...", exc)
-        for sqlite_path in ("sqlite:///saksha_fallback.db", "sqlite:///backend/saksha_fallback.db"):
-            try:
-                engine = create_engine(sqlite_path)
-                with engine.connect() as conn:
-                    df = pd.read_sql(QUERY, conn)
-                logger.info("Loaded %d crime records from fallback SQLite database.", len(df))
-                return df
-            except Exception:
-                continue
-        raise
+    for db_url in (settings.DATABASE_URL, "sqlite:///saksha_fallback.db", "sqlite:///backend/saksha_fallback.db"):
+        try:
+            engine = create_engine(db_url)
+            with engine.connect() as conn:
+                df = pd.read_sql_query(QUERY, conn.connection)
+            logger.info("Loaded %d crime records from %s.", len(df), db_url[:40])
+            return df
+        except Exception as exc:
+            logger.warning("DB load failed for %s: %s", db_url[:40], exc)
+            continue
+    raise RuntimeError("Failed to load risk/forecast crime data from any database.")
 
 
 def _split(df: pd.DataFrame, feature_cols: list[str], target_col: str):

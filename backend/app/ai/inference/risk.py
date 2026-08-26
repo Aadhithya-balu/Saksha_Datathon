@@ -28,16 +28,12 @@ from app.ai.features.risk.feature_engineering import (
 
 logger = logging.getLogger(__name__)
 
-MODEL_DIR = Path(__file__).resolve().parents[2] / "models" / "risk"
-ALT_MODEL_DIR = Path(__file__).resolve().parents[1] / "models" / "risk"
+MODEL_DIR = Path(__file__).resolve().parents[1] / "models" / "risk"
 
 
 def _find_file(filename: str) -> Path | None:
-    for d in (MODEL_DIR, ALT_MODEL_DIR):
-        p = d / filename
-        if p.exists():
-            return p
-    return None
+    p = MODEL_DIR / filename
+    return p if p.exists() else None
 
 
 # ---------------------------------------------------------------------------

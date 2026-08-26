@@ -219,6 +219,71 @@ def _migrate_user_lockout_columns():
         logger.warning(f"Users lockout column migration skipped: {exc}")
 
 
+def _prewarm_models() -> None:
+    """Load all ML model artifacts into lru_cache at startup.
+
+    This pays the joblib deserialisation cost once during startup so the
+    first real inference request is fast instead of slow.
+    """
+    import threading
+
+    def _load():
+        try:
+            loaders = [
+                ("hotspot",  "app.ai.inference.hotspot",  ["_load_model", "_load_feature_columns", "_load_metadata"]),
+                ("risk",     "app.ai.inference.risk",      ["_load_risk_model", "_load_forecast_model", "_load_metadata"]),
+                ("criminal", "app.ai.inference.criminal",  ["_load_models"]),
+                ("anomaly",  "app.ai.inference.anomaly",   ["_load_model"]),
+            ]
+            import importlib
+            for key, module_path, fn_names in loaders:
+                try:
+                    mod = importlib.import_module(module_path)
+                    for fn_name in fn_names:
+                        fn = getattr(mod, fn_name, None)
+                        if callable(fn):
+                            fn()
+                    logger.info("[prewarm] %s model loaded", key)
+                except Exception as exc:
+                    logger.warning("[prewarm] %s skipped: %s", key, exc)
+        except Exception as exc:
+            logger.error("[prewarm] Background model prewarm thread crashed: %s", exc, exc_info=True)
+
+    threading.Thread(target=_load, name="saksha-prewarm", daemon=True).start()
+
+
+_bg_refresh_stop = False
+
+
+def _start_background_refresh() -> None:
+    """Run staleness checks every 5 minutes in a background thread.
+
+    Moves check_external_updates() and maybe_refresh_async() off the
+    hot inference path so every prediction request is fast.
+    """
+    import threading
+    import time
+
+    def _loop():
+        # Initial delay — let the server finish starting up first.
+        time.sleep(30)
+        while not _bg_refresh_stop:
+            try:
+                from app.ai.inference.refresh import check_external_updates, maybe_refresh_async
+                from app.database.postgres import SessionLocal
+                check_external_updates()
+                db = SessionLocal()
+                try:
+                    maybe_refresh_async(db=db, reason="background-scheduler")
+                finally:
+                    db.close()
+            except Exception as exc:
+                logger.debug("[bg-refresh] error: %s", exc)
+            time.sleep(300)  # 5 minutes
+
+    threading.Thread(target=_loop, name="saksha-bg-refresh", daemon=True).start()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
@@ -243,22 +308,41 @@ async def lifespan(app: FastAPI):
             logger.warning(f"[CONFIG] Production config warning: {warn}")
 
     try:
-        Base.metadata.create_all(bind=engine)
-        _migrate_notifications_table()
-        _migrate_criminals_table()
-        _migrate_evidence_metadata_table()
-        _migrate_person_image_fields()
-        _migrate_provenance_columns()
-        _ensure_realtime_indexes()
-        _migrate_user_lockout_columns()  # revoked_tokens table comes via create_all
-        with engine.connect():
-            logger.info("PostgreSQL connection OK")
+        _db_connected = False
+        for attempt in range(1, 4):
+            try:
+                Base.metadata.create_all(bind=engine)
+                _migrate_notifications_table()
+                _migrate_criminals_table()
+                _migrate_evidence_metadata_table()
+                _migrate_person_image_fields()
+                _migrate_provenance_columns()
+                _ensure_realtime_indexes()
+                _migrate_user_lockout_columns()
+                with engine.connect():
+                    logger.info("PostgreSQL connection OK")
+                _db_connected = True
+                break
+            except Exception as exc:
+                wait = 2 ** attempt
+                logger.warning(f"PostgreSQL attempt {attempt}/3 failed: {exc}. Retrying in {wait}s...")
+                import time
+                time.sleep(wait)
+        if not _db_connected:
+            logger.error("PostgreSQL connection failed after 3 attempts — running in degraded mode")
     except Exception as exc:
-        logger.error(f"PostgreSQL connection failed: {exc}")
+        logger.error(f"PostgreSQL setup error: {exc}")
 
     # Neo4j connectivity is verified lazily on first use, not at startup.
     # This avoids blocking server readiness on a remote Neo4j Aura connection.
     logger.info("Neo4j will be verified lazily on first use")
+
+    # Pre-warm all ML models in a background thread so the first inference
+    # request is fast. Runs concurrently with server startup.
+    _prewarm_models()
+
+    # Move staleness checks off the hot inference path — run every 5 min.
+    _start_background_refresh()
 
     yield
 

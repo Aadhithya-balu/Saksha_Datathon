@@ -22,7 +22,7 @@ from app.core.exceptions import AppException
 from app.core.logging_config import logger
 from app.database.postgres import get_db
 from app.models.user import User
-from app.schemas.auth import ChangePasswordRequest, LoginRequest, LogoutRequest, RefreshRequest, TokenResponse
+from app.schemas.auth import ChangePasswordRequest, LoginRequest, LogoutRequest, RefreshRequest, TokenResponse, UpdateProfileRequest
 from app.schemas.user import UserCreate, UserOut
 from app.services import auth_service, audit_service
 
@@ -106,14 +106,19 @@ def refresh(payload: RefreshRequest, request: Request, db: Session = Depends(get
 
 @router.post("/logout")
 def logout(
+    request: Request,
     payload: LogoutRequest | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Server-side revocation: the presented refresh token is placed on the
-    denylist until expiry so it cannot be replayed after logout."""
+    """Revoke the presented access and refresh tokens until their expiry."""
     refresh_token = payload.refresh_token if payload else None
-    auth_service.revoke_all_user_tokens(db, refresh_token)
+    authorization = request.headers.get("Authorization", "")
+    access_token = authorization[7:] if authorization.startswith("Bearer ") else None
+    # get_current_user has already validated the access token.  Decode again
+    # only to read its jti/expiry for the shared denylist helper.
+    auth_service.revoke_token(db, access_token)
+    auth_service.revoke_token(db, refresh_token)
     try:
         audit_service.log_action(db, current_user, action="LOGOUT", resource_type="auth",
                                  resource_id=str(current_user.id))
@@ -167,6 +172,52 @@ def change_password(payload: ChangePasswordRequest, request: Request, current_us
     except SQLAlchemyError:
         db.rollback()
     return {"message": "Password updated successfully"}
+
+
+@router.patch("/profile", response_model=UserOut)
+def update_profile(
+    payload: UpdateProfileRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update mutable profile fields. Badge ID (username) and role are immutable."""
+    changed: list[str] = []
+    if payload.full_name is not None and payload.full_name != current_user.full_name:
+        current_user.full_name = payload.full_name
+        changed.append("full_name")
+    if payload.email is not None and payload.email != current_user.email:
+        existing = db.query(User).filter(User.email == payload.email, User.id != current_user.id).first()
+        if existing:
+            raise AppException("Email already in use.", code="EMAIL_TAKEN", status_code=409)
+        current_user.email = payload.email
+        changed.append("email")
+    if payload.district is not None:
+        current_user.district = payload.district or None
+        changed.append("district")
+    if payload.station is not None:
+        current_user.station = payload.station or None
+        changed.append("station")
+    try:
+        db.commit()
+        db.refresh(current_user)
+        if changed:
+            audit_service.log_action(
+                db, current_user, action="PROFILE_UPDATE", resource_type="auth",
+                resource_id=str(current_user.id),
+                details=f"updated={','.join(changed)}",
+                ip_address=_client_ip(request),
+            )
+            db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise AppException("Failed to update profile.", code="DB_ERROR", status_code=500) from exc
+    return UserOut(
+        id=current_user.id, username=current_user.username, email=current_user.email,
+        full_name=current_user.full_name, district=current_user.district,
+        station=current_user.station, is_active=current_user.is_active,
+        role=current_user.role.name, created_at=current_user.created_at,
+    )
 
 
 # ---------------------------------------------------------------------------
