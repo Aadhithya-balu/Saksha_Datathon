@@ -58,12 +58,13 @@ const routeEntries = [
 const tabForPath = (pathname: string): string | null => {
   const normalizedPath = pathname.replace(/\/+$/, '') || '/';
   if (normalizedPath === '/' || normalizedPath === '/index.html') return 'dashboard';
+  if (normalizedPath === '/login') return 'login';
   if (/^\/cases(?:\/|$)/.test(normalizedPath)) return 'crime_cases';
   return routeEntries.find(([, path]) => path === normalizedPath)?.[0] || null;
 };
 
 const pathForTab = (tab: string): string | null =>
-  routeEntries.find(([entryTab]) => entryTab === tab)?.[1] || null;
+  tab === 'login' ? '/login' : routeEntries.find(([entryTab]) => entryTab === tab)?.[1] || null;
 
 function App() {
   const { isAuthenticated, user, isHydrating, initializeSession } = useAuthStore();
@@ -129,6 +130,16 @@ function App() {
     return () => window.removeEventListener('navigate-tab', handleNavigate);
   }, [setActiveTab]);
 
+  // Force /login URL on logout from anywhere in the app
+  useEffect(() => {
+    const handleLoginNav = () => {
+      window.history.replaceState({}, '', `${basePath === '/' ? '' : basePath}/login`);
+      setCurrentPath('/login');
+    };
+    window.addEventListener('auth:navigate-login', handleLoginNav);
+    return () => window.removeEventListener('auth:navigate-login', handleLoginNav);
+  }, [basePath]);
+
   // Log page views
   useEffect(() => {
     if (!isAuthenticated || !user) return;
@@ -183,7 +194,21 @@ function App() {
   }
 
   if (!isAuthenticated) {
-    return <Login />;
+    // Redirect to /login and render the login page cleanly
+    if (currentPath !== '/login') {
+      window.history.replaceState({}, '', `${basePath === '/' ? '' : basePath}/login`);
+    }
+    return <Login onSuccess={() => {
+      window.history.replaceState({}, '', `${basePath === '/' ? '' : basePath}/dashboard`);
+      setCurrentPath('/dashboard');
+      setActiveTab('dashboard');
+    }} />;
+  }
+
+  // Redirect away from /login if already authenticated
+  if (currentPath === '/login') {
+    window.history.replaceState({}, '', `${basePath === '/' ? '' : basePath}/dashboard`);
+    setCurrentPath('/dashboard');
   }
 
   const renderActivePage = () => {

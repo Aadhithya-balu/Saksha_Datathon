@@ -22,13 +22,14 @@ interface AuthState {
   user: UserSession | null;
   isAuthenticated: boolean;
   loginError: string | null;
-  sessionTimeRemaining: number; // in seconds (1800s = 30min)
+  sessionTimeRemaining: number;
   isHydrating: boolean;
   initializeSession: () => Promise<void>;
   login: (badgeId: string, pin: string) => Promise<boolean>;
   logout: (expired?: boolean) => void;
   tickSession: () => void;
   resetSessionTimer: () => void;
+  updateUser: (patch: Partial<UserSession>) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -122,13 +123,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: (expired = false) => {
     const { accessToken } = getStoredTokens();
-
     if (accessToken) {
       void logoutRequest().catch(() => undefined);
     }
-
     clearStoredTokens();
     set({ user: null, isAuthenticated: false, sessionTimeRemaining: 1800, loginError: expired ? 'Session Expired: Please log in again.' : null });
+    // Always navigate to /login so the protected URL is never visible after logout
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:navigate-login'));
+    }
   },
 
   tickSession: () => {
@@ -144,7 +147,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (get().isAuthenticated) {
       set({ sessionTimeRemaining: 1800 });
     }
-  }
+  },
+
+  updateUser: (patch: Partial<UserSession>) => {
+    const current = get().user;
+    if (current) set({ user: { ...current, ...patch } });
+  },
 }));
 
 if (typeof window !== 'undefined') {

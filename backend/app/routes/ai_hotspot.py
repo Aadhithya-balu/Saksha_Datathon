@@ -102,24 +102,11 @@ def hotspot_predict(
     payload: HotspotPredictRequest,
     current_user: User = Depends(get_current_user),
 ):
-    from app.ai.inference.refresh import maybe_refresh_async
-
-    maybe_refresh_async("hotspot", reason="inference")
     try:
         results = predict(_apply_default_hour(payload.records, payload.default_hour))
     except Exception:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Hotspot prediction failed. Ensure records contain required fields.")
     return _response_with_mode(results)
-    
-    info = get_model_info()
-    pred_mode = results[0].get("prediction_mode", "ML") if results else info.get("prediction_mode", "FALLBACK")
-    return HotspotPredictResponse(
-        predictions=results,
-        total=len(results),
-        prediction_mode=pred_mode,
-        model_version=info.get("version", "trained"),
-        validation_status=info.get("validation_status", "VALIDATED" if pred_mode == "ML" else "FALLBACK"),
-    )
 
 
 @router.post("/predict_batch", response_model=HotspotPredictResponse, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))])
@@ -133,23 +120,10 @@ def hotspot_predict_batch(
     except Exception:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Hotspot prediction failed. Ensure records contain required fields.")
     return _response_with_mode(results)
-    
-    info = get_model_info()
-    pred_mode = results[0].get("prediction_mode", "ML") if results else info.get("prediction_mode", "FALLBACK")
-    return HotspotPredictResponse(
-        predictions=results,
-        total=len(results),
-        prediction_mode=pred_mode,
-        model_version=info.get("version", "trained"),
-        validation_status=info.get("validation_status", "VALIDATED" if pred_mode == "ML" else "FALLBACK"),
-    )
 
 
 @router.get("/model-info")
 def hotspot_model_info(current_user: User = Depends(get_current_user)):
-    from app.ai.inference.refresh import check_external_updates
-
-    check_external_updates()
     try:
         return get_model_info()
     except FileNotFoundError:

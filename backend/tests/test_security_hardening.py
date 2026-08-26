@@ -132,6 +132,11 @@ def test_logout_revokes_refresh_token(client, db_session):
     replay = client.post("/api/v2/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
     assert replay.status_code == 401
 
+    # Logout must also invalidate the access token immediately, rather than
+    # relying only on its short expiry and client-side token deletion.
+    access_replay = client.get("/api/v2/auth/me", headers={"Authorization": f"Bearer {access}"})
+    assert access_replay.status_code == 401
+
 
 # ---------------------------------------------------------------------------
 # Account lockout (brute-force protection)

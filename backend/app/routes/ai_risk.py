@@ -99,9 +99,6 @@ def get_risk_scores(
     """Return latest district risk scores based on crime records."""
     del current_user
     try:
-        from app.ai.inference.refresh import maybe_refresh_async
-
-        maybe_refresh_async("risk", db=db, reason="inference")
         cases = db.query(CrimeCase).options(joinedload(CrimeCase.location), joinedload(CrimeCase.category)).all()
         info = get_model_info()
         if not cases:

@@ -1,9 +1,9 @@
 {
     "model_name": "SAKSHA Hotspot Predictor",
     "algorithm": "LightGBM",
-    "version": "1.0.0",
+    "version": "20260826_190733",
     "h3_resolution": 7,
-    "prediction_target": "Next Month Crime Count",
+    "prediction_target": "Next Month Crime Count per H3 Cell",
     "features": [
         "CrimeCount",
         "NightCrime",
@@ -38,9 +38,21 @@
         "StationCrimeIntensity"
     ],
     "feature_count": 31,
-    "training_rows": 34950,
-    "rmse": 2.1773338496021086,
-    "mae": 1.194786338888434,
-    "r2": 0.8863433069240608,
-    "trained_on": "2026-07-11T08:37:21.724753"
+    "best_params": {
+        "algorithm": "RandomForest",
+        "n_estimators": 200,
+        "max_depth": 10,
+        "min_samples_leaf": 3,
+        "random_state": 42
+    },
+    "training_rows": 2000,
+    "training_period": "historical",
+    "validation_period": "test_split",
+    "validation_status": "VALIDATED",
+    "rmse": 0.5315021209043742,
+    "mae": 0.430716103401212,
+    "r2": 0.9727809401097121,
+    "ranking_metrics": {},
+    "baseline_comparison": {},
+    "trained_on": "2026-08-26T19:07:33.945779+00:00"
 }

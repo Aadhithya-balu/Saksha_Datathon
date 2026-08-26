@@ -19,6 +19,22 @@ from app.core.config import settings
 MAX_PERSON_IMAGE_BYTES = 10 * 1024 * 1024
 _ALLOWED = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 
+# Magic bytes for each allowed type — prevents content-type spoofing
+_MAGIC: list[tuple[bytes, str]] = [
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+    (b"RIFF", "image/webp"),  # RIFF....WEBP
+]
+
+
+def _detect_mime(data: bytes) -> str | None:
+    for magic, mime in _MAGIC:
+        if data[:len(magic)] == magic:
+            if mime == "image/webp" and data[8:12] != b"WEBP":
+                continue
+            return mime
+    return None
+
 
 def store_person_image(file: UploadFile, *, person_type: str, person_id: uuid.UUID) -> str:
     """Validate and persist one profile image, returning its Supabase URL."""
@@ -28,6 +44,14 @@ def store_person_image(file: UploadFile, *, person_type: str, person_id: uuid.UU
     data = file.file.read(MAX_PERSON_IMAGE_BYTES + 1)
     if not data or len(data) > MAX_PERSON_IMAGE_BYTES:
         raise HTTPException(400, "Image must be between 1 byte and 10 MB.")
+
+    # Verify actual file content matches declared content-type (path traversal / spoofing guard)
+    detected = _detect_mime(data)
+    if detected is None:
+        raise HTTPException(400, "File content does not match a supported image format.")
+    if detected != file.content_type:
+        raise HTTPException(400, "Declared content-type does not match actual file content.")
+
     try:
         with Image.open(io.BytesIO(data)) as image:
             image.verify()

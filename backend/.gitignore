@@ -1,0 +1,32 @@
+# Local env — never commit
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local databases
+*.sqlite
+*.sqlite3
+*.db
+
+# Uploads (dev only)
+uploads/
+
+# Logs
+*.log
+logs/
+
+# Model artifacts (large binaries — regenerate via train_all_models.py)
+app/ai/models/hotspot/hotspot_model.pkl
+app/ai/models/risk/risk_model.pkl
+app/ai/models/risk/forecast_model.pkl
