@@ -104,11 +104,11 @@ export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarColl
 
   return (
     <header
-      className="relative h-16 shrink-0 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)]/70 backdrop-blur-md px-3 sm:px-4 md:px-6 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3"
+      className="relative h-16 shrink-0 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)]/70 backdrop-blur-md px-3 sm:px-4 md:px-6 flex items-center gap-3"
       style={{ zIndex: 100 }}
     >
       {/* Left: Mobile menu + Breadcrumbs */}
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0 justify-self-start overflow-hidden">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
         {setSidebarCollapsed && (
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -126,10 +126,10 @@ export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarColl
         </div>
       </div>
 
-      {/* Center: Search trigger (in-grid column, never overlaps sides) */}
+      {/* Center: Search trigger (flex sibling between two flex-1 sides, never overlaps) */}
       <button
         onClick={() => setCommandPaletteOpen(true)}
-        className="hidden md:flex justify-self-center items-center gap-2 w-[200px] lg:w-[260px] px-3.5 py-2 bg-[var(--bg-tertiary)]/70 border border-[var(--border-primary)] rounded-full text-[var(--text-muted)] transition-all duration-200 cursor-pointer hover:border-[var(--accent-blue)]/40 hover:bg-[var(--bg-tertiary)] focus:outline-none"
+        className="hidden md:flex items-center gap-2 w-[200px] lg:w-[260px] shrink-0 px-3.5 py-2 bg-[var(--bg-tertiary)]/70 border border-[var(--border-primary)] rounded-full text-[var(--text-muted)] transition-all duration-200 cursor-pointer hover:border-[var(--accent-blue)]/40 hover:bg-[var(--bg-tertiary)] focus:outline-none"
       >
         <Search className="w-4 h-4 shrink-0 text-[var(--text-muted)]" />
         <span className="text-[13px] flex-1 text-left truncate">Search anything...</span>
@@ -139,7 +139,7 @@ export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarColl
       </button>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-1 sm:gap-2 min-w-0 justify-self-end">
+      <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 justify-end">
         {/* Global data-mode indicator */}
         <div className="hidden 2xl:flex items-center">
           <DataModeBadge />
@@ -236,7 +236,7 @@ export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarColl
         </div>
 
         {/* Clock */}
-        <div className="hidden lg:flex flex-col items-end">
+        <div className="hidden 2xl:flex flex-col items-end">
           <span className="text-xs font-mono font-semibold text-[var(--text-primary)]">{systime}</span>
           <span className="text-[9px] font-mono text-[var(--text-muted)]">IST</span>
         </div>
