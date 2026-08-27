@@ -52,14 +52,48 @@ JOIN crime_categories cat ON cc.category_id = cat.id
 
 
 def load_data() -> pd.DataFrame:
-    """Load real crime records from PostgreSQL (or local fallback DB)."""
-    for db_url in (settings.DATABASE_URL, "sqlite:///saksha_fallback.db", "sqlite:///backend/saksha_fallback.db"):
+    """Load real crime records from DB session or fallback DB URLs."""
+    from app.database.postgres import SessionLocal
+    from app.models.crime import CrimeCase
+    from app.models.location import Location
+    from app.models.crime_category import CrimeCategory
+
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(
+                CrimeCase.occurred_at,
+                Location.district,
+                CrimeCategory.name.label("category"),
+            )
+            .join(Location, CrimeCase.location_id == Location.id)
+            .join(CrimeCategory, CrimeCase.category_id == CrimeCategory.id)
+            .all()
+        )
+        if rows:
+            df = pd.DataFrame(
+                [{"occurred_at": r[0], "district": r[1], "category": r[2]} for r in rows]
+            )
+            logger.info("Loaded %d crime records via SessionLocal.", len(df))
+            return df
+    except Exception as exc:
+        logger.warning("SessionLocal data load failed: %s", exc)
+    finally:
+        db.close()
+
+    for db_url in (
+        settings.DATABASE_URL,
+        "sqlite:///saksha.db",
+        "sqlite:///backend/saksha.db",
+        "sqlite:///saksha_fallback.db",
+        "sqlite:///backend/saksha_fallback.db",
+    ):
         try:
             engine = create_engine(db_url)
-            with engine.connect() as conn:
-                df = pd.read_sql_query(QUERY, conn)
-            logger.info("Loaded %d crime records from %s.", len(df), db_url[:40])
-            return df
+            df = pd.read_sql(QUERY, engine)
+            if not df.empty:
+                logger.info("Loaded %d crime records from %s.", len(df), db_url[:40])
+                return df
         except Exception as exc:
             logger.warning("DB load failed for %s: %s", db_url[:40], exc)
             continue

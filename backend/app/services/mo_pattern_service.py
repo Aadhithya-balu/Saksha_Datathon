@@ -119,6 +119,27 @@ def tags_for_case_text(case: CrimeCase) -> set[str]:
     return tags
 
 
+def tags_for_criminal_text(criminal: Criminal) -> set[str]:
+    """Tags derivable from one criminal: mo_summary lexicon matches plus slugified fallback phrases."""
+    tags: set[str] = set()
+    if criminal.mo_summary:
+        matched = tags_for_text(criminal.mo_summary)
+        if matched:
+            tags.update(matched)
+        for phrase in criminal.mo_summary.split(","):
+            phrase = phrase.strip()
+            if not phrase:
+                continue
+            matched_phrase = tags_for_text(phrase)
+            if matched_phrase:
+                tags.update(matched_phrase)
+            else:
+                slug = slugify_phrase(phrase)
+                if slug:
+                    tags.add(slug)
+    return tags
+
+
 def numeric_mo_features(text: str | None) -> dict[str, float]:
     """Scalar MO indicators for ML feature vectors (issue #144 gap 132.3)."""
     tags = tags_for_text(text)
@@ -178,7 +199,7 @@ def sync_mo_tags(db: Session) -> dict[str, int]:
 
     for criminal in db.query(Criminal).all():
         stats["criminals_scanned"] += 1
-        for name in sorted(tags_for_text(criminal.mo_summary)):
+        for name in sorted(tags_for_criminal_text(criminal)):
             tag = ensure_tag(name)
             key = (criminal.id, tag.id)
             if key in existing_criminal_links:
