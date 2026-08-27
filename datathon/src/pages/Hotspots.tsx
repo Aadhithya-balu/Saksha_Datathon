@@ -48,6 +48,7 @@ export const Hotspots: React.FC = () => {
   // so a stale LIVE badge can never attach to new data (issue 9 §23/§24).
   const [hotspotSource, setHotspotSource] = useState<HotspotSource | null>(null);
   const [hotspotAnalysisMode, setHotspotAnalysisMode] = useState<string | null>(null);
+  const [hotspotDataProvenance, setHotspotDataProvenance] = useState<string | null>(null);
   const [districtMetrics, setDistrictMetrics] = useState<Record<string, DistrictInfo>>({});
   const [emergingTrends, setEmergingTrends] = useState<EmergingTrendItem[]>([]);
   const [recentCases, setRecentCases] = useState<any[]>([]);
@@ -66,6 +67,7 @@ export const Hotspots: React.FC = () => {
     // Clear stale status before the new request resolves (issue 9 §24).
     setHotspotSource(null);
     setHotspotAnalysisMode(null);
+    setHotspotDataProvenance(null);
 
     // Check if navigating from Anomaly "Locate on Map"
     const override = sessionStorage.getItem('selected_district_override');
@@ -107,6 +109,7 @@ export const Hotspots: React.FC = () => {
         // Backend reports its own analysis mode (statistical Gi*/KDE over
         // recorded incidents — see analytics_service.hotspots).
         setHotspotAnalysisMode(hotspotRes.value.analysis_mode ?? null);
+        setHotspotDataProvenance(hotspotRes.value.data_provenance ?? null);
         source = 'backend';
       } else if (stationHotspots.length > 0) {
         source = 'stations';
@@ -235,7 +238,7 @@ export const Hotspots: React.FC = () => {
     if (hotspotSource === 'backend') {
       return getIntelligenceStatus({
         analysisMode: hotspotAnalysisMode ?? 'STATISTICAL',
-        dataProvenance: 'LIVE_DB',
+        dataProvenance: hotspotDataProvenance ?? 'UNKNOWN',
         historicalOnly: true,
       });
     }
@@ -243,7 +246,7 @@ export const Hotspots: React.FC = () => {
       return getIntelligenceStatus({ dataProvenance: 'LIVE_DB', historicalOnly: true });
     }
     return getIntelligenceStatus({ predictionMode: 'FALLBACK', dataProvenance: 'DEMO' });
-  }, [loading, hotspotSource, hotspotAnalysisMode]);
+  }, [loading, hotspotSource, hotspotAnalysisMode, hotspotDataProvenance]);
 
   // Top telemetry cards: Show active police station & district stations if selected, otherwise statewide top 3
   const displayedTopHotspots = useMemo(() => {

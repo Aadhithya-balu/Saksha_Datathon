@@ -1,6 +1,7 @@
 """In-memory conversation memory for session-based chat continuity."""
 from __future__ import annotations
 
+import threading
 import time
 from dataclasses import dataclass, field
 
@@ -21,33 +22,37 @@ class ChatMemory:
         self.ttl_seconds = ttl_seconds
         self._sessions: dict[str, list[ChatMessage]] = {}
         self._last_access: dict[str, float] = {}
+        self._lock = threading.Lock()
 
     def get_history(self, session_id: str) -> list[dict[str, str]]:
-        self._cleanup()
-        if session_id not in self._sessions:
-            return []
-        self._last_access[session_id] = time.time()
-        messages = self._sessions[session_id]
-        return [{"role": m.role, "content": m.content} for m in messages[-self.max_messages:]]
+        with self._lock:
+            self._cleanup()
+            if session_id not in self._sessions:
+                return []
+            self._last_access[session_id] = time.time()
+            messages = self._sessions[session_id]
+            return [{"role": m.role, "content": m.content} for m in messages[-self.max_messages:]]
 
     def add(self, session_id: str, user_message: str, ai_response: str) -> None:
-        self._cleanup()
-        if session_id not in self._sessions:
-            if len(self._sessions) >= self.max_sessions:
-                self._evict_oldest()
-            self._sessions[session_id] = []
+        with self._lock:
+            self._cleanup()
+            if session_id not in self._sessions:
+                if len(self._sessions) >= self.max_sessions:
+                    self._evict_oldest()
+                self._sessions[session_id] = []
 
-        now = time.time()
-        self._sessions[session_id].append(ChatMessage(role="user", content=user_message, timestamp=now))
-        self._sessions[session_id].append(ChatMessage(role="assistant", content=ai_response, timestamp=now))
-        self._last_access[session_id] = now
+            now = time.time()
+            self._sessions[session_id].append(ChatMessage(role="user", content=user_message, timestamp=now))
+            self._sessions[session_id].append(ChatMessage(role="assistant", content=ai_response, timestamp=now))
+            self._last_access[session_id] = now
 
-        if len(self._sessions[session_id]) > self.max_messages * 2:
-            self._sessions[session_id] = self._sessions[session_id][-self.max_messages * 2:]
+            if len(self._sessions[session_id]) > self.max_messages * 2:
+                self._sessions[session_id] = self._sessions[session_id][-self.max_messages * 2:]
 
     def clear(self, session_id: str) -> None:
-        self._sessions.pop(session_id, None)
-        self._last_access.pop(session_id, None)
+        with self._lock:
+            self._sessions.pop(session_id, None)
+            self._last_access.pop(session_id, None)
 
     def _cleanup(self) -> None:
         now = time.time()
@@ -65,6 +70,10 @@ class ChatMemory:
         oldest = min(self._last_access, key=self._last_access.get)  # type: ignore[arg-type]
         self._sessions.pop(oldest, None)
         self._last_access.pop(oldest, None)
+
+    # NOTE: _cleanup and _evict_oldest are always called from within
+    # the lock held by get_history() or add(), so they do NOT acquire
+    # the lock themselves (avoids reentrant lock issues).
 
 
 memory = ChatMemory()

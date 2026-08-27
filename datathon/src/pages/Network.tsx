@@ -387,19 +387,30 @@ export const Network: React.FC = () => {
       {/* Main Graph Grid */}
       <div className="flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-4" style={{ minHeight: '500px' }}>
         <div className="lg:col-span-8" style={{ minHeight: '500px' }}>
-          {graphData ? (
+          {loadError && !graphData ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center max-w-md">
+                <AlertTriangle className="w-10 h-10 text-[var(--accent-coral)] mx-auto mb-3" />
+                <p className="text-sm text-[var(--text-primary)] font-semibold mb-1">
+                  Network Intelligence Unavailable
+                </p>
+                <p className="text-xs text-[var(--text-secondary)] mb-3">{loadError}</p>
+                <button onClick={() => fetchGraph()} className="px-4 py-1.5 bg-[var(--accent-blue)] text-white text-xs rounded-btn hover:opacity-90 transition-opacity">
+                  Retry
+                </button>
+              </div>
+            </div>
+          ) : graphData && graphData.nodes.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <p className="text-xs text-[var(--text-muted)]">No relationships found in the database.</p>
+              </div>
+            </div>
+          ) : graphData ? (
             <CriminalGraph3D onNodeSelect={handleNodeSelect} onLinkSelect={handleLinkSelect} graphData={graphData} />
           ) : (
             <div className="h-full flex items-center justify-center bg-[var(--bg-surface)] rounded-card border border-border-color text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider">
-              {loadError ? (
-                <div className="text-center">
-                  <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-[var(--accent-amber)]" />
-                  <p>{loadError}</p>
-                  <button onClick={() => fetchGraph()} className="mt-2 px-3 py-1 rounded border border-[var(--accent-blue)]/30 text-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/10">
-                    Retry
-                  </button>
-                </div>
-              ) : 'Loading network telemetry...'}
+              Loading network telemetry...
             </div>
           )}
         </div>
