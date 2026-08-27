@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import ForceGraph3D from 'react-force-graph-3d';
-import { Search, AlertTriangle, ZoomIn, ZoomOut, Maximize2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, AlertTriangle, ZoomIn, ZoomOut, Maximize2, ChevronUp, ChevronDown, Crosshair } from 'lucide-react';
 import type { NetworkNodeCategory } from '../../services/api';
 import { useAppStore } from '../../store/appStore';
 
@@ -96,6 +96,8 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
 
   useEffect(() => {
     setCurrentGraphData(resolvedGraphData);
+    // Reset auto-fit so new graph data triggers camera fit (Issue #189)
+    hasAutoFit.current = false;
   }, [resolvedGraphData]);
 
   // Compute degree centrality for node scaling
@@ -206,6 +208,26 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
       onLinkSelect(link);
     }
   };
+
+  // Issue #189: Center camera on the currently selected node
+  const handleCenterSelected = useCallback(() => {
+    if (!selectedNodeId || !fgRef.current || hasError) return;
+    const node = currentGraphData.nodes.find(n => n.id === selectedNodeId);
+    if (!node) return;
+    const distance = 45;
+    const norm = Math.hypot(node.x || 0, node.y || 0, node.z || 0) || 1;
+    if (fgRef.current.cameraPosition) {
+      fgRef.current.cameraPosition(
+        {
+          x: (node.x || 0) + (node.x || 0) / norm * distance,
+          y: (node.y || 0) + (node.y || 0) / norm * distance + 15,
+          z: (node.z || 0) + (node.z || 0) / norm * distance + distance,
+        },
+        node,
+        800
+      );
+    }
+  }, [selectedNodeId, currentGraphData, hasError]);
 
   // Color matching for nodes
   const getNodeColor = (cat: string) => {
@@ -370,7 +392,7 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
           )}
         </div>
 
-        {/* Floating Zoom Controls */}
+        {/* Floating Zoom Controls (Issue #189: added center-selected button) */}
         <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-1.5 pointer-events-auto">
           <button
             onClick={() => {
@@ -415,6 +437,15 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
           >
             <Maximize2 className="w-4 h-4" />
           </button>
+          {selectedNodeId && (
+            <button
+              onClick={handleCenterSelected}
+              title="Center on selected node"
+              className="p-2 bg-[var(--accent-blue)]/15 hover:bg-[var(--accent-blue)]/25 border border-[var(--accent-blue)]/30 hover:border-[var(--accent-blue)]/50 rounded text-[var(--accent-blue)] cursor-pointer"
+            >
+              <Crosshair className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
