@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Lock, UserCheck } from 'lucide-react';
+import { ShieldCheck, Lock, UserCheck, BadgeCheck, KeyRound } from 'lucide-react';
 import SecureBackdrop from '../components/auth/SecureBackdrop';
 import BadgeLogin from '../components/auth/BadgeLogin';
+import PasswordLogin from '../components/auth/PasswordLogin';
 
 const formatIstClock = (): string =>
   `${new Intl.DateTimeFormat('en-GB', {
@@ -15,6 +16,7 @@ const formatIstClock = (): string =>
 
 export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
   const [clock, setClock] = useState(formatIstClock);
+  const [method, setMethod] = useState<'badge' | 'password'>('badge');
 
   /* Live IST clock — honest system telemetry */
   useEffect(() => {
@@ -243,14 +245,58 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
               </span>
             </div>
 
+            {/* Access method toggle */}
+            <div
+              className="mb-4 grid grid-cols-2 gap-1 rounded-xl border p-1 font-mono text-[9px] font-bold uppercase tracking-[0.14em]"
+              style={{ borderColor: 'var(--lp-border)', background: 'var(--lp-surface-3)' }}
+              role="tablist"
+              aria-label="Sign-in method"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={method === 'badge'}
+                onClick={() => setMethod('badge')}
+                className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2 py-2 transition-colors duration-150"
+                style={
+                  method === 'badge'
+                    ? { background: 'var(--lp-accent-soft)', color: 'var(--lp-accent-hi)' }
+                    : { color: 'var(--lp-text-3)' }
+                }
+              >
+                <BadgeCheck className="h-3.5 w-3.5" />
+                Badge ID
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={method === 'password'}
+                onClick={() => setMethod('password')}
+                className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2 py-2 transition-colors duration-150"
+                style={
+                  method === 'password'
+                    ? { background: 'var(--lp-accent-soft)', color: 'var(--lp-accent-hi)' }
+                    : { color: 'var(--lp-text-3)' }
+                }
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+                Username
+              </button>
+            </div>
+
             {/* Badge ID login */}
             <motion.div
+              key={method}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
               className="flex flex-col"
             >
-              <BadgeLogin onSuccess={handleBadgeSuccess} />
+              {method === 'badge' ? (
+                <BadgeLogin onSuccess={handleBadgeSuccess} />
+              ) : (
+                <PasswordLogin onSuccess={handleBadgeSuccess} />
+              )}
             </motion.div>
 
             {/* Compliance footer */}

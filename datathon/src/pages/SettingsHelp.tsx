@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useAuditStore } from '../store/auditStore';
+import { useRBAC } from '../hooks/useRBAC';
 import { updateProfile, changePassword } from '../services/api';
 import {
   Settings, Info, Search, Phone, Save, LifeBuoy,
@@ -120,7 +121,8 @@ const ProfileTab: React.FC = () => {
   const handleChangePassword = async () => {
     if (!oldPin || !newPin) return flash(setPwToast, 'error', 'All PIN fields are required.');
     if (newPin !== confirmPin) return flash(setPwToast, 'error', 'New PINs do not match.');
-    if (newPin.length < 8) return flash(setPwToast, 'error', 'New PIN must be at least 8 characters.');
+    const isPin = newPin.length === 6 && /^\d{6}$/.test(newPin);
+    if (!isPin && newPin.length < 8) return flash(setPwToast, 'error', 'New PIN must be at least 8 characters (or a 6-digit PIN).');
     setPwSaving(true);
     try {
       await changePassword(oldPin, newPin);
@@ -241,7 +243,7 @@ const ProfileTab: React.FC = () => {
               </button>
             </div>
           </Field>
-          <Field label="New PIN" hint="Min. 8 characters">
+          <Field label="New PIN" hint="8+ characters with letters & number, or a 6-digit numeric PIN">
             <div className="relative">
               <Input
                 type={showNew ? 'text' : 'password'}
@@ -487,7 +489,12 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 
 export const SettingsHelp: React.FC = () => {
+  const { isAdmin } = useRBAC();
   const [activeTab, setActiveTab] = useState<Tab>('profile');
+
+  const tabs = TABS.filter((t) => isAdmin || t.id !== 'system');
+  const tabIds = new Set(tabs.map((t) => t.id));
+  const active: Tab = tabIds.has(activeTab) ? activeTab : 'profile';
 
   return (
     <div className="max-w-3xl mx-auto space-y-5 pb-10">
@@ -498,18 +505,18 @@ export const SettingsHelp: React.FC = () => {
           Settings
         </h2>
         <p className="text-[11px] text-[var(--text-muted)] mt-0.5 font-mono uppercase tracking-wider">
-          Profile · System Configuration · Operator Help
+          {isAdmin ? 'Profile · System Configuration · Operator Help' : 'Profile · Account & Operator Help'}
         </p>
       </div>
 
       {/* Tab bar */}
       <div className="flex gap-1 p-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl w-fit">
-        {TABS.map(t => (
+        {tabs.map(t => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold transition-all cursor-pointer
-              ${activeTab === t.id
+              ${active === t.id
                 ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm border border-[var(--border-primary)]'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
               }`}
@@ -521,9 +528,9 @@ export const SettingsHelp: React.FC = () => {
       </div>
 
       {/* Tab content */}
-      {activeTab === 'profile' && <ProfileTab />}
-      {activeTab === 'system'  && <SystemTab />}
-      {activeTab === 'help'    && <HelpTab />}
+      {active === 'profile' && <ProfileTab />}
+      {active === 'system'  && isAdmin && <SystemTab />}
+      {active === 'help'    && <HelpTab />}
     </div>
   );
 };

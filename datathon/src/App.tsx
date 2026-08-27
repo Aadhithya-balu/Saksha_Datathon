@@ -7,6 +7,7 @@ import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import CommandPalette from './components/ui/CommandPalette';
 import Overview from './pages/Overview';
+import CommandCenter from './pages/CommandCenter';
 import Hotspots from './pages/Hotspots';
 import Network from './pages/Network';
 import Predictions from './pages/Predictions';
@@ -22,6 +23,7 @@ import Victims from './pages/Victims';
 import OfficersPage from './pages/Officers';
 import EvidencePage from './pages/Evidence';
 import InvestigationPage from './pages/Investigation';
+import IntelligenceHub from './pages/Intelligence';
 import NotificationsPage from './pages/Notifications';
 import SociologicalPage from './pages/Sociological';
 import StrategicPage from './pages/Strategic';
@@ -33,6 +35,8 @@ import NotFound from './pages/NotFound';
 
 const routeEntries = [
   ['dashboard', '/dashboard'],
+  ['command_center', '/command-center'],
+  ['intelligence', '/intelligence'],
   ['fir', '/firs'],
   ['hotspot', '/hotspots'],
   ['network', '/network'],
@@ -151,7 +155,9 @@ function App() {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
     const tabLabels: Record<string, string> = {
-      dashboard: 'Overview Dashboard',
+      dashboard: 'Analytics Dashboard',
+      command_center: 'Command Center',
+      intelligence: 'Investigation Hub',
       fir: 'FIR Registry',
       hotspot: 'Hotspot Map',
       network: 'Network Graph',
@@ -220,7 +226,9 @@ function App() {
 
   const renderActivePage = () => {
     switch (routeTab || activeTab) {
-      case 'dashboard': return <Overview />;
+      case 'dashboard': return <RoleGuard path="/dashboard"><Overview /></RoleGuard>;
+      case 'command_center': return <RoleGuard path="/command-center"><CommandCenter /></RoleGuard>;
+      case 'intelligence': return <RoleGuard path="/intelligence"><IntelligenceHub /></RoleGuard>;
       case 'fir': return <RoleGuard path="/firs"><FIRPage /></RoleGuard>;
       case 'hotspot': return <RoleGuard path="/hotspots"><Hotspots /></RoleGuard>;
       case 'network': return <RoleGuard path="/network"><Network /></RoleGuard>;

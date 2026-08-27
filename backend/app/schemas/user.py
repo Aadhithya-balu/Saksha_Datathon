@@ -6,8 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def _validate_password(value: str) -> str:
-    """Baseline KSP password policy: length + character-class requirements.
-    Detailed rules are enforced in auth_service.validate_password_strength."""
+    """Baseline KSP password policy: a strong password (length + character-class
+    requirements) OR a 6-digit numeric badge PIN. Detailed rules are enforced in
+    auth_service.validate_password_strength."""
+    if len(value) == 6 and value.isdigit():
+        return value
     if len(value) < 8 or len(value) > 128:
         raise ValueError("Password must be between 8 and 128 characters")
     if not any(c.islower() for c in value):

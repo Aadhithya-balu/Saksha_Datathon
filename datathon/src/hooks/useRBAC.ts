@@ -9,9 +9,11 @@ export interface RoutePermission {
 export const ALL_UI_ROLES: UserRole[] = ['ADMIN', 'SCRB', 'IO', 'SP', 'INSPECTOR', 'FORENSIC', 'VIEWER'];
 
 export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
-  '/dashboard':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Overview Dashboard' },
+  '/dashboard':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Analytics Dashboard' },
+  '/command-center':{ allowedRoles: ALL_UI_ROLES, moduleName: 'Command Center' },
   '/admin':         { allowedRoles: ['ADMIN'], moduleName: 'System Security Control Center' },
   '/crime-cases':   { allowedRoles: ALL_UI_ROLES, moduleName: 'Crime Case Management' },
+  '/intelligence':  { allowedRoles: ALL_UI_ROLES, moduleName: 'Investigation Hub' },
   '/firs':          { allowedRoles: ALL_UI_ROLES, moduleName: 'FIR Lifecycle Management' },
   '/offenders':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Offender Registry' },
   '/officers':      { allowedRoles: ALL_UI_ROLES, moduleName: 'Officer Management' },
@@ -22,7 +24,7 @@ export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
   '/anomalies':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Anomaly Detection Engine' },
   '/reports':       { allowedRoles: ALL_UI_ROLES, moduleName: 'Reports Center' },
   '/ai-chat':       { allowedRoles: ALL_UI_ROLES, moduleName: 'AI Chat Assistant' },
-  '/settings':      { allowedRoles: ['ADMIN'], moduleName: 'Settings & Operator Help' },
+  '/settings':      { allowedRoles: ALL_UI_ROLES, moduleName: 'Settings & Operator Help' },
   '/notifications': { allowedRoles: ALL_UI_ROLES, moduleName: 'Intelligence Center' },
   '/sociological':  { allowedRoles: ALL_UI_ROLES, moduleName: 'Sociological Intelligence' },
   '/strategic':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Strategic Intelligence' },
