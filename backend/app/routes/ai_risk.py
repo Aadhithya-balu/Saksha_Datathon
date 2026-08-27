@@ -36,11 +36,20 @@ router = APIRouter(prefix="/ai/predictions", tags=["District Risk Prediction"], 
 # Schemas
 # ---------------------------------------------------------------------------
 
+class RiskRecord(BaseModel):
+    occurred_at: str
+    district: str
+    category: str
+    model_config = {"extra": "allow"}
+
 class RiskPredictRequest(BaseModel):
-    records: list[dict[str, Any]] = Field(
+    records: list[RiskRecord] = Field(
         ..., min_length=1, description="Raw crime records with occurred_at, district, category."
     )
-
+    
+    @property
+    def record_dicts(self) -> list[dict[str, Any]]:
+        return [r.model_dump() for r in self.records]
 
 class RiskScoreItem(BaseModel):
     district: str
@@ -152,7 +161,7 @@ def predict_risk_scores(
 ):
     """Compute district risk scores from submitted crime records."""
     try:
-        results = predict_risk(payload.records)
+        results = predict_risk(payload.record_dicts)
     except Exception:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Risk score computation failed. Ensure records contain required fields.")
 
@@ -178,7 +187,7 @@ def predict_crime_forecast(
 ):
     """Forecast next-month crime counts per district."""
     try:
-        results = predict_forecast(payload.records)
+        results = predict_forecast(payload.record_dicts)
     except Exception:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Forecast computation failed. Ensure records contain required fields.")
     info = get_model_info()

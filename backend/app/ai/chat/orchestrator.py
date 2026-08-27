@@ -225,13 +225,17 @@ class ChatOrchestrator:
             return "".join(chunks)
 
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+            
+            if loop is not None and loop.is_running():
                 import concurrent.futures
                 with concurrent.futures.ThreadPoolExecutor() as pool:
                     full_response = pool.submit(asyncio.run, _collect()).result()
             else:
-                full_response = loop.run_until_complete(_collect())
+                full_response = asyncio.run(_collect())
         except Exception:
             logger.warning("LLM generation failed in sync path", exc_info=True)
             full_response = _PROVIDER_FAILURE_ANSWER

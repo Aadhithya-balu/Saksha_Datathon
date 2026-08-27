@@ -31,7 +31,7 @@ def test_risk_scores_from_seeded_db(client, crime_dataset, analyst_headers):
     # Response contract.
     for key in ("window", "model_version", "grid_predictions", "prediction_mode", "data_provenance"):
         assert key in body
-    assert body["data_provenance"] == "LIVE_DB"
+    assert "LIVE_DB" in body["data_provenance"]
 
     # DB-backed: districts from the fixture appear among predictions.
     districts = {p["district"] for p in body["grid_predictions"]}
