@@ -86,6 +86,7 @@ export const Network: React.FC = () => {
 
   const fetchFocusedGraph = useCallback(async (entity: NetworkSearchResult, depth: number) => {
     setLoadError(null);
+    setFocusing(true);
     try {
       let response;
       if (entity.type === 'criminal' || entity.type === 'victim' || entity.type === 'officer') {
@@ -98,6 +99,8 @@ export const Network: React.FC = () => {
       applyResponse(response);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : 'Failed to load focused graph');
+    } finally {
+      setFocusing(false);
     }
   }, [provenanceFilter, excludeDemo, applyResponse]);
 
@@ -127,26 +130,6 @@ export const Network: React.FC = () => {
   }, [user?.badgeId, viewScope, provenanceFilter, excludeDemo, graphDepth, focusedEntity, fetchFocusedGraph, applyResponse]);
 
   useEffect(() => { return fetchGraph(); }, [fetchGraph]);
-
-  const fetchFocusedGraph = useCallback(async (entity: NetworkSearchResult, depth: number) => {
-    setLoadError(null);
-    setFocusing(true);
-    try {
-      let response;
-      if (entity.type === 'criminal' || entity.type === 'victim' || entity.type === 'officer') {
-        response = await getNetworkPerson(entity.id, depth, provenanceFilter === 'ALL' ? undefined : provenanceFilter, excludeDemo);
-      } else if (entity.type === 'case') {
-        response = await getNetworkCase(entity.id, provenanceFilter === 'ALL' ? undefined : provenanceFilter, excludeDemo);
-      } else {
-        response = await getFullNetworkGraph(undefined, undefined, provenanceFilter === 'ALL' ? undefined : provenanceFilter, excludeDemo);
-      }
-      applyResponse(response);
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : 'Failed to load focused graph');
-    } finally {
-      setFocusing(false);
-    }
-  }, [provenanceFilter, excludeDemo, applyResponse]);
 
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
