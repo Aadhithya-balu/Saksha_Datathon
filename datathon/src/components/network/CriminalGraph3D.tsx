@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import ForceGraph3D from 'react-force-graph-3d';
-import { Search, AlertTriangle, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { Search, AlertTriangle, ZoomIn, ZoomOut, Maximize2, ChevronUp, ChevronDown, Crosshair } from 'lucide-react';
 import type { NetworkNodeCategory } from '../../services/api';
 import { useAppStore } from '../../store/appStore';
 
@@ -62,9 +62,11 @@ interface CriminalGraph3DProps {
 export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, onLinkSelect, graphData }) => {
   const fgRef = useRef<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const resolvedGraphData = useMemo(() => graphData ?? EMPTY_GRAPH_DATA, [graphData]);
   const [currentGraphData, setCurrentGraphData] = useState(resolvedGraphData);
   const [hasError, setHasError] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
   const theme = useAppStore((s) => s.theme);
   const isLight = theme === 'light';
   const canvasBg = isLight ? '#f7f9fc' : '#080E1B';
@@ -94,7 +96,56 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
 
   useEffect(() => {
     setCurrentGraphData(resolvedGraphData);
+    // Reset auto-fit so new graph data triggers camera fit (Issue #189)
+    hasAutoFit.current = false;
   }, [resolvedGraphData]);
+
+  // Compute degree centrality for node scaling
+  const degreeMap = useMemo(() => {
+    const deg: Record<string, number> = {};
+    for (const link of currentGraphData.links) {
+      const src = typeof link.source === 'object' ? (link.source as any).id : link.source;
+      const tgt = typeof link.target === 'object' ? (link.target as any).id : link.target;
+      deg[src] = (deg[src] || 0) + 1;
+      deg[tgt] = (deg[tgt] || 0) + 1;
+    }
+    return deg;
+  }, [currentGraphData]);
+
+  // Configure force simulation for better layout
+  useEffect(() => {
+    if (fgRef.current && !hasError) {
+      const engine = fgRef.current.d3Force;
+      if (engine) {
+        // Set custom link distance based on relationship type
+        const linkForce = engine('link');
+        if (linkForce) {
+          linkForce.distance((link: any) => {
+            const type = link.relationship_type || link.relationship || '';
+            if (type.includes('USED') || type.includes('LINKED')) return 80;
+            if (type.includes('KNOWS') || type.includes('ASSOCIATED')) return 140;
+            return 110;
+          });
+        }
+        // Increase charge repulsion to spread nodes apart
+        const chargeForce = engine('charge');
+        if (chargeForce) {
+          chargeForce.strength(-280);
+        }
+      }
+    }
+  }, [hasError, currentGraphData]);
+
+  // Auto-fit camera on initial data load
+  const hasAutoFit = useRef(false);
+  useEffect(() => {
+    if (currentGraphData.nodes.length > 0 && !hasAutoFit.current && fgRef.current && !hasError) {
+      hasAutoFit.current = true;
+      setTimeout(() => {
+        fgRef.current?.zoomToFit(400, 30);
+      }, 2500);
+    }
+  }, [currentGraphData, hasError]);
 
   // Filter nodes matching search criteria
   const handleSearch = (e: React.FormEvent) => {
@@ -109,32 +160,44 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
     );
 
     if (matchedNode) {
-      // Highlight coordinates by focusing camera on the node in 3D
       if (fgRef.current && !hasError) {
-        const distance = 80;
+        const distance = 45;
+        const norm = Math.hypot(matchedNode.x || 0, matchedNode.y || 0, matchedNode.z || 0) || 1;
         if (fgRef.current.cameraPosition) {
           fgRef.current.cameraPosition(
-            { x: matchedNode.x || 0, y: (matchedNode.y || 0) + 15, z: (matchedNode.z || 0) + distance },
+            {
+              x: (matchedNode.x || 0) + (matchedNode.x || 0) / norm * distance,
+              y: (matchedNode.y || 0) + (matchedNode.y || 0) / norm * distance + 15,
+              z: (matchedNode.z || 0) + (matchedNode.z || 0) / norm * distance + distance,
+            },
             matchedNode,
             1500
           );
         }
       }
       onNodeSelect?.(matchedNode);
+      setSelectedNodeId(matchedNode.id);
     }
   };
 
-  // Node Clicked Action
+  // Node Clicked Action — zoom camera close to the node
   const handleNodeClick = (node: any) => {
     if (fgRef.current && fgRef.current.cameraPosition) {
+      const distance = 45;
+      const norm = Math.hypot(node.x || 0, node.y || 0, node.z || 0) || 1;
       fgRef.current.cameraPosition(
-        { x: node.x * 1.5, y: node.y * 1.5, z: node.z * 1.5 + 60 },
+        {
+          x: (node.x || 0) + (node.x || 0) / norm * distance,
+          y: (node.y || 0) + (node.y || 0) / norm * distance + 15,
+          z: (node.z || 0) + (node.z || 0) / norm * distance + distance,
+        },
         node,
-        1200
+        1500
       );
     }
     const fullNode = currentGraphData.nodes.find(n => n.id === node.id);
     if (fullNode) {
+      setSelectedNodeId(fullNode.id);
       onNodeSelect?.(fullNode);
     }
   };
@@ -145,6 +208,26 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
       onLinkSelect(link);
     }
   };
+
+  // Issue #189: Center camera on the currently selected node
+  const handleCenterSelected = useCallback(() => {
+    if (!selectedNodeId || !fgRef.current || hasError) return;
+    const node = currentGraphData.nodes.find(n => n.id === selectedNodeId);
+    if (!node) return;
+    const distance = 45;
+    const norm = Math.hypot(node.x || 0, node.y || 0, node.z || 0) || 1;
+    if (fgRef.current.cameraPosition) {
+      fgRef.current.cameraPosition(
+        {
+          x: (node.x || 0) + (node.x || 0) / norm * distance,
+          y: (node.y || 0) + (node.y || 0) / norm * distance + 15,
+          z: (node.z || 0) + (node.z || 0) / norm * distance + distance,
+        },
+        node,
+        800
+      );
+    }
+  }, [selectedNodeId, currentGraphData, hasError]);
 
   // Color matching for nodes
   const getNodeColor = (cat: string) => {
@@ -201,8 +284,9 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
           type="button"
           onClick={() => {
             setSearchQuery('');
+            setSelectedNodeId(null);
             setCurrentGraphData(resolvedGraphData);
-            if (fgRef.current) fgRef.current.zoomToFit(1000);
+            if (fgRef.current) fgRef.current.zoomToFit(400, 30);
           }}
           className="px-3 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-border-color hover:border-[var(--accent-blue)]/30 rounded text-xs text-[var(--text-secondary)] cursor-pointer"
         >
@@ -224,66 +308,91 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
               backgroundColor={canvasBg}
               showNavInfo={false}
               nodeLabel="name"
-              nodeColor={node => getNodeColor(node.category)}
-              nodeVal={node => node.category === 'suspect' ? 10 : 7}
-              nodeResolution={16}
+              nodeColor={node => {
+                if (node.id === selectedNodeId) return '#FFFFFF';
+                return getNodeColor(node.category);
+              }}
+              nodeOpacity={selectedNodeId ? 0.35 : 1}
+              nodeVal={node => {
+                const deg = degreeMap[node.id] || 0;
+                return node.category === 'suspect' ? 18 + Math.min(deg * 3, 20) : 12 + Math.min(deg * 2, 14);
+              }}
+              nodeResolution={24}
+              nodeRelSize={8}
               linkColor={link => getLinkColor(link as GraphLink)}
               linkDirectionalParticles={link => ((link as GraphLink).verification_status === 'POTENTIAL' ? 3 : 1.5)}
-              linkDirectionalParticleSpeed={0.015}
-              linkDirectionalParticleWidth={3}
-              linkWidth={link => ((link as GraphLink).verification_status === 'VERIFIED' ? 2.6 : 2.0)}
+              linkDirectionalParticleSpeed={0.012}
+              linkDirectionalParticleWidth={2.5}
+              linkWidth={link => ((link as GraphLink).verification_status === 'VERIFIED' ? 3.5 : 2.5)}
+              d3AlphaDecay={0.015}
+              d3VelocityDecay={0.35}
+              d3AlphaMin={0.0005}
+              cooldownTime={12000}
+              warmupTicks={50}
               rendererConfig={{ antialias: true }}
               onNodeClick={handleNodeClick}
               onLinkClick={handleLinkClick}
+              onEngineStop={() => {
+                if (fgRef.current && !hasError) {
+                  fgRef.current.zoomToFit(400, 30);
+                }
+              }}
             />
           </ErrorBoundary>
         )}
 
-        {/* Provenance & Node Legend overlay (Issue #159) */}
-        <div className="absolute bottom-4 left-4 z-20 bg-[#0B1120] border border-[#334155] rounded-card shadow-2xl p-3 font-mono text-[9px] flex flex-col gap-2 select-none pointer-events-auto max-w-[210px]">
-          <div className="flex items-center justify-between">
-            <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">
-              Network Map Legend
-            </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          </div>
+        {/* Provenance & Node Legend overlay (Issue #159) — collapsible */}
+        <div
+          className={`absolute bottom-4 left-4 z-20 bg-[#0B1120] border border-[#334155] rounded-card shadow-2xl font-mono select-none pointer-events-auto transition-all duration-200 ${
+            legendOpen ? 'p-3 w-[210px]' : 'p-1.5 w-auto'
+          }`}
+        >
+          <button
+            onClick={() => setLegendOpen(v => !v)}
+            className="flex items-center gap-1.5 cursor-pointer text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider hover:text-emerald-400 transition-colors"
+          >
+            <span className={`w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ${legendOpen ? '' : 'mr-0.5'}`} />
+            Legend
+            {legendOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+          </button>
 
-          <div className="flex flex-col gap-1.5 pt-0.5">
-            <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
-              <span className="w-4 h-1 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-              <span className="text-emerald-300 font-semibold">Direct Fact (Verified)</span>
-            </div>
-            <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
-              <span className="w-4 h-1 border-t-2 border-dashed border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
-              <span className="text-amber-300 font-semibold">Analytical Lead (Potential)</span>
-            </div>
-            <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
-              <span className="w-4 h-1 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
-              <span className="text-purple-300 font-semibold">Demo / Seed Link</span>
-            </div>
-          </div>
-          
-          <div className="border-t border-[#1E293B] pt-2 mt-0.5 flex flex-col gap-1">
-            <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">
-              Entity Clearance
-            </span>
-            <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
-              <span className="text-slate-200">Suspect</span>
-              <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_6px_rgba(245,158,11,0.8)] ml-1" />
-              <span className="text-slate-200">Offender</span>
-            </div>
-          </div>
+          {legendOpen && (
+            <>
+              <div className="flex flex-col gap-1.5 pt-2 mt-1">
+                <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
+                  <span className="w-4 h-1 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                  <span className="text-emerald-300 font-semibold text-[9px]">Direct Fact (Verified)</span>
+                </div>
+                <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
+                  <span className="w-4 h-1 border-t-2 border-dashed border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+                  <span className="text-amber-300 font-semibold text-[9px]">Analytical Lead (Potential)</span>
+                </div>
+                <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
+                  <span className="w-4 h-1 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                  <span className="text-purple-300 font-semibold text-[9px]">Demo / Seed Link</span>
+                </div>
+              </div>
+              
+              <div className="border-t border-[#1E293B] pt-2 mt-2 flex flex-col gap-1">
+                <span className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider">Entity Clearance</span>
+                <div className="flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                  <span className="text-slate-200 text-[9px]">Suspect</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_6px_rgba(245,158,11,0.8)] ml-1" />
+                  <span className="text-slate-200 text-[9px]">Offender</span>
+                </div>
+              </div>
 
-          {/* Graph Stats */}
-          <div className="border-t border-[#1E293B] pt-2 mt-0.5 flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
-            <span className="text-[8px] text-[#94A3B8]">
-              {currentGraphData.nodes.length} nodes, {currentGraphData.links.length} edges
-            </span>
-          </div>
+              <div className="border-t border-[#1E293B] pt-2 mt-2 flex items-center gap-2 bg-[#0F172A] px-2 py-1 rounded border border-[#1E293B]">
+                <span className="text-[8px] text-[#94A3B8]">
+                  {currentGraphData.nodes.length} nodes, {currentGraphData.links.length} edges
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Floating Zoom Controls */}
+        {/* Floating Zoom Controls (Issue #189: added center-selected button) */}
         <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-1.5 pointer-events-auto">
           <button
             onClick={() => {
@@ -322,12 +431,21 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
             <ZoomOut className="w-4 h-4" />
           </button>
           <button
-            onClick={() => fgRef.current?.zoomToFit(1200)}
+            onClick={() => fgRef.current?.zoomToFit(400, 30)}
             title="Fit all nodes in view"
             className="p-2 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-border-color hover:border-[var(--accent-blue)]/30 rounded text-[var(--text-secondary)] cursor-pointer"
           >
             <Maximize2 className="w-4 h-4" />
           </button>
+          {selectedNodeId && (
+            <button
+              onClick={handleCenterSelected}
+              title="Center on selected node"
+              className="p-2 bg-[var(--accent-blue)]/15 hover:bg-[var(--accent-blue)]/25 border border-[var(--accent-blue)]/30 hover:border-[var(--accent-blue)]/50 rounded text-[var(--accent-blue)] cursor-pointer"
+            >
+              <Crosshair className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -362,16 +480,23 @@ const GraphFallback: React.FC<GraphFallbackProps> = ({ onNodeSelect, onLinkSelec
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  // Deterministic circular layout computed from the actual node list
+  // Deterministic multi-ring layout computed from the actual node list
   const layout = useMemo(() => {
     const nodes = graphData?.nodes ?? [];
     const coords: Record<string, { x: number; y: number }> = {};
     const cx = 400;
     const cy = 250;
+    const nodesPerRing = 8;
     nodes.forEach((node, index) => {
-      const angle = (index / Math.max(nodes.length, 1)) * Math.PI * 2;
-      const radius = nodes.length <= 3 ? 90 : 185;
-      coords[node.id] = { x: cx + radius * Math.cos(angle), y: cy + radius * 0.72 * Math.sin(angle) };
+      const ring = Math.floor(index / nodesPerRing);
+      const posInRing = index % nodesPerRing;
+      const ringSize = Math.min(nodesPerRing, nodes.length - ring * nodesPerRing);
+      const radius = 100 + ring * 120;
+      const angle = (posInRing / ringSize) * Math.PI * 2 - Math.PI / 2;
+      coords[node.id] = {
+        x: cx + radius * Math.cos(angle),
+        y: cy + radius * 0.78 * Math.sin(angle),
+      };
     });
     return { nodes, links: graphData?.links ?? [], coords };
   }, [graphData]);

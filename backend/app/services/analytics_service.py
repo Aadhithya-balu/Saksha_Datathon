@@ -24,6 +24,36 @@ from app.models.location import Location
 SEVERITY_WEIGHT = {"low": 0.8, "medium": 1.0, "high": 1.25, None: 1.0}
 
 
+def derive_data_provenance(records: list) -> str:
+    """Derive data provenance from actual source records.
+
+    Returns one of: 'LIVE_DB', 'DEMO', 'LIVE_DB + DEMO', 'UNKNOWN'
+    based on the dataset_provenance column of the source records.
+    """
+    if not records:
+        return 'UNKNOWN'
+    provenance_set = set()
+    for record in records:
+        prov = getattr(record, 'dataset_provenance', None) or 'unknown'
+        provenance_set.add(prov.lower().strip())
+    if provenance_set <= {'live'}:
+        return 'LIVE_DB'
+    if provenance_set <= {'demo'}:
+        return 'DEMO'
+    if 'live' in provenance_set and 'demo' in provenance_set:
+        return 'LIVE_DB + DEMO'
+    if 'unknown' in provenance_set:
+        if len(provenance_set) == 1:
+            return 'UNKNOWN'
+        others = provenance_set - {'unknown'}
+        if others <= {'live'}:
+            return 'LIVE_DB'
+        if others <= {'demo'}:
+            return 'DEMO'
+        return 'MIXED'
+    return 'MIXED'
+
+
 def recent_activity(db: Session, days: int = 0) -> dict[str, Any]:
     """Time-aware activity summary so the chat can answer 'any records today?'.
 
@@ -186,9 +216,9 @@ def risk_scores(db: Session, district_id: str | None = None, window: str = "next
     for item in aggregates:
         open_ratio = item.open_cases / item.total if item.total else 0
         severity_ratio = item.high_severity / item.total if item.total else 0
-        volume_component = (item.total / max_total) * 40
-        recency_component = (item.recent_cases / max_recent) * 25
-        score = min(100, round(20 + volume_component + recency_component + open_ratio * 10 + severity_ratio * 5))
+        volume_component = (item.total / max_total) * 50
+        recency_component = (item.recent_cases / max_recent) * 30 if max_recent > 0 else 0
+        score = min(100, round(volume_component + recency_component + open_ratio * 12 + severity_ratio * 8))
         predictions.append(
             {
                 "district": item.district,
@@ -363,6 +393,9 @@ def hotspots(db: Session, district_id: str | None = None, hour: int | None = Non
         query = query.filter(Location.district == district_id)
     locations = query.options(joinedload(Location.crimes).joinedload(CrimeCase.category)).all()
 
+    all_crimes = [case for loc in locations for case in loc.crimes]
+    provenance = derive_data_provenance(all_crimes)
+
     prepared: list[dict[str, Any]] = []
     incident_lat: list[float] = []
     incident_lng: list[float] = []
@@ -406,7 +439,7 @@ def hotspots(db: Session, district_id: str | None = None, hour: int | None = Non
             "hour": hour,
             "hotspots": [],
             "analysis_mode": "STATISTICAL",
-            "data_provenance": "LIVE_DB",
+            "data_provenance": provenance,
             "statistics": {
                 "method": "getis_ord_gi_star+kde+morans_i",
                 "locations_assessed": 0,
@@ -442,8 +475,11 @@ def hotspots(db: Session, district_id: str | None = None, hour: int | None = Non
         # density, raw volume share, and recency — deterministic and explainable.
         gi_component = float(np.clip(z / 3.0, -1.0, 1.5)) / 1.5 * 100.0
         volume_component = counts[idx] / max_count * 100.0
-        recency_component = min(100.0, item["recent_count"] * 12.5)
-        score = int(round(0.40 * max(gi_component, 0.0) + 0.30 * kde_pct[idx] + 0.15 * volume_component + 0.15 * recency_component))
+        # Scale recency proportionally to total incidents at this location
+        total_at_location = max(item.get("day_total", item["count"]), 1)
+        recency_pct = (item["recent_count"] / total_at_location) * 100.0
+        recency_component = min(100.0, recency_pct)
+        score = int(round(0.35 * max(gi_component, 0.0) + 0.25 * kde_pct[idx] + 0.25 * volume_component + 0.15 * recency_component))
         score = int(np.clip(score, 0, 100))
         rows.append(
             {
@@ -470,7 +506,7 @@ def hotspots(db: Session, district_id: str | None = None, hour: int | None = Non
         # Authoritative status metadata (issue 9): hotspot scores are a
         # statistical analysis of recorded historical incidents, not ML output.
         "analysis_mode": "STATISTICAL",
-        "data_provenance": "LIVE_DB",
+        "data_provenance": provenance,
         "statistics": statistics,
     }
 

@@ -1,21 +1,54 @@
 # Saksha AI Chatbot Architecture Redesign
 
-## Current State Summary
-
-The existing chatbot has critical gaps:
-- **No LLM** -- answers are raw prompt template strings, never sent to an LLM
-- **Hash-based vector store** -- SHA-256 slot hashing (exact word overlap only, no semantic understanding)
-- **3 analytics documents only** -- the route handler builds just 3 docs (dashboard summary, districts, categories), ignoring the richer 150+ doc `rag_service.py`
-- **No intent routing** -- trivial keyword matching (4 categories)
-- **No entity extraction** -- token splitting
-- **No conversation memory** -- `session_id` accepted but never used
-- **No backend service integration** -- no Neo4j graph queries, no ML predictions, no FIR/criminal/evidence lookups
-- **Dead code** -- `chat_service.py` (with NDJSON streaming) is never called from any route
-- **Streaming not consumed** -- frontend calls `/query` (synchronous), ignores NDJSON
+> **Latest session (Aug 2026) — conversational quality, interactivity, and reliability.**
+> These enhancements build on the fully-implemented architecture below and make the
+> assistant natural, configurable, and dependable even when no external LLM is reachable.
+>
+> ### What changed in this session
+>
+> 1. **Conversational local fallback** (`backend/app/ai/chat/llm_generator.py`)
+>    - The `_generate_local` path now *answers the actual question* instead of emitting a
+>      stiff, rote template. It detects and handles:
+>      - **Small talk**: greetings, "thanks for the help", who-are-you, capability questions
+>        (`_conversation_reply()`).
+>      - **"How many…" counts**: returns a concrete number, subject-kind aware, with correct
+>        singular/plural grammar (`_count_answer()` / `_count_subject()`).
+>      - **Specific field lookups**: status / progress / date / location for a named record
+>        (`_field_answer()`).
+>      - **Entity profiles**: a meaningful profile only for explicit entity queries
+>        (id / name / "about X"), not blanket statistics (`_entity_profile_answer()` +
+>        `_mentions_specific_entity()`).
+>      - **Record parsing**: leading bare identifiers (e.g. `CR-2026-MYS-001`) are captured
+>        under `_id`; records are classified case/fir/criminal/victim/officer correctly so a
+>        case with an FIR field is never misreported as a FIR (`_parse_record()`,
+>        `_record_ident()`, `_record_kind()`).
+>    - List-style answers get a natural lead-in ("Here are the case records I found (N)")
+>      via `_dedupe_lines()` / `_dedupe_records()` / `_list_intro()`.
+>
+>    Verified examples: "status of case CR-2026-MYS-001" → direct status; "Tell me about
+>    criminal Ramu Swamy" → profile; "How many cases in Bengaluru" → **1**; "Get crime
+>    statistics" → breakdown; "hello" / "thanks" → conversational reply.
+>
+> 2. **Configurable LLM generation** (`backend/app/core/config.py`)
+>    - New settings `LLM_CHAT_TEMPERATURE` (default `0.3`) and `LLM_CHAT_MAX_TOKENS`
+>      (default `2048`), both applied to every provider payload and no longer hard-coded.
+>    - Added to `backend/.env.example` and `backend/.env`.
+>
+> 3. **FAB (Global AI Assistant) reliability** (`datathon/src/components/ai/GlobalAIAssistant.tsx`)
+>    - Now passes `{ conversationId, persist: true }` to the stream and captures the
+>      `conversation_id` from `meta` chunks, so the floating panel keeps conversation
+>      continuity (it no longer only answers after pressing a separate chat button).
+>    - Handles `notice` chunks and shows a clear "I couldn't reach the assistant…" error if
+>      the stream fails, plus an "On-device intelligence" engine tag when the local template
+>      fallback is used.
+>
+> 4. **Test coverage** (`backend/tests/test_ai_chat_conversational.py`)
+>    - 8 tests covering field status, person profile, case-vs-FIR classification, count=1,
+>      greeting, gratitude, statistics breakdown, and empty-DB refusal.
 
 ---
 
-## Proposed Architecture
+## Current Architecture
 
 ```
 User Query
@@ -208,6 +241,7 @@ Calls an external LLM API. Supports:
 The generator:
 - Sends system prompt + context + conversation history + user query
 - Supports streaming (yields chunks)
+- Uses configurable `LLM_CHAT_TEMPERATURE` and `LLM_CHAT_MAX_TOKENS` from `config.py` for every provider payload
 - System prompt enforces: "Answer ONLY using supplied context. Never fabricate."
 
 **Critical design decision**: Since this is a competition project that may not have API keys, the local fallback must produce high-quality responses by intelligently formatting the retrieved backend data into readable answers.

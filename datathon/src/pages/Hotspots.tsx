@@ -18,9 +18,24 @@ import {
   type DistrictComparisonPoint, type HotspotPoint, type RiskScoresResponse, type RedZone
 } from '../services/api';
 import { getIntelligenceStatus } from '../services/intelligenceStatus';
+import { useDataMode } from '../hooks/useDataMode';
 import type { DistrictInfo } from '../store/mapStore';
 import { PageHeader } from '../components/ui/PageHeader';
 import { PageSkeleton } from '../components/ui/Skeleton';
+
+// Static seed records kept ONLY for offline resilience (issue 9 §21). They are
+// never presented as live intelligence — any view using them carries an
+// explicit DEMO DATA status chip.
+const BASELINE_HOTSPOTS: HotspotPoint[] = [
+  { district_id: 'Ballari', name: 'City Police Station', lat: 15.14, lng: 76.91, score: 82, category: 'Domestic Violence', trend: 'up' },
+  { district_id: 'Bengaluru Urban', name: 'Whitefield Police Station', lat: 12.9698, lng: 77.75, score: 78, category: 'Cyber Crime & Online Fraud', trend: 'stable' },
+  { district_id: 'Bengaluru Urban', name: 'Jayanagar Police Station', lat: 12.926, lng: 77.583, score: 65, category: 'Narcotics Smuggling Services', trend: 'down' },
+  { district_id: 'Mysuru', name: 'Devaraja Police Station', lat: 12.305, lng: 76.648, score: 58, category: 'Theft & Burglaries', trend: 'up' },
+  { district_id: 'Dakshina Kannada', name: 'Surathkal Police Station', lat: 12.98, lng: 74.86, score: 52, category: 'Cyber Crime & Online Fraud', trend: 'stable' },
+  { district_id: 'Belagavi', name: 'Khade Bazar Police Station', lat: 15.85, lng: 74.51, score: 45, category: 'Smuggling & Excise Violations', trend: 'down' },
+  { district_id: 'Kalaburagi', name: 'Brahmapur Police Station', lat: 17.33, lng: 76.84, score: 38, category: 'Property Disputes', trend: 'up' },
+  { district_id: 'Hassan', name: 'Hassan City Police Station', lat: 13.01, lng: 76.10, score: 28, category: 'Domestic Violence', trend: 'down' },
+];
 
 type HotspotSource = 'backend' | 'stations' | 'demo';
 
@@ -28,12 +43,14 @@ export const Hotspots: React.FC = () => {
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
   const { selectedDistrict, selectedStation, setSelectedDistrict, setSelectedStation, setTimeOfDay, timeOfDay } = useMapStore();
+  const { isProduction } = useDataMode();
 
   const [hotspots, setHotspots] = useState<HotspotPoint[]>([]);
   // Provenance of the currently displayed hotspot list — reset on every load
   // so a stale LIVE badge can never attach to new data (issue 9 §23/§24).
   const [hotspotSource, setHotspotSource] = useState<HotspotSource | null>(null);
   const [hotspotAnalysisMode, setHotspotAnalysisMode] = useState<string | null>(null);
+  const [hotspotDataProvenance, setHotspotDataProvenance] = useState<string | null>(null);
   const [districtMetrics, setDistrictMetrics] = useState<Record<string, DistrictInfo>>({});
   const [emergingTrends, setEmergingTrends] = useState<EmergingTrendItem[]>([]);
   const [recentCases, setRecentCases] = useState<any[]>([]);
@@ -52,6 +69,7 @@ export const Hotspots: React.FC = () => {
     // Clear stale status before the new request resolves (issue 9 §24).
     setHotspotSource(null);
     setHotspotAnalysisMode(null);
+    setHotspotDataProvenance(null);
 
     // Check if navigating from Anomaly "Locate on Map"
     const override = sessionStorage.getItem('selected_district_override');
@@ -126,20 +144,24 @@ export const Hotspots: React.FC = () => {
     void getEmergingTrends().then(trendsData => {
       if (isMounted && Array.isArray(trendsData)) {
         setEmergingTrends(trendsData);
-        // Automatically dispatch spike notifications for significant surging categories (>10%)
-        const surges = trendsData.filter((t: any) => t.direction === 'increasing' && t.change_percentage > 10);
-        if (surges.length > 0) {
-          surges.slice(0, 2).forEach((surge: any) => {
-            void useNotificationStore.getState().sendNotification({
-              subject: `CRIME SURGE ALERT: ${surge.category}`,
-              title: `Trend Spike in ${surge.category}`,
-              message: `Telemetry detected a +${surge.change_percentage}% spike (${surge.recent_count} recent vs ${surge.historical_count} baseline). Red-zone map monitoring activated.`,
-              category: 'SPIKE_ALERT',
-              priority: 'urgent',
-              severity: 'critical',
-              is_broadcast: true,
-            }).catch(() => undefined);
-          });
+        // Dispatch spike notifications once per session (dedup via sessionStorage)
+        const alreadySent = sessionStorage.getItem('spike_notifications_sent');
+        if (!alreadySent) {
+          const surges = trendsData.filter((t: any) => t.direction === 'increasing' && t.change_percentage > 10);
+          if (surges.length > 0) {
+            sessionStorage.setItem('spike_notifications_sent', '1');
+            surges.slice(0, 2).forEach((surge: any) => {
+              void useNotificationStore.getState().sendNotification({
+                subject: `CRIME SURGE ALERT: ${surge.category}`,
+                title: `Trend Spike in ${surge.category}`,
+                message: `Telemetry detected a +${surge.change_percentage}% spike (${surge.recent_count} recent vs ${surge.historical_count} baseline). Red-zone map monitoring activated.`,
+                category: 'SPIKE_ALERT',
+                priority: 'urgent',
+                severity: 'critical',
+                is_broadcast: true,
+              }).catch(() => undefined);
+            });
+          }
         }
       }
     }).catch(() => undefined);
@@ -201,7 +223,8 @@ export const Hotspots: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isProduction]);
 
   // Filtered hotspots by category if specified
   const filteredHotspots = useMemo(() => {
@@ -222,7 +245,7 @@ export const Hotspots: React.FC = () => {
     if (hotspotSource === 'backend') {
       return getIntelligenceStatus({
         analysisMode: hotspotAnalysisMode ?? 'STATISTICAL',
-        dataProvenance: 'LIVE_DB',
+        dataProvenance: hotspotDataProvenance ?? 'UNKNOWN',
         historicalOnly: true,
       });
     }
@@ -230,7 +253,7 @@ export const Hotspots: React.FC = () => {
       return getIntelligenceStatus({ dataProvenance: 'LIVE_DB', historicalOnly: true });
     }
     return getIntelligenceStatus({ predictionMode: 'FALLBACK', dataProvenance: 'DEMO' });
-  }, [loading, hotspotSource, hotspotAnalysisMode]);
+  }, [loading, hotspotSource, hotspotAnalysisMode, hotspotDataProvenance]);
 
   // Top telemetry cards: Show active police station & district stations if selected, otherwise statewide top 3
   const displayedTopHotspots = useMemo(() => {
@@ -465,7 +488,7 @@ export const Hotspots: React.FC = () => {
                 )}
               </div>
               <span
-                className={`sk-chip shrink-0 ${hotspot.score >= 80 ? 'sk-chip-error' : hotspot.score >= 70 ? 'sk-chip-warning' : 'sk-chip-success'}`}
+                className={`sk-chip shrink-0 ${hotspot.score >= 75 ? 'sk-chip-error' : hotspot.score >= 55 ? 'sk-chip-warning' : 'sk-chip-success'}`}
               >
                 {hotspot.score}%
               </span>

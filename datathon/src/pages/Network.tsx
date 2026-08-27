@@ -68,6 +68,7 @@ export const Network: React.FC = () => {
   const [searching, setSearching] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [focusedEntity, setFocusedEntity] = useState<NetworkSearchResult | null>(null);
+  const [focusing, setFocusing] = useState(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -126,6 +127,26 @@ export const Network: React.FC = () => {
   }, [user?.badgeId, viewScope, provenanceFilter, excludeDemo, graphDepth, focusedEntity, fetchFocusedGraph, applyResponse]);
 
   useEffect(() => { return fetchGraph(); }, [fetchGraph]);
+
+  const fetchFocusedGraph = useCallback(async (entity: NetworkSearchResult, depth: number) => {
+    setLoadError(null);
+    setFocusing(true);
+    try {
+      let response;
+      if (entity.type === 'criminal' || entity.type === 'victim' || entity.type === 'officer') {
+        response = await getNetworkPerson(entity.id, depth, provenanceFilter === 'ALL' ? undefined : provenanceFilter, excludeDemo);
+      } else if (entity.type === 'case') {
+        response = await getNetworkCase(entity.id, provenanceFilter === 'ALL' ? undefined : provenanceFilter, excludeDemo);
+      } else {
+        response = await getFullNetworkGraph(undefined, undefined, provenanceFilter === 'ALL' ? undefined : provenanceFilter, excludeDemo);
+      }
+      applyResponse(response);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Failed to load focused graph');
+    } finally {
+      setFocusing(false);
+    }
+  }, [provenanceFilter, excludeDemo, applyResponse]);
 
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
@@ -281,7 +302,7 @@ export const Network: React.FC = () => {
         <div className="flex items-center gap-1.5">
           {focusedEntity && (
             <div className="flex items-center gap-1.5 px-2 py-1 rounded border border-[var(--accent-blue)]/30 bg-[var(--accent-blue)]/10 text-[9px] font-mono text-[var(--accent-blue)]">
-              <Focus className="w-3 h-3" />
+              {focusing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Focus className="w-3 h-3" />}
               <span className="truncate max-w-[100px]">{focusedEntity.name}</span>
               <span className="text-[var(--text-muted)]">depth:{graphDepth}</span>
             </div>
@@ -392,7 +413,53 @@ export const Network: React.FC = () => {
       {/* Main Graph Grid */}
       <div className="flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-4" style={{ minHeight: '500px' }}>
         <div className="lg:col-span-8" style={{ minHeight: '500px' }}>
-          {graphData && graphData.nodes.length > 0 ? (
+          {loadError && !graphData ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center max-w-md">
+                <AlertTriangle className="w-10 h-10 text-[var(--accent-coral)] mx-auto mb-3" />
+                <p className="text-sm text-[var(--text-primary)] font-semibold mb-1">
+                  Network Intelligence Unavailable
+                </p>
+                <p className="text-xs text-[var(--text-secondary)] mb-3">{loadError}</p>
+                <button onClick={() => fetchGraph()} className="px-4 py-1.5 bg-[var(--accent-blue)] text-white text-xs rounded-btn hover:opacity-90 transition-opacity">
+                  Retry
+                </button>
+              </div>
+            </div>
+          ) : graphData && graphData.nodes.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center max-w-sm">
+                <AlertTriangle className="w-8 h-8 text-[var(--accent-amber)] mx-auto mb-2" />
+                <p className="text-xs text-[var(--text-primary)] font-semibold mb-1">
+                  {focusedEntity ? `No relationships found for "${focusedEntity.name}"` : 'No network records available'}
+                </p>
+                <p className="text-[10px] text-[var(--text-muted)] mb-3">
+                  {focusedEntity
+                    ? 'Try expanding the network depth or searching for a different entity.'
+                    : 'Add linked FIR/case data or sync PostgreSQL into Neo4j to build the relationship graph.'
+                  }
+                </p>
+                {focusedEntity ? (
+                  <div className="flex gap-2 justify-center">
+                    {graphDepth < 4 && (
+                      <button onClick={handleExpandNetwork}
+                        className="px-3 py-1.5 bg-[var(--accent-teal)]/15 text-[var(--accent-teal)] text-[10px] rounded-btn hover:bg-[var(--accent-teal)]/25 transition-colors border border-[var(--accent-teal)]/30">
+                        Expand Depth
+                      </button>
+                    )}
+                    <button onClick={handleResetView}
+                      className="px-3 py-1.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-[10px] rounded-btn hover:text-[var(--text-primary)] transition-colors border border-[var(--border-muted)]">
+                      Full Graph
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => fetchGraph()} className="px-4 py-1.5 bg-[var(--accent-blue)] text-white text-[10px] rounded-btn hover:opacity-90 transition-opacity">
+                    Load Full Graph
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : graphData ? (
             <CriminalGraph3D onNodeSelect={handleNodeSelect} onLinkSelect={handleLinkSelect} graphData={graphData} />
           ) : graphData && graphData.nodes.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-8 bg-[var(--bg-surface)] rounded-card border border-border-color text-center font-mono select-none">
@@ -448,15 +515,24 @@ export const Network: React.FC = () => {
               <div className="space-y-2 text-[10px] text-[var(--text-secondary)]">
                 <div><span className="text-[var(--text-muted)]">Type:</span> <span className="uppercase">{focusedEntity.type}</span></div>
                 <div><span className="text-[var(--text-muted)]">Detail:</span> {focusedEntity.detail}</div>
-                <div><span className="text-[var(--text-muted)]">Graph Depth:</span> {graphDepth} / 4</div>
-                <div><span className="text-[var(--text-muted)]">Nodes:</span> {graphData?.nodes.length ?? 0}</div>
-                <div><span className="text-[var(--text-muted)]">Edges:</span> {graphData?.links.length ?? 0}</div>
+                {focusedEntity.status && (
+                  <div><span className="text-[var(--text-muted)]">Status:</span> <span className="capitalize">{focusedEntity.status.replace(/_/g, ' ')}</span></div>
+                )}
+                {focusedEntity.risk_score !== undefined && (
+                  <div><span className="text-[var(--text-muted)]">Risk Score:</span> <span style={{ color: focusedEntity.risk_score >= 80 ? 'var(--accent-coral)' : focusedEntity.risk_score >= 50 ? 'var(--accent-amber)' : 'var(--accent-teal)' }}>{focusedEntity.risk_score.toFixed(1)}%</span></div>
+                )}
+                <div className="pt-1 border-t border-[var(--border-color)] space-y-1">
+                  <div><span className="text-[var(--text-muted)]">Graph Depth:</span> {graphDepth} / 4</div>
+                  <div><span className="text-[var(--text-muted)]">Nodes:</span> {graphData?.nodes.length ?? 0}</div>
+                  <div><span className="text-[var(--text-muted)]">Edges:</span> {graphData?.links.length ?? 0}</div>
+                </div>
               </div>
               <div className="mt-4 space-y-2">
                 {graphDepth < 4 && (
                   <button onClick={handleExpandNetwork}
-                    className="w-full px-3 py-2 rounded border border-[var(--accent-teal)]/30 bg-[var(--accent-teal)]/10 text-[10px] font-bold text-[var(--accent-teal)] hover:bg-[var(--accent-teal)]/20 transition-colors uppercase">
-                    Expand Network (depth {graphDepth + 1})
+                    disabled={focusing}
+                    className="w-full px-3 py-2 rounded border border-[var(--accent-teal)]/30 bg-[var(--accent-teal)]/10 text-[10px] font-bold text-[var(--accent-teal)] hover:bg-[var(--accent-teal)]/20 transition-colors uppercase disabled:opacity-50">
+                    {focusing ? 'Loading...' : `Expand Network (depth ${graphDepth + 1})`}
                   </button>
                 )}
                 <button onClick={handleResetView}

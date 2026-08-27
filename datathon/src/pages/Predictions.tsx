@@ -37,6 +37,7 @@ export const Predictions: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrainState, setRetrainState] = useState<'idle' | 'running' | 'ok' | 'failed'>('idle');
+  const [sectionsLoaded, setSectionsLoaded] = useState({ risk: false, seasons: false, trends: false });
 
   // Sub-service partial error tracking
   const [riskScoresError, setRiskScoresError] = useState<string | null>(null);
@@ -101,7 +102,78 @@ export const Predictions: React.FC = () => {
       if (isMounted) setLoading(false);
     });
 
-    return () => { isMounted = false; };
+    // 1. Load risk scores + anomalies (primary data) — modelInfo is embedded in risk response
+    void getRiskScores()
+      .then((riskResponse) => {
+        if (!isMounted) return;
+        setRiskScores(riskResponse);
+        setSectionsLoaded(prev => ({ ...prev, risk: true }));
+        // Derive modelInfo from the risk response instead of a separate /model-info call
+        if (riskResponse.prediction_mode || riskResponse.model_version) {
+          setModelInfo(prev => prev ?? {
+            model_name: 'SAKSHA District Risk & Forecast',
+            risk_model_loaded: riskResponse.risk_model_loaded ?? false,
+            forecast_model_loaded: false,
+            version: riskResponse.model_version ?? 'unknown',
+            risk_algorithm: 'RandomForest',
+            forecast_algorithm: 'XGBoost',
+            trained_on: null,
+            training_rows: 0,
+            risk_metrics: {},
+            forecast_metrics: {},
+          });
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setError('Failed to load prediction data. Please try again.');
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    // 2. Load anomalies in parallel (fast endpoint)
+    void getAnomalies()
+      .then((anomalyResponse) => {
+        if (isMounted) setAnomalies(anomalyResponse.anomalies);
+      })
+      .catch(() => undefined);
+
+    // 3. Load seasons (independent, progressive)
+    void getSeasonBreakdown()
+      .then((seasonResponse) => {
+        if (isMounted) {
+          setSeasons(seasonResponse.seasons);
+          setSectionsLoaded(prev => ({ ...prev, seasons: true }));
+        }
+      })
+      .catch(() => {
+        if (isMounted) setSectionsLoaded(prev => ({ ...prev, seasons: true }));
+      });
+
+    // 4. Load emerging trends (non-blocking)
+    void getEmergingTrends()
+      .then((typologyResponse) => {
+        if (isMounted) {
+          setTypologies(typologyResponse);
+          setSectionsLoaded(prev => ({ ...prev, trends: true }));
+        }
+      })
+      .catch(() => {
+        if (isMounted) setSectionsLoaded(prev => ({ ...prev, trends: true }));
+      });
+
+    // 5. Load model info separately only if risk scores didn't provide it
+    void getModelInfo()
+      .then((modelResponse) => {
+        if (isMounted) setModelInfo(modelResponse);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -129,10 +201,9 @@ export const Predictions: React.FC = () => {
     try {
       await trainRiskModels();
       setRetrainState('ok');
-      // Refresh status metadata so a stale LIVE ML badge never survives (issue 9 §24).
-      const [riskResponse, modelResponse] = await Promise.all([getRiskScores(), getModelInfo()]);
+      // Refresh only risk scores (modelInfo is derived from it)
+      const riskResponse = await getRiskScores();
       setRiskScores(riskResponse);
-      setModelInfo(modelResponse);
     } catch {
       setRetrainState('failed');
     }
@@ -234,7 +305,19 @@ export const Predictions: React.FC = () => {
 
       {/* WEATHER & SEASONAL CORRELATION */}
       <div className="w-full">
-        <WeatherCorrelationChart seasons={seasons} />
+        {sectionsLoaded.seasons ? (
+          seasons.length > 0 ? (
+            <WeatherCorrelationChart seasons={seasons} />
+          ) : (
+            <div className="text-center py-4 text-[var(--text-muted)] text-[10px] font-mono">
+              No seasonal breakdown data available for this period.
+            </div>
+          )
+        ) : (
+          <div className="bg-secondary-bg/25 border border-border-color p-8 rounded-card flex items-center justify-center">
+            <span className="text-[10px] font-mono text-[var(--text-muted)] animate-pulse">Loading seasonal data...</span>
+          </div>
+        )}
       </div>
 
       {/* SEASONAL CRIME BREAKDOWN */}
@@ -247,24 +330,30 @@ export const Predictions: React.FC = () => {
               withInfo={false}
             />
           </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {seasons.map((s) => (
-              <div key={s.season} className={`p-4 border rounded-card flex flex-col gap-2 ${SEASON_COLORS[s.season] || 'border-border-color'}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase font-mono">{s.season}</span>
-                  {SEASON_ICONS[s.season]}
+          {seasons.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {seasons.map((s) => (
+                <div key={s.season} className={`p-4 border rounded-card flex flex-col gap-2 ${SEASON_COLORS[s.season] || 'border-border-color'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase font-mono">{s.season}</span>
+                    {SEASON_ICONS[s.season]}
+                  </div>
+                  <span className="text-xl font-bold font-mono">{s.count}</span>
+                  <div className="flex items-center justify-between text-[9px] font-mono">
+                    <span>{s.percentage}% of total</span>
+                    {s.top_district && <span className="truncate max-w-[100px]">Peak: {s.top_district}</span>}
+                  </div>
+                  <div className="w-full bg-black/20 h-1.5 rounded-full overflow-hidden mt-1">
+                    <div className="h-full rounded-full bg-current opacity-60" style={{ width: `${s.percentage}%` }} />
+                  </div>
                 </div>
-                <span className="text-xl font-bold font-mono">{s.count}</span>
-                <div className="flex items-center justify-between text-[9px] font-mono">
-                  <span>{s.percentage}% of total</span>
-                  {s.top_district && <span className="truncate max-w-[100px]">Peak: {s.top_district}</span>}
-                </div>
-                <div className="w-full bg-black/20 h-1.5 rounded-full overflow-hidden mt-1">
-                  <div className="h-full rounded-full bg-current opacity-60" style={{ width: `${s.percentage}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-[var(--text-muted)] text-[10px] font-mono">
+              No seasonal breakdown data available for this period.
+            </div>
+          )}
         </div>
       ) : seasonsError ? (
         <div className="bg-secondary-bg/25 border border-amber-500/30 p-4 rounded-card text-center font-mono text-[10px] text-[var(--text-muted)] flex items-center justify-between">
@@ -290,26 +379,32 @@ export const Predictions: React.FC = () => {
               withInfo={false}
             />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {typologies.map((t) => {
-              const meta = TREND_META[t.direction] ?? TREND_META.stable;
-              return (
-                <div key={t.category} className={`p-3.5 border rounded-card flex flex-col gap-2 ${meta.cls}`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10.5px] font-bold uppercase font-mono truncate max-w-[75%]" title={t.category}>{t.category}</span>
-                    {meta.icon}
+          {typologies.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {typologies.map((t) => {
+                const meta = TREND_META[t.direction] ?? TREND_META.stable;
+                return (
+                  <div key={t.category} className={`p-3.5 border rounded-card flex flex-col gap-2 ${meta.cls}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10.5px] font-bold uppercase font-mono truncate max-w-[75%]" title={t.category}>{t.category}</span>
+                      {meta.icon}
+                    </div>
+                    <span className="text-lg font-bold font-mono">
+                      {t.change_percentage > 0 ? '+' : ''}{t.change_percentage}%
+                    </span>
+                    <div className="text-[9px] font-mono flex items-center justify-between opacity-80">
+                      <span>Recent: {t.recent_count}</span>
+                      <span>Prior: {t.historical_count}</span>
+                    </div>
                   </div>
-                  <span className="text-lg font-bold font-mono">
-                    {t.change_percentage > 0 ? '+' : ''}{t.change_percentage}%
-                  </span>
-                  <div className="text-[9px] font-mono flex items-center justify-between opacity-80">
-                    <span>Recent: {t.recent_count}</span>
-                    <span>Prior: {t.historical_count}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-[var(--text-muted)] text-[10px] font-mono">
+              No trend data available for this period.
+            </div>
+          )}
         </div>
       ) : typologiesError ? (
         <div className="bg-secondary-bg/25 border border-amber-500/30 p-4 rounded-card text-center font-mono text-[10px] text-[var(--text-muted)] flex items-center justify-between">

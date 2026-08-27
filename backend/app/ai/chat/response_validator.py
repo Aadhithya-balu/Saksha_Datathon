@@ -38,6 +38,14 @@ _UNSOURCED_NAMES_DISCLAIMER = (
     "to retrieved database records and may be unreliable."
 )
 
+_UNSOURCED_RELATIONSHIPS_DISCLAIMER = (
+    " [Note: Some relationship claims could not be verified against retrieved records.]"
+)
+
+_UNSOURCED_LOCATIONS_DISCLAIMER = (
+    " [Note: Some location references could not be verified against retrieved records.]"
+)
+
 
 @dataclass
 class ProvenanceMetadata:
@@ -114,6 +122,40 @@ class ResponseValidator:
         if unverified_names and known_names:
             disclaimer_parts.append(_UNSOURCED_NAMES_DISCLAIMER)
 
+        # Verify relationship claims
+        response_relationships = self._extract_response_relationships(response)
+        known_relationships = set()
+        for r in results:
+            if r.records:
+                for rec in r.records:
+                    if 'type' in rec:
+                        known_relationships.add(rec['type'].lower())
+        if response_relationships and known_relationships:
+            unverified_rels = [
+                rel for rel in response_relationships
+                if not any(rel.lower() in kr or kr in rel.lower() for kr in known_relationships)
+            ]
+            if unverified_rels:
+                disclaimer_parts.append(_UNSOURCED_RELATIONSHIPS_DISCLAIMER)
+
+        # Verify location claims
+        response_locations = self._extract_response_locations(response)
+        known_locations = set()
+        for r in results:
+            if r.records:
+                for rec in r.records:
+                    if 'district' in rec and rec['district']:
+                        known_locations.add(rec['district'].lower())
+                    if 'station' in rec and rec['station']:
+                        known_locations.add(rec['station'].lower())
+        if response_locations and known_locations:
+            unverified_locs = [
+                loc for loc in response_locations
+                if not any(loc.lower() in kl or kl in loc.lower() for kl in known_locations)
+            ]
+            if unverified_locs:
+                disclaimer_parts.append(_UNSOURCED_LOCATIONS_DISCLAIMER)
+
         if disclaimer_parts:
             response = response.rstrip() + "".join(disclaimer_parts)
 
@@ -139,6 +181,7 @@ class ResponseValidator:
         response_ids = self._extract_response_ids(response)
         response_names = self._extract_response_names(response)
         response_locations = self._extract_response_locations(response)
+        response_relationships = self._extract_response_relationships(response)
 
         # Classify as verified or unverified
         provenance.verified_ids = [rid for rid in response_ids if self._id_in_known(rid, known_ids)]
@@ -152,7 +195,10 @@ class ResponseValidator:
                 provenance.source_records.extend(result.records)
 
         # Compute grounding score
-        total_claims = len(response_ids) + len(response_names)
+        # Count relationship/location verification in grounding score
+        all_claims = response_ids + response_names + response_relationships + response_locations
+        total_claims_count = len(all_claims) if all_claims else 0
+        total_claims = total_claims_count
         verified_claims = len(provenance.verified_ids) + len(provenance.verified_names)
         provenance.grounding_score = (verified_claims / total_claims) if total_claims > 0 else 1.0
 
