@@ -24,6 +24,36 @@ from app.models.location import Location
 SEVERITY_WEIGHT = {"low": 0.8, "medium": 1.0, "high": 1.25, None: 1.0}
 
 
+def derive_data_provenance(records: list) -> str:
+    """Derive data provenance from actual source records.
+
+    Returns one of: 'LIVE_DB', 'DEMO', 'LIVE_DB + DEMO', 'UNKNOWN'
+    based on the dataset_provenance column of the source records.
+    """
+    if not records:
+        return 'UNKNOWN'
+    provenance_set = set()
+    for record in records:
+        prov = getattr(record, 'dataset_provenance', None) or 'unknown'
+        provenance_set.add(prov.lower().strip())
+    if provenance_set <= {'live'}:
+        return 'LIVE_DB'
+    if provenance_set <= {'demo'}:
+        return 'DEMO'
+    if 'live' in provenance_set and 'demo' in provenance_set:
+        return 'LIVE_DB + DEMO'
+    if 'unknown' in provenance_set:
+        if len(provenance_set) == 1:
+            return 'UNKNOWN'
+        others = provenance_set - {'unknown'}
+        if others <= {'live'}:
+            return 'LIVE_DB'
+        if others <= {'demo'}:
+            return 'DEMO'
+        return 'MIXED'
+    return 'MIXED'
+
+
 def recent_activity(db: Session, days: int = 0) -> dict[str, Any]:
     """Time-aware activity summary so the chat can answer 'any records today?'.
 
@@ -363,6 +393,9 @@ def hotspots(db: Session, district_id: str | None = None, hour: int | None = Non
         query = query.filter(Location.district == district_id)
     locations = query.options(joinedload(Location.crimes).joinedload(CrimeCase.category)).all()
 
+    all_crimes = [case for loc in locations for case in loc.crimes]
+    provenance = derive_data_provenance(all_crimes)
+
     prepared: list[dict[str, Any]] = []
     incident_lat: list[float] = []
     incident_lng: list[float] = []
@@ -406,7 +439,7 @@ def hotspots(db: Session, district_id: str | None = None, hour: int | None = Non
             "hour": hour,
             "hotspots": [],
             "analysis_mode": "STATISTICAL",
-            "data_provenance": "LIVE_DB",
+            "data_provenance": provenance,
             "statistics": {
                 "method": "getis_ord_gi_star+kde+morans_i",
                 "locations_assessed": 0,
@@ -473,7 +506,7 @@ def hotspots(db: Session, district_id: str | None = None, hour: int | None = Non
         # Authoritative status metadata (issue 9): hotspot scores are a
         # statistical analysis of recorded historical incidents, not ML output.
         "analysis_mode": "STATISTICAL",
-        "data_provenance": "LIVE_DB",
+        "data_provenance": provenance,
         "statistics": statistics,
     }
 

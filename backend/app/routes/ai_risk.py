@@ -100,6 +100,8 @@ def get_risk_scores(
     del current_user
     try:
         cases = db.query(CrimeCase).options(joinedload(CrimeCase.location), joinedload(CrimeCase.category)).all()
+        from app.services.analytics_service import derive_data_provenance
+        provenance = derive_data_provenance(cases)
         info = get_model_info()
         if not cases:
             return RiskScoresResponse(
@@ -110,6 +112,7 @@ def get_risk_scores(
                 grid_predictions=[],
                 prediction_mode="UNAVAILABLE",
                 risk_model_loaded=bool(info.get("risk_model_loaded")),
+                data_provenance=provenance,
             )
         
         records = [
@@ -135,6 +138,7 @@ def get_risk_scores(
             baseline_comparison=info.get("risk_baseline_comparison"),
             grid_predictions=results,
             risk_model_loaded=bool(info.get("risk_model_loaded")),
+            data_provenance=provenance,
         )
     except Exception:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Risk prediction service unavailable.")
@@ -163,6 +167,7 @@ def predict_risk_scores(
         baseline_comparison=info.get("risk_baseline_comparison"),
         grid_predictions=results,
         risk_model_loaded=bool(info.get("risk_model_loaded")),
+        data_provenance="UNKNOWN",
     )
 
 

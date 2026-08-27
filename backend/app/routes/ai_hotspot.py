@@ -65,6 +65,7 @@ class HotspotPredictResponse(BaseModel):
     prediction_mode: str = "ML"
     model_version: str | None = None
     validation_status: str | None = None
+    data_provenance: str = "UNKNOWN"
 
 
 # ---------------------------------------------------------------------------

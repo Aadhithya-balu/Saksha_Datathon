@@ -50,10 +50,17 @@ class BackendFetcher:
         return self._execute_sequential(plan, db)
 
     def _execute_parallel(self, plan: QueryPlan, db: Session) -> list[BackendResult]:
+        from app.database.postgres import SessionLocal
         results: list[BackendResult] = []
+        def _thread_worker(call: BackendCall) -> BackendResult:
+            thread_db = SessionLocal()
+            try:
+                return self._execute_call(call, thread_db)
+            finally:
+                thread_db.close()
         with ThreadPoolExecutor(max_workers=4) as pool:
             futures = {
-                pool.submit(self._execute_call, call, db): call
+                pool.submit(_thread_worker, call): call
                 for call in plan.backend_calls
             }
             for future in as_completed(futures):

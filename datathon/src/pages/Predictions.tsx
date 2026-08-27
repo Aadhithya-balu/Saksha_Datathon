@@ -242,7 +242,13 @@ export const Predictions: React.FC = () => {
       {/* WEATHER & SEASONAL CORRELATION */}
       <div className="w-full">
         {sectionsLoaded.seasons ? (
-          <WeatherCorrelationChart seasons={seasons} />
+          seasons.length > 0 ? (
+            <WeatherCorrelationChart seasons={seasons} />
+          ) : (
+            <div className="text-center py-4 text-[var(--text-muted)] text-[10px] font-mono">
+              No seasonal breakdown data available for this period.
+            </div>
+          )
         ) : (
           <div className="bg-secondary-bg/25 border border-border-color p-8 rounded-card flex items-center justify-center">
             <span className="text-[10px] font-mono text-[var(--text-muted)] animate-pulse">Loading seasonal data...</span>
@@ -251,7 +257,7 @@ export const Predictions: React.FC = () => {
       </div>
 
       {/* SEASONAL CRIME BREAKDOWN */}
-      {sectionsLoaded.seasons && seasons.length > 0 && (
+      {sectionsLoaded.seasons && (
         <div className="bg-secondary-bg/25 border border-border-color p-5 rounded-card">
           <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-widest block border-b border-[var(--border-muted)] pb-2 mb-4 flex items-center justify-between">
             <span>Karnataka Seasonal Crime Intelligence</span>
@@ -260,29 +266,35 @@ export const Predictions: React.FC = () => {
               withInfo={false}
             />
           </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {seasons.map((s) => (
-              <div key={s.season} className={`p-4 border rounded-card flex flex-col gap-2 ${SEASON_COLORS[s.season] || 'border-border-color'}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase font-mono">{s.season}</span>
-                  {SEASON_ICONS[s.season]}
+          {seasons.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {seasons.map((s) => (
+                <div key={s.season} className={`p-4 border rounded-card flex flex-col gap-2 ${SEASON_COLORS[s.season] || 'border-border-color'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase font-mono">{s.season}</span>
+                    {SEASON_ICONS[s.season]}
+                  </div>
+                  <span className="text-xl font-bold font-mono">{s.count}</span>
+                  <div className="flex items-center justify-between text-[9px] font-mono">
+                    <span>{s.percentage}% of total</span>
+                    {s.top_district && <span className="truncate max-w-[100px]">Peak: {s.top_district}</span>}
+                  </div>
+                  <div className="w-full bg-black/20 h-1.5 rounded-full overflow-hidden mt-1">
+                    <div className="h-full rounded-full bg-current opacity-60" style={{ width: `${s.percentage}%` }} />
+                  </div>
                 </div>
-                <span className="text-xl font-bold font-mono">{s.count}</span>
-                <div className="flex items-center justify-between text-[9px] font-mono">
-                  <span>{s.percentage}% of total</span>
-                  {s.top_district && <span className="truncate max-w-[100px]">Peak: {s.top_district}</span>}
-                </div>
-                <div className="w-full bg-black/20 h-1.5 rounded-full overflow-hidden mt-1">
-                  <div className="h-full rounded-full bg-current opacity-60" style={{ width: `${s.percentage}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-[var(--text-muted)] text-[10px] font-mono">
+              No seasonal breakdown data available for this period.
+            </div>
+          )}
         </div>
       )}
 
       {/* EMERGING CRIME TYPOLOGIES (30d vs prior 30d, from strategic analytics) */}
-      {sectionsLoaded.trends && typologies.length > 0 && (
+      {sectionsLoaded.trends && (
         <div className="bg-secondary-bg/25 border border-border-color p-5 rounded-card">
           <div className="flex justify-between items-center border-b border-[var(--border-muted)] pb-2 mb-4">
             <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-widest">
@@ -293,26 +305,32 @@ export const Predictions: React.FC = () => {
               withInfo={false}
             />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {typologies.map((t) => {
-              const meta = TREND_META[t.direction] ?? TREND_META.stable;
-              return (
-                <div key={t.category} className={`p-3.5 border rounded-card flex flex-col gap-2 ${meta.cls}`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10.5px] font-bold uppercase font-mono truncate max-w-[75%]" title={t.category}>{t.category}</span>
-                    {meta.icon}
+          {typologies.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {typologies.map((t) => {
+                const meta = TREND_META[t.direction] ?? TREND_META.stable;
+                return (
+                  <div key={t.category} className={`p-3.5 border rounded-card flex flex-col gap-2 ${meta.cls}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10.5px] font-bold uppercase font-mono truncate max-w-[75%]" title={t.category}>{t.category}</span>
+                      {meta.icon}
+                    </div>
+                    <span className="text-lg font-bold font-mono">
+                      {t.change_percentage > 0 ? '+' : ''}{t.change_percentage}%
+                    </span>
+                    <div className="text-[9px] font-mono flex items-center justify-between opacity-80">
+                      <span>Recent: {t.recent_count}</span>
+                      <span>Prior: {t.historical_count}</span>
+                    </div>
                   </div>
-                  <span className="text-lg font-bold font-mono">
-                    {t.change_percentage > 0 ? '+' : ''}{t.change_percentage}%
-                  </span>
-                  <div className="text-[9px] font-mono flex items-center justify-between opacity-80">
-                    <span>Recent: {t.recent_count}</span>
-                    <span>Prior: {t.historical_count}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-[var(--text-muted)] text-[10px] font-mono">
+              No trend data available for this period.
+            </div>
+          )}
         </div>
       )}
 
