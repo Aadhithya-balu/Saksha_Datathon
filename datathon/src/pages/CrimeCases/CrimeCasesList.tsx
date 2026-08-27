@@ -138,6 +138,23 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
         return 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border border-[var(--border-secondary)]/20';
     }
   };
+  const formatCaseDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return '—';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch {
+      return dateStr;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -283,7 +300,7 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
                       </div>
                     </td>
                     <td className="p-4 text-[var(--text-secondary)]">
-                      {new Date(c.occurred_at).toLocaleString()}
+                      {formatCaseDate(c.occurred_at)}
                     </td>
                     <td className="p-4 text-center">
                       <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${getStatusStyle(c.status)}`}>

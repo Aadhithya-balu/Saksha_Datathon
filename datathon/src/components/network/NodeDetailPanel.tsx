@@ -10,9 +10,18 @@ interface NodeDetailPanelProps {
   links?: GraphLink[];
   nodes?: GraphNode[];
   onClose: () => void;
+  onSelectNode?: (node: GraphNode) => void;
+  onSelectLink?: (link: GraphLink) => void;
 }
 
-export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, links = [], nodes = [], onClose }) => {
+export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ 
+  node, 
+  links = [], 
+  nodes = [], 
+  onClose,
+  onSelectNode,
+  onSelectLink
+}) => {
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
 
@@ -145,17 +154,42 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, links = 
         {/* Connected entities */}
         {connectedNodes.length > 0 && (
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)] mb-2">
-              Connections ({connectedNodes.length})
-            </p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
+                Connections ({connectedNodes.length})
+              </p>
+              <span className="text-[9px] text-[var(--text-muted)]">Click person to navigate</span>
+            </div>
             <div className="space-y-1.5">
-              {connectedNodes.slice(0, 10).map(({ otherName, link }, i) => (
-                <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[12px]">
+              {connectedNodes.slice(0, 10).map(({ otherName, link, otherNode }, i) => (
+                <div 
+                  key={i} 
+                  onClick={() => {
+                    if (otherNode && onSelectNode) {
+                      onSelectNode(otherNode);
+                    } else if (onSelectLink) {
+                      onSelectLink(link);
+                    }
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-[var(--bg-secondary)] hover:bg-[var(--accent-blue)]/15 border border-[var(--border-color)] hover:border-[var(--accent-blue)]/40 text-[12px] cursor-pointer transition-all group"
+                  title={`View ${otherName} details & network`}
+                >
                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{
                     backgroundColor: link.verification_status === 'VERIFIED' ? 'var(--accent-teal)' : link.verification_status === 'POTENTIAL' ? 'var(--accent-amber)' : 'var(--text-muted)'
                   }} />
-                  <span className="text-[var(--text-primary)] truncate">{otherName}</span>
-                  <span className="ml-auto text-[10px] text-[var(--text-muted)] shrink-0">{link.relationship}</span>
+                  <span className="text-[var(--text-primary)] group-hover:text-[var(--accent-blue)] truncate font-medium">{otherName}</span>
+                  <span 
+                    onClick={(e) => {
+                      if (onSelectLink) {
+                        e.stopPropagation();
+                        onSelectLink(link);
+                      }
+                    }}
+                    className="ml-auto text-[10px] text-[var(--text-muted)] group-hover:text-[var(--text-secondary)] shrink-0 hover:underline"
+                    title="Inspect relationship link"
+                  >
+                    {link.relationship}
+                  </span>
                 </div>
               ))}
               {connectedNodes.length > 10 && (

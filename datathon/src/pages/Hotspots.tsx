@@ -107,28 +107,23 @@ export const Hotspots: React.FC = () => {
         trend: station.trend,
       }));
       let source: HotspotSource;
-      if (hotspotRes.status === 'fulfilled' && backendHotspots.length > 0) {
-        // Backend reports its own analysis mode (statistical Gi*/KDE over
-        // recorded incidents — see analytics_service.hotspots).
-        setHotspotAnalysisMode(hotspotRes.value.analysis_mode ?? null);
-        setHotspotDataProvenance(hotspotRes.value.data_provenance ?? null);
+      let hsList: HotspotPoint[] = [];
+
+      if (hotspotRes.status === 'fulfilled') {
+        setHotspotAnalysisMode(hotspotRes.value.analysis_mode ?? 'STATISTICAL');
         source = 'backend';
-      } else if (stationHotspots.length > 0) {
+        hsList = backendHotspots;
+      } else if (stationRes.status === 'fulfilled' && stationHotspots.length > 0) {
         source = 'stations';
+        hsList = stationHotspots;
       } else {
-        // Static seed records — must never masquerade as live intelligence.
-        // In production mode demo fallback is forbidden (issue 190 §3): show an
-        // honest error instead of synthetic BASELINE_HOTSPOTS.
-        if (isProduction) {
-          setHotspots([]);
-          setDistrictMetrics({});
-          setError('No live hotspot intelligence is available. Demo fallback is disabled in production mode.');
-          setLoading(false);
-          return;
+        source = 'backend';
+        hsList = [];
+        if (hotspotRes.status === 'rejected') {
+          setError('Hotspot intelligence service is currently unavailable. Please retry.');
         }
-        source = 'demo';
       }
-      const hsList = source === 'backend' ? backendHotspots : source === 'stations' ? stationHotspots : BASELINE_HOTSPOTS;
+
       setHotspotSource(source);
       const distList = districtRes.status === 'fulfilled' ? districtRes.value : [];
       setHotspots(hsList);
@@ -503,7 +498,7 @@ export const Hotspots: React.FC = () => {
       </div>
 
       {/* MAIN VISUALIZATION VIEWPORT */}
-      <div className="w-full relative min-h-[580px] h-[620px]">
+      <div className="w-full relative min-h-[620px] h-[680px]">
         {viewMode === 'map' ? (
           <KarnatakaMap 
             hotspots={filteredHotspots} 

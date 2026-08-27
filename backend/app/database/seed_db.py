@@ -8,7 +8,7 @@ Issue #164: Every record created by this seed script is tagged with
 clearly distinguish seeded demonstration data from live or migrated records.
 """
 import random
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 
 from app.core.security import hash_password
 from app.database.postgres import SessionLocal
@@ -24,6 +24,7 @@ from app.models.role import Role
 from app.models.user import User
 from app.models.victim import Victim
 from app.models.chain_of_custody import ChainOfCustody
+from app.models.intervention import Intervention
 
 # Issue #164: canonical provenance tag for seed data
 _SEED_PROVENANCE = "demo"
@@ -540,6 +541,16 @@ DEMO_NOTIFICATIONS = [
 
 
 def seed() -> None:
+    from app.database.postgres import Base, engine
+    Base.metadata.create_all(bind=engine)
+    try:
+        from app.main import _migrate_user_lockout_columns, _migrate_notifications_table, _migrate_criminals_table, _migrate_provenance_columns
+        _migrate_user_lockout_columns()
+        _migrate_notifications_table()
+        _migrate_criminals_table()
+        _migrate_provenance_columns()
+    except Exception:
+        pass
     db = SessionLocal()
     try:
         role_objs = _seed_roles(db)
@@ -766,12 +777,33 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
             # Final fallback: use IO-3921
             assigned_officer = officers.get("IO-3921") or next(iter(officers.values()), None)
 
+        # Compute realistic, distinct occurrence time for each case based on case_number and category
+        h_hash = abs(hash(case_number))
+        if "Theft" in category_name or "Burglar" in category_name:
+            hour = (21 + (h_hash % 7)) % 24  # 21:00 to 03:00 (night burglaries)
+        elif "Cyber" in category_name or "Online" in category_name:
+            hour = 10 + (h_hash % 9)  # 10:00 to 18:00 (business hours)
+        elif "Narcotics" in category_name or "Smuggling" in category_name:
+            hour = (20 + (h_hash % 8)) % 24  # 20:00 to 03:00
+        elif "Mining" in category_name:
+            hour = (23 + (h_hash % 6)) % 24  # 23:00 to 04:00 (night transport)
+        elif "Domestic" in category_name:
+            hour = 18 + (h_hash % 5)  # 18:00 to 22:00
+        else:
+            hour = 8 + (h_hash % 14)  # 08:00 to 21:00
+
+        minute = (h_hash % 12) * 5
+        case_date = (now + timedelta(days=days)).date()
+        case_occurred_at = datetime.combine(case_date, time(hour, minute, 0))
+        case_reported_at = case_occurred_at + timedelta(hours=1 + (h_hash % 4), minutes=((h_hash // 7) % 12) * 5)
+
         if not crime:
             crime = CrimeCase(
                 case_number=case_number,
                 category_id=categories[category_name].id,
                 location_id=locations[station].id,
-                occurred_at=now + timedelta(days=days),
+                occurred_at=case_occurred_at,
+                reported_at=case_reported_at,
                 description=f"{category_name} reported at {locations[station].address}, {district}",
                 mo_tags=mo_tags,
                 status=status,
@@ -782,12 +814,13 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
             )
             db.add(crime)
             db.flush()
-        elif getattr(crime, "dataset_provenance", None) in (None, "live", "unknown", ""):
-            crime.dataset_provenance = _SEED_PROVENANCE
-            db.flush()
         else:
+            crime.occurred_at = case_occurred_at
+            crime.reported_at = case_reported_at
             crime.priority = priority
             crime.progress = progress
+            if getattr(crime, "dataset_provenance", None) in (None, "live", "unknown", ""):
+                crime.dataset_provenance = _SEED_PROVENANCE
             if not crime.assigned_officer_id and assigned_officer:
                 crime.assigned_officer_id = assigned_officer.id
             db.flush()
@@ -803,6 +836,7 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
                 complainant_contact=victims[victim_names[0]].contact_number if victim_names and victim_names[0] in victims else None,
                 sections=sections,
                 status="registered" if status == "open" else "closed",
+                filed_at=case_reported_at + timedelta(minutes=15),
                 narrative=f"Backend-seeded FIR for {case_number}; derived from the Police FIR ER model.",
                 attachments=json.dumps([
                     {"name": f"complaint_copy_{case_number}.pdf", "size": 154200},
@@ -812,8 +846,10 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
             )
             db.add(fir)
             db.flush()
-        elif getattr(fir, "dataset_provenance", None) in (None, "live", "unknown", ""):
-            fir.dataset_provenance = _SEED_PROVENANCE
+        else:
+            fir.filed_at = case_reported_at + timedelta(minutes=15)
+            if getattr(fir, "dataset_provenance", None) in (None, "live", "unknown", ""):
+                fir.dataset_provenance = _SEED_PROVENANCE
             db.flush()
 
         for criminal_name in criminal_names:
@@ -947,6 +983,65 @@ def _seed_notifications(db, user_objs):
 
     db.flush()
     print(f"Seeded {len(DEMO_NOTIFICATIONS)} demo notifications")
+
+    # Seed demo interventions for strategic prevention loop
+    if db.query(Intervention).count() == 0:
+        admin_user = user_objs.get("admin")
+        interventions_data = [
+            {
+                "district": "Bengaluru Urban",
+                "intervention_type": "patrol_surge",
+                "title": "Operation Garuda: Koramangala & Indiranagar Night Patrol Surge",
+                "description": "High-visibility saturation patrols and mobile interceptors to curtail late-night thefts and street offenses.",
+                "started_at": datetime.now() - timedelta(days=60),
+                "ended_at": datetime.now() - timedelta(days=5),
+                "status": "completed",
+            },
+            {
+                "district": "Mysuru",
+                "intervention_type": "checkpoint_blitz",
+                "title": "Expressway Checkpoint Blitz & Inter-City Transit Screening",
+                "description": "Static and dynamic multi-point checkpoints deployed at key transit arteries to disrupt organized contraband transit.",
+                "started_at": datetime.now() - timedelta(days=45),
+                "ended_at": None,
+                "status": "active",
+            },
+            {
+                "district": "Dakshina Kannada",
+                "intervention_type": "cctv_deployment",
+                "title": "Coastal & Port Sector Smart CCTV Surveillance Rollout",
+                "description": "Deployment of high-definition ANPR-enabled surveillance feeds covering critical logistics corridors.",
+                "started_at": datetime.now() - timedelta(days=90),
+                "ended_at": datetime.now() - timedelta(days=10),
+                "status": "completed",
+            },
+            {
+                "district": "Dharwad",
+                "intervention_type": "special_drive",
+                "title": "Hubballi-Dharwad Women & Student Safety Escort Drive",
+                "description": "Intensive beat patrolling around educational hubs and commercial zones during peak commute windows.",
+                "started_at": datetime.now() - timedelta(days=30),
+                "ended_at": None,
+                "status": "active",
+            },
+            {
+                "district": "Belagavi",
+                "intervention_type": "lighting_upgrade",
+                "title": "Industrial Corridor High-Mast Illumination & Beat Expansion",
+                "description": "Infrastructure lighting intervention paired with enhanced evening beat coverage to deter property offenses.",
+                "started_at": datetime.now() - timedelta(days=75),
+                "ended_at": datetime.now() - timedelta(days=15),
+                "status": "completed",
+            },
+        ]
+        for item in interventions_data:
+            inv = Intervention(
+                **item,
+                created_by_id=admin_user.id if admin_user else None,
+            )
+            db.add(inv)
+        db.flush()
+        print(f"Seeded {len(interventions_data)} demo interventions")
 
 
 if __name__ == "__main__":

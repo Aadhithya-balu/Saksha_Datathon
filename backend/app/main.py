@@ -168,7 +168,7 @@ def _migrate_provenance_columns():
     All DDL is idempotent — safe on every startup. Existing rows default to
     ``'unknown'`` so they are never silently treated as live operational data.
     """
-    provenance_tables = ["locations", "firs", "evidence", "officers"]
+    provenance_tables = ["criminals", "victims", "crime_cases", "locations", "firs", "evidence", "officers"]
     provenance_columns = [
         ("dataset_provenance", "VARCHAR(20) NOT NULL DEFAULT 'unknown'"),
         ("source_import_job_id", "UUID"),
@@ -199,22 +199,24 @@ def _migrate_user_lockout_columns():
     """Round-2 security: brute-force lockout columns on users (idempotent DDL)."""
     try:
         with engine.connect() as conn:
-            result = conn.execute(text(
-                "SELECT column_name FROM information_schema.columns WHERE table_name = 'users'"
-            ))
-            existing = {row[0] for row in result}
-            changed = False
-            if "failed_login_attempts" not in existing:
-                conn.execute(text(
-                    "ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0"
-                ))
-                changed = True
-            if "locked_until" not in existing:
-                conn.execute(text("ALTER TABLE users ADD COLUMN locked_until TIMESTAMPTZ"))
-                changed = True
-            if changed:
-                conn.commit()
-                logger.info("Users table migration complete (lockout columns added)")
+            inspector = inspect(conn)
+            tables = inspector.get_table_names()
+            if "users" in tables:
+                existing = {c["name"] for c in inspector.get_columns("users")}
+                is_sqlite = engine.dialect.name == "sqlite"
+                changed = False
+                if "failed_login_attempts" not in existing:
+                    conn.execute(text(
+                        "ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0"
+                    ))
+                    changed = True
+                if "locked_until" not in existing:
+                    type_str = "DATETIME" if is_sqlite else "TIMESTAMPTZ"
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN locked_until {type_str}"))
+                    changed = True
+                if changed:
+                    conn.commit()
+                    logger.info("Users table migration complete (lockout columns added)")
     except Exception as exc:
         logger.warning(f"Users lockout column migration skipped: {exc}")
 
