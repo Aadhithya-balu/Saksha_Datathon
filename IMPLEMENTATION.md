@@ -213,6 +213,46 @@ All in `backend/app/services/analytics_service.py`:
 
 ---
 
+## Issue #176 — Production Report & Audit Lifecycle
+
+A production-ready reporting lifecycle for investigations and evidence was added
+on top of the existing Reports Center (legacy generate/export stays intact):
+
+- **Lifecycle statuses:** `draft → generating -> generated -> under_review -> final ->
+  archived` with a valid any-state `failed` transition.
+- **Report model extensions** (`backend/app/models/report.py`): `report_type`, `title`,
+  `case_id`, `provenance`, `integrity_hash`, `generation_method`, `analysis_fingerprint`,
+  `failure_reason`, `source_record_count`, `evidence_count`, `generated_at`, `reviewed_at`,
+  `finalized_at`, `archived_at`, `reviewed_by_id`, `finalized_by_id`, `version`,
+  `content_snapshot`, `ai_reported`, `ai_metadata`.
+- **New tables** via SQLAlchemy: `ReportVersion`, `ReportSourceLink`, `ReportEvidenceLink`
+  (version history, cited-source provenance, and supporting-evidence links).
+- **Audit extensions** (`backend/app/models/audit_log.py` + `audit_service.py`): `result`
+  (`success`/`failure`) and `metadata` (JSON) added; every lifecycle transition is audited.
+- **Integrity hashing:** immutable SHA-256 fingerprint over title + sorted source ids +
+  sorted evidence ids + snapshot content; verified on finalize so tampering is detected.
+- **Provenance tracking:** each report is tagged `live`, `migrated`, `demo`, or `mixed`;
+  legacy exports derive provenance from the actual rows.
+- **AI validation:** explicit `ai_reported` flag + `ai_metadata`, verified-reference
+  gating so AI-generated citations must correspond to real records.
+- **Access control:** an admin or the requesting user only; non-creators cannot view,
+  download, or mutate another user's report; the audit trail is admin-only.
+- **Endpoints** (`backend/app/routes/reports.py`, UUID-path so legacy routes are untouched):
+  `POST /reports`, `GET /reports/{id}`, `POST /reports/{id}/generate`,
+  `POST /reports/{id}/validate`, `GET|POST /reports/{id}/versions`,
+  `POST /reports/{id}/review|finalize|archive`, `GET /reports/{id}/download`,
+  `GET /reports/{id}/audit` (admin).
+- **Frontend** (`datathon/src/components/reports/ManagedReportLifecycle.tsx` + `Reports.tsx`):
+  lifecycle panel listing managed reports with status/provenance badges, per-user detail
+  drawer (integrity hash, sources, evidence, audit trail for admins), and create/review/
+  finalize/archive/version/download actions.
+- **Tests** (`backend/tests/test_report_lifecycle.py`): 16 scenarios covering creation,
+  access control, source/evidence linking, provenance, versioning, immutability on finalize,
+  audit trail, failure state, traceability, AI reference validation/hallucination rejection,
+  audit authorization, and download security.
+
+---
+
 ## Next Steps / Enhancements
 
 - [ ] Add real ML models (XGBoost/Random Forest) for risk scoring

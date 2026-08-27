@@ -13,7 +13,15 @@ def log_action(
     resource_id: str | None = None,
     details: str | None = None,
     ip_address: str | None = None,
+    *,
+    result: str = "success",
+    metadata_json: str | None = None,
 ) -> None:
+    """Append an audit event.
+
+    ``result`` is ``success``/``failure``. ``metadata_json`` is compact JSON
+    only — never include passwords, tokens, secrets, or full sensitive payloads.
+    """
     entry = AuditLog(
         user_id=user.id,
         action=action,
@@ -21,6 +29,8 @@ def log_action(
         resource_id=resource_id,
         details=details,
         ip_address=ip_address,
+        result=result,
+        meta_data=metadata_json,
     )
     db.add(entry)
     db.flush()

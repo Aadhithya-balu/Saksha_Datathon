@@ -426,12 +426,60 @@ export interface CreateConversationPayload {
 
 export interface ReportRecord {
   id: string;
+  report_type: string;
   template: string;
+  title: string | null;
   district: string | null;
   status: string;
   format: string;
   file_url: string | null;
+  provenance: string;
+  version: number;
+  integrity_hash: string | null;
+  generation_method: string | null;
+  ai_reported: boolean;
+  source_record_count: number;
+  evidence_count: number;
+  case_id: string | null;
   created_at: string;
+  updated_at: string | null;
+  requested_by: string | null;
+}
+
+export interface ReportSourceRef {
+  source_type: string;
+  source_id: string;
+  source_label?: string | null;
+}
+
+export interface ReportAuditEntry {
+  id: string;
+  timestamp: string;
+  user: string;
+  role: string;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  result: string;
+  details: string | null;
+  ip: string | null;
+}
+
+export interface ReportDetail extends ReportRecord {
+  case_number: string | null;
+  failure_reason: string | null;
+  generated_at: string | null;
+  reviewed_at: string | null;
+  finalized_at: string | null;
+  archived_at: string | null;
+  reviewed_by: string | null;
+  finalized_by: string | null;
+  ai_metadata: Record<string, unknown> | null;
+  snapshot_headers: string[];
+  snapshot_row_count: number;
+  sources: Array<{ source_type: string; source_id: string; source_label: string | null }>;
+  evidence: Array<{ evidence_id: string; title: string | null; evidence_type: string | null; role: string }>;
+  versions: Array<{ id: string; version_number: number; created_at: string; reason: string | null; status: string; integrity_hash: string | null; created_by: string | null }>;
 }
 
 export interface AuthTokens {
@@ -1003,6 +1051,83 @@ export async function getOffenderDossiers() {
 
 export async function listReports(page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<ReportRecord>>(`/reports${buildQueryString({ page, page_size: pageSize })}`);
+}
+
+// --- Issue #176: Production report lifecycle API ---
+export async function createReport(payload: {
+  report_type: string;
+  title?: string;
+  case_id?: string;
+  district?: string;
+  format?: string;
+  provenance?: string;
+  ai_reported?: boolean;
+}) {
+  return apiRequest<ReportDetail>('/reports', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function getReportDetail(reportId: string) {
+  return apiRequest<ReportDetail>(`/reports/${reportId}`);
+}
+
+export async function generateReportContent(
+  reportId: string,
+  payload: {
+    content?: { headers: string[]; rows: Array<Array<string | number | null>> };
+    title?: string;
+    sources?: ReportSourceRef[];
+    evidence_ids?: string[];
+    ai_metadata?: Record<string, unknown>;
+    require_verified_references?: boolean;
+    analysis_fingerprint?: string;
+  },
+) {
+  return apiRequest<ReportDetail>(`/reports/${reportId}/generate`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function validateReportReferences(
+  reportId: string,
+  payload: { sources: ReportSourceRef[]; evidence_ids: string[] },
+) {
+  return apiRequest<{ verified_records: ReportSourceRef[]; missing_records: ReportSourceRef[]; can_finalize_as_verified: boolean }>(
+    `/reports/${reportId}/validate`,
+    { method: 'POST', body: JSON.stringify(payload) },
+  );
+}
+
+export async function reviewReport(reportId: string, notes?: string) {
+  return apiRequest<ReportDetail>(`/reports/${reportId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ notes: notes ?? null }),
+  });
+}
+
+export async function finalizeReport(reportId: string, notes?: string) {
+  return apiRequest<ReportDetail>(`/reports/${reportId}/finalize`, {
+    method: 'POST',
+    body: JSON.stringify({ notes: notes ?? null }),
+  });
+}
+
+export async function archiveReport(reportId: string) {
+  return apiRequest<ReportDetail>(`/reports/${reportId}/archive`, { method: 'POST' });
+}
+
+export async function createReportVersion(reportId: string, reason?: string) {
+  return apiRequest<ReportDetail>(`/reports/${reportId}/versions`, {
+    method: 'POST',
+    body: JSON.stringify({ reason: reason ?? null }),
+  });
+}
+
+export async function getReportAudit(reportId: string, page = 1, pageSize = 20) {
+  return apiRequest<PaginatedResponse<ReportAuditEntry>>(
+    `/reports/${reportId}/audit${buildQueryString({ page, page_size: pageSize })}`,
+  );
+}
+
+export async function downloadManagedReport(reportId: string, format: 'pdf' | 'csv' | 'docx' | 'txt' | 'xlsx') {
+  return apiRequest<unknown>(`/reports/${reportId}/download?export_format=${format}`, { method: 'GET' });
 }
 
 // --- Crime Case Management Types & Routes ---

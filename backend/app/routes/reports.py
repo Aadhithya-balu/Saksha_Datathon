@@ -1,10 +1,18 @@
-"""Live reporting routes with paginated data, PDF export, DOCX export, TXT export, and CSV export."""
+"""Live reporting routes with paginated data, PDF export, DOCX export, TXT export, and CSV export.
+
+Issue #176 adds a production audit lifecycle on top of the legacy live exports:
+draft -> generate -> review -> finalize -> archive with source/evidence linking,
+provenance, versioning, integrity hashing and immutable finalized snapshots.
+"""
 from __future__ import annotations
 
 import csv
 import io
+import json
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable
+from uuid import UUID
 
 from fpdf import FPDF
 from docx import Document
@@ -18,17 +26,31 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.auth.dependencies import get_current_user
 from app.auth.rbac import ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INSPECTOR, ROLE_INVESTIGATOR, ROLE_POLICYMAKER, require_roles
+from app.core.exceptions import ConflictException, NotFoundException
 from app.database.postgres import get_db
+from app.models.audit_log import AuditLog
 from app.models.crime import CrimeCase
 from app.models.criminal import Criminal
 from app.models.evidence import Evidence
 from app.models.location import Location
 from app.models.officer import Officer
-from app.models.report import Report
+from app.models.report import (
+    GEN_METHOD_DATABASE_EXPORT,
+    REPORT_STATUS_GENERATED,
+    Report,
+)
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
-from app.schemas.report import ReportOut
-from app.services import audit_service
+from app.schemas.report import (
+    ReportCreateRequest,
+    ReportDetailOut,
+    ReportGeneratePayload,
+    ReportOut,
+    ReportReviewRequest,
+    ReportValidateRequest,
+    ReportVersionCreateRequest,
+)
+from app.services import audit_service, report_service
 
 router = APIRouter(prefix="/reports", tags=["Reports"], dependencies=[Depends(require_roles(
     ROLE_ADMIN,
@@ -597,12 +619,18 @@ def _generate_docx(title: str, filters: dict, headers: list[str], rows: list[dic
 def _create_report_record(db: Session, current_user: User, report_type: str, export_format: str, filters: dict[str, Any]) -> Report:
     report = Report(
         template=f"{report_type}_report",
+        report_type=report_type,
+        title=f"{report_type.title()} Report",
         requested_by_id=current_user.id,
         district=filters.get("district"),
         date_from=filters.get("date_from") or None,
         date_to=filters.get("date_to") or None,
         format=export_format,
-        status="ready",
+        status=REPORT_STATUS_GENERATED,
+        provenance=report_service.legacy_report_provenance(db, report_type, [], None),
+        generation_method=GEN_METHOD_DATABASE_EXPORT,
+        source_record_count=0,
+        evidence_count=0,
         file_url=f"/api/v2/reports/{report_type}/export/{export_format}",
     )
     db.add(report)
@@ -614,12 +642,42 @@ def _create_report_record(db: Session, current_user: User, report_type: str, exp
 def list_reports(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    status: str | None = None,
+    report_type: str | None = None,
+    case_id: uuid.UUID | None = None,
+    search: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Report).order_by(desc(Report.created_at))
+    """Paginated, scoped report directory (§32/§34).
+
+    Non-admin users only ever see reports they created; admins see everything.
+    """
+    query = db.query(Report)
+    if current_user.role.name != ROLE_ADMIN:
+        query = query.filter(Report.requested_by_id == current_user.id)
+    if status:
+        query = query.filter(Report.status == status)
+    if report_type:
+        query = query.filter(Report.report_type == report_type)
+    if case_id:
+        query = query.filter(Report.case_id == case_id)
+    if search:
+        query = query.filter(or_(
+            Report.title.ilike(f"%{search}%"),
+            Report.template.ilike(f"%{search}%"),
+            Report.integrity_hash.ilike(f"%{search}%"),
+            Report.provenance.ilike(f"%{search}%"),
+        ))
+    if date_from:
+        query = query.filter(Report.created_at >= date_from)
+    if date_to:
+        query = query.filter(Report.created_at <= date_to)
     total = query.count()
-    return PaginatedResponse(total=total, page=page, page_size=page_size, results=query.offset((page - 1) * page_size).limit(page_size).all())
+    items = query.order_by(desc(Report.created_at)).offset((page - 1) * page_size).limit(page_size).all()
+    return PaginatedResponse[ReportOut](total=total, page=page, page_size=page_size, results=items)
 
 
 @router.get("/statistics/summary")
@@ -629,6 +687,298 @@ def report_statistics(db: Session = Depends(get_db), current_user: User = Depend
         "officers": db.query(func.count(Officer.id)).scalar() or 0,
         "criminals": db.query(func.count(Criminal.id)).scalar() or 0,
         "evidence": db.query(func.count(Evidence.id)).scalar() or 0,
+        "managed_reports": db.query(func.count(Report.id)).scalar() or 0,
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Issue #176 — production report lifecycle (draft -> … -> final -> archived)
+# --------------------------------------------------------------------------- #
+def _client_ip(request: Request) -> str | None:
+    return request.client.host if request.client else None
+
+
+def _load_report_or_404(db: Session, report_id: UUID) -> Report:
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if report is None:
+        raise NotFoundException("Report not found")
+    return report
+
+
+def _snapshot_rows_as_dicts(headers: list[str], rows: list) -> list[dict]:
+    """Convert stored array-rows into the dict-row shape the exporters expect."""
+    result = []
+    for row in rows:
+        if isinstance(row, dict):
+            result.append(row)
+            continue
+        if isinstance(row, (list, tuple)):
+            record = {}
+            for i, h in enumerate(headers):
+                record[h] = row[i] if i < len(row) else ""
+            result.append(record)
+        else:
+            result.append({headers[0]: row} if headers else {})
+    return result
+
+
+def _render_snapshot_response(
+    report: Report,
+    snapshot: dict,
+    export_format: str,
+) -> Response:
+    """Render a report from its stored snapshot (final reports are immutable).
+
+    Never uses user-supplied filenames for filesystem access — the file bytes
+    are produced in-memory and streamed back (§21/§22).
+    """
+    headers = list(snapshot.get("headers") or [])
+    rows = _snapshot_rows_as_dicts(headers, list(snapshot.get("rows") or []))
+    title = report.title or f"{report.report_type.title()} Report"
+    filters = {
+        "Report ID": str(report.id),
+        "Report Type": report.report_type,
+        "Version": f"v{report.version}",
+        "Provenance": report.provenance,
+        "Status": report.status,
+        "Integrity Hash": report.integrity_hash or "pending",
+    }
+    filename = f"saksha_{report.report_type}_report_v{report.version}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+
+    if export_format == "csv":
+        return _csv_response(filename, headers, rows)
+    if export_format == "xlsx":
+        return _xlsx_response(filename, title, filters, headers, rows)
+    if export_format == "docx":
+        docx_bytes = _generate_docx(title, filters, headers, rows)
+        return Response(
+            content=docx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f'attachment; filename="{filename}.docx"'},
+        )
+    if export_format == "txt":
+        txt_bytes = _generate_txt(title, filters, headers, rows)
+        return Response(content=txt_bytes, media_type="text/plain; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{filename}.txt"'})
+    pdf_bytes = _generate_pdf(title, filters, headers, rows)
+    return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}.pdf"'})
+
+
+@router.post("", response_model=ReportDetailOut)
+def create_lifecycle_report(
+    payload: ReportCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a DRAFT report record (§4). The acting user is taken from the
+    authenticated session — never trusted from the client (§19)."""
+    report = report_service.create_report(db, current_user, payload.model_dump())
+    db.commit()
+    db.refresh(report)
+    return report_service.serialize_report_details(db, report)
+
+
+@router.get("/{report_id:uuid}", response_model=ReportDetailOut)
+def get_report_detail(
+    report_id: UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    report = _load_report_or_404(db, report_id)
+    report_service.require_report_access(current_user, report)
+    audit_service.log_action(
+        db, current_user, "REPORT_VIEW", "Report", str(report.id),
+        ip_address=_client_ip(request),
+        metadata_json=json.dumps({"status": report.status, "version": report.version}),
+    )
+    return report_service.serialize_report_details(db, report)
+
+
+@router.post("/{report_id:uuid}/validate", response_model=dict)
+def validate_report_references(
+    report_id: UUID,
+    payload: ReportValidateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Validate that referenced source/evidence records exist (§9)."""
+    report = _load_report_or_404(db, report_id)
+    report_service.require_report_access(current_user, report)
+    result = report_service.validate_references(
+        db, [s.model_dump() for s in payload.sources], payload.evidence_ids
+    )
+    audit_service.log_action(
+        db, current_user, "REPORT_AI_VALIDATION", "Report", str(report.id),
+        details=f"verified={len(result['verified_records'])} missing={len(result['missing_records'])}",
+        ip_address=_client_ip(request),
+        result="success" if result["can_finalize_as_verified"] else "failure",
+    )
+    return result
+
+
+@router.post("/{report_id:uuid}/generate", response_model=ReportDetailOut)
+def generate_lifecycle_report(
+    report_id: UUID,
+    payload: ReportGeneratePayload,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    report = _load_report_or_404(db, report_id)
+    report_service.require_report_access(current_user, report)
+    try:
+        report = report_service.generate_report(
+            db, current_user, report, payload.model_dump(), ip_address=_client_ip(request)
+        )
+        db.commit()
+    except Exception:
+        # Persist the FAILED state so a broken run never looks successful (§25).
+        db.commit()
+        raise
+    db.refresh(report)
+    return report_service.serialize_report_details(db, report)
+
+
+@router.get("/{report_id:uuid}/versions", response_model=list)
+def list_report_versions(
+    report_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    report = _load_report_or_404(db, report_id)
+    report_service.require_report_access(current_user, report)
+    return report_service.serialize_report_details(db, report).get("versions", [])
+
+
+@router.post("/{report_id:uuid}/versions", response_model=ReportDetailOut)
+def create_report_version(
+    report_id: UUID,
+    payload: ReportVersionCreateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Explicit versioning (§10/§11): never silently overwrite a previous
+    version; every change is an auditable new version with a reason."""
+    report = _load_report_or_404(db, report_id)
+    report_service.require_report_access(current_user, report)
+    if report.status == report_service.REPORT_STATUS_ARCHIVED:
+        raise ConflictException("Archived reports cannot be versioned")
+    report_service.create_version(
+        db, current_user, report,
+        reason=payload.reason, new_content=payload.content, ip_address=_client_ip(request),
+    )
+    db.commit()
+    db.refresh(report)
+    return report_service.serialize_report_details(db, report)
+
+
+@router.post("/{report_id:uuid}/review", response_model=ReportDetailOut)
+def review_lifecycle_report(
+    report_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    request: Request = None,
+    payload: ReportReviewRequest | None = None,
+):
+    report = _load_report_or_404(db, report_id)
+    report_service.require_report_access(current_user, report)
+    notes = payload.notes if payload else None
+    report = report_service.start_review(
+        db, current_user, report, notes=notes, ip_address=_client_ip(request)
+    )
+    db.commit()
+    db.refresh(report)
+    return report_service.serialize_report_details(db, report)
+
+
+@router.post("/{report_id:uuid}/finalize", response_model=ReportDetailOut)
+def finalize_lifecycle_report(
+    report_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    request: Request = None,
+    payload: ReportReviewRequest | None = None,
+):
+    report = _load_report_or_404(db, report_id)
+    report_service.require_report_access(current_user, report)
+    notes = payload.notes if payload else None
+    report = report_service.finalize_report(
+        db, current_user, report, notes=notes, ip_address=_client_ip(request)
+    )
+    db.commit()
+    db.refresh(report)
+    return report_service.serialize_report_details(db, report)
+
+
+@router.post("/{report_id:uuid}/archive", response_model=ReportDetailOut)
+def archive_lifecycle_report(
+    report_id: UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    report = _load_report_or_404(db, report_id)
+    report_service.require_report_access(current_user, report)
+    report = report_service.archive_report(db, current_user, report, ip_address=_client_ip(request))
+    db.commit()
+    db.refresh(report)
+    return report_service.serialize_report_details(db, report)
+
+
+@router.get("/{report_id:uuid}/download")
+def download_lifecycle_report(
+    report_id: UUID,
+    request: Request,
+    export_format: str = Query("pdf", pattern="^(pdf|csv|docx|txt|xlsx)$"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Authorized, audited download of a managed report (§21).
+
+    Final reports render from their immutable stored snapshot — their content
+    cannot silently change when the source DB changes (§27/§28).
+    """
+    report = _load_report_or_404(db, report_id)
+    report_service.require_report_access(current_user, report)
+    snapshot = report_service._load_snapshot(report)
+    if not snapshot.get("headers") and not snapshot.get("rows"):
+        raise ConflictException("Report has no generated content to download")
+    audit_service.log_action(
+        db, current_user, "REPORT_DOWNLOAD", "Report", str(report.id),
+        details=f"format={export_format}; version=v{report.version}",
+        ip_address=_client_ip(request),
+        metadata_json=json.dumps({"format": export_format, "version": report.version}),
+    )
+    db.commit()
+    return _render_snapshot_response(report, snapshot, export_format)
+
+
+@router.get("/{report_id:uuid}/audit", response_model=dict)
+def report_audit_history(
+    report_id: UUID,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(ROLE_ADMIN)),
+):
+    """Administrative audit history for a report (§13/§17/§33).
+
+    Only admins may query audit logs; ordinary users are denied.
+    """
+    _load_report_or_404(db, report_id)
+    query = db.query(AuditLog).filter(
+        AuditLog.resource_type == "Report",
+        AuditLog.resource_id == str(report_id),
+    )
+    total = query.count()
+    items = query.order_by(desc(AuditLog.timestamp)).offset((page - 1) * page_size).limit(page_size).all()
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "results": [report_service.serialize_audit_entry(e) for e in items],
     }
 
 
@@ -680,7 +1030,11 @@ def generate_report(
         return Response(status_code=404, content="Unknown report type")
     filters = _filters_dict(search=search, status=status, district=district, date_from=date_from, date_to=date_to)
     report = _create_report_record(db, current_user, report_type, export_format, {"district": district, "date_from": date_from, "date_to": date_to})
-    audit_service.log_action(db, current_user, "REPORT_GENERATE", "Report", str(report.id), details=str(filters), ip_address=request.client.host if request.client else None)
+    audit_service.log_action(
+        db, current_user, "REPORT_GENERATE", "Report", str(report.id),
+        details=str(filters), ip_address=request.client.host if request.client else None,
+        metadata_json=json.dumps({"type": report_type, "provenance": report.provenance}),
+    )
     db.commit()
     db.refresh(report)
     return {"id": str(report.id), "status": report.status, "format": report.format, "file_url": report.file_url}
@@ -707,7 +1061,18 @@ def export_report(
     rows = [mapper(item) for item in query.limit(5000).all()]
     filters = _filters_dict(search=search, status=status, district=district, date_from=date_from, date_to=date_to, sort_by=sort_by, sort_order=sort_order)
     report = _create_report_record(db, current_user, report_type, export_format, {"district": district, "date_from": date_from, "date_to": date_to})
-    audit_service.log_action(db, current_user, "REPORT_EXPORT", "Report", str(report.id), details=f"{export_format}:{filters}", ip_address=request.client.host if request.client else None)
+    report.source_record_count = len(rows)
+    if report_type == "evidence":
+        report.evidence_count = len(rows)
+    report.provenance = report_service.legacy_report_provenance(db, report_type, rows, report)
+    audit_service.log_action(
+        db, current_user, "REPORT_EXPORT", "Report", str(report.id),
+        details=f"{export_format}:{filters}", ip_address=request.client.host if request.client else None,
+        metadata_json=json.dumps({
+            "type": report_type, "provenance": report.provenance,
+            "record_count": len(rows), "format": export_format,
+        }),
+    )
     db.commit()
     filename = f"saksha_{report_type}_report_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
     title = f"{report_type.title()} Report"
