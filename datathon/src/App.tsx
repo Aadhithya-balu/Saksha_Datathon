@@ -5,6 +5,7 @@ import { useAppStore } from './store/appStore';
 import Login from './pages/Login';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
+import MobileBottomBar from './components/layout/MobileBottomBar';
 import CommandPalette from './components/ui/CommandPalette';
 import Overview from './pages/Overview';
 import CommandCenter from './pages/CommandCenter';
@@ -73,7 +74,7 @@ const pathForTab = (tab: string): string | null =>
 function App() {
   const { isAuthenticated, user, isHydrating, initializeSession } = useAuthStore();
   const { addLog } = useAuditStore();
-  const { activeTab, setActiveTab, sidebarCollapsed, setSidebarCollapsed, theme } = useAppStore();
+  const { activeTab, setActiveTab, sidebarCollapsed, setSidebarCollapsed, setMobileMenuOpen, theme } = useAppStore();
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '') || '/';
   const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
   const appPath = basePath === '/' ? normalizedPath : normalizedPath.slice(basePath.length) || '/';
@@ -271,13 +272,13 @@ function App() {
         />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="w-full max-w-[1600px] 2xl:max-w-[1920px] mx-auto p-3 sm:p-4 md:p-6 lg:p-8 sk-page-enter">
+          <div className="w-full max-w-[1600px] 2xl:max-w-[1920px] mx-auto p-3 sm:p-4 md:p-6 lg:p-8 pb-20 md:pb-8 sk-page-enter">
             {renderActivePage()}
           </div>
         </main>
 
         {/* Footer */}
-        <footer className="h-9 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]/50 px-6 flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)] select-none shrink-0 no-print">
+        <footer className="h-9 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]/50 pl-6 pr-6 pb-[env(safe-area-inset-bottom)] mb-[64px] md:mb-0 flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)] select-none shrink-0 no-print">
           <span>SAKSHA v2.0 &middot; Karnataka State Police</span>
           <span className="hidden sm:inline">CLASSIFIED &middot; STAMP: 2026-SCRB-KSP</span>
         </footer>
@@ -288,6 +289,16 @@ function App() {
 
       {/* Global AI Assistant */}
       <GlobalAIAssistant />
+
+      {/* Mobile bottom navigation bar */}
+      <MobileBottomBar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenDrawer={() => {
+          setSidebarCollapsed(false);
+          setMobileMenuOpen(true);
+        }}
+      />
     </div>
   );
 }

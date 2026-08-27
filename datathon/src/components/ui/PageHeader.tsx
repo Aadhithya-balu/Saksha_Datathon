@@ -16,7 +16,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, icon, a
         </div>
       )}
       <div className="min-w-0">
-        <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight truncate">{title}</h2>
+        <h2 className="sk-page-head-title truncate">{title}</h2>
         {subtitle && <p className="text-sm text-[var(--text-muted)] mt-0.5 truncate">{subtitle}</p>}
       </div>
     </div>

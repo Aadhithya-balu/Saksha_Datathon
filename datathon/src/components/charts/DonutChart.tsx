@@ -60,7 +60,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data = [], onCategoryCli
             </ResponsiveContainer>
             {/* Center total */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center" style={{ marginTop: '-8%' }}>
+              <div className="text-center">
                 <div className="text-xl font-bold text-[var(--text-primary)]">{totalCrimes.toLocaleString()}</div>
                 <div className="text-[11px] text-[var(--text-muted)]">cases</div>
               </div>
