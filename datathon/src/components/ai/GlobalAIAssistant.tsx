@@ -4,7 +4,7 @@ import { MarkdownRenderer } from '../chat/MarkdownRenderer';
 import { CitationBadge } from '../chat/CitationBadge';
 import {
   Sparkles, X, Send, Copy, Check, FileText,
-  MessageSquare, ChevronRight, Search, Database, Brain
+  MessageSquare, ChevronRight, Search, Database, Brain, AlertTriangle
 } from 'lucide-react';
 
 interface Message {
@@ -15,6 +15,7 @@ interface Message {
   sources?: string[];
   citations?: ChatCitation[];
   followUpSuggestions?: string[];
+  engine?: string;
 }
 
 const FOLLOW_UP_MAP: Record<string, string[]> = {
@@ -52,6 +53,9 @@ export const GlobalAIAssistant: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [streamStatus, setStreamStatus] = useState('');
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -90,16 +94,31 @@ export const GlobalAIAssistant: React.FC = () => {
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
+    setSessionError(null);
+    setNotice(null);
     setStreamStatus('Analyzing query intent...');
 
     const aiMessageId = `fab-msg-${Date.now()}-ai`;
     let accumulatedAnswer = '';
     let finalData: any = null;
+    let pendingConversationId = conversationId;
 
     try {
-      for await (const chunk of chatQueryStream(messageText)) {
+      for await (const chunk of chatQueryStream(messageText, undefined, {
+        conversationId: pendingConversationId,
+        persist: true,
+      })) {
         if (chunk.type === 'status') {
           setStreamStatus(chunk.content);
+          setSessionError(null);
+        } else if (chunk.type === 'meta') {
+          const cid = chunk.content?.conversation_id ? String(chunk.content.conversation_id) : null;
+          if (cid && cid !== pendingConversationId) {
+            pendingConversationId = cid;
+            setConversationId(cid);
+          }
+        } else if (chunk.type === 'notice') {
+          setNotice(String(chunk.content || ''));
         } else if (chunk.type === 'token') {
           accumulatedAnswer += chunk.content;
           setMessages(prev => {
@@ -130,22 +149,32 @@ export const GlobalAIAssistant: React.FC = () => {
             sources: finalData?.sources || [],
             citations: finalData?.citations || [],
             followUpSuggestions: followUps,
+            engine: finalData?.engine || undefined,
           };
         }
         return m;
       }));
     } catch (err: any) {
       const detail = err?.message || 'Unknown error';
+      setSessionError(detail);
       setMessages(prev => [...prev, {
         id: aiMessageId,
         sender: 'ai',
-        text: `Error: ${detail}\n\nEnsure the backend is running on port 8000.`,
+        text: `I couldn't reach the assistant just now (**${detail}**).\n\nPlease make sure the backend is running on port 8000 and try again.`,
         timestamp: new Date(),
       }]);
     } finally {
       setIsLoading(false);
       setStreamStatus('');
     }
+  };
+
+  const clearConversation = () => {
+    if (isLoading) return;
+    setMessages([]);
+    setConversationId(null);
+    setNotice(null);
+    setSessionError(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -218,7 +247,7 @@ export const GlobalAIAssistant: React.FC = () => {
               <div className="flex items-center gap-2">
                 {messages.length > 0 && (
                   <button
-                    onClick={() => setMessages([])}
+                    onClick={clearConversation}
                     className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded transition-colors cursor-pointer"
                     title="Clear chat"
                   >
@@ -302,6 +331,13 @@ export const GlobalAIAssistant: React.FC = () => {
                           </div>
                         )}
 
+                        {!isUser && msg.engine && (
+                          <div className="mt-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--accent-purple)]/10 border border-[var(--accent-purple)]/20 text-[var(--accent-purple)] text-[8px] font-mono">
+                            <Brain className="w-2.5 h-2.5" />
+                            {msg.engine === 'local-template' ? 'On-device intelligence' : msg.engine}
+                          </div>
+                        )}
+
                         {!isUser && (
                           <button
                             onClick={() => handleCopyText(msg.text, msg.id)}
@@ -364,6 +400,24 @@ export const GlobalAIAssistant: React.FC = () => {
 
               <div ref={messagesEndRef} />
             </div>
+
+            {/* Banners: session error / persistence notice */}
+            {(sessionError || notice) && (
+              <div className="px-4 py-2 border-t border-border-color bg-[var(--bg-secondary)]/40">
+                {sessionError && (
+                  <div className="flex items-start gap-2 text-[9px] font-mono text-[var(--accent-coral)]">
+                    <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                    <span>{sessionError}</span>
+                  </div>
+                )}
+                {notice && !sessionError && (
+                  <div className="flex items-start gap-2 text-[9px] font-mono text-[var(--accent-amber)]">
+                    <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                    <span>{notice}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Input */}
             <div className="p-3 border-t border-border-color bg-[var(--bg-secondary)]/30">

@@ -561,6 +561,22 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, inc
 
   return response.json() as Promise<T>;
 }
+
+// --- Issue #190 §3 / §5: Runtime data mode -------------------------------
+// Consumed by the global DataModeBadge and any page that needs to know
+// whether demo/seed fallback is permitted and whether the source is live.
+export interface SystemDataModeResponse {
+  mode: 'production' | 'demo' | 'test';
+  allow_demo_fallback: boolean;
+  show_demo_badges: boolean;
+  provenance: Record<string, Record<string, number>>;
+  seed_record_count: number;
+  live_record_count: number;
+}
+
+export async function getSystemDataMode(): Promise<SystemDataModeResponse> {
+  return apiRequest<SystemDataModeResponse>('/system/data-mode', {}, false);
+}
 export async function login(username: string, password: string) {
   return apiRequest<LoginResponse>('/auth/login', {
     method: 'POST',

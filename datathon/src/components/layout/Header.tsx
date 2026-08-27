@@ -12,6 +12,7 @@ import {
   WifiOff,
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
+import DataModeBadge from '../ui/DataModeBadge';
 import { isEmulatorActive } from '../../services/api';
 
 interface HeaderProps {
@@ -107,6 +108,11 @@ export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarColl
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {/* Global data-mode indicator */}
+        <div className="hidden sm:flex items-center">
+          <DataModeBadge />
+        </div>
+
         {/* Connection Status */}
         <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono rounded-md border border-[var(--border-secondary)]">
           {emulatorActive ? (

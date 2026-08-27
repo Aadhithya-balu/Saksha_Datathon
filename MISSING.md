@@ -1,8 +1,8 @@
 # MISSING.md — Production Data Readiness, Demo Isolation & Intelligence Validation
 
-**Issue:** [#162](https://github.com/Aadhithya-balu/Saksha_Datathon/issues/162)  
-**Created:** 2026-08-26  
-**Status:** AUDIT & REMEDIATION IN PROGRESS
+**Issues:** [#162](https://github.com/Aadhithya-balu/Saksha_Datathon/issues/162), [#190](https://github.com/Aadhithya-balu/Saksha_Datathon/issues/190)  
+**Created:** 2026-08-26 · **Updated:** 2026-08-27  
+**Status:** COMPLETE (verified against repository implementation)
 
 ---
 
@@ -294,14 +294,14 @@ Neo4j/DB relationships → NetworkService edge.provenance → CriminalGraph3D li
 ### Missing Tests
 | # | Test | Priority | Status |
 |---|---|---|---|
-| 10.1 | Data mode endpoint returns correct mode | HIGH | **TODO** |
-| 10.2 | Demo mode allows fallback, production does not | HIGH | **TODO** |
-| 10.3 | API failure returns error state, not synthetic data | HIGH | **TODO** |
+| 10.1 | Data mode endpoint returns correct mode | HIGH | ✅ Covered — `test_data_mode.py` (8) + `test_issue190_readiness.py` |
+| 10.2 | Demo mode allows fallback, production does not | HIGH | ✅ Covered — `test_data_mode.py` / `test_issue190_readiness.py` |
+| 10.3 | API failure returns error state, not synthetic data | HIGH | ✅ Covered — `test_acceptance_resilience.py` (broken-DB 503/controlled errors) |
 | 10.4 | Model missing → FALLBACK label shown | MEDIUM | Covered by existing tests |
-| 10.5 | Empty database → appropriate empty state | MEDIUM | **TODO** |
-| 10.6 | Realtime unavailable → no "live" claims | LOW | **TODO** |
+| 10.5 | Empty database → appropriate empty state | MEDIUM | ✅ Covered — `test_issue190_readiness.py::test_empty_database_*` |
+| 10.6 | Realtime unavailable → no "live" claims | LOW | ✅ Documented — polling-based; no WebSocket claims |
 | 10.7 | Provenance metadata preserved end-to-end | MEDIUM | Covered by provenance tests |
-| 10.8 | Seed data never appears as live in production mode | HIGH | **TODO** |
+| 10.8 | Seed data never appears as live in production mode | HIGH | ✅ Covered — `test_issue190_readiness.py` (seed never becomes live) |
 
 ---
 
@@ -347,6 +347,14 @@ Neo4j/DB relationships → NetworkService edge.provenance → CriminalGraph3D li
 | Add data mode tests | `tests/test_data_mode.py` (new) | ✅ |
 | Update ACCEPTANCE_MATRIX.md | `ACCEPTANCE_MATRIX.md` | ✅ |
 
+### Issue #190 Follow-up — Configuration & Model-Artifact Corrections (2026-08-27)
+
+| Action | Files Modified | Status |
+|---|---|---|
+| Fix production-config tests (fixtures used 48-char JWT secrets vs the 64-char minimum) | `tests/test_config_production.py` | ✅ |
+| Fix risk model artifact path in refresh registry (watched `app/models/risk` but trainer/inference use `app/ai/models/risk` — broke staleness detection) | `app/ai/inference/refresh.py` | ✅ |
+| Fix stale provenance assertion in acceptance prediction test (`LIVE_DB` → accepts `LIVE_DB + DEMO` when demo seed coexists) | `tests/acceptance/test_acceptance_prediction.py` | ✅ |
+
 ---
 
 ## 13. KNOWN LIMITATIONS
@@ -364,6 +372,56 @@ Neo4j/DB relationships → NetworkService edge.provenance → CriminalGraph3D li
 6. **PDF export uses raw PDF spec** — No external PDF library; generates valid but minimal PDFs.
 
 7. **Seed data in production database** — Demo records share tables with live records. Provenance column is the sole partitioning mechanism.
+
+---
+
+## 14. ISSUE #190 — PRODUCTION READINESS CLASSIFICATION
+
+**Date:** 2026-08-27 · **Status:** COMPLETED (verified against repository implementation)
+
+### 14.1 Known-Limitation Classification (MISSING.md §13 → issue #190 §12)
+
+| Limitation | Classification | Evidence / Notes |
+|---|---|---|
+| No model artifacts in repo | **ACCEPTED LIMITATION** (with FALLBACK honesty) | Models auto-train on first inference; `prediction_mode: FALLBACK` tag + `IntelligenceStatusBadges` make fallback explicit. Not falsely claimed solved. |
+| Polling-based notifications | **FOLLOW-UP REQUIRED** | No WebSocket/Supabase Realtime; documented honestly. |
+| In-memory RAG vector store | **FOLLOW-UP REQUIRED** | Not persistent across restarts; documented honestly. |
+| Client-side face authentication | **FOLLOW-UP REQUIRED** | Server accepts any valid JWT; documented honestly. |
+| Approximate socioeconomic indicators | **ACCEPTED LIMITATION** | Versioned CSV fallback with explicit label; updatable via SQL without code changes. |
+| Minimal PDF generation | **ACCEPTED LIMITATION** | Valid but minimal; no external PDF library. |
+| Demo records in production tables | **ACCEPTED LIMITATION** | Provenance column is the documented partitioning mechanism; production `allow_demo_fallback=False`; demo fallbacks gated in frontend. |
+
+### 14.2 Issue #190 Gaps Closed in This Pass
+
+| Item | Change | Files |
+|---|---|---|
+| Data mode validated at startup (invalid/missing fails safely) | `SAKSHA_DATA_MODE` field validator | `app/core/config.py` |
+| Authoritative data-mode provider (extension point for service enforcement) | New module | `app/core/data_mode.py` |
+| Data-mode endpoint uses validated provider + fail-safe guard | Replaced raw `os.environ` read | `app/routes/system.py` |
+| Frontend consumes `/api/v2/system/data-mode` | `getSystemDataMode()` + typed response | `services/api.ts` |
+| Global data-mode indicator | New `DataModeBadge` component | `components/ui/DataModeBadge.tsx` |
+| Data-mode surfaced in header | Mounted badge | `components/layout/Header.tsx` |
+| Frontend demo-fallback gating in production | `useDataMode` hook gates `BASELINE_HOTSPOTS` | `hooks/useDataMode.ts`, `pages/Hotspots.tsx` |
+| Automated tests (§15 scenarios) | 28 tests: modes, invalid/missing mode, seed/mixed/unknown provenance, empty DB, missing secrets, invalid config, external-service unavailability, production filtering | `tests/test_issue190_readiness.py` |
+
+### 14.3 Verified Acceptance Criteria (issue #190 §16)
+
+All 15 criteria verified as PASS with code-level evidence (see `ACCEPTANCE_MATRIX.md` → Issue #190). No PASS is asserted without repository evidence.
+
+### 14.4 Honest Gap Findings (issue #190 §1–§11 audit, 2026-08-27)
+
+The 28-test §15 suite plus an independent source audit confirm the primary requirements are met, but the following **remaining gaps are recorded honestly** and not claimed as solved:
+
+| # | Gap | Severity | Status |
+|---|---|---|---|
+| 14.4.1 | `User` model has no `dataset_provenance` column (seed demo users untagged); categories/notifications also untagged | LOW | **FOLLOW-UP** — core 7 crime models carry it; users/categories are non-crime reference/auth data. |
+| 14.4.2 | Evidence records have no provenance backfill (only the create branch tags them) | LOW | **FOLLOW-UP** — only matters for legacy DBs. |
+| 14.4.3 | `derive_data_provenance()` folds `{unknown + live}` into `LIVE_DB` (`analytics_service.py:50`); `ingest_service.py:1413` defaults a missing provenance attribute to `"live"` | MEDIUM | **FOLLOW-UP** — unknown can collapse into `LIVE_DB` on those two paths (not via canonical `normalize_provenance`, which correctly maps unknown → `unknown`). |
+| 14.4.4 | `allow_demo_fallback` / `is_production` are consumed only by the system endpoint + tests — not enforced by downstream services | MEDIUM | **FOLLOW-UP** — extension point (`data_mode.py`) exists; production label/fallback gating is currently endpoint + frontend driven. |
+| 14.4.5 | Frontend `DEMO_RECIPIENTS` / `DEMO_SENDERS` (static picker lists) are not production-gated, unlike `BASELINE_HOTSPOTS` / `DEMO_PROFILES` | LOW | **FOLLOW-UP** — UI picker lists, not synthetic intelligence. |
+| 14.4.6 | `backend/.env` on disk holds real-looking credentials (untracked + gitignored, so not committed) | MEDIUM | **FOLLOW-UP** — rotate/keep out of backups; never commit. |
+
+> These do not block the §16 acceptance criteria but are tracked so the project does not over-claim (issue #190 §12).
 
 ---
 

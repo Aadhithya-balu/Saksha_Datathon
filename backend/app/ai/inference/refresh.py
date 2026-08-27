@@ -41,8 +41,8 @@ _AI_DIR = Path(__file__).resolve().parents[1]  # .../app/ai
 _BACKEND_DIR = _AI_DIR.parents[1]              # .../backend
 # NOTE: artifact locations intentionally differ per domain because the
 # existing pipelines/inference modules disagree on layout (issue #145):
-#   criminal + hotspot -> app/ai/models/<name>
-#   risk + anomaly     -> app/models/<name>
+#   criminal + hotspot + risk -> app/ai/models/<name>
+#   anomaly                  -> app/models/<name>
 _AI_MODELS_DIR = _BACKEND_DIR / "app" / "ai" / "models"
 _APP_MODELS_DIR = _BACKEND_DIR / "app" / "models"
 _MONITORING_DIR = _AI_DIR.parents[1] / "monitoring"
@@ -101,9 +101,9 @@ SPECS: dict[str, ModelSpec] = {
         key="risk",
         label="District risk + forecast models",
         artifact_files=(
-            _app_model_dir("risk") / "risk_model.pkl",
-            _app_model_dir("risk") / "forecast_model.pkl",
-            _app_model_dir("risk") / "model_metadata.json",
+            _ai_model_dir("risk") / "risk_model.pkl",
+            _ai_model_dir("risk") / "forecast_model.pkl",
+            _ai_model_dir("risk") / "model_metadata.json",
         ),
         metadata_keys=("model_metadata.json",),
         trainer_module="app.ai.pipelines.risk.train",

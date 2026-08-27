@@ -14,7 +14,7 @@ class TestProductionConfigValidation:
         s = Settings(
             _env_file=None,
             DATABASE_URL="sqlite:///:memory:",
-            JWT_SECRET_KEY="test-only-secret-key-not-for-production-use",
+            JWT_SECRET_KEY="test-only-secret-key-not-for-production-use-0000000000000000000000",
             APP_ENV="development",
             APP_DEBUG=False,
             DEBUG=False,
@@ -29,7 +29,7 @@ class TestProductionConfigValidation:
             Settings(
                 _env_file=None,
                 APP_ENV="production",
-                JWT_SECRET_KEY="a" * 48,
+                JWT_SECRET_KEY="a" * 64,
                 DATABASE_URL="postgresql+psycopg2://u:p@h:5432/db",
                 ALLOWED_ORIGINS="*",
                 APP_DEBUG=False,
@@ -43,7 +43,7 @@ class TestProductionConfigValidation:
             Settings(
                 _env_file=None,
                 APP_ENV="production",
-                JWT_SECRET_KEY="a" * 48,
+                JWT_SECRET_KEY="a" * 64,
                 DATABASE_URL="postgresql+psycopg2://u:p@h:5432/db",
                 ALLOWED_ORIGINS="https://saksha.example.com",
                 APP_DEBUG=True,
@@ -76,7 +76,7 @@ class TestProductionConfigValidation:
         s = Settings(
             _env_file=None,
             APP_ENV="production",
-            JWT_SECRET_KEY="a" * 48,
+            JWT_SECRET_KEY="a" * 64,
             DATABASE_URL="postgresql+psycopg2://u:p@h:5432/db",
             ALLOWED_ORIGINS="https://saksha.example.com",
             APP_DEBUG=False,
@@ -92,7 +92,7 @@ class TestProductionConfigValidation:
             Settings(
                 _env_file=None,
                 APP_ENV="production",
-                JWT_SECRET_KEY="a" * 48,
+                JWT_SECRET_KEY="a" * 64,
                 DATABASE_URL="postgresql+psycopg2://u:p@h:5432/db",
                 ALLOWED_ORIGINS="https://saksha.example.com",
                 APP_DEBUG=False,
@@ -106,7 +106,7 @@ class TestProductionConfigValidation:
             Settings(
                 _env_file=None,
                 APP_ENV="production",
-                JWT_SECRET_KEY="a" * 48,
+                JWT_SECRET_KEY="a" * 64,
                 DATABASE_URL="postgresql+psycopg2://u:p@h:5432/db",
                 ALLOWED_ORIGINS="https://saksha.example.com",
                 APP_DEBUG=False,
@@ -121,7 +121,7 @@ class TestProductionConfigValidation:
             Settings(
                 _env_file=None,
                 APP_ENV="production",
-                JWT_SECRET_KEY="a" * 48,
+                JWT_SECRET_KEY="a" * 64,
                 DATABASE_URL="sqlite:///./saksha.db",
                 ALLOWED_ORIGINS="https://saksha.example.com",
                 APP_DEBUG=False,
