@@ -239,6 +239,7 @@ def find_similar_offenders(db, criminal_id: str, top_k: int = 5) -> dict[str, An
         "query_id": pred.query_id,
         "query_name": criminal.full_name,
         "similar": similar_enriched,
+        "prediction_mode": "RULE_BASED",
     }
 
 
@@ -298,6 +299,12 @@ def get_investigation_recommendations(db, criminal_id: str) -> dict[str, Any]:
     if not recommendations:
         recommendations.append("No immediate escalation required — continue routine monitoring.")
 
+    prediction_modes = set()
+    for m in (risk, repeat, cluster, similar):
+        mode = m.get("prediction_mode")
+        if mode:
+            prediction_modes.add(mode)
+
     return {
         "criminal_id": criminal_id,
         "name": risk.get("name"),
@@ -307,6 +314,8 @@ def get_investigation_recommendations(db, criminal_id: str) -> dict[str, Any]:
         "cluster_label": cluster_label,
         "recommendations": recommendations,
         "similar_offenders": similar.get("similar", []),
+        "prediction_mode": "RULE_BASED",
+        "model_modes": sorted(prediction_modes) if prediction_modes else ["RULE_BASED"],
     }
 
 

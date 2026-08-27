@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { Timer, AlertTriangle } from 'lucide-react';
 
-const IDLE_TIMEOUT_S = 30 * 60;      // 30 min idle → logout
 const HARD_CAP_S     = 8 * 60 * 60; // 8 hr hard cap regardless of activity
 const WARN_AT_S      = 5 * 60;       // warn when ≤ 5 min remain
 
