@@ -126,17 +126,23 @@ def test_invalid_model_artifact_does_not_silently_continue_as_ml(
 ):
     """A corrupt artifact must never be presented as validated ML inference."""
     from tests.acceptance.conftest import auth_headers
+    from app.ai.inference import hotspot as hotspot_module
 
     (isolated_hotspot_model_dir / "hotspot_model.pkl").write_bytes(b"not-a-real-pickle")
+    hotspot_module.invalidate_caches()
     headers = auth_headers(tolerant_client, db_session, "acc-hotspot-invalid", "crime_analyst")
 
     info_r = tolerant_client.get(MODEL_INFO, headers=headers)
+    print("INFO_R STATUS:", info_r.status_code)
+    print("INFO_R TEXT:", info_r.text)
     # Controlled error (500 JSON via the app's exception handler), never a
     # fabricated 'loaded' claim.
     assert info_r.status_code >= 400
     assert "Traceback" not in info_r.text
 
     predict = tolerant_client.post(PREDICT, json={"records": _records()}, headers=headers)
+    print("PREDICT STATUS:", predict.status_code)
+    print("PREDICT TEXT:", predict.text)
     assert predict.status_code in (422, 503)
 
 

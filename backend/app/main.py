@@ -227,6 +227,9 @@ def _prewarm_models() -> None:
     This pays the joblib deserialisation cost once during startup so the
     first real inference request is fast instead of slow.
     """
+    from app.core.config import settings
+    if settings.APP_ENV == "test":
+        return
     import threading
 
     def _load():
@@ -263,6 +266,9 @@ def _start_background_refresh() -> None:
     Moves check_external_updates() and maybe_refresh_async() off the
     hot inference path so every prediction request is fast.
     """
+    from app.core.config import settings
+    if settings.APP_ENV == "test":
+        return
     import threading
     import time
 
