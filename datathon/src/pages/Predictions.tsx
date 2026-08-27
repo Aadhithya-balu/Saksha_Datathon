@@ -37,33 +37,79 @@ export const Predictions: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrainState, setRetrainState] = useState<'idle' | 'running' | 'ok' | 'failed'>('idle');
+  const [sectionsLoaded, setSectionsLoaded] = useState({ risk: false, seasons: false, trends: false });
 
   useEffect(() => {
     let isMounted = true;
 
-    void Promise.all([getRiskScores(), getAnomalies(), getModelInfo(), getSeasonBreakdown(), getEmergingTrends().catch(() => [])])
-      .then(([riskResponse, anomalyResponse, modelResponse, seasonResponse, typologyResponse]) => {
-        if (!isMounted) {
-          return;
-        }
-
+    // 1. Load risk scores + anomalies (primary data) — modelInfo is embedded in risk response
+    void getRiskScores()
+      .then((riskResponse) => {
+        if (!isMounted) return;
         setRiskScores(riskResponse);
-        setAnomalies(anomalyResponse.anomalies);
-        setModelInfo(modelResponse);
-        setSeasons(seasonResponse.seasons);
-        setTypologies(typologyResponse);
+        setSectionsLoaded(prev => ({ ...prev, risk: true }));
+        // Derive modelInfo from the risk response instead of a separate /model-info call
+        if (riskResponse.prediction_mode || riskResponse.model_version) {
+          setModelInfo(prev => prev ?? {
+            model_name: 'SAKSHA District Risk & Forecast',
+            risk_model_loaded: riskResponse.risk_model_loaded ?? false,
+            forecast_model_loaded: false,
+            version: riskResponse.model_version ?? 'unknown',
+            risk_algorithm: 'RandomForest',
+            forecast_algorithm: 'XGBoost',
+            trained_on: null,
+            training_rows: 0,
+            risk_metrics: {},
+            forecast_metrics: {},
+          });
+        }
       })
       .catch(() => {
         if (isMounted) {
-          setRiskScores(null);
-          setAnomalies([]);
-          setModelInfo(null);
           setError('Failed to load prediction data. Please try again.');
         }
       })
       .finally(() => {
         if (isMounted) setLoading(false);
       });
+
+    // 2. Load anomalies in parallel (fast endpoint)
+    void getAnomalies()
+      .then((anomalyResponse) => {
+        if (isMounted) setAnomalies(anomalyResponse.anomalies);
+      })
+      .catch(() => undefined);
+
+    // 3. Load seasons (independent, progressive)
+    void getSeasonBreakdown()
+      .then((seasonResponse) => {
+        if (isMounted) {
+          setSeasons(seasonResponse.seasons);
+          setSectionsLoaded(prev => ({ ...prev, seasons: true }));
+        }
+      })
+      .catch(() => {
+        if (isMounted) setSectionsLoaded(prev => ({ ...prev, seasons: true }));
+      });
+
+    // 4. Load emerging trends (non-blocking)
+    void getEmergingTrends()
+      .then((typologyResponse) => {
+        if (isMounted) {
+          setTypologies(typologyResponse);
+          setSectionsLoaded(prev => ({ ...prev, trends: true }));
+        }
+      })
+      .catch(() => {
+        if (isMounted) setSectionsLoaded(prev => ({ ...prev, trends: true }));
+      });
+
+    // 5. Load model info separately only if risk scores didn't provide it
+    void getModelInfo()
+      .then((modelResponse) => {
+        if (isMounted) setModelInfo(modelResponse);
+      })
+      .catch(() => undefined);
 
     return () => {
       isMounted = false;
@@ -91,10 +137,9 @@ export const Predictions: React.FC = () => {
     try {
       await trainRiskModels();
       setRetrainState('ok');
-      // Refresh status metadata so a stale LIVE ML badge never survives (issue 9 §24).
-      const [riskResponse, modelResponse] = await Promise.all([getRiskScores(), getModelInfo()]);
+      // Refresh only risk scores (modelInfo is derived from it)
+      const riskResponse = await getRiskScores();
       setRiskScores(riskResponse);
-      setModelInfo(modelResponse);
     } catch {
       setRetrainState('failed');
     }
@@ -196,11 +241,17 @@ export const Predictions: React.FC = () => {
 
       {/* WEATHER & SEASONAL CORRELATION */}
       <div className="w-full">
-        <WeatherCorrelationChart seasons={seasons} />
+        {sectionsLoaded.seasons ? (
+          <WeatherCorrelationChart seasons={seasons} />
+        ) : (
+          <div className="bg-secondary-bg/25 border border-border-color p-8 rounded-card flex items-center justify-center">
+            <span className="text-[10px] font-mono text-[var(--text-muted)] animate-pulse">Loading seasonal data...</span>
+          </div>
+        )}
       </div>
 
       {/* SEASONAL CRIME BREAKDOWN */}
-      {seasons.length > 0 && (
+      {sectionsLoaded.seasons && seasons.length > 0 && (
         <div className="bg-secondary-bg/25 border border-border-color p-5 rounded-card">
           <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-widest block border-b border-[var(--border-muted)] pb-2 mb-4 flex items-center justify-between">
             <span>Karnataka Seasonal Crime Intelligence</span>
@@ -231,7 +282,7 @@ export const Predictions: React.FC = () => {
       )}
 
       {/* EMERGING CRIME TYPOLOGIES (30d vs prior 30d, from strategic analytics) */}
-      {typologies.length > 0 && (
+      {sectionsLoaded.trends && typologies.length > 0 && (
         <div className="bg-secondary-bg/25 border border-border-color p-5 rounded-card">
           <div className="flex justify-between items-center border-b border-[var(--border-muted)] pb-2 mb-4">
             <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-widest">

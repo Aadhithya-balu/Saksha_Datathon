@@ -109,11 +109,24 @@ def _rule_based_risk(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     df["district"] = df.get("district", "Unknown")
 
     counts = df.groupby("district").size().reset_index(name="crime_count")
-    max_count = max(counts["crime_count"].max(), 1)
+    total_crimes = counts["crime_count"].sum()
+    mean_count = counts["crime_count"].mean()
+    std_count = counts["crime_count"].std() if len(counts) > 1 else mean_count * 0.3
 
     results = []
     for row in counts.itertuples(index=False):
-        score = round(float(row.crime_count / max_count * 100), 2)
+        # Use z-score based scoring for meaningful variation across districts
+        if std_count > 0:
+            z = (row.crime_count - mean_count) / std_count
+        else:
+            z = 0.0
+        # Map z-score to 0-100 range: z=0 -> ~45, z=1 -> ~70, z=2 -> ~90, z=-1 -> ~25
+        score = float(max(0, min(100, round(45 + z * 22, 2))))
+        # Also factor in proportion of total crimes
+        proportion_score = (row.crime_count / max(total_crimes, 1)) * 100
+        # Blend z-score with proportion for a balanced score
+        score = round(0.7 * score + 0.3 * proportion_score, 2)
+        score = max(5, min(100, score))
         band = "CRITICAL" if score >= 80 else "HIGH" if score >= 60 else "MEDIUM" if score >= 35 else "LOW"
         results.append({
             "district": row.district,

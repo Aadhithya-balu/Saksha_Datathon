@@ -44,7 +44,6 @@ function RadarPulse() {
 }
 
 function NotFound() {
-  const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
   const [typed, setTyped] = useState('');
   const headline = 'SIGNAL LOST';
 
@@ -59,9 +58,10 @@ function NotFound() {
     return () => clearInterval(id);
   }, []);
 
-  const navigate = (tab: string, path: string) => {
+  const navigate = (tab: string, _path: string) => {
+    // The navigate-tab CustomEvent listener in App.tsx handles both
+    // setActiveTab + URL sync, so we only dispatch the event here.
     window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab } }));
-    window.history.pushState({}, '', `${baseUrl}${path}`);
   };
 
   const goBack = () => {

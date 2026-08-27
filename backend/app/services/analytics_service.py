@@ -186,9 +186,9 @@ def risk_scores(db: Session, district_id: str | None = None, window: str = "next
     for item in aggregates:
         open_ratio = item.open_cases / item.total if item.total else 0
         severity_ratio = item.high_severity / item.total if item.total else 0
-        volume_component = (item.total / max_total) * 40
-        recency_component = (item.recent_cases / max_recent) * 25
-        score = min(100, round(20 + volume_component + recency_component + open_ratio * 10 + severity_ratio * 5))
+        volume_component = (item.total / max_total) * 50
+        recency_component = (item.recent_cases / max_recent) * 30 if max_recent > 0 else 0
+        score = min(100, round(volume_component + recency_component + open_ratio * 12 + severity_ratio * 8))
         predictions.append(
             {
                 "district": item.district,
@@ -442,8 +442,11 @@ def hotspots(db: Session, district_id: str | None = None, hour: int | None = Non
         # density, raw volume share, and recency — deterministic and explainable.
         gi_component = float(np.clip(z / 3.0, -1.0, 1.5)) / 1.5 * 100.0
         volume_component = counts[idx] / max_count * 100.0
-        recency_component = min(100.0, item["recent_count"] * 12.5)
-        score = int(round(0.40 * max(gi_component, 0.0) + 0.30 * kde_pct[idx] + 0.15 * volume_component + 0.15 * recency_component))
+        # Scale recency proportionally to total incidents at this location
+        total_at_location = max(item.get("day_total", item["count"]), 1)
+        recency_pct = (item["recent_count"] / total_at_location) * 100.0
+        recency_component = min(100.0, recency_pct)
+        score = int(round(0.35 * max(gi_component, 0.0) + 0.25 * kde_pct[idx] + 0.25 * volume_component + 0.15 * recency_component))
         score = int(np.clip(score, 0, 100))
         rows.append(
             {
