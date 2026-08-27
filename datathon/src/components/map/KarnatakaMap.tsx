@@ -5,7 +5,7 @@ import type { DistrictInfo } from '../../store/mapStore';
 import TimeSlider from './TimeSlider';
 import { 
   Shield, X, TrendingUp, TrendingDown, AlertTriangle, 
-  MapPin, ChevronRight, ChevronDown, ArrowLeft, Radio, FileText, 
+  MapPin, ChevronRight, ChevronDown, ChevronUp, ArrowLeft, Radio, FileText, 
   Clock, Flame
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -18,75 +18,75 @@ import { useAppStore } from '../../store/appStore';
 // Real Karnataka District Police Station database mapping
 const DISTRICT_POLICE_STATIONS: Record<string, HotspotPoint[]> = {
   'Bengaluru Urban': [
-    { district_id: 'Bengaluru Urban', name: 'Whitefield Police Station', lat: 12.9698, lng: 77.7500, score: 94, category: 'Cyber Crime & Online Fraud', trend: 'up' },
-    { district_id: 'Bengaluru Urban', name: 'Jayanagar Police Station', lat: 12.9260, lng: 77.5830, score: 92, category: 'Narcotics Smuggling Services', trend: 'down' },
-    { district_id: 'Bengaluru Urban', name: 'Indiranagar Police Station', lat: 12.9784, lng: 77.6408, score: 86, category: 'Theft & Burglaries', trend: 'stable' },
-    { district_id: 'Bengaluru Urban', name: 'Koramangala Police Station', lat: 12.9352, lng: 77.6245, score: 88, category: 'Commercial Frauds & Cheating', trend: 'up' },
-    { district_id: 'Bengaluru Urban', name: 'Electronic City Police Station', lat: 12.8452, lng: 77.6602, score: 79, category: 'Cyber Extortion & Phishing', trend: 'stable' },
-    { district_id: 'Bengaluru Urban', name: 'Cubbon Park Police Station', lat: 12.9767, lng: 77.5928, score: 74, category: 'VVIP & Public Security', trend: 'down' },
+    { district_id: 'Bengaluru Urban', name: 'Whitefield Police Station', lat: 12.9698, lng: 77.7500, score: 78, category: 'Cyber Crime & Online Fraud', trend: 'up' },
+    { district_id: 'Bengaluru Urban', name: 'Jayanagar Police Station', lat: 12.9260, lng: 77.5830, score: 65, category: 'Narcotics Smuggling Services', trend: 'down' },
+    { district_id: 'Bengaluru Urban', name: 'Indiranagar Police Station', lat: 12.9784, lng: 77.6408, score: 52, category: 'Theft & Burglaries', trend: 'stable' },
+    { district_id: 'Bengaluru Urban', name: 'Koramangala Police Station', lat: 12.9352, lng: 77.6245, score: 58, category: 'Commercial Frauds & Cheating', trend: 'up' },
+    { district_id: 'Bengaluru Urban', name: 'Electronic City Police Station', lat: 12.8452, lng: 77.6602, score: 42, category: 'Cyber Extortion & Phishing', trend: 'stable' },
+    { district_id: 'Bengaluru Urban', name: 'Cubbon Park Police Station', lat: 12.9767, lng: 77.5928, score: 30, category: 'VVIP & Public Security', trend: 'down' },
   ],
   'Mysuru': [
-    { district_id: 'Mysuru', name: 'Devaraja Police Station', lat: 12.3050, lng: 76.6480, score: 88, category: 'Theft & Burglaries', trend: 'up' },
-    { district_id: 'Mysuru', name: 'Lashkar Police Station', lat: 12.3160, lng: 76.6550, score: 84, category: 'Commercial Fraud & Cheating', trend: 'stable' },
-    { district_id: 'Mysuru', name: 'Nazarbad Police Station', lat: 12.3100, lng: 76.6680, score: 81, category: 'Violent Assaults & Riots', trend: 'down' },
-    { district_id: 'Mysuru', name: 'V.V. Puram Police Station', lat: 12.3320, lng: 76.6340, score: 76, category: 'Vehicle Theft', trend: 'stable' },
-    { district_id: 'Mysuru', name: 'Saraswathipuram Police Station', lat: 12.3010, lng: 76.6310, score: 72, category: 'Domestic Violence', trend: 'down' },
+    { district_id: 'Mysuru', name: 'Devaraja Police Station', lat: 12.3050, lng: 76.6480, score: 58, category: 'Theft & Burglaries', trend: 'up' },
+    { district_id: 'Mysuru', name: 'Lashkar Police Station', lat: 12.3160, lng: 76.6550, score: 50, category: 'Commercial Fraud & Cheating', trend: 'stable' },
+    { district_id: 'Mysuru', name: 'Nazarbad Police Station', lat: 12.3100, lng: 76.6680, score: 44, category: 'Violent Assaults & Riots', trend: 'down' },
+    { district_id: 'Mysuru', name: 'V.V. Puram Police Station', lat: 12.3320, lng: 76.6340, score: 36, category: 'Vehicle Theft', trend: 'stable' },
+    { district_id: 'Mysuru', name: 'Saraswathipuram Police Station', lat: 12.3010, lng: 76.6310, score: 28, category: 'Domestic Violence', trend: 'down' },
   ],
   'Ballari': [
-    { district_id: 'Ballari', name: 'City Police Station', lat: 15.1400, lng: 76.9100, score: 96, category: 'Domestic Violence', trend: 'up' },
-    { district_id: 'Ballari', name: 'Cowl Bazaar Police Station', lat: 15.1290, lng: 76.9230, score: 89, category: 'Smuggling & Illegal Mining', trend: 'up' },
-    { district_id: 'Ballari', name: 'Brucepet Police Station', lat: 15.1480, lng: 76.9200, score: 82, category: 'Theft & Property Crimes', trend: 'stable' },
-    { district_id: 'Ballari', name: 'APMC Yard Police Station', lat: 15.1620, lng: 76.8980, score: 75, category: 'Excise & Transport Violations', trend: 'down' },
+    { district_id: 'Ballari', name: 'City Police Station', lat: 15.1400, lng: 76.9100, score: 82, category: 'Domestic Violence', trend: 'up' },
+    { district_id: 'Ballari', name: 'Cowl Bazaar Police Station', lat: 15.1290, lng: 76.9230, score: 62, category: 'Smuggling & Illegal Mining', trend: 'up' },
+    { district_id: 'Ballari', name: 'Brucepet Police Station', lat: 15.1480, lng: 76.9200, score: 48, category: 'Theft & Property Crimes', trend: 'stable' },
+    { district_id: 'Ballari', name: 'APMC Yard Police Station', lat: 15.1620, lng: 76.8980, score: 32, category: 'Excise & Transport Violations', trend: 'down' },
   ],
   'Belagavi': [
-    { district_id: 'Belagavi', name: 'Khade Bazar Police Station', lat: 15.8500, lng: 74.5100, score: 82, category: 'Smuggling & Excise Violations', trend: 'down' },
-    { district_id: 'Belagavi', name: 'Market Police Station', lat: 15.8620, lng: 74.5220, score: 85, category: 'Counterfeit & Smuggling', trend: 'up' },
-    { district_id: 'Belagavi', name: 'Camp Police Station', lat: 15.8420, lng: 74.5050, score: 78, category: 'Property Disputes', trend: 'stable' },
-    { district_id: 'Belagavi', name: 'Tilakwadi Police Station', lat: 15.8350, lng: 74.5020, score: 73, category: 'Cyber Fraud & Phishing', trend: 'down' },
+    { district_id: 'Belagavi', name: 'Khade Bazar Police Station', lat: 15.8500, lng: 74.5100, score: 45, category: 'Smuggling & Excise Violations', trend: 'down' },
+    { district_id: 'Belagavi', name: 'Market Police Station', lat: 15.8620, lng: 74.5220, score: 55, category: 'Counterfeit & Smuggling', trend: 'up' },
+    { district_id: 'Belagavi', name: 'Camp Police Station', lat: 15.8420, lng: 74.5050, score: 38, category: 'Property Disputes', trend: 'stable' },
+    { district_id: 'Belagavi', name: 'Tilakwadi Police Station', lat: 15.8350, lng: 74.5020, score: 30, category: 'Cyber Fraud & Phishing', trend: 'down' },
   ],
   'Kalaburagi': [
-    { district_id: 'Kalaburagi', name: 'Brahmapur Police Station', lat: 17.3300, lng: 76.8400, score: 80, category: 'Property Disputes', trend: 'up' },
-    { district_id: 'Kalaburagi', name: 'Chowk Police Station', lat: 17.3410, lng: 76.8320, score: 83, category: 'Violent Assaults & Clashes', trend: 'up' },
-    { district_id: 'Kalaburagi', name: 'Station Bazaar Police Station', lat: 17.3240, lng: 76.8480, score: 77, category: 'Theft & Pickpocketing', trend: 'stable' },
-    { district_id: 'Kalaburagi', name: 'University Police Station', lat: 17.2980, lng: 76.8150, score: 70, category: 'Public Disturbance', trend: 'down' },
+    { district_id: 'Kalaburagi', name: 'Brahmapur Police Station', lat: 17.3300, lng: 76.8400, score: 38, category: 'Property Disputes', trend: 'up' },
+    { district_id: 'Kalaburagi', name: 'Chowk Police Station', lat: 17.3410, lng: 76.8320, score: 48, category: 'Violent Assaults & Clashes', trend: 'up' },
+    { district_id: 'Kalaburagi', name: 'Station Bazaar Police Station', lat: 17.3240, lng: 76.8480, score: 34, category: 'Theft & Pickpocketing', trend: 'stable' },
+    { district_id: 'Kalaburagi', name: 'University Police Station', lat: 17.2980, lng: 76.8150, score: 22, category: 'Public Disturbance', trend: 'down' },
   ],
   'Dakshina Kannada': [
-    { district_id: 'Dakshina Kannada', name: 'Surathkal Police Station', lat: 12.9800, lng: 74.8600, score: 85, category: 'Cyber Crime & Online Fraud', trend: 'stable' },
-    { district_id: 'Dakshina Kannada', name: 'Mangaluru North (Bunder) Police Station', lat: 12.8710, lng: 74.8380, score: 89, category: 'Maritime & Port Smuggling', trend: 'up' },
-    { district_id: 'Dakshina Kannada', name: 'Mangaluru South (Pandeshwar) Police Station', lat: 12.8590, lng: 74.8420, score: 82, category: 'Commercial Fraud & Extortion', trend: 'stable' },
-    { district_id: 'Dakshina Kannada', name: 'Kadri Police Station', lat: 12.8850, lng: 74.8610, score: 76, category: 'Narcotics & Substance Abuse', trend: 'down' },
+    { district_id: 'Dakshina Kannada', name: 'Surathkal Police Station', lat: 12.9800, lng: 74.8600, score: 52, category: 'Cyber Crime & Online Fraud', trend: 'stable' },
+    { district_id: 'Dakshina Kannada', name: 'Mangaluru North (Bunder) Police Station', lat: 12.8710, lng: 74.8380, score: 62, category: 'Maritime & Port Smuggling', trend: 'up' },
+    { district_id: 'Dakshina Kannada', name: 'Mangaluru South (Pandeshwar) Police Station', lat: 12.8590, lng: 74.8420, score: 46, category: 'Commercial Fraud & Extortion', trend: 'stable' },
+    { district_id: 'Dakshina Kannada', name: 'Kadri Police Station', lat: 12.8850, lng: 74.8610, score: 34, category: 'Narcotics & Substance Abuse', trend: 'down' },
   ],
   'Dharwad': [
-    { district_id: 'Dharwad', name: 'Dharwad Town Police Station', lat: 15.4590, lng: 75.0080, score: 81, category: 'Theft & Burglaries', trend: 'up' },
-    { district_id: 'Dharwad', name: 'Suburban Police Station', lat: 15.4480, lng: 75.0190, score: 78, category: 'Property Disputes', trend: 'stable' },
-    { district_id: 'Dharwad', name: 'Hubballi Town Police Station', lat: 15.3647, lng: 75.1240, score: 87, category: 'Commercial Extortion & Frauds', trend: 'up' },
-    { district_id: 'Dharwad', name: 'Gokul Road Police Station', lat: 15.3520, lng: 75.0980, score: 74, category: 'Vehicle Thefts & Traffic', trend: 'down' },
+    { district_id: 'Dharwad', name: 'Dharwad Town Police Station', lat: 15.4590, lng: 75.0080, score: 44, category: 'Theft & Burglaries', trend: 'up' },
+    { district_id: 'Dharwad', name: 'Suburban Police Station', lat: 15.4480, lng: 75.0190, score: 36, category: 'Property Disputes', trend: 'stable' },
+    { district_id: 'Dharwad', name: 'Hubballi Town Police Station', lat: 15.3647, lng: 75.1240, score: 55, category: 'Commercial Extortion & Frauds', trend: 'up' },
+    { district_id: 'Dharwad', name: 'Gokul Road Police Station', lat: 15.3520, lng: 75.0980, score: 30, category: 'Vehicle Thefts & Traffic', trend: 'down' },
   ],
   'Tumkuru': [
-    { district_id: 'Tumkuru', name: 'Tumkuru Town Police Station', lat: 13.3400, lng: 77.1000, score: 79, category: 'Theft & Highway Robberies', trend: 'up' },
-    { district_id: 'Tumkuru', name: 'New Extension Police Station', lat: 13.3510, lng: 77.1120, score: 75, category: 'Domestic Violence', trend: 'stable' },
-    { district_id: 'Tumkuru', name: 'Tilak Park Police Station', lat: 13.3340, lng: 77.0950, score: 71, category: 'Commercial Disputes', trend: 'down' },
+    { district_id: 'Tumkuru', name: 'Tumkuru Town Police Station', lat: 13.3400, lng: 77.1000, score: 40, category: 'Theft & Highway Robberies', trend: 'up' },
+    { district_id: 'Tumkuru', name: 'New Extension Police Station', lat: 13.3510, lng: 77.1120, score: 32, category: 'Domestic Violence', trend: 'stable' },
+    { district_id: 'Tumkuru', name: 'Tilak Park Police Station', lat: 13.3340, lng: 77.0950, score: 25, category: 'Commercial Disputes', trend: 'down' },
   ],
   'Hassan': [
-    { district_id: 'Hassan', name: 'Hassan City Police Station', lat: 13.0100, lng: 76.1000, score: 76, category: 'Domestic Violence', trend: 'down' },
-    { district_id: 'Hassan', name: 'Hassan Extension Police Station', lat: 13.0220, lng: 76.1150, score: 73, category: 'Property Disputes', trend: 'stable' },
-    { district_id: 'Hassan', name: 'Penta Police Station', lat: 12.9980, lng: 76.0880, score: 68, category: 'Vehicle Theft', trend: 'down' },
+    { district_id: 'Hassan', name: 'Hassan City Police Station', lat: 13.0100, lng: 76.1000, score: 28, category: 'Domestic Violence', trend: 'down' },
+    { district_id: 'Hassan', name: 'Hassan Extension Police Station', lat: 13.0220, lng: 76.1150, score: 24, category: 'Property Disputes', trend: 'stable' },
+    { district_id: 'Hassan', name: 'Penta Police Station', lat: 12.9980, lng: 76.0880, score: 18, category: 'Vehicle Theft', trend: 'down' },
   ],
   'Mandya': [
-    { district_id: 'Mandya', name: 'Mandya Town Police Station', lat: 12.5200, lng: 76.9000, score: 83, category: 'Domestic Violence & Assault', trend: 'up' },
-    { district_id: 'Mandya', name: 'Mandya Central Police Station', lat: 12.5280, lng: 76.8920, score: 79, category: 'Agricultural & Land Disputes', trend: 'stable' },
-    { district_id: 'Mandya', name: 'Maddur Police Station', lat: 12.5840, lng: 77.0450, score: 77, category: 'Highway Robberies & Thefts', trend: 'up' },
-    { district_id: 'Mandya', name: 'Srirangapatna Police Station', lat: 12.4210, lng: 76.6950, score: 72, category: 'Heritage & Tourist Security', trend: 'down' },
+    { district_id: 'Mandya', name: 'Mandya Town Police Station', lat: 12.5200, lng: 76.9000, score: 48, category: 'Domestic Violence & Assault', trend: 'up' },
+    { district_id: 'Mandya', name: 'Mandya Central Police Station', lat: 12.5280, lng: 76.8920, score: 40, category: 'Agricultural & Land Disputes', trend: 'stable' },
+    { district_id: 'Mandya', name: 'Maddur Police Station', lat: 12.5840, lng: 77.0450, score: 36, category: 'Highway Robberies & Thefts', trend: 'up' },
+    { district_id: 'Mandya', name: 'Srirangapatna Police Station', lat: 12.4210, lng: 76.6950, score: 26, category: 'Heritage & Tourist Security', trend: 'down' },
   ],
   'Chitradurga': [
-    { district_id: 'Chitradurga', name: 'Chitradurga Town Police Station', lat: 14.2250, lng: 76.4000, score: 78, category: 'Property Disputes & Thefts', trend: 'up' },
-    { district_id: 'Chitradurga', name: 'Fort Police Station', lat: 14.2180, lng: 76.3950, score: 74, category: 'Highway Violations & Smuggling', trend: 'stable' },
-    { district_id: 'Chitradurga', name: 'Holalkere Police Station', lat: 14.0410, lng: 76.1820, score: 69, category: 'Domestic Violence', trend: 'down' },
+    { district_id: 'Chitradurga', name: 'Chitradurga Town Police Station', lat: 14.2250, lng: 76.4000, score: 38, category: 'Property Disputes & Thefts', trend: 'up' },
+    { district_id: 'Chitradurga', name: 'Fort Police Station', lat: 14.2180, lng: 76.3950, score: 30, category: 'Highway Violations & Smuggling', trend: 'stable' },
+    { district_id: 'Chitradurga', name: 'Holalkere Police Station', lat: 14.0410, lng: 76.1820, score: 22, category: 'Domestic Violence', trend: 'down' },
   ],
   'Shivamogga': [
-    { district_id: 'Shivamogga', name: 'Shivamogga Town Police Station', lat: 13.9300, lng: 75.5700, score: 80, category: 'Violent Assaults & Riots', trend: 'up' },
-    { district_id: 'Shivamogga', name: 'Kote Police Station', lat: 13.9380, lng: 75.5820, score: 76, category: 'Timber & Forest Smuggling', trend: 'stable' },
-    { district_id: 'Shivamogga', name: 'Doddapete Police Station', lat: 13.9240, lng: 75.5610, score: 72, category: 'Commercial Fraud & Thefts', trend: 'down' },
+    { district_id: 'Shivamogga', name: 'Shivamogga Town Police Station', lat: 13.9300, lng: 75.5700, score: 42, category: 'Violent Assaults & Riots', trend: 'up' },
+    { district_id: 'Shivamogga', name: 'Kote Police Station', lat: 13.9380, lng: 75.5820, score: 34, category: 'Timber & Forest Smuggling', trend: 'stable' },
+    { district_id: 'Shivamogga', name: 'Doddapete Police Station', lat: 13.9240, lng: 75.5610, score: 26, category: 'Commercial Fraud & Thefts', trend: 'down' },
   ]
 };
 
@@ -208,6 +208,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
   const map = palette.map;
 
   const [panelOpen, setPanelOpen] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(true);
   const [mapZoom, setMapZoom] = useState(1);
   const [mapOffset, setMapOffset] = useState({ x: 0, y: 0 });
   const [selectedHotspot, setSelectedHotspot] = useState<any | null>(null);
@@ -485,75 +486,89 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
           </p>
         </div>
 
-        {/* LAYER SELECTORS */}
+        {/* LAYER SELECTORS — collapsible */}
         <div className="px-3 py-2 bg-secondary-bg/95 backdrop-blur-md border border-border-color rounded-card pointer-events-auto flex flex-col gap-1.5">
-          <span className="text-[8px] font-mono uppercase tracking-widest text-[var(--text-muted)] mb-1">
-            Display Layers
-          </span>
           <button
-            onClick={() => toggleLayer('hotspot')}
-            className={`w-full py-1 px-2.5 rounded text-[9.5px] font-mono uppercase flex items-center justify-between transition-colors border cursor-pointer ${
-              layers.hotspot 
-                ? 'bg-[var(--accent-blue)]/15 border-[var(--accent-blue)] text-[var(--accent-blue)]' 
-                : 'bg-transparent border-[var(--border-secondary)] text-[var(--text-secondary)]'
-            }`}
+            onClick={() => setLayersOpen(v => !v)}
+            className="flex items-center justify-between gap-2 cursor-pointer w-full"
           >
-            <span>Hotspots Data</span>
-            <div className={`w-1.5 h-1.5 rounded-full ${layers.hotspot ? 'bg-[var(--accent-blue)] animate-pulse' : 'bg-[var(--text-muted)]'}`} />
-          </button>
-          
-          <button
-            onClick={() => toggleLayer('beatCoverage')}
-            className={`w-full py-1 px-2.5 rounded text-[9.5px] font-mono uppercase flex items-center justify-between transition-colors border cursor-pointer ${
-              layers.beatCoverage 
-                ? 'bg-[var(--accent-teal)]/15 border-[var(--accent-teal)] text-[var(--accent-teal)]' 
-                : 'bg-transparent border-[var(--border-secondary)] text-[var(--text-secondary)]'
-            }`}
-          >
-            <span>Beat Officer Ratio</span>
-            <div className={`w-1.5 h-1.5 rounded-full ${layers.beatCoverage ? 'bg-[var(--accent-teal)] animate-pulse' : 'bg-[var(--text-muted)]'}`} />
-          </button>
-          
-          <button
-            onClick={() => toggleLayer('riskScore')}
-            className={`w-full py-1 px-2.5 rounded text-[9.5px] font-mono uppercase flex items-center justify-between transition-colors border cursor-pointer ${
-              layers.riskScore 
-                ? 'bg-[var(--accent-purple)]/15 border-[var(--accent-purple)] text-[var(--accent-purple)]' 
-                : 'bg-transparent border-[var(--border-secondary)] text-[var(--text-secondary)]'
-            }`}
-          >
-            <span>Regional Risk Index</span>
-            <div className={`w-1.5 h-1.5 rounded-full ${layers.riskScore ? 'bg-[var(--accent-purple)] animate-pulse' : 'bg-[var(--text-muted)]'}`} />
+            <span className="text-[8px] font-mono uppercase tracking-widest text-[var(--text-muted)]">
+              Display Layers
+            </span>
+            {layersOpen
+              ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)]" />
+              : <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />
+            }
           </button>
 
-          <button
-            onClick={() => toggleLayer('socioEconomic')}
-            className={`w-full py-1 px-2.5 rounded text-[9.5px] font-mono uppercase flex items-center justify-between transition-colors border cursor-pointer ${
-              layers.socioEconomic
-                ? 'bg-amber-500/15 border-amber-500 text-amber-400'
-                : 'bg-transparent border-[var(--border-secondary)] text-[var(--text-secondary)]'
-            }`}
-          >
-            <span>Socio-Economic Layer</span>
-            <div className={`w-1.5 h-1.5 rounded-full ${layers.socioEconomic ? 'bg-amber-400 animate-pulse' : 'bg-[var(--text-muted)]'}`} />
-          </button>
+          {layersOpen && (
+            <>
+              <button
+                onClick={() => toggleLayer('hotspot')}
+                className={`w-full py-1 px-2.5 rounded text-[9.5px] font-mono uppercase flex items-center justify-between transition-colors border cursor-pointer ${
+                  layers.hotspot 
+                    ? 'bg-[var(--accent-blue)]/15 border-[var(--accent-blue)] text-[var(--accent-blue)]' 
+                    : 'bg-transparent border-[var(--border-secondary)] text-[var(--text-secondary)]'
+                }`}
+              >
+                <span>Hotspots Data</span>
+                <div className={`w-1.5 h-1.5 rounded-full ${layers.hotspot ? 'bg-[var(--accent-blue)] animate-pulse' : 'bg-[var(--text-muted)]'}`} />
+              </button>
+              
+              <button
+                onClick={() => toggleLayer('beatCoverage')}
+                className={`w-full py-1 px-2.5 rounded text-[9.5px] font-mono uppercase flex items-center justify-between transition-colors border cursor-pointer ${
+                  layers.beatCoverage 
+                    ? 'bg-[var(--accent-teal)]/15 border-[var(--accent-teal)] text-[var(--accent-teal)]' 
+                    : 'bg-transparent border-[var(--border-secondary)] text-[var(--text-secondary)]'
+                }`}
+              >
+                <span>Beat Officer Ratio</span>
+                <div className={`w-1.5 h-1.5 rounded-full ${layers.beatCoverage ? 'bg-[var(--accent-teal)] animate-pulse' : 'bg-[var(--text-muted)]'}`} />
+              </button>
+              
+              <button
+                onClick={() => toggleLayer('riskScore')}
+                className={`w-full py-1 px-2.5 rounded text-[9.5px] font-mono uppercase flex items-center justify-between transition-colors border cursor-pointer ${
+                  layers.riskScore 
+                    ? 'bg-[var(--accent-purple)]/15 border-[var(--accent-purple)] text-[var(--accent-purple)]' 
+                    : 'bg-transparent border-[var(--border-secondary)] text-[var(--text-secondary)]'
+                }`}
+              >
+                <span>Regional Risk Index</span>
+                <div className={`w-1.5 h-1.5 rounded-full ${layers.riskScore ? 'bg-[var(--accent-purple)] animate-pulse' : 'bg-[var(--text-muted)]'}`} />
+              </button>
 
-          {layers.socioEconomic && (
-            <div className="grid grid-cols-2 gap-1 pl-1">
-              {SOCIO_INDICATORS.map((indicator) => (
-                <button
-                  key={indicator.key}
-                  onClick={() => setSocioIndicator(indicator.key)}
-                  className={`py-0.5 px-1.5 rounded text-[8px] font-mono uppercase transition-colors border cursor-pointer ${
-                    socioIndicator === indicator.key
-                      ? 'bg-amber-500/20 border-amber-500/60 text-amber-300'
-                      : 'bg-transparent border-border-color text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                  }`}
-                >
-                  {indicator.label}
-                </button>
-              ))}
-            </div>
+              <button
+                onClick={() => toggleLayer('socioEconomic')}
+                className={`w-full py-1 px-2.5 rounded text-[9.5px] font-mono uppercase flex items-center justify-between transition-colors border cursor-pointer ${
+                  layers.socioEconomic
+                    ? 'bg-amber-500/15 border-amber-500 text-amber-400'
+                    : 'bg-transparent border-[var(--border-secondary)] text-[var(--text-secondary)]'
+                }`}
+              >
+                <span>Socio-Economic Layer</span>
+                <div className={`w-1.5 h-1.5 rounded-full ${layers.socioEconomic ? 'bg-amber-400 animate-pulse' : 'bg-[var(--text-muted)]'}`} />
+              </button>
+
+              {layers.socioEconomic && (
+                <div className="grid grid-cols-2 gap-1 pl-1">
+                  {SOCIO_INDICATORS.map((indicator) => (
+                    <button
+                      key={indicator.key}
+                      onClick={() => setSocioIndicator(indicator.key)}
+                      className={`py-0.5 px-1.5 rounded text-[8px] font-mono uppercase transition-colors border cursor-pointer ${
+                        socioIndicator === indicator.key
+                          ? 'bg-amber-500/20 border-amber-500/60 text-amber-300'
+                          : 'bg-transparent border-border-color text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      {indicator.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

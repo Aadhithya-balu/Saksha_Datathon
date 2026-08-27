@@ -120,7 +120,14 @@ function App() {
     const handleNavigate = (e: Event) => {
       const customEvent = e as CustomEvent<{ tab: string; targetId?: string }>;
       if (customEvent.detail?.tab) {
-        setActiveTab(customEvent.detail.tab);
+        const nextTab = customEvent.detail.tab;
+        setActiveTab(nextTab);
+        // Sync currentPath so isKnownPath updates immediately (fixes 404 -> valid page navigation)
+        const nextPath = pathForTab(nextTab);
+        if (nextPath) {
+          setCurrentPath(nextPath);
+          window.history.pushState({}, '', `${basePath === '/' ? '' : basePath}${nextPath}`);
+        }
         if (customEvent.detail.targetId) {
           sessionStorage.setItem('selected_entity_id', customEvent.detail.targetId);
         }
@@ -128,7 +135,7 @@ function App() {
     };
     window.addEventListener('navigate-tab', handleNavigate);
     return () => window.removeEventListener('navigate-tab', handleNavigate);
-  }, [setActiveTab]);
+  }, [setActiveTab, basePath]);
 
   // Force /login URL on logout from anywhere in the app
   useEffect(() => {
