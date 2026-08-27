@@ -3,7 +3,7 @@ import ForecastChart from '../components/charts/ForecastChart';
 import CorrelationChart from '../components/charts/CorrelationChart';
 import WeatherCorrelationChart from '../components/charts/WeatherCorrelationChart';
 import IntelligenceStatusBadges from '../components/ui/IntelligenceStatusBadges';
-import { Cpu, RefreshCw, ShieldAlert, Sparkles, Sun, CloudRain, Wind, Snowflake, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Cpu, RefreshCw, ShieldAlert, Sparkles, Sun, CloudRain, Wind, Snowflake, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
 import { getAnomalies, getRiskScores, getModelInfo, getSeasonBreakdown, getEmergingTrends, trainRiskModels, type AnomalyRecord, type RiskScoresResponse, type ModelInfo, type SeasonData, type EmergingTypology } from '../services/api';
 import { getIntelligenceStatus, getPredictionLabel, getConfidenceLabel } from '../services/intelligenceStatus';
 import { PageSkeleton } from '../components/ui/Skeleton';
@@ -38,37 +38,75 @@ export const Predictions: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [retrainState, setRetrainState] = useState<'idle' | 'running' | 'ok' | 'failed'>('idle');
 
-  useEffect(() => {
+  // Sub-service partial error tracking
+  const [riskScoresError, setRiskScoresError] = useState<string | null>(null);
+  const [seasonsError, setSeasonsError] = useState<string | null>(null);
+  const [typologiesError, setTypologiesError] = useState<string | null>(null);
+
+  const fetchPredictions = React.useCallback(() => {
     let isMounted = true;
+    setLoading(true);
+    setError(null);
+    setRiskScoresError(null);
+    setSeasonsError(null);
+    setTypologiesError(null);
 
-    void Promise.all([getRiskScores(), getAnomalies(), getModelInfo(), getSeasonBreakdown(), getEmergingTrends().catch(() => [])])
-      .then(([riskResponse, anomalyResponse, modelResponse, seasonResponse, typologyResponse]) => {
-        if (!isMounted) {
-          return;
-        }
+    Promise.allSettled([
+      getRiskScores(),
+      getAnomalies(),
+      getModelInfo(),
+      getSeasonBreakdown(),
+      getEmergingTrends(),
+    ]).then(([riskRes, anomalyRes, modelRes, seasonRes, typologyRes]) => {
+      if (!isMounted) return;
 
-        setRiskScores(riskResponse);
-        setAnomalies(anomalyResponse.anomalies);
-        setModelInfo(modelResponse);
-        setSeasons(seasonResponse.seasons);
-        setTypologies(typologyResponse);
-      })
-      .catch(() => {
-        if (isMounted) {
-          setRiskScores(null);
-          setAnomalies([]);
-          setModelInfo(null);
-          setError('Failed to load prediction data. Please try again.');
-        }
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
+      if (riskRes.status === 'fulfilled') {
+        setRiskScores(riskRes.value);
+      } else {
+        setRiskScores(null);
+        setRiskScoresError('District risk prediction model unavailable');
+      }
 
-    return () => {
-      isMounted = false;
-    };
+      if (anomalyRes.status === 'fulfilled') {
+        setAnomalies(anomalyRes.value?.anomalies || []);
+      } else {
+        setAnomalies([]);
+      }
+
+      if (modelRes.status === 'fulfilled') {
+        setModelInfo(modelRes.value);
+      } else {
+        setModelInfo(null);
+      }
+
+      if (seasonRes.status === 'fulfilled') {
+        setSeasons(seasonRes.value?.seasons || []);
+      } else {
+        setSeasons([]);
+        setSeasonsError('Seasonal crime intelligence service unavailable');
+      }
+
+      if (typologyRes.status === 'fulfilled') {
+        setTypologies(typologyRes.value || []);
+      } else {
+        setTypologies([]);
+        setTypologiesError('Emerging crime typologies service unavailable');
+      }
+
+      // Only show top-level blocking error if all primary predictive sources failed
+      if (riskRes.status === 'rejected' && seasonRes.status === 'rejected' && typologyRes.status === 'rejected') {
+        setError('Predictive intelligence models currently unreachable. Please retry.');
+      }
+    }).finally(() => {
+      if (isMounted) setLoading(false);
+    });
+
+    return () => { isMounted = false; };
   }, []);
+
+  useEffect(() => {
+    return fetchPredictions();
+  }, [fetchPredictions]);
 
   const predictionRows = riskScores?.grid_predictions ?? [];
 
@@ -119,7 +157,7 @@ export const Predictions: React.FC = () => {
     );
   }
 
-  if (error && !riskScores) {
+  if (error && !riskScores && seasons.length === 0) {
     return (
       <div className="flex flex-col gap-6 p-1 md:p-3 select-none bg-[var(--bg-primary)]">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[var(--border-muted)] pb-3">
@@ -136,7 +174,7 @@ export const Predictions: React.FC = () => {
               <Cpu className="w-6 h-6 text-[var(--accent-coral)]" />
             </div>
             <p className="text-sm text-[var(--text-secondary)]">{error}</p>
-            <button onClick={() => { setError(null); setLoading(true); window.location.reload(); }}
+            <button onClick={() => fetchPredictions()}
               className="px-3 py-1.5 text-[10px] font-mono uppercase bg-[var(--accent-blue)]/10 hover:bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] border border-[var(--accent-blue)]/30 rounded-btn transition-colors cursor-pointer">
               Retry
             </button>
@@ -200,7 +238,7 @@ export const Predictions: React.FC = () => {
       </div>
 
       {/* SEASONAL CRIME BREAKDOWN */}
-      {seasons.length > 0 && (
+      {seasons.length > 0 ? (
         <div className="bg-secondary-bg/25 border border-border-color p-5 rounded-card">
           <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-widest block border-b border-[var(--border-muted)] pb-2 mb-4 flex items-center justify-between">
             <span>Karnataka Seasonal Crime Intelligence</span>
@@ -228,10 +266,20 @@ export const Predictions: React.FC = () => {
             ))}
           </div>
         </div>
-      )}
+      ) : seasonsError ? (
+        <div className="bg-secondary-bg/25 border border-amber-500/30 p-4 rounded-card text-center font-mono text-[10px] text-[var(--text-muted)] flex items-center justify-between">
+          <span className="flex items-center gap-2 text-amber-400">
+            <AlertTriangle className="w-4 h-4" />
+            {seasonsError}
+          </span>
+          <button onClick={() => fetchPredictions()} className="px-2.5 py-1 text-[9px] uppercase rounded border border-[var(--accent-blue)]/30 text-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/10">
+            Retry
+          </button>
+        </div>
+      ) : null}
 
       {/* EMERGING CRIME TYPOLOGIES (30d vs prior 30d, from strategic analytics) */}
-      {typologies.length > 0 && (
+      {typologies.length > 0 ? (
         <div className="bg-secondary-bg/25 border border-border-color p-5 rounded-card">
           <div className="flex justify-between items-center border-b border-[var(--border-muted)] pb-2 mb-4">
             <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-widest">
@@ -263,7 +311,17 @@ export const Predictions: React.FC = () => {
             })}
           </div>
         </div>
-      )}
+      ) : typologiesError ? (
+        <div className="bg-secondary-bg/25 border border-amber-500/30 p-4 rounded-card text-center font-mono text-[10px] text-[var(--text-muted)] flex items-center justify-between">
+          <span className="flex items-center gap-2 text-amber-400">
+            <AlertTriangle className="w-4 h-4" />
+            {typologiesError}
+          </span>
+          <button onClick={() => fetchPredictions()} className="px-2.5 py-1 text-[9px] uppercase rounded border border-[var(--accent-blue)]/30 text-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/10">
+            Retry
+          </button>
+        </div>
+      ) : null}
 
       {/* DETAILED STATS ROW */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -273,6 +331,17 @@ export const Predictions: React.FC = () => {
             Strategic Threat Assessments {modelInfo ? `• ${modelInfo.version}` : ''}
           </span>
           
+          {riskScoresError ? (
+            <div className="p-4 bg-[var(--bg-secondary)]/45 border border-amber-500/30 rounded-card flex items-center justify-between text-xs font-mono text-amber-400">
+              <span className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                {riskScoresError}
+              </span>
+              <button onClick={() => fetchPredictions()} className="px-2.5 py-1 text-[9px] uppercase rounded border border-[var(--accent-blue)]/30 text-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/10">
+                Retry
+              </button>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
             {predictionRows.slice(0, 2).map((row) => {
               const confidence = getConfidenceLabel(row.confidence);
@@ -317,6 +386,7 @@ export const Predictions: React.FC = () => {
               </div>
             ))}
           </div>
+          )}
         </div>
 
         {/* Right Side: Performance stats (4 cols on lg) */}

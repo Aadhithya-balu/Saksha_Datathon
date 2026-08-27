@@ -213,6 +213,13 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
   const [selectedHotspot, setSelectedHotspot] = useState<any | null>(null);
   const [socioIndicator, setSocioIndicator] = useState<SocioIndicatorKey>('unemployment_rate');
 
+  // Open drill-down details drawer whenever a district, station, or case is selected
+  useEffect(() => {
+    if (selectedDistrict || selectedStation || selectedCrimeId) {
+      setPanelOpen(true);
+    }
+  }, [selectedDistrict, selectedStation, selectedCrimeId]);
+
   // Map socio-economic reference array by district name
   const socioEconomicMap = useMemo(() => {
     const map: Record<string, any> = {};
@@ -252,15 +259,13 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
     return socioShade(t);
   };
 
-  // Open details panel when a district or station is selected
+  // Sync details drawer state when district or station selection is cleared
   useEffect(() => {
-    if (selectedDistrict || selectedStation) {
-      setPanelOpen(true);
-    } else {
+    if (!selectedDistrict && !selectedStation && !selectedCrimeId) {
       setPanelOpen(false);
       setSelectedHotspot(null);
     }
-  }, [selectedDistrict, selectedStation]);
+  }, [selectedDistrict, selectedStation, selectedCrimeId]);
 
   // Calculate temporal modulation factor based on timeOfDay (hour 0-23)
   const temporalShiftInfo = useMemo(() => {
@@ -657,9 +662,17 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                   onMouseEnter={(e) => { if (!isSelected && !isSpikedDistrict) { e.currentTarget.style.fill = map.districtSelected; e.currentTarget.style.stroke = map.boundaryHover; } }}
                   onMouseLeave={(e) => { e.currentTarget.style.fill = fill; e.currentTarget.style.stroke = stroke; }}
                   onClick={() => {
-                    setSelectedDistrict(isSelected ? null : name);
-                    setSelectedStation(null);
-                    setSelectedCrimeId(null);
+                    if (isSelected) {
+                      setSelectedDistrict(null);
+                      setSelectedStation(null);
+                      setSelectedCrimeId(null);
+                      setPanelOpen(false);
+                    } else {
+                      setSelectedDistrict(name);
+                      setSelectedStation(null);
+                      setSelectedCrimeId(null);
+                      setPanelOpen(true);
+                    }
                   }}
                 />
               );
@@ -721,11 +734,6 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                     className="cursor-pointer pointer-events-auto" 
                     onClick={(e) => { 
                       e.stopPropagation(); 
-                      if (hs.district_id) {
-                        setSelectedDistrict(hs.district_id);
-                      }
-                      setSelectedStation(hs.name);
-                      setSelectedCrimeId(null);
                       setSelectedHotspot(hs); 
                     }}
                   >
@@ -747,7 +755,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                           r={Math.round(36 * temporalShiftInfo.multiplier)} 
                           stroke="#EF4444" 
                           strokeWidth="1.5" 
-                          strokeDasharray="3 3"
+                          strokeDasharray="3 3" 
                           fill="none" 
                           opacity={0.35} 
                           className="animate-ping" 
@@ -795,35 +803,6 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                         {isSpikeTrend ? '🔥 ' : ''}{hs.name.replace(/police station/i, 'PS')}
                       </text>
                     )}
-
-                    {/* Popover Tooltip inside foreignObject */}
-                    {isSelected && (
-                      <foreignObject x={x - 90} y={y - 120} width="180" height="110" className="z-50 pointer-events-auto">
-                        <div
-                          className="p-2.5 rounded-lg text-left flex flex-col gap-1.5 font-mono text-[10px] leading-tight relative shadow-lg"
-                          style={{ backgroundColor: palette.chart.tooltipBg, border: `1px solid ${palette.chart.tooltipBorder}`, color: palette.chart.tooltipText }}
-                        >
-                          <div className="flex justify-between items-center pb-1" style={{ borderColor: palette.chart.tooltipBorder, borderBottomWidth: 1 }}>
-                            <span className="font-bold uppercase text-[9px]" style={{ color: isSpikeTrend ? '#EF4444' : map.hotspotMedium }}>
-                              {isSpikeTrend ? '🔥 Surge Alert' : 'Hotspot Details'}
-                            </span>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setSelectedHotspot(null); }}
-                              className="cursor-pointer font-bold text-xs"
-                              style={{ color: palette.chart.axis }}
-                            >
-                              ×
-                            </button>
-                          </div>
-                          <div>
-                            <p className="font-bold uppercase truncate">{hs.name}</p>
-                            <p className="opacity-70 mt-0.5 truncate">Sector: {hs.district_id}</p>
-                            <p className="opacity-85 mt-0.5 truncate">Category: {hs.type}</p>
-                            <p className="font-bold mt-0.5" style={{ color: color }}>Threat Level: {hs.weight}%</p>
-                          </div>
-                        </div>
-                      </foreignObject>
-                    )}
                   </g>
                 );
               })}
@@ -856,12 +835,14 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
         )}
 
         {/* MAP INFO RESET SELECTOR */}
-        {(selectedDistrict || selectedStation || selectedCrimeId) && (
+        {(selectedDistrict || selectedStation || selectedCrimeId || selectedHotspot) && (
           <button
             onClick={() => {
               setSelectedDistrict(null);
               setSelectedStation(null);
               setSelectedCrimeId(null);
+              setSelectedHotspot(null);
+              setPanelOpen(false);
             }}
             className="absolute bottom-4 left-4 z-20 px-3 py-1.5 bg-[var(--accent-coral)] hover:opacity-90 text-white font-medium text-xs rounded-md flex items-center gap-1.5 shadow-sm cursor-pointer"
           >
@@ -869,6 +850,86 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
             <span>Reset View to Statewide</span>
           </button>
         )}
+        {/* NON-OBSTRUCTIVE FLOATING SURGE / HOTSPOT ALERT CARD OVERLAY */}
+        <AnimatePresence>
+          {selectedHotspot && !panelOpen && (() => {
+            const hs = selectedHotspot;
+            const isHigh = (hs.weight || 0) >= 80;
+            const catLower = (hs.type || hs.category || '').toLowerCase();
+            const isSpikeTrend = hs.trend === 'up' || emergingTrends.some(t => t.direction === 'increasing' && t.change_percentage > 10 && catLower.includes(t.category.toLowerCase()));
+            const color = isSpikeTrend ? '#EF4444' : isHigh ? map.hotspotHigh : (hs.weight || 0) >= 65 ? map.hotspotMedium : map.hotspotLow;
+
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: -10, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.96 }}
+                transition={{ duration: 0.2 }}
+                className="absolute top-4 right-4 z-20 w-72 sm:w-80 max-w-[calc(100%-2rem)] max-h-[calc(100%-4rem)] flex flex-col rounded-card border font-mono text-xs shadow-2xl backdrop-blur-md overflow-hidden select-none"
+                style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.96)',
+                  borderColor: isSpikeTrend ? 'rgba(239, 68, 68, 0.5)' : color,
+                  boxShadow: isSpikeTrend ? '0 12px 30px -4px rgba(239, 68, 68, 0.28)' : '0 12px 30px -4px rgba(0, 0, 0, 0.35)'
+                }}
+              >
+                {/* Header */}
+                <div className="flex justify-between items-center px-3.5 py-2.5 border-b border-border-color/60 bg-white/5 shrink-0">
+                  <span className="font-bold uppercase text-[10px] flex items-center gap-1.5" style={{ color: isSpikeTrend ? '#EF4444' : color }}>
+                    {isSpikeTrend ? <Flame className="w-3.5 h-3.5 animate-pulse text-red-500" /> : <Shield className="w-3.5 h-3.5" />}
+                    {isSpikeTrend ? 'Emerging Surge Alert' : 'Hotspot Intelligence'}
+                  </span>
+                  <button
+                    onClick={() => setSelectedHotspot(null)}
+                    className="p-1 rounded hover:bg-white/10 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                    title="Dismiss alert"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Body Details */}
+                <div className="p-3.5 space-y-2 text-[10px] overflow-y-auto flex-1">
+                  <div>
+                    <span className="text-[8px] uppercase tracking-wider text-[var(--text-muted)] block font-bold">Police Station</span>
+                    <p className="font-bold text-xs uppercase text-[var(--text-primary)] leading-tight mt-0.5">{hs.name}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="p-2 rounded bg-[var(--bg-secondary)]/50 border border-border-color/40">
+                      <span className="text-[8px] text-[var(--text-muted)] uppercase block">Sector</span>
+                      <span className="font-bold text-[10px] text-[var(--text-secondary)]">{hs.district_id || selectedDistrict || 'Statewide'}</span>
+                    </div>
+                    <div className="p-2 rounded bg-[var(--bg-secondary)]/50 border border-border-color/40">
+                      <span className="text-[8px] text-[var(--text-muted)] uppercase block">Threat Index</span>
+                      <span className="font-bold text-[10px]" style={{ color }}>{hs.weight}% {hs.trend === 'up' ? '▲ Surging' : ''}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-2 rounded bg-[var(--bg-secondary)]/50 border border-border-color/40">
+                    <span className="text-[8px] text-[var(--text-muted)] uppercase block">Primary Category</span>
+                    <span className="font-bold text-[10px] text-orange-400">{hs.type || hs.category || 'Incident Hotspot'}</span>
+                  </div>
+                </div>
+
+                {/* Footer Action */}
+                <div className="p-3 pt-0 shrink-0">
+                  <button
+                    onClick={() => {
+                      if (hs.district_id) setSelectedDistrict(hs.district_id);
+                      setSelectedStation(hs.name);
+                      setSelectedCrimeId(null);
+                      setPanelOpen(true);
+                    }}
+                    className="w-full py-2 px-3 text-[10px] uppercase font-bold text-white bg-[#1E6FD9] hover:bg-[#1E6FD9]/85 active:scale-[0.98] rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <span>View Full Intelligence Dossier</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
       </div>
 
       {/* 3-TIER DRILL-DOWN DETAILS PANEL DRAWER SLIDING IN (RIGHT SIDE) */}
@@ -879,77 +940,78 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 380, opacity: 0 }}
             transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-            className="absolute top-0 right-0 h-full w-84 md:w-96 bg-secondary-bg/95 border-l border-border-color backdrop-blur-md z-30 p-5 flex flex-col justify-between overflow-y-auto select-none"
+            className="absolute top-0 right-0 h-full w-84 md:w-96 bg-secondary-bg/95 border-l border-border-color backdrop-blur-md z-30 flex flex-col overflow-hidden select-none shadow-2xl"
           >
-            <div className="space-y-4">
-              
-              {/* INTERACTIVE BREADCRUMB HEADER */}
-              <div className="border-b border-border-color pb-3">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase font-bold text-[var(--accent-teal)]">
-                    <Shield className="w-3.5 h-3.5 text-[var(--accent-blue)] shrink-0" />
-                    <span>SCRB Intelligence Drill-Down</span>
-                  </div>
-                  <button
-                    onClick={() => setPanelOpen(false)}
-                    className="p-1 hover:bg-[var(--accent-blue)]/15 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+            {/* INTERACTIVE BREADCRUMB HEADER (STICKY) */}
+            <div className="p-4 pb-3 border-b border-border-color shrink-0 bg-secondary-bg/95 backdrop-blur-md">
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase font-bold text-[var(--accent-teal)]">
+                  <Shield className="w-3.5 h-3.5 text-[var(--accent-blue)] shrink-0" />
+                  <span>SCRB Intelligence Drill-Down</span>
                 </div>
-
-                {/* Breadcrumb Steps */}
-                <div className="flex items-center gap-1 text-[9px] font-mono flex-wrap">
-                  <button
-                    onClick={() => {
-                      setSelectedDistrict(null);
-                      setSelectedStation(null);
-                      setSelectedCrimeId(null);
-                    }}
-                    className="text-[var(--text-muted)] hover:text-[var(--accent-blue)] cursor-pointer underline"
-                  >
-                    Statewide
-                  </button>
-
-                  {selectedDistrict && (
-                    <>
-                      <ChevronRight className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
-                      <button
-                        onClick={() => {
-                          setSelectedStation(null);
-                          setSelectedCrimeId(null);
-                        }}
-                        className={`cursor-pointer ${!selectedStation && !selectedCrimeId ? 'text-[var(--accent-blue)] font-bold' : 'text-[var(--text-muted)] hover:text-[var(--accent-blue)] underline'}`}
-                      >
-                        {selectedDistrict}
-                      </button>
-                    </>
-                  )}
-
-                  {selectedStation && (
-                    <>
-                      <ChevronRight className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
-                      <button
-                        onClick={() => setSelectedCrimeId(null)}
-                        className={`cursor-pointer max-w-[110px] truncate ${!selectedCrimeId ? 'text-[var(--accent-blue)] font-bold' : 'text-[var(--text-muted)] hover:text-[var(--accent-blue)] underline'}`}
-                        title={selectedStation}
-                      >
-                        {selectedStation}
-                      </button>
-                    </>
-                  )}
-
-                  {selectedCrimeId && (
-                    <>
-                      <ChevronRight className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
-                      <span className="text-orange-400 font-bold max-w-[90px] truncate" title={selectedCrimeId}>
-                        {selectedCrimeId}
-                      </span>
-                    </>
-                  )}
-                </div>
+                <button
+                  onClick={() => setPanelOpen(false)}
+                  className="p-1 hover:bg-[var(--accent-blue)]/15 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
+              {/* Breadcrumb Steps */}
+              <div className="flex items-center gap-1 text-[9px] font-mono flex-wrap">
+                <button
+                  onClick={() => {
+                    setSelectedDistrict(null);
+                    setSelectedStation(null);
+                    setSelectedCrimeId(null);
+                  }}
+                  className="text-[var(--text-muted)] hover:text-[var(--accent-blue)] cursor-pointer underline"
+                >
+                  Statewide
+                </button>
+
+                {selectedDistrict && (
+                  <>
+                    <ChevronRight className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
+                    <button
+                      onClick={() => {
+                        setSelectedStation(null);
+                        setSelectedCrimeId(null);
+                      }}
+                      className={`cursor-pointer ${!selectedStation && !selectedCrimeId ? 'text-[var(--accent-blue)] font-bold' : 'text-[var(--text-muted)] hover:text-[var(--accent-blue)] underline'}`}
+                    >
+                      {selectedDistrict}
+                    </button>
+                  </>
+                )}
+
+                {selectedStation && (
+                  <>
+                    <ChevronRight className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
+                    <button
+                      onClick={() => setSelectedCrimeId(null)}
+                      className={`cursor-pointer max-w-[110px] truncate ${!selectedCrimeId ? 'text-[var(--accent-blue)] font-bold' : 'text-[var(--text-muted)] hover:text-[var(--accent-blue)] underline'}`}
+                      title={selectedStation}
+                    >
+                      {selectedStation}
+                    </button>
+                  </>
+                )}
+
+                {selectedCrimeId && (
+                  <>
+                    <ChevronRight className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
+                    <span className="text-orange-400 font-bold max-w-[90px] truncate" title={selectedCrimeId}>
+                      {selectedCrimeId}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* SCROLLABLE INTEL CONTENT BODY */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 pr-3.5">
+              
               {/* TIER 3: CRIME CASE VIEW */}
               {activeCrimeCase ? (
                 <div className="space-y-3 font-mono text-xs">
@@ -1148,13 +1210,13 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                   <div className="p-3 bg-[var(--bg-primary)] border border-[var(--accent-blue)]/40 rounded-card font-mono space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[9.5px] font-bold text-[var(--accent-teal)] uppercase tracking-wider flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-[var(--accent-teal)] animate-pulse" />
-                        Police Station Drill-Down ({districtStations.length})
+                        <Shield className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
+                        Police Station Jurisdictions ({districtStations.length})
                       </span>
-                      <span className="text-[8px] text-[var(--accent-blue)] font-bold">1-Click Select</span>
+                      <span className="text-[8px] text-[var(--text-muted)]">Select station to filter</span>
                     </div>
 
-                    {/* Dropdown Select Box with ChevronDown */}
+                    {/* Compact quick-jump dropdown */}
                     <div className="relative">
                       <select
                         value={selectedStation || ''}
@@ -1162,22 +1224,24 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                           if (e.target.value) {
                             setSelectedStation(e.target.value);
                             setSelectedCrimeId(null);
+                          } else {
+                            setSelectedStation(null);
                           }
                         }}
-                        className="w-full bg-[var(--bg-secondary)] border border-[var(--border-primary)] hover:border-[var(--accent-blue)] text-[var(--text-primary)] text-xs rounded p-2 pr-8 appearance-none cursor-pointer font-mono font-semibold focus:outline-none focus:border-[var(--accent-blue)]"
+                        className="w-full px-2.5 py-1.5 bg-secondary-bg border border-border-color rounded text-[10px] text-[var(--text-primary)] font-mono appearance-none cursor-pointer focus:outline-none focus:border-[var(--accent-blue)]"
                       >
-                        <option value="">▼ Select a Police Station Jurisdiction...</option>
-                        {districtStations.map((st) => (
+                        <option value="">-- Jump to Police Station --</option>
+                        {districtStations.map((st: any) => (
                           <option key={st.name} value={st.name}>
-                            🏢 {st.name} ({st.weight || st.baseScore}% Risk • {st.type})
+                            {st.name} ({st.weight}% Risk)
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="w-4 h-4 text-[var(--accent-blue)] absolute right-2.5 top-2.5 pointer-events-none" />
+                      <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] absolute right-2.5 top-2 pointer-events-none" />
                     </div>
 
-                    {/* Clickable Police Station Badges */}
-                    <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1 pt-1">
+                    {/* Scrollable station cards list */}
+                    <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
                       {districtStations.map((station) => (
                         <div
                           key={station.name}
@@ -1185,9 +1249,13 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                             setSelectedStation(station.name);
                             setSelectedCrimeId(null);
                           }}
-                          className="p-2 bg-[var(--bg-secondary)]/80 hover:bg-[var(--accent-blue)]/15 border border-[var(--border-primary)] hover:border-[var(--accent-blue)] rounded cursor-pointer transition-all flex items-center justify-between group"
+                          className={`p-2 rounded border transition-all cursor-pointer flex items-center justify-between group ${
+                            selectedStation === station.name
+                              ? 'bg-[var(--accent-blue)]/15 border-[var(--accent-blue)] text-[var(--accent-blue)] font-bold'
+                              : 'bg-secondary-bg/60 border-border-color hover:bg-secondary-bg hover:border-[var(--accent-blue)]/50'
+                          }`}
                         >
-                          <div className="truncate max-w-[190px]">
+                          <div className="overflow-hidden pr-2">
                             <p className="font-bold text-[9.5px] text-[var(--text-primary)] group-hover:text-[var(--accent-blue)] uppercase truncate">
                               {station.name}
                             </p>
@@ -1300,8 +1368,8 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
 
             </div>
 
-            {/* Quick Action bar */}
-            <div className="pt-3 border-t border-border-color mt-4">
+            {/* STICKY FOOTER ACTION BAR (ALWAYS FULLY VISIBLE & FITS PERFECTLY IN FRAME) */}
+            <div className="p-4 pt-3 border-t border-border-color shrink-0 bg-secondary-bg/95 backdrop-blur-md z-10">
               <button
                 onClick={() => {
                   const targetName = activeCrimeCase

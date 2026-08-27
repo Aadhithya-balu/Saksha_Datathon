@@ -22,20 +22,6 @@ import type { DistrictInfo } from '../store/mapStore';
 import { PageHeader } from '../components/ui/PageHeader';
 import { PageSkeleton } from '../components/ui/Skeleton';
 
-// Static seed records kept ONLY for offline resilience (issue 9 §21). They are
-// never presented as live intelligence — any view using them carries an
-// explicit DEMO DATA status chip.
-const BASELINE_HOTSPOTS: HotspotPoint[] = [
-  { district_id: 'Ballari', name: 'City Police Station', lat: 15.14, lng: 76.91, score: 96, category: 'Domestic Violence', trend: 'up' },
-  { district_id: 'Bengaluru Urban', name: 'Whitefield Police Station', lat: 12.9698, lng: 77.75, score: 94, category: 'Cyber Crime & Online Fraud', trend: 'stable' },
-  { district_id: 'Bengaluru Urban', name: 'Jayanagar Police Station', lat: 12.926, lng: 77.583, score: 92, category: 'Narcotics Smuggling Services', trend: 'down' },
-  { district_id: 'Mysuru', name: 'Devaraja Police Station', lat: 12.305, lng: 76.648, score: 88, category: 'Theft & Burglaries', trend: 'up' },
-  { district_id: 'Dakshina Kannada', name: 'Surathkal Police Station', lat: 12.98, lng: 74.86, score: 85, category: 'Cyber Crime & Online Fraud', trend: 'stable' },
-  { district_id: 'Belagavi', name: 'Khade Bazar Police Station', lat: 15.85, lng: 74.51, score: 82, category: 'Smuggling & Excise Violations', trend: 'down' },
-  { district_id: 'Kalaburagi', name: 'Brahmapur Police Station', lat: 17.33, lng: 76.84, score: 80, category: 'Property Disputes', trend: 'up' },
-  { district_id: 'Hassan', name: 'Hassan City Police Station', lat: 13.01, lng: 76.10, score: 76, category: 'Domestic Violence', trend: 'down' },
-];
-
 type HotspotSource = 'backend' | 'stations' | 'demo';
 
 export const Hotspots: React.FC = () => {
@@ -103,18 +89,23 @@ export const Hotspots: React.FC = () => {
         trend: station.trend,
       }));
       let source: HotspotSource;
-      if (hotspotRes.status === 'fulfilled' && backendHotspots.length > 0) {
-        // Backend reports its own analysis mode (statistical Gi*/KDE over
-        // recorded incidents — see analytics_service.hotspots).
-        setHotspotAnalysisMode(hotspotRes.value.analysis_mode ?? null);
+      let hsList: HotspotPoint[] = [];
+
+      if (hotspotRes.status === 'fulfilled') {
+        setHotspotAnalysisMode(hotspotRes.value.analysis_mode ?? 'STATISTICAL');
         source = 'backend';
-      } else if (stationHotspots.length > 0) {
+        hsList = backendHotspots;
+      } else if (stationRes.status === 'fulfilled' && stationHotspots.length > 0) {
         source = 'stations';
+        hsList = stationHotspots;
       } else {
-        // Static seed records — must never masquerade as live intelligence.
-        source = 'demo';
+        source = 'backend';
+        hsList = [];
+        if (hotspotRes.status === 'rejected') {
+          setError('Hotspot intelligence service is currently unavailable. Please retry.');
+        }
       }
-      const hsList = source === 'backend' ? backendHotspots : source === 'stations' ? stationHotspots : BASELINE_HOTSPOTS;
+
       setHotspotSource(source);
       const distList = districtRes.status === 'fulfilled' ? districtRes.value : [];
       setHotspots(hsList);
@@ -484,7 +475,7 @@ export const Hotspots: React.FC = () => {
       </div>
 
       {/* MAIN VISUALIZATION VIEWPORT */}
-      <div className="w-full relative min-h-[580px] h-[620px]">
+      <div className="w-full relative min-h-[620px] h-[680px]">
         {viewMode === 'map' ? (
           <KarnatakaMap 
             hotspots={filteredHotspots} 

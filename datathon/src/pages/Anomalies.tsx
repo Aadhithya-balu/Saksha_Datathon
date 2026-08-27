@@ -17,9 +17,11 @@ export const Anomalies: React.FC = () => {
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
   const [escalating, setEscalating] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchAnomalies = React.useCallback(() => {
     let isMounted = true;
-    void getAnomalies()
+    setLoading(true);
+    setLoadError(null);
+    getAnomalies()
       .then((response) => {
         if (!isMounted) return;
         const mappedAlerts = response.anomalies.map<CrimeAlert>((item) => ({
@@ -58,6 +60,10 @@ export const Anomalies: React.FC = () => {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    return fetchAnomalies();
+  }, [fetchAnomalies]);
 
   const reviewAlert = (id: string, reviewer: string) => setAlerts((current) => current.map((alert) => alert.id === id ? { ...alert, status: 'REVIEWED', assignedOfficer: reviewer } : alert));
 
@@ -170,6 +176,19 @@ export const Anomalies: React.FC = () => {
             <TableSkeleton rows={4} cols={2} />
           </div>
         </div>
+      ) : loadError ? (
+        <div className="flex-1 flex items-center justify-center bg-[var(--bg-surface)] rounded-card border border-border-color p-8 text-center font-mono">
+          <div className="space-y-3 max-w-md">
+            <div className="w-12 h-12 rounded-xl bg-[var(--accent-coral-subtle)] border border-[var(--accent-coral)]/20 flex items-center justify-center mx-auto text-[var(--accent-coral)]">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">Anomaly Detection Service Unavailable</p>
+            <p className="text-[10px] text-[var(--text-secondary)]">{loadError}</p>
+            <button onClick={() => fetchAnomalies()} className="px-3 py-1.5 rounded text-[10px] uppercase font-bold bg-[var(--accent-blue)] text-white hover:bg-[var(--accent-blue)]/80 cursor-pointer">
+              Retry Detection
+            </button>
+          </div>
+        </div>
       ) : (
       <div className="flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">
         
@@ -216,7 +235,7 @@ export const Anomalies: React.FC = () => {
 
           {filteredAlerts.length === 0 && (
             <div className="p-8 text-center text-xs font-mono text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)]/40 rounded-card">
-              No matching anomalies found
+              No matching anomalous incidents found
             </div>
           )}
         </div>

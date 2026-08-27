@@ -2027,6 +2027,7 @@ export interface InterventionEffectiveness {
   title: string;
   district: string;
   status: string;
+  window_days?: number;
   pre_window: { start: string; end: string; crime_count: number };
   post_window: { start: string; end: string; crime_count: number };
   change_percentage: number | null;
@@ -2045,12 +2046,21 @@ export interface InterventionCreateInput {
   notes?: string;
 }
 
+export interface InterventionListResponse {
+  total?: number;
+  count?: number;
+  page?: number;
+  page_size?: number;
+  results?: InterventionRecord[];
+  interventions?: InterventionRecord[];
+}
+
 export async function listInterventions(params: { district?: string; status?: string } = {}) {
   const search = new URLSearchParams();
   if (params.district) search.set('district', params.district);
   if (params.status) search.set('status', params.status);
   const qs = search.toString();
-  return apiRequest<{ count: number; interventions: InterventionRecord[] }>(
+  return apiRequest<InterventionListResponse>(
     `/interventions${qs ? `?${qs}` : ''}`
   );
 }
@@ -2062,8 +2072,8 @@ export async function createIntervention(input: InterventionCreateInput) {
   });
 }
 
-export async function getInterventionEffectiveness(id: string) {
-  return apiRequest<InterventionEffectiveness>(`/interventions/${id}/effectiveness`);
+export async function getInterventionEffectiveness(id: string, windowDays: number = 30) {
+  return apiRequest<InterventionEffectiveness>(`/interventions/${id}/effectiveness?window_days=${windowDays}`);
 }
 
 export async function updateIntervention(id: string, patch: Partial<InterventionCreateInput>) {

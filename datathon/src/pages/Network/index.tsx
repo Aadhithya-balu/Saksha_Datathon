@@ -129,7 +129,13 @@ export const NetworkPageWorkspace: React.FC = () => {
             {/* Right 4 cols: Node Detail Panel */}
             <div className="lg:col-span-4 h-full bg-secondary-bg/25 border border-border-color rounded-card overflow-hidden">
               {selectedNode ? (
-                <NodeDetailPanel node={selectedNode} onClose={() => setSelectedNode(null)} />
+                <NodeDetailPanel 
+                  node={selectedNode} 
+                  links={graphData?.links || []}
+                  nodes={graphData?.nodes || []}
+                  onSelectNode={setSelectedNode}
+                  onClose={() => setSelectedNode(null)} 
+                />
               ) : (
                 <div className="h-full flex flex-col items-center justify-center p-6 text-center text-xs text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)]/40 rounded-card">
                   <Layers className="w-10 h-10 mb-3 text-[var(--text-disabled)]" />
@@ -153,7 +159,13 @@ export const NetworkPageWorkspace: React.FC = () => {
             </div>
             <div className="lg:col-span-4 h-full bg-secondary-bg/25 border border-border-color rounded-card overflow-hidden">
               {selectedNode ? (
-                <NodeDetailPanel node={selectedNode} onClose={() => setSelectedNode(null)} />
+                <NodeDetailPanel 
+                  node={selectedNode} 
+                  links={graphData?.links || []}
+                  nodes={graphData?.nodes || []}
+                  onSelectNode={setSelectedNode}
+                  onClose={() => setSelectedNode(null)} 
+                />
               ) : (
                 <div className="h-full flex flex-col items-center justify-center p-6 text-center text-xs text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)]/40 rounded-card">
                   <Layers className="w-10 h-10 mb-3 text-[var(--text-disabled)]" />
@@ -184,7 +196,13 @@ export const NetworkPageWorkspace: React.FC = () => {
               </div>
               <div className="lg:col-span-4 h-full bg-secondary-bg/25 border border-border-color rounded-card overflow-hidden">
                 {selectedNode ? (
-                  <NodeDetailPanel node={selectedNode} onClose={() => setSelectedNode(null)} />
+                  <NodeDetailPanel 
+                    node={selectedNode} 
+                    links={graphData?.links || []}
+                    nodes={graphData?.nodes || []}
+                    onSelectNode={setSelectedNode}
+                    onClose={() => setSelectedNode(null)} 
+                  />
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center p-6 text-center text-xs text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)]/40 rounded-card">
                     <Layers className="w-10 h-10 mb-3 text-[var(--text-disabled)]" />
