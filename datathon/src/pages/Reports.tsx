@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../services/api';
+import { useAuthStore } from '../store/authStore';
 import {
   ExportMenu,
   ReportCards,
@@ -11,6 +12,7 @@ import {
   type ReportPreviewData,
   type ReportType,
 } from '../components/reports';
+import { ManagedReportLifecycle } from '../components/reports/ManagedReportLifecycle';
 
 const buildQuery = (filters: ReportFiltersValue) => {
   const params = new URLSearchParams();
@@ -26,6 +28,7 @@ const buildQuery = (filters: ReportFiltersValue) => {
 
 
 export const Reports: React.FC = () => {
+  const role = useAuthStore((s) => s.user?.role ?? 'VIEWER');
   const [filters, setFilters] = useState<ReportFiltersValue>({
     reportType: 'cases',
     search: '',
@@ -120,6 +123,7 @@ export const Reports: React.FC = () => {
       <ReportFilters value={filters} onChange={setFilters} onRefresh={() => void loadPreview()} />
       <ReportPreview data={preview} />
       <ReportTable data={preview} loading={loading} error={error} />
+      <ManagedReportLifecycle role={role} />
     </div>
   );
 };

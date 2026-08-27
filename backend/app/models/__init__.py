@@ -17,7 +17,7 @@ from app.models.evidence_timeline import EvidenceTimeline
 from app.models.evidence_assignment import EvidenceAssignment
 from app.models.chain_of_custody import ChainOfCustody
 from app.models.evidence_ai_summary import EvidenceAISummary
-from app.models.report import Report
+from app.models.report import Report, ReportVersion, ReportSourceLink, ReportEvidenceLink
 from app.models.audit_log import AuditLog
 from app.models.notification import Notification
 from app.models.investigation_note import InvestigationNote
@@ -31,7 +31,7 @@ __all__ = [
     "Role", "User", "Location", "CrimeCategory", "Officer", "Criminal",
     "Victim", "CrimeCase", "FIR", "FIRCriminalLink", "FIRVictimLink",
     "Evidence", "EvidenceMetadata", "EvidenceTimeline", "EvidenceAssignment",
-    "ChainOfCustody", "EvidenceAISummary", "Report", "AuditLog",
+    "ChainOfCustody", "EvidenceAISummary", "Report", "ReportVersion", "ReportSourceLink", "ReportEvidenceLink", "AuditLog",
     "Notification", "InvestigationNote", "ChatConversation", "ChatMessage",
     "ImportJob", "ImportStagedRecord", "Intervention", "MOTag", "CaseMOTag", "CriminalMOTag",
     "RevokedToken",

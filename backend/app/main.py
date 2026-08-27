@@ -195,6 +195,59 @@ def _migrate_provenance_columns():
         logger.warning(f"Provenance migration skipped: {exc}")
 
 
+def _migrate_report_lifecycle_columns():
+    """Issue #176: add report lifecycle columns and new tables for existing
+    deployments that were created before the lifecycle model (idempotent DDL).
+
+    ``create_all`` handles brand-new tables; this only ALTERs existing ones.
+    """
+    report_columns = [
+        ("report_type", "VARCHAR(50) NOT NULL DEFAULT 'cases'"),
+        ("title", "VARCHAR(255)"),
+        ("case_id", "UUID"),
+        ("provenance", "VARCHAR(20) NOT NULL DEFAULT 'unknown'"),
+        ("integrity_hash", "VARCHAR(64)"),
+        ("generation_method", "VARCHAR(50)"),
+        ("analysis_fingerprint", "VARCHAR(200)"),
+        ("failure_reason", "VARCHAR(500)"),
+        ("source_record_count", "INTEGER NOT NULL DEFAULT 0"),
+        ("evidence_count", "INTEGER NOT NULL DEFAULT 0"),
+        ("generated_at", "TIMESTAMPTZ"),
+        ("reviewed_at", "TIMESTAMPTZ"),
+        ("finalized_at", "TIMESTAMPTZ"),
+        ("archived_at", "TIMESTAMPTZ"),
+        ("reviewed_by_id", "UUID"),
+        ("finalized_by_id", "UUID"),
+        ("version", "INTEGER NOT NULL DEFAULT 1"),
+        ("content_snapshot", "TEXT"),
+        ("ai_reported", "BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("ai_metadata", "TEXT"),
+    ]
+    try:
+        with engine.connect() as conn:
+            inspector = inspect(conn)
+            tables = inspector.get_table_names()
+            if "reports" in tables:
+                existing = {c["name"] for c in inspector.get_columns("reports")}
+                changed = False
+                for col_name, col_def in report_columns:
+                    if col_name not in existing:
+                        conn.execute(text(f"ALTER TABLE reports ADD COLUMN {col_name} {col_def}"))
+                        changed = True
+                if "audit_logs" in tables:
+                    audit_existing = {c["name"] for c in inspector.get_columns("audit_logs")}
+                    for col_name in ("result", "metadata"):
+                        if col_name not in audit_existing:
+                            col_def = "VARCHAR(20) NOT NULL DEFAULT 'success'" if col_name == "result" else "TEXT"
+                            conn.execute(text(f"ALTER TABLE audit_logs ADD COLUMN {col_name} {col_def}"))
+                            changed = True
+                if changed:
+                    conn.commit()
+                    logger.info("Report lifecycle migration complete (issue #176)")
+    except Exception as exc:
+        logger.warning(f"Report lifecycle migration skipped: {exc}")
+
+
 def _migrate_user_lockout_columns():
     """Round-2 security: brute-force lockout columns on users (idempotent DDL)."""
     try:
@@ -327,6 +380,7 @@ async def lifespan(app: FastAPI):
                 _migrate_provenance_columns()
                 _ensure_realtime_indexes()
                 _migrate_user_lockout_columns()
+                _migrate_report_lifecycle_columns()
                 with engine.connect():
                     logger.info("PostgreSQL connection OK")
                 _db_connected = True
