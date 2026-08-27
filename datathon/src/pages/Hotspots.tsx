@@ -18,6 +18,7 @@ import {
   type DistrictComparisonPoint, type HotspotPoint, type RiskScoresResponse, type RedZone
 } from '../services/api';
 import { getIntelligenceStatus } from '../services/intelligenceStatus';
+import { useDataMode } from '../hooks/useDataMode';
 import type { DistrictInfo } from '../store/mapStore';
 import { PageHeader } from '../components/ui/PageHeader';
 import { PageSkeleton } from '../components/ui/Skeleton';
@@ -42,6 +43,7 @@ export const Hotspots: React.FC = () => {
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
   const { selectedDistrict, selectedStation, setSelectedDistrict, setSelectedStation, setTimeOfDay, timeOfDay } = useMapStore();
+  const { isProduction } = useDataMode();
 
   const [hotspots, setHotspots] = useState<HotspotPoint[]>([]);
   // Provenance of the currently displayed hotspot list — reset on every load
@@ -115,6 +117,15 @@ export const Hotspots: React.FC = () => {
         source = 'stations';
       } else {
         // Static seed records — must never masquerade as live intelligence.
+        // In production mode demo fallback is forbidden (issue 190 §3): show an
+        // honest error instead of synthetic BASELINE_HOTSPOTS.
+        if (isProduction) {
+          setHotspots([]);
+          setDistrictMetrics({});
+          setError('No live hotspot intelligence is available. Demo fallback is disabled in production mode.');
+          setLoading(false);
+          return;
+        }
         source = 'demo';
       }
       const hsList = source === 'backend' ? backendHotspots : source === 'stations' ? stationHotspots : BASELINE_HOTSPOTS;
@@ -217,7 +228,8 @@ export const Hotspots: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isProduction]);
 
   // Filtered hotspots by category if specified
   const filteredHotspots = useMemo(() => {
