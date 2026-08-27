@@ -82,13 +82,14 @@ export const NotificationBell: React.FC = () => {
     <div ref={dropdownRef} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
+        className="relative flex items-center justify-center h-9 w-9 rounded-full border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/60 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] hover:border-[var(--accent-blue)]/40 transition-all cursor-pointer"
         title="Notifications"
+        aria-label="Notifications"
       >
         {counts.unread > 0 ? (
           <BellDot className="w-[18px] h-[18px] text-[var(--accent-blue)]" />
         ) : (
-          <Bell className="w-[18px] h-[18px]" />
+          <Bell className="w-[18px] h-[18px] text-[var(--text-secondary)]" />
         )}
         {counts.unread > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-[var(--accent-coral)] rounded-full text-[10px] font-bold text-[var(--text-primary)] flex items-center justify-center px-1">

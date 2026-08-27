@@ -42,6 +42,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        display: ['Space Grotesk', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       borderRadius: {
@@ -63,11 +64,11 @@ export default {
         'sk-amber': 'var(--shadow-glow-amber)',
         'sk-coral': 'var(--shadow-glow-coral)',
         'sk-purple': 'var(--shadow-glow-purple)',
-        'glow-blue': '0 0 15px rgba(30, 111, 217, 0.35)',
-        'glow-teal': '0 0 15px rgba(14, 158, 120, 0.35)',
-        'glow-amber': '0 0 15px rgba(212, 130, 10, 0.35)',
-        'glow-coral': '0 0 15px rgba(201, 74, 42, 0.35)',
-        'glow-purple': '0 0 15px rgba(108, 67, 204, 0.35)',
+        'glow-blue': '0 0 15px rgba(37, 99, 235, 0.4)',
+        'glow-teal': '0 0 15px rgba(16, 185, 129, 0.4)',
+        'glow-amber': '0 0 15px rgba(245, 158, 11, 0.4)',
+        'glow-coral': '0 0 15px rgba(239, 68, 68, 0.4)',
+        'glow-purple': '0 0 15px rgba(139, 92, 246, 0.4)',
       },
       spacing: {
         '4.5': '18px',
