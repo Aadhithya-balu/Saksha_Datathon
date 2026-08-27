@@ -40,7 +40,7 @@ def compute_effectiveness(
     if window_end.tzinfo is not None:
         window_end = window_end.astimezone(timezone.utc).replace(tzinfo=None)
     post_days = max((window_end - started).days, 1)
-    compare_days = min(window_days, max(post_days, 30))
+    compare_days = max(1, int(window_days))
 
     post_start = started
     post_end = started + timedelta(days=compare_days)
@@ -65,8 +65,9 @@ def compute_effectiveness(
 
     monthly = []
     cursor = pre_start
+    step_days = max(7, compare_days // 4)
     while cursor < post_end:
-        bucket_end = min(cursor + timedelta(days=30), post_end)
+        bucket_end = min(cursor + timedelta(days=step_days), post_end)
         count = (
             db.query(func.count(CrimeCase.id))
             .join(Location, CrimeCase.location_id == Location.id)
@@ -85,24 +86,40 @@ def compute_effectiveness(
         delta_pct = 0.0
         verdict = "insufficient_data"
     elif pre_count == 0:
-        delta_pct = 100.0
-        verdict = "increased"
+        district_total = (
+            db.query(func.count(CrimeCase.id))
+            .join(Location, CrimeCase.location_id == Location.id)
+            .filter(Location.district == intervention.district)
+            .scalar() or 0
+        )
+        if district_total > post_count:
+            earlier_count = district_total - post_count
+            delta_pct = round((post_count - earlier_count) / max(earlier_count, 1) * 100, 1)
+            verdict = "effective" if delta_pct <= -20 else "partially_effective" if delta_pct < 0 else "no_measurable_effect"
+        else:
+            delta_pct = None
+            verdict = "insufficient_data"
     else:
         delta_pct = round((post_count - pre_count) / pre_count * 100, 1)
         if delta_pct <= -20:
             verdict = "effective"
         elif delta_pct < 0:
             verdict = "partially_effective"
+        elif delta_pct == 0:
+            verdict = "no_measurable_effect"
         else:
             verdict = "no_measurable_effect"
 
     return {
         "intervention_id": str(intervention.id),
+        "title": intervention.title,
         "district": intervention.district,
+        "status": intervention.status,
         "window_days": compare_days,
         "pre_window": {"start": pre_start.isoformat(), "end": started.isoformat(), "crime_count": int(pre_count)},
         "post_window": {"start": post_start.isoformat(), "end": post_end.isoformat(), "crime_count": int(post_count)},
         "change_pct": delta_pct,
+        "change_percentage": delta_pct,
         "verdict": verdict,
         "monthly_series": monthly,
         "method_note": (

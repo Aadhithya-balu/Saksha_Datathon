@@ -317,7 +317,7 @@ class LLMGenerator:
                 messages.append({"role": "assistant" if role == "assistant" else "user", "content": msg.get("content", "")})
         messages.append({"role": "user", "content": message})
 
-        payload = {"model": model, "messages": messages, "stream": True, "temperature": 0.3, "max_tokens": 2048}
+        payload = {"model": model, "messages": messages, "stream": True, "temperature": settings.LLM_CHAT_TEMPERATURE, "max_tokens": settings.LLM_CHAT_MAX_TOKENS}
 
         for index, api_key in enumerate(api_keys):
             headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
@@ -365,7 +365,7 @@ class LLMGenerator:
 
         gemini_keys = self._provider_keys("gemini")
         url = _GEMINI_URL.format(model=self._model_for("gemini"), key=gemini_keys[0] if gemini_keys else "")
-        payload = {"contents": contents, "generationConfig": {"temperature": 0.3, "maxOutputTokens": 2048}}
+        payload = {"contents": contents, "generationConfig": {"temperature": settings.LLM_CHAT_TEMPERATURE, "maxOutputTokens": settings.LLM_CHAT_MAX_TOKENS}}
 
         try:
             async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT, transport=self._transport) as client:
@@ -399,13 +399,18 @@ class LLMGenerator:
     async def _generate_local(
         self, message: str, context: str, system: str,
     ) -> AsyncIterator[str]:
-        if self._is_smalltalk(message):
-            yield _GREETING_MESSAGE
+        # 1. Conversational / non-data replies come first: they require no
+        #    database context and should never be mangled into a record list.
+        conversation = self._conversation_reply(message)
+        if conversation:
+            for chunk in self._stream_text(conversation):
+                yield chunk
             return
 
         tokens = self._query_tokens(message)
         if not tokens:
-            yield _GREETING_MESSAGE
+            for chunk in self._stream_text(_GREETING_MESSAGE):
+                yield chunk
             return
 
         sections = self._useful_sections(context)
@@ -417,14 +422,15 @@ class LLMGenerator:
                 platform_knowledge = _extract_platform_knowledge(system)
                 if platform_knowledge:
                     answer = (
-                        f"SAKSHA — Crime Intelligence & Analytical Platform\n\n"
+                        f"**SAKSHA — Crime Intelligence & Analytical Platform**\n\n"
                         f"{platform_knowledge}\n\n"
                         f"{_FOOTER_MESSAGE}"
                     )
                     for chunk in self._stream_text(answer):
                         yield chunk
                     return
-            yield _REFUSAL_MESSAGE
+            for chunk in self._stream_text(_REFUSAL_MESSAGE):
+                yield chunk
             return
 
         scored = []
@@ -439,14 +445,15 @@ class LLMGenerator:
         temporal = any(token in _TEMPORAL_WORDS for token in tokens)
         scored = [item for item in scored if item[2] != _SYSTEM_CLOCK_HEADER or temporal]
         if not scored:
-            yield _REFUSAL_MESSAGE
+            for chunk in self._stream_text(_REFUSAL_MESSAGE):
+                yield chunk
             return
 
         positive = [item for item in scored if item[0] > 0]
 
         if not positive:
             response_parts: list[str] = [
-                "I could not find records directly matching your question in the Saksha database.",
+                "I could not find records that directly match your question in the Saksha database.",
                 "",
                 _REFUSAL_MESSAGE,
             ]
@@ -467,38 +474,393 @@ class LLMGenerator:
                 kept = windowed
         kept.sort(key=lambda item: (-item[0],))
 
-        ranked_answer = self._build_ranked_answer(message, kept)
-        if ranked_answer:
-            yield ranked_answer
+        # 2. ANSWER THE ACTUAL QUESTION instead of blindly dumping records:
+        #    counts, field lookups (status/progress/when/where), and specific
+        #    entity profiles are much more useful than a raw list.
+        count_answer = self._count_answer(message, kept)
+        if count_answer:
+            for chunk in self._stream_text(count_answer):
+                yield chunk
             return
 
-        response_parts: list[str] = ["Here are the matching Saksha database records:", ""]
+        field_answer = self._field_answer(message, kept)
+        if field_answer:
+            for chunk in self._stream_text(field_answer):
+                yield chunk
+            return
 
+        entity_answer = self._entity_profile_answer(message, kept)
+        if entity_answer:
+            for chunk in self._stream_text(entity_answer):
+                yield chunk
+            return
+
+        ranked_answer = self._build_ranked_answer(message, kept)
+        if ranked_answer:
+            for chunk in self._stream_text(ranked_answer):
+                yield chunk
+            return
+
+        # 3. General multi-record answer: a friendly lead-in followed by the
+        #    deduplicated records rendered as clean bullet points.
+        records = self._dedupe_lines(kept, _MAX_CONTEXT_LINES)
+        if records:
+            response_parts: list[str] = self._list_intro(message, len(records)) + [""]
+            for i, line in enumerate(records, 1):
+                response_parts.append(f"{i}. {self._format_line(line)}")
+            response_parts.append("")
+            response_parts.append(_FOOTER_MESSAGE)
+            full_response = "\n".join(response_parts).strip()
+            for chunk in self._stream_text(full_response):
+                yield chunk
+            return
+
+        for chunk in self._stream_text(_REFUSAL_MESSAGE):
+            yield chunk
+
+    # -- Conversational helpers -------------------------------------------------
+
+    @staticmethod
+    def _conversation_reply(message: str) -> str | None:
+        """Returns a natural reply for greetings/thanks/capability questions
+        that are NOT database lookups. Returns None when the message should be
+        treated as a data query."""
+        cleaned = message.strip().lower().rstrip("?.!")
+        words = [w.strip(".,!?;:") for w in message.lower().split()]
+        words = [w for w in words if w]
+
+        if not words:
+            return _GREETING_MESSAGE
+
+        # Gratitude / acknowledgement phrases ("thanks", "thank you", "thanks
+        # for the help", "ok thanks") — even when extra connective words are
+        # present, these are pure social replies, never data queries.
+        if any(w in words for w in ("thanks", "thank", "thx", "ty", "gratitude")):
+            return "You're welcome! Anything else you'd like me to pull from the Saksha database — cases, FIRs, criminals, or crime trends?"
+        if any(w in words for w in ("bye", "goodbye", "goodnight")):
+            return "Stay safe — I'm here whenever you need another look at the Saksha data."
+
+        # Pure smalltalk (handles "hi", "hello", "ok", "good morning" etc.).
+        core = [w for w in words if w not in _STOPWORDS]
+        if 0 < len(words) <= 6 and all(w in _SMALLTALK for w in words):
+            if any(w in {"hello", "hi", "hey", "yo", "namaste"} for w in words) and not any(w in {"crime", "case", "fir", "criminal"} for w in core):
+                return _GREETING_MESSAGE
+            return "Glad to help. Ask me about cases, FIRs, criminals, officers, crime statistics, hotspots or district forecasts."
+
+        # Who / what are you
+        if "who" in core and any(w in {"you", "are", "r"} for w in words):
+            return (
+                "I'm **SAKSHA AI**, the intelligence assistant for the Karnataka State Police platform. "
+                "I can look up cases, FIRs, criminals, victims, officers and live statistics straight from the "
+                "Saksha database, and I'll always cite the records I use. What would you like me to check?"
+            )
+        # What can you do / help
+        if any(w in {"capabilities", "modules", "features"} for w in words) or cleaned in {
+            "what can you do", "help", "what do you do", "how do you work", "what can you help with",
+        }:
+            return (
+                "I can help you with the crime intelligence in Saksha. A few things I do well:\n\n"
+                "- **Cases & FIRs** — pull case numbers, status, priority, sections and linked suspects.\n"
+                "- **Criminals & offenders** — profile a person, their aliases, gang and linked cases.\n"
+                "- **Statistics** — district and category breakdowns, trends and hotspots.\n"
+                "- **Predictions** — district risk and 6-month crime forecasts.\n\n"
+                "Try asking something like *\"Show case CR-2026-MYS-001\"* or *\"Which district has the most crime?\"*"
+            )
+        return None
+
+    @staticmethod
+    def _is_count_question(message: str) -> bool:
+        lower = message.lower()
+        return any(p in lower for p in (
+            "how many", "number of", "count", "total number", "how much",
+        ))
+
+    @staticmethod
+    def _count_answer(message: str, kept: list) -> str | None:
+        """Answers 'how many' type questions with a concrete number."""
+        if not LLMGenerator._is_count_question(message):
+            return None
+        records = LLMGenerator._dedupe_records(kept)
+        if not records:
+            return None
+        tokens = [t.rstrip("s") for t in LLMGenerator._query_tokens(message)]
+        subject = LLMGenerator._count_subject(message)
+        kind = LLMGenerator._kind_for_subject(subject)
+        # Narrow by subject type first, then by the query tokens.
+        pool = records
+        if kind is not None:
+            pool = [r for r in records if LLMGenerator._record_kind(r) == kind]
+        if not pool:
+            pool = [r for r in records if LLMGenerator._line_score(LLMGenerator._record_text(r), tokens) > 0]
+        if not pool:
+            pool = records
+        count = len(pool)
+        matched = [r for r in pool if LLMGenerator._line_score(LLMGenerator._record_text(r), tokens) > 0]
+        if matched and len(matched) < len(pool):
+            count = len(matched)
+        lead = "I found" if LLMGenerator._line_score(subject, tokens) or matched else "There are"
+        noun = subject if count != 1 else subject.rstrip("s")
+        return (
+            f"{lead} **{count}** {noun} in the Saksha database matching your query."
+            + f"\n\n{_FOOTER_MESSAGE}"
+        )
+
+    @staticmethod
+    def _count_subject(message: str) -> str:
+        lower = message.lower()
+        for word in ("firs", "crimes", "cases", "criminals", "victims", "officers", "notifications", "anomalies"):
+            if word in lower:
+                return word
+        return "records"
+
+    @staticmethod
+    def _field_answer(message: str, kept: list) -> str | None:
+        """Answers field-specific questions (status/progress/when/where/who)."""
+        lower = message.lower()
+        field = None
+        if any(w in lower for w in ("status", "state of", "condition")):
+            field = "status"
+        elif any(w in lower for w in ("progress", "how far", "investigation progress")):
+            field = "progress"
+        elif any(w in lower for w in ("when", "date", "filed on", "occurred")):
+            field = "date"
+        elif any(w in lower for w in ("where", "location", "district", "area")):
+            field = "location"
+        if field is None:
+            return None
+
+        records = LLMGenerator._dedupe_records(kept)
+        if not records:
+            return None
+        # Pick the record that best matches the question tokens.
+        tokens = [t.rstrip("s") for t in LLMGenerator._query_tokens(message)]
+        records.sort(key=lambda r: -LLMGenerator._line_score(LLMGenerator._record_text(r), tokens))
+        best = records[0]
+        text = LLMGenerator._record_text(best)
+        # Keep only field/values that are non-trivial and reasonably short.
+        kept_bits = []
+        for key, val in LLMGenerator._field_pairs(best):
+            key_l = key.lower()
+            if field == "status" and key_l in ("status", "case status", "fir status", "state"):
+                kept_bits.append(f"Status: {val}")
+            elif field == "progress" and "progress" in key_l:
+                kept_bits.append(f"Progress: {val}")
+            elif field == "location" and key_l in ("location", "district", "station", "area", "place", "region"):
+                kept_bits.append(f"{key}: {val}")
+            elif field == "date" and key_l in ("occurred", "reported", "filed", "filed at", "date", "occurred at", "reported at"):
+                kept_bits.append(f"{key}: {val}")
+        if not kept_bits:
+            return None
+        ident = LLMGenerator._record_ident(best) or "this record"
+        return (
+            f"Here's what the database shows for **{ident}**:\n\n"
+            + "\n".join(f"- **{k}**: {v}" for k, v in (b.split(": ", 1) for b in kept_bits))
+            + f"\n\n{_FOOTER_MESSAGE}"
+        )
+
+    @staticmethod
+    def _entity_profile_answer(message: str, kept: list) -> str | None:
+        """Builds a clean profile for a specific named/id'd entity.
+
+        Only fires when the message clearly targets one entity (an explicit id,
+        a named person, or a short 'tell me about X' request); blanket analytics
+        questions never collapse into a single-entity profile.
+        """
+        tokens = [t.rstrip("s") for t in LLMGenerator._query_tokens(message)]
+        if not tokens:
+            return None
+        records = LLMGenerator._dedupe_records(kept)
+        if not records:
+            return None
+        records.sort(key=lambda r: -LLMGenerator._line_score(LLMGenerator._record_text(r), tokens))
+        best = records[0]
+        if not LLMGenerator._mentions_specific_entity(message, best):
+            return None
+        pairs = LLMGenerator._field_pairs(best)
+        if len(pairs) < 2:
+            return None
+        ident = LLMGenerator._record_ident(best)
+        if not ident:
+            return None
+        lines = [f"Here's the profile I found for **{ident}**:", ""]
+        for key, val in pairs[:12]:
+            if key == "_id":
+                continue
+            if LLMGenerator._is_no_data_line(f"{key}: {val}"):
+                continue
+            if val.lower() in {"n/a", "na", "none", "-", ""}:
+                continue
+            lines.append(f"- **{key}**: {val}")
+        lines += ["", _FOOTER_MESSAGE]
+        return "\n".join(lines)
+
+    @staticmethod
+    def _mentions_specific_entity(message: str, best: dict) -> bool:
+        """True when the message points at one specific record (id, name, or a
+        direct 'about <X>' / '<name>' request), not a broad analytics query."""
+        lower = message.lower()
+        # Explicit record id present in the message.
+        if re.search(r"\b(?:cr|case|fir|if?r|no)[\s:-]{0,2}\d", lower) or re.search(r"\b\w{1,4}-\d{3,}", lower):
+            return True
+        ident = LLMGenerator._record_ident(best) or ""
+        # A person/case name from the best record appears in the question.
+        if ident and len(ident) >= 3 and ident.lower() in lower:
+            return True
+        if re.search(r"\b(?:about|profile|tell me about|details? on|info on|who is|what is)\b", lower):
+            # Only a "specific" opener if followed by a noun, not "statistics/overview".
+            if any(w in lower for w in ("statistics", "stats", "overview", "trend", "summary", "breakdown", "highest", "lowest", "most", "compare")):
+                return False
+            return True
+        return False
+
+    @staticmethod
+    def _field_pairs(record: dict) -> list[tuple[str, str]]:
+        """Flattens a parsed record dict to ('key', 'value') preserving order."""
+        out: list[tuple[str, str]] = []
+        for k, v in record.items():
+            if isinstance(v, dict):
+                for kk, vv in v.items():
+                    out.append((kk, str(vv)))
+            else:
+                out.append((k, str(v)))
+        return out
+
+    @staticmethod
+    def _record_text(record: dict) -> str:
+        return " ".join(f"{k}: {v}" for k, v in LLMGenerator._field_pairs(record))
+
+    @staticmethod
+    def _record_ident(record: dict) -> str | None:
+        """Best identity token for a record (id/case/fir/name/badge)."""
+        # Leading bare identifier captured by _parse_record (e.g. "CR-2026-MYS-001").
+        if record.get("_id"):
+            return str(record["_id"]).strip()
+        normalized = {k.lower().replace(" ", "_"): str(v) for k, v in LLMGenerator._field_pairs(record)}
+        for key in ("case_number", "fir_number", "criminal_name", "full_name", "person_name",
+                    "offender_name", "officer_name", "victim_name", "name", "badge_number",
+                    "id", "record_id", "case", "fir"):
+            if normalized.get(key, "").strip():
+                return normalized[key].strip()
+        return None
+
+    @staticmethod
+    def _record_kind(record: dict) -> str:
+        """Classifies a parsed record as case/fir/criminal/victim/officer."""
+        _id = str(record.get("_id", "")).upper()
+        if _id.startswith(("CR-", "CASE")) or "case_number" in record:
+            return "case"
+        if _id.startswith("FIR"):
+            return "fir"
+        keys = [k.lower().replace(" ", "_") for k in record.keys()]
+        if any("criminal" in k or "offender" in k or "suspect" in k for k in keys):
+            return "criminal"
+        if any("victim" in k for k in keys):
+            return "victim"
+        if any("officer" in k or "badge" in k for k in keys):
+            return "officer"
+        if any("fir_number" in k or "fir" == k for k in keys):
+            return "fir"
+        if any("case" in k or "category" in k or "priority" in k for k in keys):
+            return "case"
+        return "record"
+
+    @staticmethod
+    def _kind_for_subject(subject: str) -> str | None:
+        s = subject.lower().rstrip("s")
+        if s == "case":
+            return "case"
+        if s in ("criminal", "offender", "suspect"):
+            return "criminal"
+        if s in ("fir",):
+            return "fir"
+        if s == "victim":
+            return "victim"
+        if s == "officer":
+            return "officer"
+        return None
+
+    @staticmethod
+    def _dedupe_lines(kept: list, cap: int) -> list[str]:
+        """Collects deduplicated, non-junk context lines up to a cap."""
         emitted = 0
         seen_signatures: set[str] = set()
+        out: list[str] = []
         for _, _, _header, lines, line_scores in kept:
-            if emitted >= _MAX_CONTEXT_LINES:
+            if emitted >= cap:
                 break
             ranked = sorted(zip(lines, line_scores), key=lambda pair: -pair[1])
             for line, _score in ranked:
-                if emitted >= _MAX_CONTEXT_LINES:
+                if emitted >= cap:
                     break
                 clean = _strip_markdown(line)
+                if not clean:
+                    continue
                 signature = _record_signature(clean)
                 if signature:
                     if signature in seen_signatures:
-                        continue  # same record already listed from another source
+                        continue
                     seen_signatures.add(signature)
                 emitted += 1
-                response_parts.append(f"{emitted}. {self._format_line(clean)}")
+                out.append(clean)
+        return out
 
-        response_parts.append("")
-        response_parts.append(_FOOTER_MESSAGE)
+    @staticmethod
+    def _dedupe_records(kept: list) -> list[dict]:
+        """Parses raw lines into ordered field/values, deduped by signature."""
+        seen: set[str] = set()
+        records: list[dict] = []
+        for _, _, _header, lines, line_scores in kept:
+            ranked = sorted(zip(lines, line_scores), key=lambda pair: -pair[1])
+            for line, _score in ranked:
+                clean = _strip_markdown(line)
+                if not clean:
+                    continue
+                sig = _record_signature(clean)
+                if sig:
+                    if sig in seen:
+                        continue
+                    seen.add(sig)
+                records.append(LLMGenerator._parse_record(clean))
+        return [r for r in records if r]
 
-        full_response = "\n".join(response_parts).strip()
+    @staticmethod
+    def _parse_record(line: str) -> dict:
+        """Parses 'Key: Value | Key2: Value2' (or 'Key: Value') into an ordered dict.
 
-        for chunk in self._stream_text(full_response):
-            yield chunk
+        A leading bare token without a colon (e.g. 'CR-2026-MYS-001') is captured
+        as the record's identifier under the '_id' key."""
+        parts = [p.strip() for p in re.split(r"\s*\|\s*", line) if p.strip()]
+        if not parts:
+            return {}
+        record: dict[str, str] = {}
+        first = parts[0]
+        if ":" not in first:
+            record["_id"] = first
+            parts = parts[1:]
+        for part in parts:
+            if ":" in part:
+                key, _, val = part.partition(":")
+                record[key.strip()] = val.strip()
+            else:
+                record.setdefault("value", part)
+        return record if (record.get("_id") or len(record) > 0) else {}
+
+    @staticmethod
+    def _list_intro(message: str, count: int) -> list[str]:
+        lower = message.lower()
+        if _is_platform_question(message):
+            return ["Here's what I found about Saksha:", ""]
+        if any(w in lower for w in ("criminal", "offender", "suspect", "gang")):
+            return [f"Here are the criminal/offender records I found ({count}):", ""]
+        if any(w in lower for w in ("fir", "first information")):
+            return [f"Here are the FIR records I found ({count}):", ""]
+        if any(w in lower for w in ("case", "complaint")):
+            return [f"Here are the case records I found ({count}):", ""]
+        if any(w in lower for w in ("officer", "police", "badge")):
+            return [f"Here are the officer records I found ({count}):", ""]
+        if any(w in lower for w in ("statistic", "trend", "overview", "district", "category", "rate")):
+            return [f"Here's the breakdown I found in the database ({count} entries):", ""]
+        return [f"Here's what I found in the Saksha database ({count} records):", ""]
 
     @staticmethod
     def _stream_text(text: str) -> AsyncIterator[str]:

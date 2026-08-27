@@ -6,9 +6,10 @@ interface EdgeDetailPanelProps {
   link: GraphLink | null;
   nodes?: GraphNode[];
   onClose: () => void;
+  onSelectNode?: (node: GraphNode) => void;
 }
 
-export const EdgeDetailPanel: React.FC<EdgeDetailPanelProps> = ({ link, nodes = [], onClose }) => {
+export const EdgeDetailPanel: React.FC<EdgeDetailPanelProps> = ({ link, nodes = [], onClose, onSelectNode }) => {
   if (!link) return null;
 
   const sourceNode = nodes.find((n) => n.id === (typeof link.source === 'object' ? (link.source as any).id : link.source));
@@ -61,11 +62,30 @@ export const EdgeDetailPanel: React.FC<EdgeDetailPanelProps> = ({ link, nodes = 
 
         {/* Connected entities */}
         <div className="p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-color)]">
-          <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)] mb-2">Connected Entities</p>
-          <div className="flex items-center justify-between text-[13px] font-medium text-[var(--text-primary)]">
-            <span className="truncate max-w-[100px]" title={sourceName}>{sourceName}</span>
-            <span className="text-[var(--accent-blue)] mx-2">↔</span>
-            <span className="truncate max-w-[100px]" title={targetName}>{targetName}</span>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">Connected Entities</p>
+            <span className="text-[9px] text-[var(--text-muted)]">Click person to navigate</span>
+          </div>
+          <div className="flex items-center justify-between text-[13px] font-medium text-[var(--text-primary)] gap-2">
+            <button
+              onClick={() => {
+                if (sourceNode && onSelectNode) onSelectNode(sourceNode);
+              }}
+              className="truncate flex-1 text-left hover:text-[var(--accent-blue)] hover:underline cursor-pointer transition-colors"
+              title={`View ${sourceName} network`}
+            >
+              {sourceName}
+            </button>
+            <span className="text-[var(--accent-blue)] shrink-0">↔</span>
+            <button
+              onClick={() => {
+                if (targetNode && onSelectNode) onSelectNode(targetNode);
+              }}
+              className="truncate flex-1 text-right hover:text-[var(--accent-blue)] hover:underline cursor-pointer transition-colors"
+              title={`View ${targetName} network`}
+            >
+              {targetName}
+            </button>
           </div>
         </div>
 

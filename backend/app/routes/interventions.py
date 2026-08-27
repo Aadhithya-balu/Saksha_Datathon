@@ -21,7 +21,12 @@ from app.database.postgres import get_db
 from app.models.intervention import Intervention
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
-from app.schemas.intervention import InterventionCreate, InterventionOut, InterventionUpdate
+from app.schemas.intervention import (
+    InterventionCreate,
+    InterventionListResponse,
+    InterventionOut,
+    InterventionUpdate,
+)
 from app.services import audit_service, intervention_service
 
 router = APIRouter(
@@ -31,7 +36,7 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=PaginatedResponse[InterventionOut])
+@router.get("", response_model=InterventionListResponse)
 def list_interventions(
     district: str | None = None,
     status: str | None = None,
@@ -52,7 +57,13 @@ def list_interventions(
         .limit(page_size)
         .all()
     )
-    return {"total": total, "page": page, "page_size": page_size, "results": rows}
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "results": rows,
+        "interventions": rows,
+    }
 
 
 @router.post(
@@ -110,7 +121,7 @@ def update_intervention(
 @router.get("/{intervention_id}/effectiveness")
 def intervention_effectiveness(
     intervention_id: uuid.UUID,
-    window_days: int = Query(90, ge=30, le=365),
+    window_days: int = Query(30, ge=1, le=365),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

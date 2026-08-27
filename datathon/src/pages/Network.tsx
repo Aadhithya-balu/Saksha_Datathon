@@ -84,28 +84,6 @@ export const Network: React.FC = () => {
     setLoadError(null);
   }, []);
 
-  const fetchGraph = useCallback(() => {
-    let isMounted = true;
-    const filterArg = provenanceFilter === 'ALL' ? undefined : provenanceFilter;
-
-    const request = viewScope === 'person' 
-      ? getNetworkPerson(user?.badgeId ?? 'SCRB-7740', graphDepth, filterArg, excludeDemo)
-      : getFullNetworkGraph(undefined, undefined, filterArg, excludeDemo);
-
-    request
-      .then((response) => { if (isMounted) applyResponse(response); })
-      .catch((error) => {
-        if (isMounted) {
-          setLoadError(error instanceof Error ? error.message : 'Failed to load network data');
-          setGraphData(null);
-        }
-      });
-
-    return () => { isMounted = false; };
-  }, [user?.badgeId, viewScope, provenanceFilter, excludeDemo, graphDepth, applyResponse]);
-
-  useEffect(() => { return fetchGraph(); }, [fetchGraph]);
-
   const fetchFocusedGraph = useCallback(async (entity: NetworkSearchResult, depth: number) => {
     setLoadError(null);
     setFocusing(true);
@@ -125,6 +103,33 @@ export const Network: React.FC = () => {
       setFocusing(false);
     }
   }, [provenanceFilter, excludeDemo, applyResponse]);
+
+  const fetchGraph = useCallback(() => {
+    let isMounted = true;
+    const filterArg = provenanceFilter === 'ALL' ? undefined : provenanceFilter;
+
+    if (focusedEntity) {
+      fetchFocusedGraph(focusedEntity, graphDepth);
+      return () => { isMounted = false; };
+    }
+
+    const request = viewScope === 'person' 
+      ? getNetworkPerson(user?.badgeId ?? 'SCRB-7740', graphDepth, filterArg, excludeDemo)
+      : getFullNetworkGraph(undefined, undefined, filterArg, excludeDemo);
+
+    request
+      .then((response) => { if (isMounted) applyResponse(response); })
+      .catch((error) => {
+        if (isMounted) {
+          setLoadError(error instanceof Error ? error.message : 'Failed to load network data');
+          setGraphData(null);
+        }
+      });
+
+    return () => { isMounted = false; };
+  }, [user?.badgeId, viewScope, provenanceFilter, excludeDemo, graphDepth, focusedEntity, fetchFocusedGraph, applyResponse]);
+
+  useEffect(() => { return fetchGraph(); }, [fetchGraph]);
 
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
@@ -439,17 +444,51 @@ export const Network: React.FC = () => {
             </div>
           ) : graphData ? (
             <CriminalGraph3D onNodeSelect={handleNodeSelect} onLinkSelect={handleLinkSelect} graphData={graphData} />
+          ) : graphData && graphData.nodes.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center p-8 bg-[var(--bg-surface)] rounded-card border border-border-color text-center font-mono select-none">
+              <NetIcon className="w-10 h-10 mb-3 text-[var(--text-disabled)]" />
+              <p className="text-xs font-bold text-[var(--text-secondary)] uppercase">No Network Relationships Found</p>
+              <p className="text-[10px] text-[var(--text-muted)] mt-1 max-w-sm">No criminal network entities match the currently active provenance filters and criteria.</p>
+              <button onClick={() => { setProvenanceFilter('ALL'); setExcludeDemo(false); }} className="mt-3 px-3 py-1.5 rounded text-[10px] uppercase font-bold border border-[var(--accent-blue)]/30 text-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/10">
+                Reset Filters
+              </button>
+            </div>
           ) : (
             <div className="h-full flex items-center justify-center bg-[var(--bg-surface)] rounded-card border border-border-color text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider">
-              Loading network telemetry...
+              {loadError ? (
+                <div className="text-center p-6 space-y-2">
+                  <AlertTriangle className="w-8 h-8 mx-auto text-[var(--accent-amber)]" />
+                  <p className="text-xs font-bold text-[var(--text-primary)]">
+                    {loadError.toLowerCase().includes('unauthorized') || loadError.includes('401') || loadError.includes('403')
+                      ? 'Access Unauthorized'
+                      : 'Network Intelligence Unavailable'}
+                  </p>
+                  <p className="text-[10px] text-[var(--text-secondary)] max-w-sm">{loadError}</p>
+                  <button onClick={() => fetchGraph()} className="mt-2 px-3 py-1.5 rounded font-bold text-[10px] uppercase border border-[var(--accent-blue)]/30 text-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/10 cursor-pointer">
+                    Retry Connection
+                  </button>
+                </div>
+              ) : 'Loading network telemetry...'}
             </div>
           )}
         </div>
         <div className="lg:col-span-4 bg-secondary-bg/25 border border-border-color rounded-card overflow-auto" style={{ minHeight: '500px' }}>
           {selectedNode ? (
-            <NodeDetailPanel node={selectedNode} links={graphData?.links ?? []} nodes={graphData?.nodes ?? []} onClose={() => setSelectedNode(null)} />
+            <NodeDetailPanel 
+              node={selectedNode} 
+              links={graphData?.links ?? []} 
+              nodes={graphData?.nodes ?? []} 
+              onClose={() => setSelectedNode(null)} 
+              onSelectNode={handleNodeSelect}
+              onSelectLink={handleLinkSelect}
+            />
           ) : selectedLink ? (
-            <EdgeDetailPanel link={selectedLink} nodes={graphData?.nodes ?? []} onClose={() => setSelectedLink(null)} />
+            <EdgeDetailPanel 
+              link={selectedLink} 
+              nodes={graphData?.nodes ?? []} 
+              onClose={() => setSelectedLink(null)} 
+              onSelectNode={handleNodeSelect}
+            />
           ) : focusedEntity ? (
             <div className="h-full flex flex-col p-4 text-xs font-mono">
               <div className="flex items-center gap-2 mb-3">

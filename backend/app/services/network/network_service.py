@@ -18,9 +18,12 @@ from datetime import datetime
 from functools import lru_cache
 from typing import Any
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_
 
 from app.models.crime import CrimeCase
 from app.models.criminal import Criminal
+from app.models.officer import Officer
+from app.models.victim import Victim
 from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
 from app.models.network import (
     AIGraphInsight,
@@ -276,6 +279,39 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
                 is_demo_derived=vic_is_demo,
             ))
 
+        if fir.investigating_officer:
+            officer = fir.investigating_officer
+            officer_node_id = f"officer-{officer.id}"
+            if officer_node_id not in nodes_map:
+                nodes_map[officer_node_id] = NetworkNode(
+                    id=officer_node_id,
+                    name=officer.name,
+                    category=NetworkNodeCategory.OFFICER,
+                    riskScore=10.0,
+                    details=f"{officer.rank or 'Officer'}, {officer.station} ({officer.badge_number})",
+                    casesCount=len(officer.firs) if hasattr(officer, "firs") else 1,
+                    district=officer.district,
+                    isSeed=False,
+                )
+            edges_list.append(NetworkEdge(
+                source=f"case-{fir.id}",
+                target=officer_node_id,
+                relationship="Investigated by",
+                relationship_type="PERSON_INVESTIGATION",
+                provenance="DIRECT_DATABASE",
+                verification_status="VERIFIED",
+                confidence=1.0,
+                confidence_level="HIGH",
+                evidence=[{
+                    "record_type": "fir_assignment",
+                    "record_id": str(fir.id),
+                    "record_number": fir.fir_number,
+                    "details": f"Investigating Officer assigned to FIR #{fir.fir_number}",
+                    "timestamp": fir.filed_at.isoformat() if fir.filed_at else None,
+                }],
+                is_demo_derived=False,
+            ))
+
     # Construct Analytical Co-Accused Links with Calculated Confidence
     for (c1_id, c2_id), shared_evidences in co_accused_tracker.items():
         c1_seed, c2_seed = co_accused_seed_flags.get((c1_id, c2_id), (False, False))
@@ -314,43 +350,74 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
             operational_warning="Analytical relationship identified from available records. This does not establish a confirmed association.",
         ))
 
-    # Investigating officers connected to their cases
-    officer_ids_seen: set[str] = set()
-    for fir in firs:
-        if fir.investigating_officer is None:
-            continue
-        officer = fir.investigating_officer
-        officer_node_id = f"officer-{officer.id}"
-        if officer_node_id not in officer_ids_seen:
-            officer_ids_seen.add(officer_node_id)
-            nodes_map[officer_node_id] = NetworkNode(
-                id=officer_node_id,
-                name=officer.name,
+    # Connect syndicate co-members with gang association analytical links
+    gang_members: dict[str, list[tuple[str, bool, str]]] = defaultdict(list)
+    for node in nodes_map.values():
+        if node.category in (NetworkNodeCategory.SUSPECT, NetworkNodeCategory.OFFENDER) and node.gangAffiliation:
+            gang_members[node.gangAffiliation.strip().lower()].append((node.id, bool(node.isSeed), node.name))
+
+    for gang_name, members in gang_members.items():
+        if len(members) > 1:
+            for i in range(len(members)):
+                for j in range(i + 1, len(members)):
+                    m1_id, m1_seed, m1_name = members[i]
+                    m2_id, m2_seed, m2_name = members[j]
+                    pair_key = (min(m1_id, m2_id), max(m1_id, m2_id))
+                    if pair_key not in co_accused_tracker:
+                        is_demo = m1_seed or m2_seed
+                        edges_list.append(NetworkEdge(
+                            source=m1_id,
+                            target=m2_id,
+                            relationship=f"Syndicate Associate ({gang_name.title()})",
+                            relationship_type="GANG_ASSOCIATE",
+                            provenance="DEMO_SEED" if (m1_seed and m2_seed) else "MIXED" if is_demo else "ANALYTICAL_INFERENCE",
+                            verification_status="POTENTIAL",
+                            weight=1.5,
+                            confidence=0.80,
+                            confidence_level="MEDIUM",
+                            evidence=[{
+                                "record_type": "gang_intel",
+                                "record_number": gang_name.upper(),
+                                "details": f"Both subjects identified with common syndicate affiliation: {gang_name.title()}",
+                                "factors": ["Syndicate membership telemetry", "Common organized crime syndicate"],
+                            }],
+                            is_demo_derived=is_demo,
+                            operational_warning="Syndicate affiliation analytical inference. Intelligence lead for investigative corroboration.",
+                        ))
+
+    # Also load all officers and criminals to ensure every registered entity has a graph node
+    all_officers = db.query(Officer).all()
+    for o in all_officers:
+        o_id = f"officer-{o.id}"
+        if o_id not in nodes_map:
+            nodes_map[o_id] = NetworkNode(
+                id=o_id,
+                name=o.name,
                 category=NetworkNodeCategory.OFFICER,
                 riskScore=10.0,
-                details=f"{officer.rank or 'Officer'}, {officer.station} ({officer.badge_number})",
-                casesCount=len(officer.firs),
-                district=officer.district,
+                details=f"{o.rank or 'Officer'}, {o.station} ({o.badge_number})",
+                casesCount=len(o.firs) if hasattr(o, 'firs') else 0,
+                district=o.district,
                 isSeed=False,
             )
-        edges_list.append(NetworkEdge(
-            source=f"case-{fir.id}",
-            target=officer_node_id,
-            relationship="Investigated by",
-            relationship_type="PERSON_INVESTIGATION",
-            provenance="DIRECT_DATABASE",
-            verification_status="VERIFIED",
-            confidence=1.0,
-            confidence_level="HIGH",
-            evidence=[{
-                "record_type": "fir_assignment",
-                "record_id": str(fir.id),
-                "record_number": fir.fir_number,
-                "details": f"Investigating Officer assigned to FIR #{fir.fir_number}",
-                "timestamp": fir.filed_at.isoformat() if fir.filed_at else None,
-            }],
-            is_demo_derived=False,
-        ))
+
+    all_criminals = db.query(Criminal).all()
+    for c in all_criminals:
+        c_id = f"criminal-{c.id}"
+        if c_id not in nodes_map:
+            c_is_seed = c.full_name in seed_criminal_names
+            nodes_map[c_id] = NetworkNode(
+                id=c_id,
+                name=c.full_name,
+                category=NetworkNodeCategory.SUSPECT if c.status == "at_large" else NetworkNodeCategory.OFFENDER,
+                riskScore=_criminal_risk(c),
+                details=c.mo_summary or c.identifying_marks or "Registered criminal record",
+                casesCount=len(c.fir_links) if hasattr(c, 'fir_links') else 0,
+                phone=None,
+                gangAffiliation=(c.gang_affiliation or "").strip() or None,
+                status=c.status,
+                isSeed=c_is_seed,
+            )
 
     # Apply Category & Risk filters
     filtered_nodes = [
@@ -381,8 +448,8 @@ def _graph_response(
         "total_nodes": len(nodes),
         "total_edges": len(edges),
         "verified_relationships": sum(1 for e in edges if e.verification_status == "VERIFIED" or e.relationship_type in ("PERSON_CASE", "PERSON_LOCATION", "CASE_LOCATION", "PERSON_INVESTIGATION", "PERSON_VICTIM")),
-        "analytical_relationships": sum(1 for e in edges if e.verification_status == "POTENTIAL" or e.relationship_type == "SHARED_CASE" or e.provenance == "ANALYTICAL_INFERENCE"),
-        "potential_relationships": sum(1 for e in edges if e.verification_status == "POTENTIAL" or e.relationship_type == "SHARED_CASE"),
+        "analytical_relationships": sum(1 for e in edges if e.verification_status == "POTENTIAL" or e.relationship_type in ("SHARED_CASE", "GANG_ASSOCIATE") or e.provenance == "ANALYTICAL_INFERENCE"),
+        "potential_relationships": sum(1 for e in edges if e.verification_status == "POTENTIAL" or e.relationship_type in ("SHARED_CASE", "GANG_ASSOCIATE")),
         "demo_relationships": sum(1 for e in edges if e.is_demo_derived or e.provenance in ("DEMO_SEED", "MIXED")),
         "mixed_relationships": sum(1 for e in edges if e.provenance == "MIXED"),
         "unknown_relationships": sum(1 for e in edges if e.provenance == "UNKNOWN" or e.verification_status == "UNVERIFIED"),
@@ -396,9 +463,9 @@ def _graph_response(
     if provenance_filter:
         p_filter = provenance_filter.upper()
         if p_filter == "VERIFIED":
-            edges = [e for e in edges if e.verification_status == "VERIFIED" or (e.relationship_type in ("PERSON_CASE", "PERSON_LOCATION", "CASE_LOCATION", "PERSON_INVESTIGATION", "PERSON_VICTIM") and e.relationship_type != "SHARED_CASE")]
+            edges = [e for e in edges if e.verification_status == "VERIFIED" or (e.relationship_type in ("PERSON_CASE", "PERSON_LOCATION", "CASE_LOCATION", "PERSON_INVESTIGATION", "PERSON_VICTIM") and e.relationship_type not in ("SHARED_CASE", "GANG_ASSOCIATE"))]
         elif p_filter in ("POTENTIAL", "ANALYTICAL_INFERENCE"):
-            edges = [e for e in edges if e.verification_status == "POTENTIAL" or e.relationship_type == "SHARED_CASE" or e.provenance == "ANALYTICAL_INFERENCE"]
+            edges = [e for e in edges if e.verification_status == "POTENTIAL" or e.relationship_type in ("SHARED_CASE", "GANG_ASSOCIATE") or e.provenance == "ANALYTICAL_INFERENCE"]
         elif p_filter in ("DIRECT_DATABASE", "DEMO_SEED", "MIXED", "UNKNOWN", "UNVERIFIED", "DEMO"):
             edges = [e for e in edges if e.provenance == p_filter or e.verification_status == p_filter]
         connected_node_ids = {e.source for e in edges} | {e.target for e in edges}
@@ -505,7 +572,60 @@ def get_person_network_graph(
 ) -> NetworkGraphResponse:
     """Fetch relationship graph centered on a specific person or node."""
     nodes, edges = _build_sql_graph(db)
-    if person_id not in {n.id for n in nodes}:
+
+    target_ids = set()
+    pid_clean = person_id.strip()
+    pid_lower = pid_clean.lower()
+
+    # 1. Exact ID match (e.g. 'criminal-1', 'officer-2')
+    for n in nodes:
+        if n.id.lower() == pid_lower:
+            target_ids.add(n.id)
+
+    # 2. Match by suffix/id or exact name
+    if not target_ids:
+        for n in nodes:
+            if n.name.lower() == pid_lower or n.id.lower().endswith(f"-{pid_lower}"):
+                target_ids.add(n.id)
+
+    # 3. Substring match on name or details (e.g. badge number in details)
+    if not target_ids:
+        for n in nodes:
+            if pid_lower in n.name.lower() or (n.details and pid_lower in n.details.lower()):
+                target_ids.add(n.id)
+
+    # 4. Database lookup for officer badge, criminal alias, or case number
+    if not target_ids and db:
+        from app.models.officer import Officer
+        from app.models.criminal import Criminal
+        from app.models.fir import FIR
+        from app.models.crime import CrimeCase
+        from sqlalchemy import or_
+
+        officer = db.query(Officer).filter(
+            or_(Officer.badge_number.ilike(f"%{pid_clean}%"), Officer.name.ilike(f"%{pid_clean}%"))
+        ).first()
+        if officer:
+            target_ids.add(f"officer-{officer.id}")
+
+        if not target_ids:
+            crim = db.query(Criminal).filter(
+                or_(Criminal.full_name.ilike(f"%{pid_clean}%"), Criminal.aliases.ilike(f"%{pid_clean}%"))
+            ).first()
+            if crim:
+                target_ids.add(f"criminal-{crim.id}")
+
+        if not target_ids:
+            fir = db.query(FIR).filter(FIR.fir_number.ilike(f"%{pid_clean}%")).first()
+            if fir:
+                target_ids.add(f"case-{fir.id}")
+
+        if not target_ids:
+            case = db.query(CrimeCase).filter(CrimeCase.case_number.ilike(f"%{pid_clean}%")).first()
+            if case:
+                target_ids.add(f"case-{case.id}")
+
+    if not target_ids:
         return NetworkGraphResponse(
             nodes=[],
             edges=[],
@@ -518,12 +638,12 @@ def get_person_network_graph(
                 "demo_relationships": 0, "mixed_relationships": 0, "unknown_relationships": 0,
             },
         )
-    target_id = person_id
 
-    visited_nodes: set[str] = {target_id}
-    current_frontier = {target_id}
+    visited_nodes: set[str] = set(target_ids)
+    current_frontier = set(target_ids)
 
-    for _ in range(depth):
+    effective_depth = max(1, depth)
+    for _ in range(effective_depth):
         next_frontier = set()
         for edge in edges:
             if edge.source in current_frontier:
@@ -536,13 +656,24 @@ def get_person_network_graph(
     sub_nodes = [n for n in nodes if n.id in visited_nodes]
     sub_edges = [e for e in edges if e.source in visited_nodes and e.target in visited_nodes]
 
-    return _graph_response(
+    res = _graph_response(
         sub_nodes,
         sub_edges,
         is_neo4j_backed=is_neo4j_available(),
         provenance_filter=provenance_filter,
         exclude_demo=exclude_demo,
     )
+
+    # Ensure queried center person node is present in nodes list even if isolated under specific filters
+    existing_node_ids = {n.id for n in res.nodes}
+    for tid in target_ids:
+        if tid not in existing_node_ids:
+            center_node = next((n for n in nodes if n.id == tid), None)
+            if center_node and (not exclude_demo or not center_node.isSeed):
+                res.nodes.append(center_node)
+                res.total_nodes = len(res.nodes)
+
+    return res
 
 
 def get_case_network_graph(

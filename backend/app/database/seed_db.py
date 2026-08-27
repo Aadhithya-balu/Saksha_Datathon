@@ -1,14 +1,19 @@
 """Seed roles, operators, and an ER-shaped prototype crime dataset.
 
 Expanded to cover all 31 Karnataka districts with realistic police stations,
-officers, victims, and cases for a production-grade demo.
+officers, victims, criminals, and cases for a production-grade demo.
 
 Issue #164: Every record created by this seed script is tagged with
 ``dataset_provenance='demo'`` so operational intelligence pipelines can
 clearly distinguish seeded demonstration data from live or migrated records.
+
+Issue #199: Comprehensive multi-year, multi-district dataset covering all input types
+(priorities: critical, high, medium, low; statuses: open, investigating, closed, appealed, unsolved;
+criminal statuses: at_large, arrested, convicted, acquitted, under_trial, on_bail;
+evidence types, intervention types, notification severities).
 """
 import random
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 
 from app.core.security import hash_password
 from app.database.postgres import SessionLocal
@@ -24,6 +29,7 @@ from app.models.role import Role
 from app.models.user import User
 from app.models.victim import Victim
 from app.models.chain_of_custody import ChainOfCustody
+from app.models.intervention import Intervention
 
 # Issue #164: canonical provenance tag for seed data
 _SEED_PROVENANCE = "demo"
@@ -199,9 +205,7 @@ LOCATIONS = [
 ]
 
 # ---------------------------------------------------------------------------
-# STANDALONE_OFFICERS — 30 officers deployed across Karnataka districts
-# These officers do NOT have user login accounts; they appear in the officer
-# directory and are assigned to cases for realistic distribution.
+# STANDALONE_OFFICERS — Deployed across all Karnataka districts
 # ---------------------------------------------------------------------------
 STANDALONE_OFFICERS = [
     # North Karnataka
@@ -215,6 +219,7 @@ STANDALONE_OFFICERS = [
     {"badge_number": "SI-8812", "name": "Sub-Inspector Nagesh Kori", "rank": "Sub-Inspector", "district": "Haveri", "station": "Haveri Town Police Station", "designation": "Investigating Officer", "phone": "+91 94480 12008", "email": "nagesh.k@ksp.gov.in"},
     {"badge_number": "IO-9945", "name": "Inspector Farooq Nadaf", "rank": "Inspector", "district": "Bidar", "station": "Bidar Town Police Station", "designation": "SHO", "phone": "+91 94480 12009", "email": "farooq.n@ksp.gov.in"},
     {"badge_number": "SI-1156", "name": "Sub-Inspector Venkatesh Kulkarni", "rank": "Sub-Inspector", "district": "Yadagir", "station": "Yadagir Town Police Station", "designation": "Investigating Officer", "phone": "+91 94480 12010", "email": "venkatesh.k@ksp.gov.in"},
+    {"badge_number": "IO-1188", "name": "Inspector Hanumanthappa Naik", "rank": "Inspector", "district": "Koppal", "station": "Koppal Town Police Station", "designation": "SHO", "phone": "+91 94480 12031", "email": "hanumanthappa.n@ksp.gov.in"},
 
     # Central Karnataka
     {"badge_number": "IO-2267", "name": "Inspector Kavitha Prasad", "rank": "Inspector", "district": "Bengaluru Urban", "station": "Koramangala Police Station", "designation": "SHO", "phone": "+91 94480 12011", "email": "kavitha.p@ksp.gov.in"},
@@ -227,6 +232,7 @@ STANDALONE_OFFICERS = [
     {"badge_number": "SI-9934", "name": "Sub-Inspector Prakash Naik", "rank": "Sub-Inspector", "district": "Mandya", "station": "Mandya Town Police Station", "designation": "Investigating Officer", "phone": "+91 94480 12018", "email": "prakash.n@ksp.gov.in"},
     {"badge_number": "IO-1045", "name": "Inspector Ravi Shankar Bhat", "rank": "Inspector", "district": "Chitradurga", "station": "Chitradurga Town Police Station", "designation": "SHO", "phone": "+91 94480 12019", "email": "ravishankar.b@ksp.gov.in"},
     {"badge_number": "SI-2156", "name": "Sub-Inspector Yashoda Patil", "rank": "Sub-Inspector", "district": "Ramanagara", "station": "Ramanagara Town Police Station", "designation": "Investigating Officer", "phone": "+91 94480 12020", "email": "yashoda.p@ksp.gov.in"},
+    {"badge_number": "SI-3312", "name": "Sub-Inspector Manjunath Reddy", "rank": "Sub-Inspector", "district": "Chikkaballapura", "station": "Chikkaballapura Town Police Station", "designation": "Investigating Officer", "phone": "+91 94480 12032", "email": "manjunath.r@ksp.gov.in"},
 
     # South Karnataka
     {"badge_number": "IO-3267", "name": "Inspector Bharath Gowda", "rank": "Inspector", "district": "Mysuru", "station": "Nazarbad Police Station", "designation": "SHO", "phone": "+91 94480 12021", "email": "bharath.g@ksp.gov.in"},
@@ -235,6 +241,9 @@ STANDALONE_OFFICERS = [
     {"badge_number": "SI-6590", "name": "Sub-Inspector Yogesh Shetty", "rank": "Sub-Inspector", "district": "Shimoga", "station": "Shimoga Town Police Station", "designation": "Investigating Officer", "phone": "+91 94480 12024", "email": "yogesh.s@ksp.gov.in"},
     {"badge_number": "IO-7601", "name": "Inspector Santosh Mudiraj", "rank": "Inspector", "district": "Davanagere", "station": "Davanagere Town Police Station", "designation": "SHO", "phone": "+91 94480 12025", "email": "santosh.m@ksp.gov.in"},
     {"badge_number": "SI-8712", "name": "Sub-Inspector Vinayak Kulkarni", "rank": "Sub-Inspector", "district": "Chikkamagaluru", "station": "Chikkamagaluru Town Police Station", "designation": "Investigating Officer", "phone": "+91 94480 12026", "email": "vinayak.k@ksp.gov.in"},
+    {"badge_number": "IO-9102", "name": "Inspector Siddharamaiah Pujari", "rank": "Inspector", "district": "Ballari", "station": "City Police Station", "designation": "SHO", "phone": "+91 94480 12033", "email": "siddharamaiah.p@ksp.gov.in"},
+    {"badge_number": "SI-4421", "name": "Sub-Inspector Mallikarjun Swamy", "rank": "Sub-Inspector", "district": "Raichur", "station": "Raichur Town Police Station", "designation": "Investigating Officer", "phone": "+91 94480 12034", "email": "mallikarjun.s@ksp.gov.in"},
+    {"badge_number": "IO-8855", "name": "Inspector Shanthappa K", "rank": "Inspector", "district": "Vijayanagara", "station": "Hospet Town Police Station", "designation": "SHO", "phone": "+91 94480 12035", "email": "shanthappa.k@ksp.gov.in"},
 
     # Coastal Karnataka
     {"badge_number": "IO-9823", "name": "Inspector Irfan Hassan", "rank": "Inspector", "district": "Dakshina Kannada", "station": "Pandeshwar Police Station", "designation": "SHO", "phone": "+91 94480 12027", "email": "irfan.h@ksp.gov.in"},
@@ -244,7 +253,7 @@ STANDALONE_OFFICERS = [
 ]
 
 # ---------------------------------------------------------------------------
-# CRIMINALS — 60 profiles for ML training
+# CRIMINALS — Profiles covering all criminal statuses
 # ---------------------------------------------------------------------------
 CRIMINALS = [
     ("Ramu Swamy", "Kodaikanal Ramu", date(1982, 4, 12), "Male", "Scar near left eyebrow", "Night residential lock-break burglaries using scooter reconnaissance", "at_large"),
@@ -252,56 +261,56 @@ CRIMINALS = [
     ("Sayed Ibrahim", "Sayed", date(1985, 2, 22), "Male", "Tattoo on right wrist", "Port logistics support for synthetic drug consignments", "at_large"),
     ("Karthik Gowda", "Gowda", date(1988, 8, 3), "Male", "Thick moustache", "Forgery and property document intimidation", "arrested"),
     ("Mohsin Pasha", "Pasha", date(1987, 1, 19), "Male", "Burn mark on forearm", "Illegal mineral transport and forged transit slips", "at_large"),
-    ("Prasad Shenoy", "Prasad", date(1979, 6, 15), "Male", "Deep voice, tall build", "Cyber fraud via fake banking portals", "at_large"),
+    ("Prasad Shenoy", "Prasad", date(1979, 6, 15), "Male", "Deep voice, tall build", "Cyber fraud via fake banking portals", "under_trial"),
     ("Naveen Reddy", "Navi", date(1992, 3, 20), "Male", "Slim build, clean shaven", "Phishing SMS campaigns targeting elderly", "at_large"),
     ("Ravi Shankar Bhat", "Ravi Bhat", date(1981, 9, 8), "Male", "Gold chain, receding hairline", "Cash-in-transit robbery planning", "arrested"),
     ("Imran Khan Pathan", "Imran", date(1986, 12, 1), "Male", "Beard, muscular build", "Interstate drug mule coordinator", "at_large"),
     ("Deepak Sharma", "Deepu", date(1993, 7, 25), "Male", "Glasses, left ear piercing", "Online investment scam operator", "convicted"),
-    ("Suresh Babu", "Suresh Anna", date(1975, 1, 30), "Male", "Greying temples", "Land grab intimidation syndicate", "at_large"),
+    ("Suresh Babu", "Suresh Anna", date(1975, 1, 30), "Male", "Greying temples", "Land grab intimidation syndicate", "on_bail"),
     ("Manjunath Holla", "Manju", date(1983, 5, 14), "Male", "Stocky, red birthmark neck", "Stolen vehicle resale network", "at_large"),
-    ("Farhan Ahmed", "Farhan", date(1991, 8, 22), "Male", "Sharp features, short hair", "Cryptocurrency money laundering", "at_large"),
+    ("Farhan Ahmed", "Farhan", date(1991, 8, 22), "Male", "Sharp features, short hair", "Cryptocurrency money laundering", "under_trial"),
     ("Girish Nayak", "Girish K", date(1984, 11, 3), "Male", "Wears thick spectacles", "Fake passport and visa racket", "arrested"),
     ("Venkatesh Kulkarni", "Venky", date(1980, 2, 18), "Male", "Mustache, broad forehead", "Contract killing intermediary", "at_large"),
-    ("Yusuf Ali Khan", "Yusuf", date(1989, 4, 7), "Male", "Tattoo forearm, athletic build", "Smuggled electronics distribution", "at_large"),
+    ("Yusuf Ali Khan", "Yusuf", date(1989, 4, 7), "Male", "Tattoo forearm, athletic build", "Smuggled electronics distribution", "acquitted"),
     ("Rajesh Pai", "Raju Pai", date(1977, 10, 21), "Male", "Widow's peak, stocky", "Money lending extortion operations", "at_large"),
     ("Ashok Kamble", "Ashok", date(1994, 1, 12), "Male", "Earring, tattoo on neck", "ATM card skimming operations", "convicted"),
     ("Irfan Hassan", "Irfan", date(1988, 6, 29), "Male", "Lean, scar on chin", "Harbor smuggling logistics", "at_large"),
     ("Mahesh Jain", "Mahesh", date(1976, 3, 5), "Male", "Portly, thick glasses", "Property fraud and forged deeds", "arrested"),
     ("Vijay Kumar S", "Vijay S", date(1990, 9, 16), "Male", "Clean shaven, athletic", "Bike theft ring operator", "at_large"),
-    ("Tanveer Alam", "Tanu", date(1987, 7, 2), "Male", "Tall, scar on forehead", "Fake currency distribution", "at_large"),
+    ("Tanveer Alam", "Tanu", date(1987, 7, 2), "Male", "Tall, scar on forehead", "Fake currency distribution", "on_bail"),
     ("Satish Mudiraj", "Satish", date(1983, 12, 8), "Male", "Dark complexion, muscular", "Illegal quarry operations", "at_large"),
     ("Rahul Deshpande", "Rahul D", date(1995, 2, 14), "Male", "Slim, ponytail", "Dark web drug marketplace admin", "at_large"),
     ("Bharath Gowda", "Bharath", date(1982, 8, 26), "Male", "Round face, gold teeth", "Timber smuggling coordinator", "arrested"),
-    ("Javed Sheikh", "Javed", date(1991, 5, 19), "Male", "Tattoo chest, lean build", "Illegal mining transport driver", "at_large"),
+    ("Javed Sheikh", "Javed", date(1991, 5, 19), "Male", "Tattoo chest, lean build", "Illegal mining transport driver", "under_trial"),
     ("Santosh Patil", "Santosh P", date(1985, 11, 11), "Male", "Short, thick mustache", "IPC fraud and cheating", "at_large"),
     ("Arun Verma", "Arun V", date(1978, 4, 30), "Male", "Grey hair, spectacles", "Organized gambling den operator", "convicted"),
     ("Khalid Mehmood", "Khalid", date(1986, 3, 12), "Male", "Beard, heavy build", "Narcotics retail distribution", "at_large"),
-    ("Pavan Kalyan R", "Pavan", date(1993, 10, 5), "Male", "Slim, clean shaven", "Cyber stalking and harassment", "at_large"),
+    ("Pavan Kalyan R", "Pavan", date(1993, 10, 5), "Male", "Slim, clean shaven", "Cyber stalking and harassment", "acquitted"),
     ("Shiva Prasad M", "Shiva M", date(1980, 7, 18), "Male", "Muscular, tribal tattoo", "Counterfeit goods manufacturing", "arrested"),
     ("Mohammed Ali", "Mohd Ali", date(1989, 1, 27), "Male", "Sharp nose, thin build", "Gold chain snatching gang leader", "at_large"),
-    ("Ganesh Haldipur", "Ganesh", date(1984, 5, 9), "Male", "Round face, dimple", "Illegal transport route management", "at_large"),
+    ("Ganesh Haldipur", "Ganesh", date(1984, 5, 9), "Male", "Round face, dimple", "Illegal transport route management", "on_bail"),
     ("Rohit Shetty K", "Rohit K", date(1992, 11, 15), "Male", "Tall, sporty build", "Vehicle theft for parts", "arrested"),
     ("Zubair Sheikh", "Zubair", date(1981, 9, 3), "Male", "Beard, glasses", "Interstate sand mining syndicate", "at_large"),
-    ("Nagendra Prasad", "Nagendra", date(1977, 6, 22), "Male", "Bald, strong jaw", "Extortion via threat calls", "at_large"),
+    ("Nagendra Prasad", "Nagendra", date(1977, 6, 22), "Male", "Bald, strong jaw", "Extortion via threat calls", "under_trial"),
     ("Vasanth Kumar", "Vasu", date(1994, 4, 11), "Male", "Slim, earring", "ATM break-in specialist", "convicted"),
     ("Hafeez Rehman", "Hafeez", date(1983, 12, 30), "Male", "Tall, broad build", "Smuggled gold transport", "at_large"),
     ("Chandrashekar B", "Chandru B", date(1988, 2, 8), "Male", "Mustache, medium build", "Fake document printing ring", "at_large"),
-    ("Lokesh Biradar", "Lokesh", date(1990, 8, 17), "Male", "Scar on lip, stocky", "Illegal liquor distribution", "at_large"),
+    ("Lokesh Biradar", "Lokesh", date(1990, 8, 17), "Male", "Scar on lip, stocky", "Illegal liquor distribution", "on_bail"),
     ("Sameer Patel", "Sameer", date(1986, 10, 25), "Male", "Glasses, short hair", "Hawala money transfer operator", "arrested"),
     ("Rakesh Tiwari", "Rakesh T", date(1979, 3, 14), "Male", "Receding hairline, portly", "Land encroachment intimidation", "at_large"),
-    ("Yogesh Shetty", "Yogesh", date(1991, 7, 6), "Male", "Athletic, tattoo arm", "Smuggled electronics import", "at_large"),
+    ("Yogesh Shetty", "Yogesh", date(1991, 7, 6), "Male", "Athletic, tattoo arm", "Smuggled electronics import", "under_trial"),
     ("Anil Kumar J", "Anil J", date(1985, 5, 23), "Male", "Thick mustache, medium build", "IPC assault repeat offender", "at_large"),
     ("Zaheer Ahmed", "Zaheer", date(1982, 11, 19), "Male", "Beard, lean build", "Drug courier network coordinator", "at_large"),
     ("Manoj Birajdar", "Manoj B", date(1993, 1, 7), "Male", "Short, muscular", "Illegal gambling enforcement", "convicted"),
     ("Sunil Khot", "Sunil K", date(1987, 9, 28), "Male", "Glasses, medium height", "Fake call center scam", "at_large"),
     ("Kiran Bhat", "Kiran", date(1980, 4, 16), "Male", "Portly, gold ring", "Timber transport forgery", "arrested"),
     ("Tariq Hussain", "Tariq", date(1992, 6, 2), "Male", "Lean, sharp features", "Illegal mineral transport", "at_large"),
-    ("Vinayak Kulkarni", "Vinayak K", date(1984, 1, 25), "Male", "Tall, spectacles", "Cheque forgery operations", "at_large"),
+    ("Vinayak Kulkarni", "Vinayak K", date(1984, 1, 25), "Male", "Tall, spectacles", "Cheque forgery operations", "on_bail"),
     ("Nasir Shaikh", "Nasir", date(1989, 8, 14), "Male", "Short, heavy build", "Fish export smuggling", "at_large"),
 ]
 
 # ---------------------------------------------------------------------------
-# VICTIMS — 40 victim/witness profiles across all regions
+# VICTIMS — Profiles across all regions
 # ---------------------------------------------------------------------------
 VICTIMS = [
     # North Karnataka
@@ -352,11 +361,9 @@ VICTIMS = [
 ]
 
 # ---------------------------------------------------------------------------
-# CASES — 75 hand-crafted cases spread across all districts and officers
-# Format: (case_number, category, station, days_ago, status, mo_tags,
-#          [criminal_names], [victim_names], fir_number, sections, priority, progress)
+# BASELINE HAND-CRAFTED CASES — 50 anchor cases with rich domain links
 # ---------------------------------------------------------------------------
-CASES = [
+HANDCRAFTED_CASES = [
     # === NORTH KARNATAKA ===
     ("CR-2026-BLG-001", "Smuggling & Excise Violations", "Khade Bazar Station", -10, "open", "forged inter-state clearance slips", ["Karthik Gowda"], ["Prakash Jain"], "FIR-204/BLG/2026", "Excise Act 32", "low", 40),
     ("CR-2026-BLG-002", "Theft & Burglaries", "Camp Police Station", -15, "open", "night residential break-in, crowbar used", ["Ramu Swamy"], ["Bharat Hegde"], "FIR-205/BLG/2026", "IPC 379, 457", "medium", 25),
@@ -444,12 +451,12 @@ DISTRICT_OFFICER_MAP = {
     "Kalaburagi": ["SI-4419"],
     "Yadagir": ["SI-1156"],
     "Bidar": ["IO-9945"],
-    "Koppal": [],
+    "Koppal": ["IO-1188"],
     "Bengaluru Urban": ["IO-2267", "SI-3378", "IO-4489"],
     "Bengaluru Rural": ["SI-5590"],
     "Tumkuru": ["IO-6601"],
     "Kolar": ["SI-7712"],
-    "Chikkaballapura": [],
+    "Chikkaballapura": ["SI-3312"],
     "Ramanagara": ["SI-2156"],
     "Hassan": ["IO-8823"],
     "Mandya": ["SI-9934"],
@@ -460,17 +467,27 @@ DISTRICT_OFFICER_MAP = {
     "Shimoga": ["SI-6590"],
     "Davanagere": ["IO-7601"],
     "Chikkamagaluru": ["SI-8712"],
-    "Ballari": [],
-    "Raichur": [],
-    "Vijayanagara": [],
+    "Ballari": ["IO-9102"],
+    "Raichur": ["SI-4421"],
+    "Vijayanagara": ["IO-8855"],
     "Dakshina Kannada": ["IO-9823", "SI-0934"],
     "Udupi": ["IO-1046"],
     "Uttara Kannada": ["SI-2157"],
 }
 
 
-def _generate_synthetic_cases():
-    """Generate 25 additional synthetic cases spread across all districts."""
+def _generate_comprehensive_cases():
+    """Generate 320 realistic multi-year cases covering all 31 districts from 2024 to 2026.
+
+    Guarantees:
+    - 100% deterministic (random.Random(42))
+    - Multi-year time series from Jan 2024 to Aug 2026 (~970 days)
+    - Full coverage of priority levels: critical, high, medium, low
+    - Full coverage of case statuses: open, investigating, closed, appealed, unsolved
+    - Structured MO tag overlaps for ML similarity matching and offender clustering
+    - Network relationship links (co-accused, repeated criminals across districts)
+    - Anomaly pattern injections (~4% of dataset)
+    """
     rng = random.Random(42)
     category_names = [c[0] for c in CATEGORIES]
     station_map = {loc[2]: loc[1] for loc in LOCATIONS}
@@ -479,45 +496,96 @@ def _generate_synthetic_cases():
     criminal_names = [c[0] for c in CRIMINALS]
     victim_names = [v[0] for v in VICTIMS]
 
-    statuses = ["open", "open", "open", "closed", "investigating"]
-    priorities = ["low", "medium", "medium", "high", "critical"]
+    # Input types for priority & status
+    priorities = ["low", "medium", "medium", "high", "high", "critical"]
+    statuses = ["open", "open", "investigating", "investigating", "closed", "appealed", "unsolved"]
+
+    # Shared MO Tag Clusters for similarity search
+    mo_tag_clusters = [
+        "scooter reconnaissance, crowbar entry, night operation, cash targeting",
+        "crypto mule routing, fake KYC, call spoofing, high-yield investment scam",
+        "night riverbed extraction, forged transit permit, heavy excavator used",
+        "interstate transit, concealed false compartment, synthetic MDMA, dead drop",
+        "temple crowd chain snatching, getaway bike, gold targeting",
+        "land document forgery, witness intimidation, fake power of attorney",
+        "highway cargo truck hijacking, driver assault, remote warehouse offload",
+        "fake customer care portal, OTP interception, remote access app",
+        "distillery raid, illicit arrac transport, unbranded glass bottles",
+        "forest boundary timber smuggling, midnight log transport",
+    ]
 
     cases = []
+    start_days_ago = 960  # ~Jan 2024
+    end_days_ago = 1      # ~Aug 2026
 
-    for i in range(25):
+    # Generate 320 cases evenly distributed across the 960-day window
+    for i in range(320):
+        # Time distribution spanning Jan 2024 to Aug 2026
+        progress_ratio = i / 320.0
+        days_ago = int(start_days_ago - (progress_ratio * (start_days_ago - end_days_ago)))
+        # Add slight random jitter (+/- 2 days)
+        days_ago = max(1, days_ago + rng.randint(-2, 2))
+
         cat = rng.choice(category_names)
         station = rng.choice(stations)
-        days_ago = rng.randint(1, 365)
         status = rng.choice(statuses)
         priority = rng.choice(priorities)
-        progress = rng.randint(0, 100) if status == "closed" else rng.randint(5, 80)
-        n_criminals = rng.choices([0, 1, 2, 3], weights=[30, 40, 20, 10])[0]
-        n_victims = rng.choices([0, 1, 2], weights=[40, 45, 15])[0]
-        selected_criminals = rng.sample(
-            [c for c in criminal_names if c not in ["Ramu Swamy", "Vikram Yadav", "Sayed Ibrahim", "Karthik Gowda", "Mohsin Pasha"]],
-            min(n_criminals, 55),
-        )
-        selected_victims = rng.sample(victim_names, min(n_victims, len(victim_names)))
 
-        case_num = f"CR-2026-SYN-{i+1:03d}"
-        fir_num = f"FIR-{rng.randint(200,999)}/SYN/2026"
-        mo_options = [
-            "night operation, mask used", "vehicle reconnaissance, parked getaway bike",
-            "insider tip suspected", "repeated pattern across districts", "fake identity documents",
-            "coordinated group activity", "electronic surveillance evasion", "cash-only transactions",
-            "modified vehicle plates", "warehouse hideout used",
-        ]
-        mo_tags = ", ".join(rng.sample(mo_options, rng.randint(1, 3)))
-        sections = rng.choice([
-            "IPC 379, 457", "IPC 420, IT Act 66D", "NDPS 21", "IPC 323, 324",
-            "MMDR Act 21", "DV Act", "IPC 447, 506", "Excise Act 32",
-        ])
+        if status == "closed":
+            progress = 100
+        elif status == "open":
+            progress = rng.randint(5, 50)
+        elif status == "investigating":
+            progress = rng.randint(40, 85)
+        else:
+            progress = rng.randint(10, 90)
+
+        # Select suspects (0 to 3) and victims (0 to 2)
+        n_criminals = rng.choices([0, 1, 2, 3], weights=[20, 50, 20, 10])[0]
+        n_victims = rng.choices([0, 1, 2], weights=[35, 50, 15])[0]
+
+        selected_criminals = rng.sample(criminal_names, min(n_criminals, len(criminal_names))) if n_criminals > 0 else []
+        selected_victims = rng.sample(victim_names, min(n_victims, len(victim_names))) if n_victims > 0 else []
+
+        # MO tag: 60% chance to pick from known MO cluster (creating discovery links), 40% custom
+        if rng.random() < 0.60:
+            mo_tags = rng.choice(mo_tag_clusters)
+        else:
+            mo_options = [
+                "night operation", "vehicle reconnaissance", "fake identity documents",
+                "coordinated group activity", "electronic surveillance evasion", "cash-only transactions",
+                "modified vehicle plates", "warehouse hideout used", "crowbar lock bypass",
+                "phishing URL SMS", "darknet forum coordination",
+            ]
+            mo_tags = ", ".join(rng.sample(mo_options, rng.randint(1, 3)))
+
+        # Anomaly injection (~4% controlled anomalies)
+        is_anomaly = (i % 25 == 0)
+        if is_anomaly:
+            priority = "critical"
+            mo_tags += ", [ANOMALY_FLAGGED: unexpected high-severity off-hour spike]"
+
+        case_num = f"CR-2026-DET-{i+1:03d}"
+        fir_num = f"FIR-{100 + (i % 899)}/DET/2026"
+
+        sections_map = {
+            "Cyber Crime & Online Fraud": "IPC 420, IT Act 66D",
+            "Theft & Burglaries": "IPC 379, 457",
+            "Narcotics Smuggling Services": "NDPS 21, 22",
+            "Smuggling & Excise Violations": "Excise Act 32",
+            "Assault": "IPC 323, 324",
+            "Illegal Mining Violations": "MMDR Act 21",
+            "Domestic Violence": "DV Act, IPC 498A",
+            "Property Disputes": "IPC 447, 506",
+        }
+        sections = sections_map.get(cat, "IPC 379")
 
         cases.append((case_num, cat, station, -days_ago, status, mo_tags, selected_criminals, selected_victims, fir_num, sections, priority, progress))
+
     return cases
 
 
-ALL_CASES = CASES + _generate_synthetic_cases()
+ALL_CASES = HANDCRAFTED_CASES + _generate_comprehensive_cases()
 
 
 DEMO_NOTIFICATIONS = [
@@ -540,6 +608,16 @@ DEMO_NOTIFICATIONS = [
 
 
 def seed() -> None:
+    from app.database.postgres import Base, engine
+    Base.metadata.create_all(bind=engine)
+    try:
+        from app.main import _migrate_user_lockout_columns, _migrate_notifications_table, _migrate_criminals_table, _migrate_provenance_columns
+        _migrate_user_lockout_columns()
+        _migrate_notifications_table()
+        _migrate_criminals_table()
+        _migrate_provenance_columns()
+    except Exception:
+        pass
     db = SessionLocal()
     try:
         role_objs = _seed_roles(db)
@@ -553,9 +631,7 @@ def seed() -> None:
         _seed_notifications(db, user_objs)
         db.commit()
 
-        # Issue #144 gap 132.1: backfill the normalized MO tag relations from
-        # the seeded mo_tags/mo_summary fields so pattern detection works out
-        # of the box. Idempotent — safe on already-seeded databases.
+        # Sync MO tags for pattern discovery
         try:
             from app.services.mo_pattern_service import sync_mo_tags
 
@@ -566,7 +642,7 @@ def seed() -> None:
                 f"{stats['criminal_links_created']} criminal links "
                 f"({stats['tags_created']} new tags)"
             )
-        except Exception as exc:  # never fail seeding over analytics backfill
+        except Exception as exc:
             print(f"MO sync skipped: {exc}")
 
         print("Seed complete. Prototype logins:")
@@ -616,13 +692,13 @@ def _seed_users(db, role_objs):
 
 def _seed_officers(db, user_objs):
     officers = {}
+    existing_officers = {o.badge_number: o for o in db.query(Officer).all()}
 
-    # 1) Seed demo-user officers (IO-3921, SP-0088 — linked to User accounts)
     for payload in DEMO_USERS:
         badge = payload.get("badge_number")
         if not badge:
             continue
-        officer = db.query(Officer).filter(Officer.badge_number == badge).first()
+        officer = existing_officers.get(badge)
         if not officer:
             officer = Officer(
                 user_id=user_objs[payload["username"]].id,
@@ -634,16 +710,14 @@ def _seed_officers(db, user_objs):
                 dataset_provenance=_SEED_PROVENANCE,
             )
             db.add(officer)
-            db.flush()
+            existing_officers[badge] = officer
         elif getattr(officer, "dataset_provenance", None) in (None, "live", "unknown", ""):
             officer.dataset_provenance = _SEED_PROVENANCE
-            db.flush()
         officers[badge] = officer
 
-    # 2) Seed standalone officers (no user login — appear in officer directory)
     for payload in STANDALONE_OFFICERS:
         badge = payload["badge_number"]
-        officer = db.query(Officer).filter(Officer.badge_number == badge).first()
+        officer = existing_officers.get(badge)
         if not officer:
             officer = Officer(
                 user_id=None,
@@ -659,43 +733,48 @@ def _seed_officers(db, user_objs):
                 dataset_provenance=_SEED_PROVENANCE,
             )
             db.add(officer)
-            db.flush()
+            existing_officers[badge] = officer
         officers[badge] = officer
 
+    db.flush()
     return officers
 
 
 def _seed_categories(db):
     categories = {}
+    existing_cats = {c.name: c for c in db.query(CrimeCategory).all()}
     for name, section_code, severity in CATEGORIES:
-        category = db.query(CrimeCategory).filter(CrimeCategory.name == name).first()
+        category = existing_cats.get(name)
         if not category:
             category = CrimeCategory(name=name, section_code=section_code, severity=severity)
             db.add(category)
-            db.flush()
+            existing_cats[name] = category
         categories[name] = category
+    db.flush()
     return categories
 
 
 def _seed_locations(db):
     locations = {}
+    existing_locs = {(l.station, l.address): l for l in db.query(Location).all()}
     for address, district, station, lat, lng, pincode in LOCATIONS:
-        location = db.query(Location).filter(Location.station == station, Location.address == address).first()
+        location = existing_locs.get((station, address))
         if not location:
             location = Location(address=address, district=district, station=station, latitude=lat, longitude=lng, pincode=pincode, dataset_provenance=_SEED_PROVENANCE)
             db.add(location)
-            db.flush()
+            existing_locs[(station, address)] = location
         elif getattr(location, "dataset_provenance", None) in (None, "live", "unknown", ""):
             location.dataset_provenance = _SEED_PROVENANCE
-            db.flush()
         locations[station] = location
+    db.flush()
     return locations
 
 
 def _seed_criminals(db):
     criminals = {}
+    existing_criminals = {c.full_name: c for c in db.query(Criminal).all()}
     for full_name, aliases, dob, gender, marks, mo, status in CRIMINALS:
-        criminal = db.query(Criminal).filter(Criminal.full_name == full_name).first()
+        criminal = existing_criminals.get(full_name)
         if not criminal:
             criminal = Criminal(
                 full_name=full_name,
@@ -708,47 +787,54 @@ def _seed_criminals(db):
                 dataset_provenance=_SEED_PROVENANCE,
             )
             db.add(criminal)
-            db.flush()
+            existing_criminals[full_name] = criminal
         elif getattr(criminal, "dataset_provenance", None) in (None, "live", "unknown", ""):
             criminal.dataset_provenance = _SEED_PROVENANCE
-            db.flush()
+            criminal.status = status
         criminals[full_name] = criminal
+    db.flush()
     return criminals
 
 
 def _seed_victims(db):
     victims = {}
+    existing_victims = {(v.full_name, v.contact_number): v for v in db.query(Victim).all()}
     for full_name, contact, address, gender, age, statement in VICTIMS:
-        victim = db.query(Victim).filter(Victim.full_name == full_name, Victim.contact_number == contact).first()
+        victim = existing_victims.get((full_name, contact))
         if not victim:
             victim = Victim(full_name=full_name, contact_number=contact, address=address, gender=gender, age=age, statement=statement, dataset_provenance=_SEED_PROVENANCE)
             db.add(victim)
-            db.flush()
+            existing_victims[(full_name, contact)] = victim
         elif getattr(victim, "dataset_provenance", None) in (None, "live", "unknown", ""):
             victim.dataset_provenance = _SEED_PROVENANCE
-            db.flush()
         victims[full_name] = victim
+    db.flush()
     return victims
 
 
 def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers):
     now = datetime.now()
-
-    # Build district -> station mapping for officer lookup
     station_district = {loc[2]: loc[1] for loc in LOCATIONS}
 
-    # Build a mapping of officer badge -> officer object for standalone officers
     standalone_officers_by_badge = {}
     for payload in STANDALONE_OFFICERS:
         badge = payload["badge_number"]
         if badge in officers:
             standalone_officers_by_badge[badge] = officers[badge]
 
+    # Bulk pre-fetch existing records to avoid round-trips over remote network
+    existing_crimes = {c.case_number: c for c in db.query(CrimeCase).all()}
+    existing_firs = {f.fir_number: f for f in db.query(FIR).all()}
+    existing_ev_case_ids = {e.case_id for e in db.query(Evidence.case_id).all()}
+    existing_fir_criminal_links = {(link.fir_id, link.criminal_id) for link in db.query(FIRCriminalLink).all()}
+    existing_fir_victim_links = {(link.fir_id, link.victim_id) for link in db.query(FIRVictimLink).all()}
+
+    import json
+
     for item in ALL_CASES:
         case_number, category_name, station, days, status, mo_tags, criminal_names, victim_names, fir_number, sections, priority, progress = item
-        crime = db.query(CrimeCase).filter(CrimeCase.case_number == case_number).first()
+        crime = existing_crimes.get(case_number)
 
-        # Determine the best officer for this case based on district
         district = station_district.get(station, "State HQ")
         district_badges = DISTRICT_OFFICER_MAP.get(district, [])
         assigned_officer = None
@@ -757,21 +843,39 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
                 assigned_officer = officers[badge]
                 break
         if not assigned_officer:
-            # Fallback: pick any officer from the same district
             for badge, off in standalone_officers_by_badge.items():
                 if off.district == district:
                     assigned_officer = off
                     break
         if not assigned_officer:
-            # Final fallback: use IO-3921
             assigned_officer = officers.get("IO-3921") or next(iter(officers.values()), None)
+
+        h_hash = abs(hash(case_number))
+        if "Theft" in category_name or "Burglar" in category_name:
+            hour = (21 + (h_hash % 7)) % 24
+        elif "Cyber" in category_name or "Online" in category_name:
+            hour = 10 + (h_hash % 9)
+        elif "Narcotics" in category_name or "Smuggling" in category_name:
+            hour = (20 + (h_hash % 8)) % 24
+        elif "Mining" in category_name:
+            hour = (23 + (h_hash % 6)) % 24
+        elif "Domestic" in category_name:
+            hour = 18 + (h_hash % 5)
+        else:
+            hour = 8 + (h_hash % 14)
+
+        minute = (h_hash % 12) * 5
+        case_date = (now + timedelta(days=days)).date()
+        case_occurred_at = datetime.combine(case_date, time(hour, minute, 0))
+        case_reported_at = case_occurred_at + timedelta(hours=1 + (h_hash % 4), minutes=((h_hash // 7) % 12) * 5)
 
         if not crime:
             crime = CrimeCase(
                 case_number=case_number,
                 category_id=categories[category_name].id,
                 location_id=locations[station].id,
-                occurred_at=now + timedelta(days=days),
+                occurred_at=case_occurred_at,
+                reported_at=case_reported_at,
                 description=f"{category_name} reported at {locations[station].address}, {district}",
                 mo_tags=mo_tags,
                 status=status,
@@ -782,19 +886,20 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
             )
             db.add(crime)
             db.flush()
-        elif getattr(crime, "dataset_provenance", None) in (None, "live", "unknown", ""):
-            crime.dataset_provenance = _SEED_PROVENANCE
-            db.flush()
+            existing_crimes[case_number] = crime
         else:
+            crime.occurred_at = case_occurred_at
+            crime.reported_at = case_reported_at
             crime.priority = priority
+            crime.status = status
             crime.progress = progress
+            if getattr(crime, "dataset_provenance", None) in (None, "live", "unknown", ""):
+                crime.dataset_provenance = _SEED_PROVENANCE
             if not crime.assigned_officer_id and assigned_officer:
                 crime.assigned_officer_id = assigned_officer.id
-            db.flush()
 
-        fir = db.query(FIR).filter(FIR.fir_number == fir_number).first()
+        fir = existing_firs.get(fir_number)
         if not fir:
-            import json
             fir = FIR(
                 fir_number=fir_number,
                 crime_case_id=crime.id,
@@ -802,7 +907,8 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
                 complainant_name=victim_names[0] if victim_names else "State Complainant",
                 complainant_contact=victims[victim_names[0]].contact_number if victim_names and victim_names[0] in victims else None,
                 sections=sections,
-                status="registered" if status == "open" else "closed",
+                status="registered" if status in ("open", "investigating") else "closed",
+                filed_at=case_reported_at + timedelta(minutes=15),
                 narrative=f"Backend-seeded FIR for {case_number}; derived from the Police FIR ER model.",
                 attachments=json.dumps([
                     {"name": f"complaint_copy_{case_number}.pdf", "size": 154200},
@@ -812,24 +918,27 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
             )
             db.add(fir)
             db.flush()
-        elif getattr(fir, "dataset_provenance", None) in (None, "live", "unknown", ""):
-            fir.dataset_provenance = _SEED_PROVENANCE
-            db.flush()
+            existing_firs[fir_number] = fir
+        else:
+            fir.filed_at = case_reported_at + timedelta(minutes=15)
+            if getattr(fir, "dataset_provenance", None) in (None, "live", "unknown", ""):
+                fir.dataset_provenance = _SEED_PROVENANCE
 
         for criminal_name in criminal_names:
-            criminal = criminals[criminal_name]
-            exists = db.query(FIRCriminalLink).filter(FIRCriminalLink.fir_id == fir.id, FIRCriminalLink.criminal_id == criminal.id).first()
-            if not exists:
-                db.add(FIRCriminalLink(fir_id=fir.id, criminal_id=criminal.id, role="accused"))
+            if criminal_name in criminals:
+                criminal = criminals[criminal_name]
+                if (fir.id, criminal.id) not in existing_fir_criminal_links:
+                    db.add(FIRCriminalLink(fir_id=fir.id, criminal_id=criminal.id, role="accused"))
+                    existing_fir_criminal_links.add((fir.id, criminal.id))
 
         for victim_name in victim_names:
-            victim = victims[victim_name]
-            exists = db.query(FIRVictimLink).filter(FIRVictimLink.fir_id == fir.id, FIRVictimLink.victim_id == victim.id).first()
-            if not exists:
-                db.add(FIRVictimLink(fir_id=fir.id, victim_id=victim.id))
+            if victim_name in victims:
+                victim = victims[victim_name]
+                if (fir.id, victim.id) not in existing_fir_victim_links:
+                    db.add(FIRVictimLink(fir_id=fir.id, victim_id=victim.id))
+                    existing_fir_victim_links.add((fir.id, victim.id))
 
-        evidence_exists = db.query(Evidence).filter(Evidence.case_id == crime.id).first()
-        if not evidence_exists:
+        if crime.id not in existing_ev_case_ids:
             if "Cyber" in category_name:
                 ev_type = "digital"
                 ev_title = f"Digital Forensics — {case_number}"
@@ -860,7 +969,6 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
                 ev_desc = f"Supporting documentation and evidence for {case_number}."
 
             ev_status = "Analyzed" if status == "closed" else "Under Analysis" if progress > 30 else "Pending"
-            badge = assigned_officer.badge_number if assigned_officer else "SCRB"
             officer_name = assigned_officer.name if assigned_officer else "SCRB Analyst"
 
             evidence = Evidence(
@@ -875,6 +983,7 @@ def _seed_cases_and_firs(db, categories, locations, criminals, victims, officers
             )
             db.add(evidence)
             db.flush()
+            existing_ev_case_ids.add(crime.id)
 
             db.add(ChainOfCustody(
                 evidence_id=evidence.id,
@@ -948,7 +1057,64 @@ def _seed_notifications(db, user_objs):
     db.flush()
     print(f"Seeded {len(DEMO_NOTIFICATIONS)} demo notifications")
 
+    if db.query(Intervention).count() == 0:
+        admin_user = user_objs.get("admin")
+        interventions_data = [
+            {
+                "district": "Bengaluru Urban",
+                "intervention_type": "patrol_surge",
+                "title": "Operation Garuda: Koramangala & Indiranagar Night Patrol Surge",
+                "description": "High-visibility saturation patrols and mobile interceptors to curtail late-night thefts and street offenses.",
+                "started_at": datetime.now() - timedelta(days=60),
+                "ended_at": datetime.now() - timedelta(days=5),
+                "status": "completed",
+            },
+            {
+                "district": "Mysuru",
+                "intervention_type": "checkpoint_blitz",
+                "title": "Expressway Checkpoint Blitz & Inter-City Transit Screening",
+                "description": "Static and dynamic multi-point checkpoints deployed at key transit arteries to disrupt organized contraband transit.",
+                "started_at": datetime.now() - timedelta(days=45),
+                "ended_at": None,
+                "status": "active",
+            },
+            {
+                "district": "Dakshina Kannada",
+                "intervention_type": "cctv_deployment",
+                "title": "Coastal & Port Sector Smart CCTV Surveillance Rollout",
+                "description": "Deployment of high-definition ANPR-enabled surveillance feeds covering critical logistics corridors.",
+                "started_at": datetime.now() - timedelta(days=90),
+                "ended_at": datetime.now() - timedelta(days=10),
+                "status": "completed",
+            },
+            {
+                "district": "Dharwad",
+                "intervention_type": "special_drive",
+                "title": "Hubballi-Dharwad Women & Student Safety Escort Drive",
+                "description": "Intensive beat patrolling around educational hubs and commercial zones during peak commute windows.",
+                "started_at": datetime.now() - timedelta(days=30),
+                "ended_at": None,
+                "status": "active",
+            },
+            {
+                "district": "Belagavi",
+                "intervention_type": "lighting_upgrade",
+                "title": "Industrial Corridor High-Mast Illumination & Beat Expansion",
+                "description": "Infrastructure lighting intervention paired with enhanced evening beat coverage to deter property offenses.",
+                "started_at": datetime.now() - timedelta(days=75),
+                "ended_at": datetime.now() - timedelta(days=15),
+                "status": "completed",
+            },
+        ]
+        for item in interventions_data:
+            inv = Intervention(
+                **item,
+                created_by_id=admin_user.id if admin_user else None,
+            )
+            db.add(inv)
+        db.flush()
+        print(f"Seeded {len(interventions_data)} demo interventions")
+
 
 if __name__ == "__main__":
     seed()
-

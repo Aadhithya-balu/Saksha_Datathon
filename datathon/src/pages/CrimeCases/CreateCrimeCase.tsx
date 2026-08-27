@@ -61,7 +61,7 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
         case_number: caseNumber,
         category_id: categoryId,
         location_id: locationId,
-        occurred_at: new Date(occurredAt).toISOString(),
+        occurred_at: occurredAt,
         description: description || null,
         mo_tags: moTags || null,
         status: status

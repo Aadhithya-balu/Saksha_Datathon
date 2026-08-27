@@ -11,6 +11,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 ROOT_DIR = BACKEND_DIR.parent
 
+# Canonical allowed data modes (Issue #190). A 'mixed' provenance state is
+# deliberately never a runtime mode — mixed provenance is reported through the
+# provenance pipeline, not configured.
+VALID_DATA_MODES: tuple[str, ...] = ("production", "demo", "test")
+
 
 class Settings(BaseSettings):
     # --- App ---
@@ -21,10 +26,12 @@ class Settings(BaseSettings):
     APP_DEBUG: bool = False
     DEBUG: bool = False
 
-    # --- Data Mode (Issue #162) ---
+    # --- Data Mode (Issue #162, #190) ---
     # Controls whether fallback to demo/seed data is permitted and whether
     # DEMO badges are shown.  Valid values: 'production', 'demo', 'test'.
     # Production mode disables silent fallback to synthetic intelligence.
+    # An invalid/missing value fails safely (defaults to 'demo', never to a
+    # permissive mode that could silently present seed data as live).
     SAKSHA_DATA_MODE: str = "demo"
 
     # --- PostgreSQL / Supabase PostgreSQL ---
@@ -89,6 +96,10 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-2.0-flash"
     OPENAI_API_KEY: str | None = None
     OPENAI_MODEL: str = "gpt-4o-mini"
+    # LLM generation controls for the AI chat (configurable so operators can
+    # tune creativity/output length without code changes).
+    LLM_CHAT_TEMPERATURE: float = 0.3
+    LLM_CHAT_MAX_TOKENS: int = 2048
 
     # --- AI model auto-refresh (issue #145) ---
     # When enabled, inference entrypoints compare each trained artifact's
@@ -137,6 +148,29 @@ class Settings(BaseSettings):
         if normalized in {"0", "false", "no", "n", "off", "release", "production", "prod"}:
             return False
         return False
+
+    @field_validator("SAKSHA_DATA_MODE", mode="before")
+    @classmethod
+    def validate_data_mode(cls, value):
+        """Fail safely on an invalid or missing data mode (Issue #190 §3).
+
+        Valid values: 'production', 'demo', 'test'.  Any other value is
+        rejected with a clear error rather than silently defaulting to a
+        permissive mode, so no deployment can accidentally present seed/demo
+        data as live operational data.
+        """
+        if value is None or str(value).strip() == "":
+            raise ValueError(
+                "SAKSHA_DATA_MODE must be one of 'production', 'demo', 'test'. "
+                "Refusing to start with an unset/missing data mode."
+            )
+        normalized = str(value).strip().lower()
+        if normalized not in VALID_DATA_MODES:
+            raise ValueError(
+                f"SAKSHA_DATA_MODE={value!r} is invalid. "
+                "Must be one of 'production', 'demo', 'test'."
+            )
+        return normalized
 
     @staticmethod
     def _is_placeholder(value: str | None) -> bool:

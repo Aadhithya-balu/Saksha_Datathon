@@ -31,12 +31,22 @@ from app.schemas.user import UserCreate
 # Password policy
 # ---------------------------------------------------------------------------
 
+def is_numeric_pin(password: str) -> bool:
+    """True when the value is a 6-digit numeric badge PIN (e.g. '564738')."""
+    return len(password) == 6 and password.isdigit()
+
+
 def validate_password_strength(password: str) -> None:
     """KSP accounts protect sensitive records; enforce a baseline policy.
+
+    Accepts either a strong password (>= 8 chars with lower/upper/digit) or a
+    6-digit numeric badge PIN, matching the platform's badge-ID login flow.
 
     Raises ConflictException with an actionable message when violated. Kept in
     the service layer so admin routes and self-service changes share one rule.
     """
+    if is_numeric_pin(password):
+        return
     if len(password) < 8 or len(password) > 128:
         raise ConflictException("Password must be between 8 and 128 characters")
     if not any(c.islower() for c in password):

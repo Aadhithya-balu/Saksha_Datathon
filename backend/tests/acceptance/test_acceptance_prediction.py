@@ -31,6 +31,9 @@ def test_risk_scores_from_seeded_db(client, crime_dataset, analyst_headers):
     # Response contract.
     for key in ("window", "model_version", "grid_predictions", "prediction_mode", "data_provenance"):
         assert key in body
+    # §33 DB-backed: provenance must honestly reflect live operational records.
+    # The fixture deliberately includes one demo-provenance case, so LIVE_DB must
+    # be present (it may legitimately combine to "LIVE_DB + DEMO").
     assert "LIVE_DB" in body["data_provenance"]
 
     # DB-backed: districts from the fixture appear among predictions.

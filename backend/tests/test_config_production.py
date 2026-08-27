@@ -14,7 +14,7 @@ class TestProductionConfigValidation:
         s = Settings(
             _env_file=None,
             DATABASE_URL="sqlite:///:memory:",
-            JWT_SECRET_KEY="a" * 64,
+            JWT_SECRET_KEY="test-only-secret-key-not-for-production-use-0000000000000000000000",
             APP_ENV="development",
             APP_DEBUG=False,
             DEBUG=False,

@@ -50,6 +50,24 @@ const CrimeCaseDetails: React.FC<CrimeCaseDetailsProps> = ({
   const [selectedFirToLink, setSelectedFirToLink] = useState('');
   const [linking, setLinking] = useState(false);
 
+  const formatCaseDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return '—';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
   const fetchDetails = async () => {
     setLoading(true);
     setError(null);
@@ -268,11 +286,11 @@ const CrimeCaseDetails: React.FC<CrimeCaseDetailsProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-4 border-t border-border-color/30 text-[10px] text-[var(--text-muted)] uppercase">
           <div className="flex items-center gap-2">
             <Calendar className="w-3.5 h-3.5 text-[#1E6FD9]" />
-            <span>REPORTED: {new Date(caseData.reported_at).toLocaleDateString()}</span>
+            <span>REPORTED: {formatCaseDate(caseData.reported_at)}</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-3.5 h-3.5 text-[#0E9E78]" />
-            <span>OCCURRED: {new Date(caseData.occurred_at).toLocaleString()}</span>
+            <span>OCCURRED: {formatCaseDate(caseData.occurred_at)}</span>
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="w-3.5 h-3.5 text-[#C94A2A]" />
@@ -504,7 +522,7 @@ const CrimeCaseDetails: React.FC<CrimeCaseDetailsProps> = ({
                     <div className="absolute left-[-20.5px] top-1.5 w-2 h-2 rounded-full bg-purple-400 border border-[var(--border-primary)]" />
                     
                     <div className="text-[9.5px] text-[var(--text-muted)]">
-                      {new Date(event.timestamp).toLocaleString()}
+                      {formatCaseDate(event.timestamp)}
                     </div>
                     <div className="font-bold text-[var(--text-primary)] uppercase mt-0.5">
                       {event.event}

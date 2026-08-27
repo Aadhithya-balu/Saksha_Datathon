@@ -27,6 +27,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Fingerprint,
+  Crosshair,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -52,7 +54,8 @@ const navGroups: NavGroup[] = [
   {
     label: 'COMMAND',
     items: [
-      { id: 'dashboard', label: 'Overview', path: '/dashboard', icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
+      { id: 'dashboard', label: 'Analytics Dashboard', path: '/dashboard', icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
+      { id: 'command_center', label: 'Command Center', path: '/command-center', icon: <Crosshair className="w-[18px] h-[18px]" /> },
       { id: 'notifications', label: 'Intelligence', path: '/notifications', icon: <Bell className="w-[18px] h-[18px]" /> },
       { id: 'anomaly', label: 'Anomaly Feed', path: '/anomalies', icon: <AlertTriangle className="w-[18px] h-[18px]" /> },
       { id: 'strategic', label: 'Strategic Intel', path: '/strategic', icon: <Shield className="w-[18px] h-[18px]" /> },
@@ -61,6 +64,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'INVESTIGATIONS',
     items: [
+      { id: 'intelligence', label: 'Investigation Hub', path: '/intelligence', icon: <Fingerprint className="w-[18px] h-[18px]" /> },
       { id: 'crime_cases', label: 'Crime Cases', path: '/crime-cases', icon: <Briefcase className="w-[18px] h-[18px]" /> },
       { id: 'investigation', label: 'Investigation', path: '/investigation', icon: <Search className="w-[18px] h-[18px]" /> },
       { id: 'fir', label: 'FIR Registry', path: '/firs', icon: <FileText className="w-[18px] h-[18px]" /> },
@@ -111,7 +115,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const filteredNavGroups = navGroups.map(group => ({
     ...group,
     items: group.items.filter(item => {
-      if (item.id === 'settings_help') return isAdmin;
       if (item.id === 'admin') return isAdmin;
       return true;
     }),
