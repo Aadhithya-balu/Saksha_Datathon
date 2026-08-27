@@ -1,0 +1,9 @@
+id,name,section_code,severity,created_at,updated_at,dataset_provenance,source_file,source_row_ref
+d0000000-0000-0000-0000-000000000001,Cyber Crime & Online Fraud,IPC 420 / IT Act 66D,high,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,1
+d0000000-0000-0000-0000-000000000002,Theft & Burglaries,IPC 379/457,medium,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,2
+d0000000-0000-0000-0000-000000000003,Narcotics Smuggling Services,NDPS 21/22,high,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,3
+d0000000-0000-0000-0000-000000000004,Smuggling & Excise Violations,Excise Act,medium,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,4
+d0000000-0000-0000-0000-000000000005,Assault,IPC 323/324,medium,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,5
+d0000000-0000-0000-0000-000000000006,Illegal Mining Violations,MMDR Act,high,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,6
+d0000000-0000-0000-0000-000000000007,Domestic Violence,DV Act,medium,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,7
+d0000000-0000-0000-0000-000000000008,Property Disputes,IPC 447/506,low,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,8

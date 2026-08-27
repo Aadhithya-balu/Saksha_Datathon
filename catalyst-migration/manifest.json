@@ -1,0 +1,202 @@
+{
+  "generated_at": "2026-08-27T16:45:14.187065+00:00",
+  "baseline_utc": "2026-08-01T12:00:00+00:00",
+  "baseline_meaning": "Value substituted for PostgreSQL now(); relative seed timestamps were resolved against it.",
+  "catalyst_note": "Schema (tables + columns) creation is only possible via the Catalyst console; this kit stages the data import and verification only.",
+  "tables": {
+    "roles": {
+      "csv": "data/roles.csv",
+      "rows": 4,
+      "seeded": true,
+      "expected_rows": 4
+    },
+    "users": {
+      "csv": "data/users.csv",
+      "rows": 4,
+      "seeded": true,
+      "expected_rows": 4
+    },
+    "officers": {
+      "csv": "data/officers.csv",
+      "rows": 2,
+      "seeded": true,
+      "expected_rows": 2
+    },
+    "locations": {
+      "csv": "data/locations.csv",
+      "rows": 10,
+      "seeded": true,
+      "expected_rows": 10
+    },
+    "crime_categories": {
+      "csv": "data/crime_categories.csv",
+      "rows": 8,
+      "seeded": true,
+      "expected_rows": 8
+    },
+    "crime_cases": {
+      "csv": "data/crime_cases.csv",
+      "rows": 11,
+      "seeded": true,
+      "expected_rows": 11
+    },
+    "criminals": {
+      "csv": "data/criminals.csv",
+      "rows": 5,
+      "seeded": true,
+      "expected_rows": 5
+    },
+    "victims": {
+      "csv": "data/victims.csv",
+      "rows": 5,
+      "seeded": true,
+      "expected_rows": 5
+    },
+    "firs": {
+      "csv": "data/firs.csv",
+      "rows": 11,
+      "seeded": true,
+      "expected_rows": 11
+    },
+    "fir_criminal_links": {
+      "csv": "data/fir_criminal_links.csv",
+      "rows": 9,
+      "seeded": true,
+      "expected_rows": 9
+    },
+    "fir_victim_links": {
+      "csv": "data/fir_victim_links.csv",
+      "rows": 7,
+      "seeded": true,
+      "expected_rows": 7
+    },
+    "evidence": {
+      "csv": "data/evidence.csv",
+      "rows": 11,
+      "seeded": true,
+      "expected_rows": 11
+    },
+    "evidence_metadata": {
+      "csv": "data/evidence_metadata.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "evidence_timeline": {
+      "csv": "data/evidence_timeline.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "evidence_assignments": {
+      "csv": "data/evidence_assignments.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "evidence_ai_summary": {
+      "csv": "data/evidence_ai_summary.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "chain_of_custody": {
+      "csv": "data/chain_of_custody.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "audit_logs": {
+      "csv": "data/audit_logs.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "notifications": {
+      "csv": "data/notifications.csv",
+      "rows": 12,
+      "seeded": true,
+      "expected_rows": 12
+    },
+    "reports": {
+      "csv": "data/reports.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "investigation_notes": {
+      "csv": "data/investigation_notes.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "mo_tags": {
+      "csv": "data/mo_tags.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "case_mo_tags": {
+      "csv": "data/case_mo_tags.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "criminal_mo_tags": {
+      "csv": "data/criminal_mo_tags.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "chat_conversations": {
+      "csv": "data/chat_conversations.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "chat_messages": {
+      "csv": "data/chat_messages.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "import_jobs": {
+      "csv": "data/import_jobs.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "import_staging_records": {
+      "csv": "data/import_staging_records.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "interventions": {
+      "csv": "data/interventions.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "revoked_tokens": {
+      "csv": "data/revoked_tokens.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "system_settings": {
+      "csv": "data/system_settings.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    },
+    "role_permissions": {
+      "csv": "data/role_permissions.csv",
+      "rows": 0,
+      "seeded": false,
+      "expected_rows": 0
+    }
+  },
+  "row_total": 99,
+  "warnings": []
+}

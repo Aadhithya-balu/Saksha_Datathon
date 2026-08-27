@@ -1,0 +1,11 @@
+id,address,district,station,latitude,longitude,pincode,created_at,updated_at,dataset_provenance,source_file,source_row_ref
+e0000000-0000-0000-0000-000000000001,Whitefield Cyber Cell Beat,Bengaluru Urban,Whitefield Police Station,12.9698,77.75,560066,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,1
+e0000000-0000-0000-0000-000000000002,KR Puram Transit Corridor,Bengaluru Urban,KR Puram Police Station,13.0056,77.688,560036,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,2
+e0000000-0000-0000-0000-000000000003,Devaraja Market Zone,Mysuru,Devaraja Police Station,12.2958,76.6394,570001,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,3
+e0000000-0000-0000-0000-000000000004,Harbor Gate A,Mangaluru,Pandeshwar Police Station,12.905,74.835,575001,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,4
+e0000000-0000-0000-0000-000000000005,Khade Bazar Checkpoint,Belagavi,Khade Bazar Station,15.8497,74.4977,590001,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,5
+e0000000-0000-0000-0000-000000000006,Ballari Mines Sector B,Ballari,Rural Police Station,15.1394,76.9214,583101,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,6
+e0000000-0000-0000-0000-000000000007,Chowk Survey Layout,Kalaburagi,Chowk Police Station,17.3297,76.8343,585101,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,7
+e0000000-0000-0000-0000-000000000008,Hassan City East,Hassan,City Police Station,13.0641,76.103,573201,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,8
+e0000000-0000-0000-0000-000000000009,Tumkuru Industrial Road,Tumkuru,Town Police Station,13.3379,77.1173,572101,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,9
+e0000000-0000-0000-0000-000000000010,Dharwad Market Yard,Dharwad,Suburban Police Station,15.4589,75.0078,580001,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,10

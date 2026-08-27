@@ -1,0 +1,6 @@
+id,full_name,aliases,date_of_birth,gender,address,identifying_marks,mo_summary,status,gang_affiliation,neo4j_node_id,image_url,created_at,updated_at,dataset_provenance,source_file,source_row_ref
+f0000000-0000-0000-0000-000000000001,Ramu Swamy,Kodaikanal Ramu,1982-04-12,Male,,Scar near left eyebrow,Night residential lock-break burglaries using scooter reconnaissance,at_large,,,,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,1
+f0000000-0000-0000-0000-000000000002,Vikram Yadav,Vicky,1990-11-07,Male,,"Spectacles, gold ring",Money mule coordinator for app-based cyber extortion,at_large,,,,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,2
+f0000000-0000-0000-0000-000000000003,Sayed Ibrahim,Sayed,1985-02-22,Male,,Tattoo on right wrist,Port logistics support for synthetic drug consignments,at_large,,,,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,3
+f0000000-0000-0000-0000-000000000004,Karthik Gowda,Gowda,1988-08-03,Male,,Thick moustache,Forgery and property document intimidation,arrested,,,,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,4
+f0000000-0000-0000-0000-000000000005,Mohsin Pasha,Pasha,1987-01-19,Male,,Burn mark on forearm,Illegal mineral transport and forged transit slips,at_large,,,,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,5

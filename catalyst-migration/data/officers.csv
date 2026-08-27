@@ -1,0 +1,3 @@
+id,supabase_user_id,user_id,badge_number,name,rank,station,district,designation,phone,email,status,image_url,created_at,updated_at,dataset_provenance,source_file,source_row_ref
+c0000000-0000-0000-0000-000000000001,,b0000000-0000-0000-0000-000000000003,IO-3921,Inspector Meera Sen,Inspector,Devaraja Police Station,Mysuru,,,,,,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,1
+c0000000-0000-0000-0000-000000000002,,b0000000-0000-0000-0000-000000000004,SP-0088,SP Anil Kumble,Superintendent of Police,KSP HQ,State HQ,,,,,,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,2

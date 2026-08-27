@@ -1,0 +1,6 @@
+id,full_name,contact_number,address,gender,age,statement,neo4j_node_id,image_url,created_at,updated_at,dataset_provenance,source_file,source_row_ref
+f1000000-0000-0000-0000-000000000001,K. S. Narayanan,+91 98800 00001,Bengaluru Urban,Male,52,Reported biometric face ID bypass and loan extortion.,,,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,1
+f1000000-0000-0000-0000-000000000002,Dr. Vinay Murthy,+91 98800 00002,Mysuru,Male,46,Reported night burglary and missing jewellery.,,,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,2
+f1000000-0000-0000-0000-000000000003,Asha Rao,+91 98800 00003,Mangaluru,Female,33,Witnessed cargo handoff near harbor gate.,,,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,3
+f1000000-0000-0000-0000-000000000004,Prakash Jain,+91 98800 00004,Belagavi,Male,41,Reported forged excise transport documents.,,,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,4
+f1000000-0000-0000-0000-000000000005,Latha Hegde,+91 98800 00005,Hassan,Female,29,Filed domestic violence complaint with medical evidence.,,,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,5

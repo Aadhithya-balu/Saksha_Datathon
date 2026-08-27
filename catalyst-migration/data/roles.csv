@@ -1,0 +1,5 @@
+id,name,description,created_at,updated_at,dataset_provenance,source_file,source_row_ref
+a0000000-0000-0000-0000-000000000001,admin,admin role,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,1
+a0000000-0000-0000-0000-000000000002,crime_analyst,crime_analyst role,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,2
+a0000000-0000-0000-0000-000000000003,investigator,investigator role,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,3
+a0000000-0000-0000-0000-000000000004,policymaker,policymaker role,2026-08-01 12:00:00,2026-08-01 12:00:00,demo,saksha_full_setup.sql,4
