@@ -57,6 +57,9 @@ from app.routes import (
 # Issue #162: system data-mode and provenance endpoint
 from app.routes import system
 
+# Issue #200: officer-centric investigation hub
+from app.routes import investigation_hub
+
 
 api_router = APIRouter()
 
@@ -104,3 +107,6 @@ api_router.include_router(alerts.router)
 
 # Issue #162: system data-mode and provenance endpoint
 api_router.include_router(system.router)
+
+# Issue #200: officer-centric investigation hub
+api_router.include_router(investigation_hub.router)

@@ -38,8 +38,9 @@ describe('RoleGuard access control', () => {
     expect(screen.getByText('SECRET PANEL')).toBeInTheDocument();
   });
 
-  it('restricts /settings to admins only per the permission matrix', () => {
-    expect(ROUTE_PERMISSIONS['/settings'].allowedRoles).toEqual(['ADMIN']);
+  it('opens /settings to all signed-in roles, keeping /admin admin-only', () => {
+    expect(ROUTE_PERMISSIONS['/settings'].allowedRoles).toEqual(expect.arrayContaining(['VIEWER', 'SCRB', 'IO', 'SP']));
+    expect(ROUTE_PERMISSIONS['/admin'].allowedRoles).toEqual(['ADMIN']);
     expect(ROUTE_PERMISSIONS['/dashboard'].allowedRoles).toContain('VIEWER');
   });
 

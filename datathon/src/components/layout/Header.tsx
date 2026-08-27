@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAppStore } from '../../store/appStore';
+import { useAuthStore } from '../../store/authStore';
 import { SessionTimer } from '../auth/SessionTimer';
 import {
   Search,
@@ -14,6 +15,7 @@ import {
 import NotificationBell from '../notifications/NotificationBell';
 import DataModeBadge from '../ui/DataModeBadge';
 import { isEmulatorActive } from '../../services/api';
+import ChangePasswordModal from '../auth/ChangePasswordModal';
 
 interface HeaderProps {
   sidebarCollapsed?: boolean;
@@ -21,7 +23,9 @@ interface HeaderProps {
 }
 
 const pageLabels: Record<string, string> = {
-  dashboard: 'Overview',
+  dashboard: 'Analytics Dashboard',
+  command_center: 'Command Center',
+  intelligence: 'Investigation Hub',
   fir: 'FIR Registry',
   hotspot: 'Hotspot Map',
   network: 'Network Graph',
@@ -45,8 +49,17 @@ const pageLabels: Record<string, string> = {
 
 export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarCollapsed }) => {
   const { theme, toggleTheme, activeTab, setCommandPaletteOpen } = useAppStore();
+  const user = useAuthStore((state) => state.user);
   const [emulatorActive, setEmulatorActive] = React.useState(isEmulatorActive);
   const [systime, setSystime] = React.useState(new Date().toLocaleTimeString());
+  const [pwOpen, setPwOpen] = React.useState(false);
+
+  const initials = (user?.name ?? 'U')
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   useEffect(() => {
     const handler = (e: Event) => setEmulatorActive((e as CustomEvent).detail);
@@ -143,6 +156,18 @@ export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarColl
 
         {/* Notifications */}
         <NotificationBell />
+
+        {/* Account / self-service */}
+        <div className="relative">
+          <button
+            onClick={() => setPwOpen(true)}
+            title="Change your password"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-primary)] bg-[var(--accent-blue-subtle)] text-[11px] font-bold text-[var(--accent-blue)] transition-colors hover:border-[var(--accent-blue)]/40 cursor-pointer"
+          >
+            {initials}
+          </button>
+          <ChangePasswordModal open={pwOpen} onClose={() => setPwOpen(false)} />
+        </div>
 
         {/* Clock */}
         <div className="hidden sm:flex flex-col items-end">

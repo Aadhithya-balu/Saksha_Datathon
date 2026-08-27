@@ -334,6 +334,15 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
         </div>
       </div>
 
+      {/* PIN format hint */}
+      <p
+        className="-mt-1 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.14em]"
+        style={{ color: 'var(--lp-text-3)' }}
+      >
+        <BadgeCheck className="h-3 w-3" style={{ color: 'var(--lp-accent-hi)' }} />
+        Format: 6-digit numeric PIN (e.g. 123456)
+      </p>
+
       {/* Secure numeric keypad */}
       <div
         role="group"

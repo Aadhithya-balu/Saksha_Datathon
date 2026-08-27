@@ -2476,3 +2476,72 @@ export async function downloadEvidencePDF(evidenceId: string, filename?: string)
   }, 500);
 }
 
+// ── Issue #200: Investigation Hub (officer-centric unified intelligence) ─────
+
+export interface InvestigationSearchItem {
+  id: string;
+  type: string; // person | case | fir | location | station | mo
+  name: string;
+  detail: string;
+  status?: string | null;
+  subtitle?: string | null;
+  meta: Record<string, any>;
+}
+
+export interface InvestigationGroupedSearchResponse {
+  query: string;
+  persons: InvestigationSearchItem[];
+  cases: InvestigationSearchItem[];
+  firs: InvestigationSearchItem[];
+  locations: InvestigationSearchItem[];
+  stations: InvestigationSearchItem[];
+  mo_matches: InvestigationSearchItem[];
+  mo_intelligence: boolean;
+  total: number;
+  provenance: string;
+}
+
+export interface InvestigationInterpretation {
+  query: string;
+  detected_language: string; // kannada | english | mixed
+  person_name?: string | null;
+  case_number?: string | null;
+  fir_number?: string | null;
+  district?: string | null;
+  station?: string | null;
+  crime_type?: string | null;
+  mo_keywords: string[];
+  phone?: string | null;
+  date_range_days?: number | null;
+  search_term: string;
+  confidence: string; // high | medium | low
+  notes: string[];
+}
+
+export interface InvestigationImageSearchResponse {
+  status: string; // unavailable | available
+  message: string;
+  safe_fallback: string;
+  upload_required: boolean;
+  matches: any[];
+  capability: string;
+}
+
+export async function searchInvestigation(q: string, limit = 15) {
+  return apiRequest<InvestigationGroupedSearchResponse>(
+    `/investigation-hub/search${buildQueryString({ q, limit })}`,
+  );
+}
+
+export async function interpretInvestigationQuery(q: string) {
+  return apiRequest<InvestigationInterpretation>(
+    `/investigation-hub/interpret${buildQueryString({ q })}`,
+  );
+}
+
+export async function searchInvestigationImage() {
+  return apiRequest<InvestigationImageSearchResponse>('/investigation-hub/image-search', {
+    method: 'POST',
+  });
+}
+
