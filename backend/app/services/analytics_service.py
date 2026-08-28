@@ -388,6 +388,18 @@ def hotspots(db: Session, district_id: str | None = None, hour: int | None = Non
     ``hour`` (issue #146 gap 128.2/131.2) restricts the analysis to incidents
     whose occurred_at hour-of-day matches, powering the TimeSlider drill-down.
     """
+    from app.services.ttl_cache import ttl_cached
+
+    return ttl_cached(
+        "analytics_service.hotspots",
+        (district_id, hour),
+        ttl_seconds=60,
+        compute=lambda: _build_hotspots(db, district_id=district_id, hour=hour),
+        scope=db.bind,
+    )
+
+
+def _build_hotspots(db: Session, district_id: str | None = None, hour: int | None = None) -> dict[str, Any]:
     query = db.query(Location).join(CrimeCase, CrimeCase.location_id == Location.id)
     if district_id:
         query = query.filter(Location.district == district_id)

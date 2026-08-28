@@ -32,6 +32,14 @@ from app.models.user import User
 router = APIRouter(prefix="/ai/predictions", tags=["District Risk Prediction"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
 
+def _predict_filtered(records: list[dict], district_id: str | None) -> list[dict]:
+    """Run district risk inference, optionally narrowing to a single district."""
+    results = predict_risk(records)
+    if district_id:
+        results = [r for r in results if r["district"] == district_id]
+    return results
+
+
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
@@ -123,7 +131,7 @@ def get_risk_scores(
                 risk_model_loaded=bool(info.get("risk_model_loaded")),
                 data_provenance=provenance,
             )
-        
+
         records = [
             {
                 "occurred_at": case.occurred_at.isoformat() if case.occurred_at else None,
@@ -132,11 +140,16 @@ def get_risk_scores(
             }
             for case in cases
         ]
-        
-        results = predict_risk(records)
-        if district_id:
-            results = [r for r in results if r["district"] == district_id]
-            
+
+        from app.services.ttl_cache import ttl_cached
+        results = ttl_cached(
+            "ai_risk.get_risk_scores",
+            (window, district_id),
+            ttl_seconds=60,
+            compute=lambda: _predict_filtered(records, district_id),
+            scope=db.bind,
+        )
+
         pred_mode = results[0].get("prediction_mode", "ML") if results else info.get("prediction_mode", "FALLBACK")
         return RiskScoresResponse(
             district_id=district_id,

@@ -333,7 +333,19 @@ def invalidate_all_caches(reason: str = "external") -> dict[str, bool]:
         results[key] = _invalidate(key, reason)
         state = _states[key]
         state.seen_signature = artifact_signature(key)
+    # The dashboard/AI analytics TTL cache (hotspots, risk-scores) must also
+    # drop so fresh data is served after retrains/promotions (issue #212).
+    _invalidate_ttl_cache()
     return results
+
+
+def _invalidate_ttl_cache() -> None:
+    try:
+        from app.services.ttl_cache import invalidate_ttl_caches
+
+        invalidate_ttl_caches()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Failed to invalidate analytics TTL cache: %s", exc)
 
 
 def trainer_available(key: str) -> bool:

@@ -939,6 +939,9 @@ input[type="week"] {
   }
   .chat-prompts { grid-template-columns: repeat(2, 1fr); }
 }
+@media (max-width: 480px) {
+  .chat-prompts { grid-template-columns: 1fr; }
+}
 
 /* --- Confirm dialog --- */
 .chat-confirm-overlay {

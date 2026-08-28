@@ -222,7 +222,8 @@ export const DataImportPanel: React.FC = () => {
         {jobs.length === 0 ? (
           <p className="text-[9px] uppercase text-[var(--text-muted)]">No imports recorded yet.</p>
         ) : (
-          <table className="w-full text-left text-[9px]">
+          <div className="overflow-x-auto">
+          <table className="w-full text-left text-[9px] whitespace-nowrap">
             <thead className="text-[var(--text-muted)] uppercase">
               <tr><th className="py-1 pr-3">When</th><th className="py-1 pr-3">Entity</th><th className="py-1 pr-3">File</th><th className="py-1 pr-3">Status</th><th className="py-1 pr-3">OK</th><th className="py-1">Failed</th></tr>
             </thead>
@@ -239,6 +240,7 @@ export const DataImportPanel: React.FC = () => {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

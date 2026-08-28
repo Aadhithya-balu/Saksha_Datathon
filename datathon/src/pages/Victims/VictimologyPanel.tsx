@@ -78,7 +78,8 @@ export const VictimologyPanel: React.FC = () => {
                 No repeat-victimization patterns detected in recorded FIR links.
               </p>
             ) : (
-              <table className="w-full text-left text-[9px]">
+              <div className="overflow-x-auto">
+              <table className="w-full text-left text-[9px] whitespace-nowrap">
                 <thead className="text-[var(--text-muted)] uppercase">
                   <tr><th className="py-1 pr-3">Victim</th><th className="py-1 pr-3">FIRs</th><th className="py-1 pr-3">Districts</th><th className="py-1 pr-3">Categories</th><th className="py-1">Vulnerability</th></tr>
                 </thead>
@@ -96,6 +97,7 @@ export const VictimologyPanel: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
 
