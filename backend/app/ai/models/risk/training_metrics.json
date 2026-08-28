@@ -1,42 +1,42 @@
 {
     "risk": {
-        "rmse": 1.662221607106104,
-        "mae": 0.8707553891904978,
-        "r2": -0.11874147070851815
+        "rmse": 1.283720441343136,
+        "mae": 0.7735165436953282,
+        "r2": -0.3439185476365416
     },
     "forecast": {
-        "rmse": 1.6691223370437058,
-        "mae": 0.8535280854341749,
-        "r2": -0.1280496854870845
+        "rmse": 1.256283938036779,
+        "mae": 0.7685498250966425,
+        "r2": -0.2870862439050619
     },
     "risk_baseline_comparison": {
         "model_metrics": {
-            "rmse": 1.662221607106104,
-            "mae": 0.8707553891904978,
-            "r2": -0.11874147070851815
+            "rmse": 1.283720441343136,
+            "mae": 0.7735165436953282,
+            "r2": -0.3439185476365416
         },
         "baseline_metrics": {
-            "rmse": 1.6955288485447537,
-            "mae": 0.8833333333333333,
-            "r2": -0.16402486497480506
+            "rmse": 1.2314693644104873,
+            "mae": 0.7553507728894172,
+            "r2": -0.2367424242424241
         },
-        "rmse_improvement_pct": 1.96,
-        "mae_improvement_pct": 1.42,
-        "outperforms_baseline": true
+        "rmse_improvement_pct": -4.24,
+        "mae_improvement_pct": -2.4,
+        "outperforms_baseline": false
     },
     "forecast_baseline_comparison": {
         "model_metrics": {
-            "rmse": 1.6691223370437058,
-            "mae": 0.8535280854341749,
-            "r2": -0.1280496854870845
+            "rmse": 1.256283938036779,
+            "mae": 0.7685498250966425,
+            "r2": -0.2870862439050619
         },
         "baseline_metrics": {
-            "rmse": 1.559914527573012,
-            "mae": 0.9,
-            "r2": 0.014734000674839987
+            "rmse": 1.3196133184932728,
+            "mae": 0.7413793103448276,
+            "r2": -0.4201212121212121
         },
-        "rmse_improvement_pct": -7.0,
-        "mae_improvement_pct": 5.16,
-        "outperforms_baseline": false
+        "rmse_improvement_pct": 4.8,
+        "mae_improvement_pct": -3.66,
+        "outperforms_baseline": true
     }
 }
