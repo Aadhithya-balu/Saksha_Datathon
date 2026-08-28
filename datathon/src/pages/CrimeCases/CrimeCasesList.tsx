@@ -24,6 +24,8 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
   onEditCase
 }) => {
   const user = useAuthStore((state) => state.user);
+  const canWrite = user?.role === 'ADMIN' || user?.role === 'IO' || user?.role === 'SCRB';
+  const canDelete = user?.role === 'ADMIN';
   const [cases, setCases] = useState<CrimeCaseDetailRecord[]>([]);
   const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
   const [districts, setDistricts] = useState<string[]>([]);
@@ -183,12 +185,14 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
           <h2 className="text-sm uppercase tracking-[0.2em] font-bold text-[var(--text-primary)]">SAKSHA Crime Intelligence Cases</h2>
           <p className="text-[10px] text-[var(--text-muted)] mt-1">OPERATOR SYSTEM PROFILE CLEARANCE LEVEL: {user?.role}</p>
         </div>
-        <button
-          onClick={onCreateCase}
-          className="flex items-center gap-2 px-4 py-2 bg-[#1E6FD9] hover:bg-[#1E6FD9]/80 transition-colors rounded text-xs text-[var(--text-primary)] cursor-pointer uppercase font-semibold"
-        >
-          <Plus className="w-4 h-4" /> Create Crime Case
-        </button>
+        {canWrite && (
+          <button
+            onClick={onCreateCase}
+            className="flex items-center gap-2 px-4 py-2 bg-[#1E6FD9] hover:bg-[#1E6FD9]/80 transition-colors rounded text-xs text-[var(--text-primary)] cursor-pointer uppercase font-semibold"
+          >
+            <Plus className="w-4 h-4" /> Create Crime Case
+          </button>
+        )}
       </div>
 
       {/* Visual Crime Telemetry & Insights Ribbon */}
@@ -353,16 +357,16 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
-                        {(user?.role === 'ADMIN' || user?.role === 'IO' || user?.role === 'SCRB') && (
-                          <button
-                            onClick={() => onEditCase(c.id)}
-                            title="Edit Configuration"
-                            className="p-1.5 hover:bg-[#0E9E78]/15 border border-border-color rounded text-[var(--text-secondary)] hover:text-[#0E9E78] transition-colors cursor-pointer"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
+                        {canWrite && (
+                        <button
+                          onClick={() => onEditCase(c.id)}
+                          title="Edit Configuration"
+                          className="p-1.5 hover:bg-[#0E9E78]/15 border border-border-color rounded text-[var(--text-secondary)] hover:text-[#0E9E78] transition-colors cursor-pointer"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
                         )}
-                        {user?.role === 'ADMIN' && (
+                        {canDelete && (
                           <button
                             onClick={() => handleDelete(c.id)}
                             title="Purge Case Record"

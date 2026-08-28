@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useRBAC } from '../hooks/useRBAC';
 import ForecastChart from '../components/charts/ForecastChart';
 import CorrelationChart from '../components/charts/CorrelationChart';
 import WeatherCorrelationChart from '../components/charts/WeatherCorrelationChart';
@@ -30,7 +31,7 @@ const TREND_META: Record<EmergingTypology['direction'], { icon: React.ReactNode;
 };
 
 export const Predictions: React.FC = () => {
-  const { user } = useAuthStore();
+  const { isAdmin } = useRBAC();
   const [riskScores, setRiskScores] = useState<RiskScoresResponse | null>(null);
   const [anomalies, setAnomalies] = useState<AnomalyRecord[]>([]);
   const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
@@ -282,7 +283,7 @@ export const Predictions: React.FC = () => {
           </div>
         </div>
 
-        {user?.role === 'ADMIN' && (
+        {isAdmin && (
         <button
           onClick={handleRetrain}
           disabled={retrainState === 'running'}
