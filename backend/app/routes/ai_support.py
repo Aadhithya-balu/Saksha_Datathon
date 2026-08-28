@@ -7,6 +7,16 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
 from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
+
+# Read-only intelligence endpoints are available to every authenticated role so
+# that all users can view offender intelligence, matching the read policy used
+# by the rest of the analytics/dashboard surface.
+_READ_ANALYTIC_ROLES = [
+    ROLE_ADMIN,
+    ROLE_CRIME_ANALYST,
+    ROLE_INVESTIGATOR,
+    "policymaker",
+]
 from app.database.postgres import get_db
 from app.models.user import User
 from app.services.analytics_service import (
@@ -60,7 +70,7 @@ def hotspots(
 
 @router.get(
     "/offenders/dossiers",
-    dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))],
+    dependencies=[Depends(require_roles(*_READ_ANALYTIC_ROLES))],
 )
 def offenders(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return {"offenders": offender_dossiers(db)}
@@ -68,7 +78,7 @@ def offenders(db: Session = Depends(get_db), current_user: User = Depends(get_cu
 
 @router.get(
     "/network/person/{person_id}",
-    dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR))],
+    dependencies=[Depends(require_roles(*_READ_ANALYTIC_ROLES))],
 )
 def network_person(person_id: str, depth: int = 1, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return build_network_person(db, person_id=person_id, depth=depth)

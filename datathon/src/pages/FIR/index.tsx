@@ -331,7 +331,7 @@ export const FIRPage: React.FC = () => {
         </div>
 
         {/* Create FIR Button */}
-        {(user?.role === "SCRB" || user?.role === "IO") && !showForm && (
+        {(user?.role === "ADMIN" || user?.role === "IO") && !showForm && (
           <button
             onClick={handleCreateNewClick}
             className="px-3 py-1.5 bg-[#1E6FD9] hover:bg-[#1E6FD9]/80 border border-[#1E6FD9]/20 text-[var(--text-primary)] font-mono text-[10px] uppercase font-bold rounded-btn transition-colors cursor-pointer flex items-center gap-1.5 shadow-glow-blue select-none shrink-0"
@@ -489,7 +489,7 @@ export const FIRPage: React.FC = () => {
 
                 {/* Actions Toolbar */}
                 <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase shrink-0">
-                  {(user?.role === "SCRB" || user?.role === "IO") && (
+                  {(user?.role === "ADMIN" || user?.role === "IO") && (
                     <>
                       <button
                         onClick={() => {

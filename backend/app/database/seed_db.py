@@ -34,7 +34,7 @@ from app.models.intervention import Intervention
 # Issue #164: canonical provenance tag for seed data
 _SEED_PROVENANCE = "demo"
 
-ROLES = ["admin", "crime_analyst", "investigator", "policymaker"]
+ROLES = ["admin", "crime_analyst", "investigator", "policymaker", "inspector", "forensic", "viewer"]
 
 DEMO_USERS = [
     {
@@ -76,6 +76,39 @@ DEMO_USERS = [
         "station": "KSP HQ",
         "badge_number": "SP-0088",
         "rank": "Superintendent of Police",
+    },
+    {
+        "username": "INS-2110",
+        "email": "ins-2110@saksha.local",
+        "full_name": "Inspector Disha Rao",
+        "password": "112233",
+        "role_name": "inspector",
+        "district": "Belagavi",
+        "station": "Camp Police Station",
+        "badge_number": "INS-2110",
+        "rank": "Inspector",
+    },
+    {
+        "username": "FSL-9033",
+        "email": "fsl-9033@saksha.local",
+        "full_name": "Forensic Analyst Karthik Nair",
+        "password": "445566",
+        "role_name": "forensic",
+        "district": "Bengaluru Urban",
+        "station": "FSL Bengaluru",
+        "badge_number": "FSL-9033",
+        "rank": "Forensic Analyst",
+    },
+    {
+        "username": "VIEW-5522",
+        "email": "view-5522@saksha.local",
+        "full_name": "Citizen Observer Priya Menon",
+        "password": "778899",
+        "role_name": "viewer",
+        "district": "Mangaluru",
+        "station": "Mangaluru City",
+        "badge_number": "VIEW-5522",
+        "rank": "Observer",
     },
 ]
 
@@ -650,6 +683,9 @@ def seed() -> None:
         print("- SCRB-7740 / 123456")
         print("- IO-3921 / 456789")
         print("- SP-0088 / 987654")
+        print("- INS-2110 / 112233")
+        print("- FSL-9033 / 445566")
+        print("- VIEW-5522 / 778899")
     finally:
         db.close()
 
