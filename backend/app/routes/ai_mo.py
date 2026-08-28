@@ -9,6 +9,7 @@ from app.auth.rbac import (
     ROLE_CRIME_ANALYST,
     ROLE_INSPECTOR,
     ROLE_INVESTIGATOR,
+    ROLE_POLICYMAKER,
     require_roles,
 )
 from app.database.postgres import get_db
@@ -26,7 +27,7 @@ from app.services.mo_semantic_service import extract_case_entities, extract_enti
 router = APIRouter(
     prefix="/ai/mo",
     tags=["AI Modus Operandi"],
-    dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, ROLE_INSPECTOR))],
+    dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, ROLE_INSPECTOR, ROLE_POLICYMAKER))],
 )
 
 

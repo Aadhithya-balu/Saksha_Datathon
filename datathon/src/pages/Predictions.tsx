@@ -8,6 +8,7 @@ import { Cpu, RefreshCw, ShieldAlert, Sparkles, Sun, CloudRain, Wind, Snowflake,
 import { getAnomalies, getRiskScores, getModelInfo, getSeasonBreakdown, getEmergingTrends, trainRiskModels, type AnomalyRecord, type RiskScoresResponse, type ModelInfo, type SeasonData, type EmergingTypology } from '../services/api';
 import { getIntelligenceStatus, getPredictionLabel, getConfidenceLabel } from '../services/intelligenceStatus';
 import { PageSkeleton } from '../components/ui/Skeleton';
+import { useAuthStore } from '../store/authStore';
 
 const SEASON_ICONS: Record<string, React.ReactNode> = {
   Summer: <Sun className="w-4 h-4 text-amber-400" />,

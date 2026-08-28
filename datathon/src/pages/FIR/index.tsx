@@ -489,7 +489,7 @@ export const FIRPage: React.FC = () => {
 
                 {/* Actions Toolbar */}
                 <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase shrink-0">
-                  {(user?.role === "IO" || user?.role === "ADMIN") && (
+                  {(user?.role === "ADMIN" || user?.role === "IO") && (
                     <>
                       <button
                         onClick={() => {
