@@ -1,6 +1,0 @@
-AssignmentID,CrimeCaseID,OfficerID,Role,AssignedByOfficerID,AssignedAt,UnassignedAt,IsActive
-1,1,5966,Lead Officer,8909,2025-03-30 00:00:00,None,True
-2,1,14834,Supporting Officer,5966,2025-04-04 00:00:00,None,True
-3,1,12406,Supporting Officer,5966,2025-04-02 00:00:00,None,True
-4,2,248,Lead Officer,2348,2023-01-06 00:00:00,None,True
-5,2,3314,Supporting Officer,248,2023-01-12 00:00:00,None,True

@@ -1,6 +1,0 @@
-RecommendationID,CrimeCaseID,RecommendationType,RecommendationText,ConfidenceScore,ModelVersion,GeneratedAt,Status,ReviewedByOfficerID,ReviewedAt
-1,1,Phone Number Match,Suspect phone number overlaps with a contact network active in Case #42175.,0.966,saksha-ai-v1.2,2025-09-15 00:00:00,Accepted,5966,2025-09-16 00:00:00
-2,1,Similar Case,Crime pattern resembles Case #66970 with 87% similarity.,0.550,saksha-ai-v1.4,2025-06-05 00:00:00,Pending,None,None
-3,1,Crime Pattern,MO closely aligns with an active crime series tracked under Case #19402.,0.686,saksha-ai-v2.1,2025-10-29 00:00:00,Pending,None,None
-4,2,Cyber Attack Pattern,Attack signature matches infrastructure used in the cyber incident under Case #204888.,0.772,saksha-ai-v1.4,2023-02-13 00:00:00,Pending,None,None
-5,2,Fingerprint Match,Fingerprint lifted from the scene matches records associated with Case #190919.,0.898,saksha-ai-v2.0,2023-02-03 00:00:00,Accepted,2976,2023-02-12 00:00:00

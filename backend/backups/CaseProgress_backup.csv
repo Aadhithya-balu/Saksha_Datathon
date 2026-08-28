@@ -1,6 +1,0 @@
-ProgressID,CrimeCaseID,Milestone,ProgressPercent,SequenceNo,RecordedAt
-1,1,Open,0,1,2025-03-30 00:00:00
-2,1,Assigned,5,2,2025-04-26 00:00:00
-3,1,Under Investigation,15,3,2025-05-26 00:00:00
-4,1,Evidence Collection,25,4,2025-06-06 00:00:00
-5,1,Witness Interviews,35,5,2025-06-10 00:00:00

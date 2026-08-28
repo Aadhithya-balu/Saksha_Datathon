@@ -2,12 +2,26 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
 
 # Virtual environments
 .venv/
 venv/
 ENV/
 env/
+
+# Tooling caches
+.mypy_cache/
+.ruff_cache/
+.oxlintcache/
+
+# Node
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
 
 # IDEs
 .vscode/
@@ -32,6 +46,7 @@ htmlcov/
 # Local evidence uploads (dev only — production uses Supabase Storage)
 backend/uploads/
 
+# Local task notes
 TODO.md
 
 # Logs

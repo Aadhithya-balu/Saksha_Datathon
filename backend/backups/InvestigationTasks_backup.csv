@@ -1,6 +1,0 @@
-TaskID,CrimeCaseID,TaskType,AssignedToOfficerID,Status,Priority,CreatedAt,DueDate,CompletedAt
-1,1,Arrange Identification Parade,5966,Pending,Medium,2025-11-03 00:00:00,2025-11-17,None
-2,1,Arrange Identification Parade,5966,Completed,Medium,2025-08-24 00:00:00,2025-09-13,2025-08-29 00:00:00
-3,1,Coordinate with Cyber Cell,14834,Cancelled,High,2025-09-01 00:00:00,2025-10-14,None
-4,1,Interview Witness,14834,Completed,Low,2025-05-16 00:00:00,2025-05-25,2025-05-29 00:00:00
-5,1,Coordinate with Cyber Cell,5966,Completed,High,2025-07-31 00:00:00,2025-08-09,2025-08-06 00:00:00
