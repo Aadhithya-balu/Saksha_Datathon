@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useRBAC } from '../../hooks/useRBAC';
 import { Loader2, Plus, RefreshCw, ShieldCheck } from 'lucide-react';
 import {
   createIntervention,
@@ -24,6 +25,8 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default function InterventionsPanel() {
+  const { isAdmin, isIO, isInspector, isSP } = useRBAC();
+  const canWrite = isAdmin || isIO || isInspector || isSP;
   const [interventions, setInterventions] = useState<InterventionRecord[]>([]);
   const [effectiveness, setEffectiveness] = useState<Record<string, InterventionEffectiveness>>({});
   const [selectedWindows, setSelectedWindows] = useState<Record<string, number>>({});
@@ -150,9 +153,11 @@ export default function InterventionsPanel() {
           <button onClick={() => void load()} className="px-3 py-1.5 rounded-lg border border-border-color text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition flex items-center gap-1.5 cursor-pointer">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
+          {canWrite && (
           <button onClick={() => setShowForm((v) => !v)} className="px-3 py-1.5 rounded-lg bg-[var(--accent-teal)]/15 border border-[var(--accent-teal)]/35 text-xs font-medium text-[var(--text-primary)] transition flex items-center gap-1.5 cursor-pointer hover:bg-[var(--accent-teal)]/25">
             <Plus className="w-3.5 h-3.5" /> Record Intervention
           </button>
+          )}
         </div>
       </div>
 
@@ -191,9 +196,11 @@ export default function InterventionsPanel() {
       ) : !interventions || interventions.length === 0 ? (
         <div className="p-8 text-center text-xs uppercase tracking-widest text-[var(--text-muted)] border border-dashed border-[var(--border-primary)] rounded-xl space-y-3">
           <p>No interventions recorded yet — log one to start measuring impact.</p>
+          {canWrite && (
           <button onClick={() => setShowForm(true)} className="px-3 py-1.5 bg-[var(--accent-teal)]/20 border border-[var(--accent-teal)]/40 text-[var(--accent-teal)] text-xs font-mono font-bold rounded-btn transition-colors cursor-pointer">
             + Record New Action
           </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

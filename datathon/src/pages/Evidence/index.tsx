@@ -17,7 +17,15 @@ interface Evidence {
 }
 
 const EvidencePage: React.FC = () => {
-  const { isSCRB, isInspector, isIO, isForensic } = useRBAC();
+  const { isSCRB, isInspector, isIO, isForensic, isAdmin } = useRBAC();
+  // canWrite: roles allowed to create/edit evidence (admin, investigator, inspector, crime_analyst)
+  const canWrite = isAdmin || isSCRB || isIO || isInspector;
+  // canUpload: roles allowed to upload files (admin, investigator, forensic, crime_analyst)
+  const canUpload = isAdmin || isSCRB || isIO || isForensic;
+  // canAssign: roles allowed to assign evidence (admin, investigator, inspector, crime_analyst)
+  const canAssign = isAdmin || isSCRB || isIO || isInspector;
+  // canSummary: roles allowed to generate AI summary (admin, investigator, inspector, forensic, crime_analyst)
+  const canSummary = isAdmin || isSCRB || isIO || isInspector || isForensic;
   const [evidenceList, setEvidenceList] = useState<Evidence[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -295,7 +303,7 @@ const EvidencePage: React.FC = () => {
             </select>
             <Filter className="w-4 h-4 text-[var(--text-muted)] absolute right-3 top-2.5 pointer-events-none" />
           </div>
-          {(isSCRB || isIO || isInspector) && (
+          {canWrite && (
             <button 
               onClick={() => {
                 setCurrentEvidence({ title: '', description: '', evidence_type: 'Digital', case_id: '' });
@@ -496,7 +504,7 @@ const EvidencePage: React.FC = () => {
                             <Download className="w-3 h-3" /> Download
                           </button>
                         )}
-                        {(isForensic || isSCRB) && (
+                        {canUpload && (
                           <label className="cursor-pointer flex items-center gap-1 text-[9px] bg-[#C94A2A]/10 border border-[#C94A2A]/20 text-[#C94A2A] px-2.5 py-1 rounded hover:bg-[#C94A2A]/20 hover:border-[#C94A2A]/40 transition-all font-mono uppercase font-bold">
                             <UploadCloud className="w-3 h-3" /> Upload
                             <input type="file" className="hidden" onChange={(e) => {
@@ -544,7 +552,7 @@ const EvidencePage: React.FC = () => {
                         <Cpu className="w-3 h-3 text-[#6C43CC]" /> AI Summary & Analysis
                       </h3>
                       <div className="flex items-center gap-2 shrink-0">
-                        {(isSCRB || isInspector || isIO || isForensic) && (
+                        {canSummary && (
                           <button onClick={() => void generateAISummary(evidenceDetail.id)} className="flex items-center gap-1 text-[9px] bg-[#6C43CC]/15 border border-[#6C43CC]/30 text-[#6C43CC] px-2.5 py-1 rounded hover:bg-[#6C43CC]/25 hover:border-[#6C43CC]/50 transition-all font-mono uppercase font-bold">
                             <Cpu className="w-3 h-3" /> Generate
                           </button>
@@ -665,7 +673,7 @@ const EvidencePage: React.FC = () => {
                     <h3 className="text-[9px] text-[var(--text-muted)] uppercase font-bold tracking-[0.15em] mb-4 font-mono border-b border-[var(--border-muted)] pb-3 flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#C94A2A]" /> Assignments
                     </h3>
-                    {(isSCRB || isInspector) && (
+                    {canAssign && (
                       <div className="mb-4 flex gap-2">
                         <input
                           type="text"
@@ -683,7 +691,7 @@ const EvidencePage: React.FC = () => {
                           <div key={a.id} className="p-3 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] rounded">
                             <span className="text-[8px] text-[var(--text-muted)] block mb-1 font-mono uppercase break-all">To: {a.assigned_to}</span>
                             <span className="text-[var(--text-primary)] text-[10px] block mb-2 font-bold">{a.status}</span>
-                            {(isForensic || isIO || isSCRB) && (
+                            {(isForensic || isIO || isSCRB || isInspector) && (
                               <div className="flex gap-1.5 mt-2">
                                 {a.status === 'Assigned' && (
                                   <>

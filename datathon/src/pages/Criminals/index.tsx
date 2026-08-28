@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useAuditStore } from '../../store/auditStore';
+import { useRBAC } from '../../hooks/useRBAC';
 import { 
   listCriminals, 
   getCriminal,
@@ -36,6 +37,8 @@ interface CriminalSummary {
 export const Criminals: React.FC = () => {
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
+  const { isAdmin, isIO } = useRBAC();
+  const canWrite = isAdmin || isIO;
 
   const [criminals, setCriminals] = useState<CriminalSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string>('');
@@ -448,9 +451,9 @@ export const Criminals: React.FC = () => {
                   />
                   <button
                     onClick={() => imageInputRef.current?.click()}
-                    disabled={uploadingImage}
-                    title="Upload photo"
-                    className="absolute inset-0 flex items-end justify-center pb-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-wait"
+                    disabled={uploadingImage || !canWrite}
+                    title={canWrite ? 'Upload photo' : 'Insufficient permissions'}
+                    className={`absolute inset-0 flex items-end justify-center pb-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${canWrite ? 'cursor-pointer' : 'cursor-not-allowed'} disabled:cursor-wait`}
                     style={{ background: 'linear-gradient(to top, rgba(4,10,18,0.75) 40%, transparent)' }}
                   >
                     <span className="flex items-center gap-1 font-mono text-[8px] uppercase tracking-widest text-white">

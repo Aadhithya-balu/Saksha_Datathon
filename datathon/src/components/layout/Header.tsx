@@ -139,7 +139,7 @@ export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarColl
       </button>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 justify-end">
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0 justify-end">
         {/* Global data-mode indicator */}
         <div className="hidden 2xl:flex items-center">
           <DataModeBadge />
@@ -163,7 +163,7 @@ export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarColl
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
-          className="relative flex items-center justify-center h-9 w-9 rounded-full border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/60 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] hover:border-[var(--accent-blue)]/40 transition-all cursor-pointer"
+          className="relative shrink-0 flex items-center justify-center h-9 w-9 rounded-full border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/60 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] hover:border-[var(--accent-blue)]/40 transition-all cursor-pointer"
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
           aria-label="Toggle light/dark mode"
         >

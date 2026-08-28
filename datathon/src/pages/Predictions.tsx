@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useRBAC } from '../hooks/useRBAC';
 import ForecastChart from '../components/charts/ForecastChart';
 import CorrelationChart from '../components/charts/CorrelationChart';
 import WeatherCorrelationChart from '../components/charts/WeatherCorrelationChart';
@@ -29,6 +30,7 @@ const TREND_META: Record<EmergingTypology['direction'], { icon: React.ReactNode;
 };
 
 export const Predictions: React.FC = () => {
+  const { isAdmin } = useRBAC();
   const [riskScores, setRiskScores] = useState<RiskScoresResponse | null>(null);
   const [anomalies, setAnomalies] = useState<AnomalyRecord[]>([]);
   const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
@@ -280,6 +282,7 @@ export const Predictions: React.FC = () => {
           </div>
         </div>
 
+        {isAdmin && (
         <button
           onClick={handleRetrain}
           disabled={retrainState === 'running'}
@@ -295,6 +298,7 @@ export const Predictions: React.FC = () => {
           <RefreshCw className={`w-3 h-3 ${retrainState === 'running' ? 'animate-spin' : ''}`} />
           {retrainState === 'running' ? 'Retraining…' : retrainState === 'ok' ? 'Retrain Complete' : retrainState === 'failed' ? 'Retrain Failed — Retry?' : 'Retrain Model Net'}
         </button>
+        )}
       </div>
 
       {/* DOUBLE GRAPH GRID */}

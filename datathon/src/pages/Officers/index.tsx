@@ -20,7 +20,7 @@ interface Officer {
 }
 
 const OfficersPage: React.FC = () => {
-  const { isSCRB } = useRBAC();
+  const { isAdmin } = useRBAC();
   const [officers, setOfficers] = useState<Officer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -133,7 +133,7 @@ const OfficersPage: React.FC = () => {
           <button className="flex items-center gap-2 px-4 py-2 bg-secondary-bg hover:bg-[var(--bg-tertiary)]/10 border border-border-color rounded-btn text-sm font-mono text-[var(--text-primary)] transition-all">
             <Filter className="w-4 h-4" /> Filter
           </button>
-          {isSCRB && (
+          {isAdmin && (
             <button 
               onClick={openCreate}
               className="flex items-center gap-2 px-4 py-2 bg-[#1E6FD9] hover:bg-[#155BB5] border border-transparent rounded-btn text-sm font-mono text-[var(--text-primary)] font-bold transition-all shadow-glow-blue"
@@ -176,7 +176,7 @@ const OfficersPage: React.FC = () => {
                       <p className="text-[#0E9E78] font-mono text-[10px] uppercase font-bold tracking-wider">{officer.badge_number}</p>
                     </div>
                   </div>
-                  {isSCRB && (
+                  {isAdmin && (
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => openEdit(officer)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"><Edit className="w-4 h-4" /></button>
                       <button onClick={() => handleDelete(officer.id)} className="text-[#C94A2A] hover:text-[#ff5e36]"><Trash2 className="w-4 h-4" /></button>
