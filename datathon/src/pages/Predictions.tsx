@@ -7,6 +7,7 @@ import { Cpu, RefreshCw, ShieldAlert, Sparkles, Sun, CloudRain, Wind, Snowflake,
 import { getAnomalies, getRiskScores, getModelInfo, getSeasonBreakdown, getEmergingTrends, trainRiskModels, type AnomalyRecord, type RiskScoresResponse, type ModelInfo, type SeasonData, type EmergingTypology } from '../services/api';
 import { getIntelligenceStatus, getPredictionLabel, getConfidenceLabel } from '../services/intelligenceStatus';
 import { PageSkeleton } from '../components/ui/Skeleton';
+import { useAuthStore } from '../store/authStore';
 
 const SEASON_ICONS: Record<string, React.ReactNode> = {
   Summer: <Sun className="w-4 h-4 text-amber-400" />,
@@ -29,6 +30,7 @@ const TREND_META: Record<EmergingTypology['direction'], { icon: React.ReactNode;
 };
 
 export const Predictions: React.FC = () => {
+  const { user } = useAuthStore();
   const [riskScores, setRiskScores] = useState<RiskScoresResponse | null>(null);
   const [anomalies, setAnomalies] = useState<AnomalyRecord[]>([]);
   const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
@@ -280,6 +282,7 @@ export const Predictions: React.FC = () => {
           </div>
         </div>
 
+        {user?.role === 'ADMIN' && (
         <button
           onClick={handleRetrain}
           disabled={retrainState === 'running'}
@@ -295,6 +298,7 @@ export const Predictions: React.FC = () => {
           <RefreshCw className={`w-3 h-3 ${retrainState === 'running' ? 'animate-spin' : ''}`} />
           {retrainState === 'running' ? 'Retraining…' : retrainState === 'ok' ? 'Retrain Complete' : retrainState === 'failed' ? 'Retrain Failed — Retry?' : 'Retrain Model Net'}
         </button>
+        )}
       </div>
 
       {/* DOUBLE GRAPH GRID */}

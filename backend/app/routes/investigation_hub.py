@@ -31,6 +31,7 @@ from app.auth.rbac import (
     ROLE_CRIME_ANALYST,
     ROLE_INSPECTOR,
     ROLE_INVESTIGATOR,
+    ROLE_POLICYMAKER,
     require_roles,
 )
 from app.database.postgres import get_db
@@ -50,7 +51,7 @@ router = APIRouter(
 
 # Roles permitted to view MO (semantic) intelligence.  Other roles still see
 # the person/case/FIR/location/station groups but not MO matches.
-_MO_ROLES = (ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, ROLE_INSPECTOR)
+_MO_ROLES = (ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, ROLE_INSPECTOR, ROLE_POLICYMAKER)
 
 # ---------------------------------------------------------------------------
 # Kannada / mixed-language support

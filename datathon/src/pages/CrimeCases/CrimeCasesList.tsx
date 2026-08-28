@@ -353,14 +353,16 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => onEditCase(c.id)}
-                          title="Edit Configuration"
-                          className="p-1.5 hover:bg-[#0E9E78]/15 border border-border-color rounded text-[var(--text-secondary)] hover:text-[#0E9E78] transition-colors cursor-pointer"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        {user?.role === 'SCRB' && (
+                        {(user?.role === 'ADMIN' || user?.role === 'IO' || user?.role === 'SCRB') && (
+                          <button
+                            onClick={() => onEditCase(c.id)}
+                            title="Edit Configuration"
+                            className="p-1.5 hover:bg-[#0E9E78]/15 border border-border-color rounded text-[var(--text-secondary)] hover:text-[#0E9E78] transition-colors cursor-pointer"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {user?.role === 'ADMIN' && (
                           <button
                             onClick={() => handleDelete(c.id)}
                             title="Purge Case Record"
