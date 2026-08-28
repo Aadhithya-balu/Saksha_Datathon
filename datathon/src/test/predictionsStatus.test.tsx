@@ -112,7 +112,7 @@ describe('Predictions page intelligence status (issue 9 §28)', () => {
   });
 
   it('Test 10 — refresh updates the badge from LIVE ML to STATISTICAL FALLBACK with no stale status', async () => {
-    vi.mocked(getRiskScores).mockResolvedValueOnce(riskPayload('ML'));
+    vi.mocked(getRiskScores).mockResolvedValue(riskPayload('ML'));
     const first = renderPredictions();
     await waitFor(() => expect(screen.getAllByText(/LIVE ML/).length).toBeGreaterThan(0));
 

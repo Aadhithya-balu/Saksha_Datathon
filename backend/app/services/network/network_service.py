@@ -49,14 +49,16 @@ def _seed_identity_sets() -> tuple[set[str], set[str], set[str]]:
     it may be absent.
     """
     try:
-        from app.database.seed_db import CASES, CRIMINALS, VICTIMS
+        from app.database.seed_db import ALL_CASES, CRIMINALS, VICTIMS
 
         return (
-            {row[0] for row in CASES},      # exact case numbers
+            {row[0] for row in ALL_CASES},      # exact case numbers
             {c[0] for c in CRIMINALS},      # criminal full names
             {v[0] for v in VICTIMS},        # victim full names
         )
-    except Exception:  # pragma: no cover - manifest unavailable
+    except Exception as e:  # pragma: no cover - manifest unavailable
+        import traceback
+        traceback.print_exc()
         return set(), set(), set()
 
 

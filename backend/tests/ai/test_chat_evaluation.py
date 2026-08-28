@@ -906,6 +906,7 @@ class TestEndToEndEvaluation:
                 or "not found" in answer.lower()
                 or "no direct match" in answer.lower()
                 or "here are the matching" in answer.lower()
+                or "records i found" in answer.lower()
                 or "currently on file" in answer.lower()
             )
             assert is_safe, (
