@@ -137,3 +137,33 @@ def test_demo_provenance_visible_through_case_listing(client, crime_dataset, ana
     assert live.status_code == 200
     live_body = live.json()
     assert live_body["dataset_provenance"] != "demo"
+
+
+def test_crime_case_insights_are_database_backed(client, crime_dataset, analyst_headers):
+    """Crime Insights telemetry is computed from the whole DB dataset."""
+    r = client.get("/api/v2/crime-cases/insights", headers=analyst_headers)
+    assert r.status_code == 200, r.text
+    body = r.json()
+
+    # Dataset: 3 cases (2 open, 1 closed).
+    assert body["total_cases"] == 3
+    assert body["open"] == 2
+    assert body["closed"] == 1
+    assert body["investigating"] == 0
+    assert body["charge_sheet"] == 0
+    # Priority counts: 1 high (CR-ACC-0001), 2 medium (0002 + DEMO default), 0 critical/low.
+    assert body["high"] == 1
+    assert body["medium"] == 2
+    assert body["critical"] == 0
+    assert body["low"] == 0
+    assert body["clearance_rate"] == round((1 / 3) * 100)
+
+    # District filter narrows to the single Mysuru case.
+    filtered = client.get(
+        "/api/v2/crime-cases/insights",
+        params={"district": "Mysuru"},
+        headers=analyst_headers,
+    )
+    assert filtered.status_code == 200
+    assert filtered.json()["total_cases"] == 1
+

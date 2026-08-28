@@ -1,12 +1,12 @@
-﻿import React, { useMemo } from 'react';
-import type { CrimeCaseDetailRecord } from '../../services/api';
+﻿import React from 'react';
+import type { CrimeCaseInsights } from '../../services/api';
 import { 
   Shield, AlertTriangle, CheckCircle2, Activity, 
   BarChart2
 } from 'lucide-react';
 
 interface CrimeInsightsBarProps {
-  cases: CrimeCaseDetailRecord[];
+  insights: CrimeCaseInsights | null;
   activeStatus: string;
   activePriority: string;
   onSelectStatus: (status: string) => void;
@@ -14,74 +14,43 @@ interface CrimeInsightsBarProps {
   onResetFilters: () => void;
 }
 
+const EMPTY_METRICS = {
+  open: 0,
+  investigating: 0,
+  chargeSheet: 0,
+  closed: 0,
+  critical: 0,
+  high: 0,
+  medium: 0,
+  low: 0,
+  avgProgress: 0,
+  clearanceRate: 0,
+};
+
 export const CrimeInsightsBar: React.FC<CrimeInsightsBarProps> = ({
-  cases,
+  insights,
   activeStatus,
   activePriority,
   onSelectStatus,
   onSelectPriority,
   onResetFilters,
 }) => {
-  const total = cases.length;
+  const total = insights?.total_cases ?? 0;
 
-  const metrics = useMemo(() => {
-    if (total === 0) {
-      return {
-        open: 0,
-        investigating: 0,
-        chargeSheet: 0,
-        closed: 0,
-        critical: 0,
-        high: 0,
-        medium: 0,
-        low: 0,
-        avgProgress: 0,
-        clearanceRate: 0,
-      };
-    }
-
-    let open = 0;
-    let investigating = 0;
-    let chargeSheet = 0;
-    let closed = 0;
-    let critical = 0;
-    let high = 0;
-    let medium = 0;
-    let low = 0;
-    let totalProgress = 0;
-
-    cases.forEach((c) => {
-      const s = (c.status || '').toLowerCase();
-      const p = (c.priority || '').toLowerCase();
-      totalProgress += c.progress || 0;
-
-      if (s === 'open' || s === 'assigned') open++;
-      else if (s === 'investigating' || s === 'evidence collected') investigating++;
-      else if (s === 'charge sheet filed') chargeSheet++;
-      else if (s === 'closed') closed++;
-
-      if (p === 'critical') critical++;
-      else if (p === 'high') high++;
-      else if (p === 'medium') medium++;
-      else if (p === 'low') low++;
-    });
-
-    const avgProgress = Math.round(totalProgress / total);
-    const clearanceRate = Math.round((closed / total) * 100);
-
-    return {
-      open,
-      investigating,
-      chargeSheet,
-      closed,
-      critical,
-      high,
-      medium,
-      low,
-      avgProgress,
-      clearanceRate,
-    };
-  }, [cases, total]);
+  const metrics = insights
+    ? {
+        open: insights.open,
+        investigating: insights.investigating,
+        chargeSheet: insights.charge_sheet,
+        closed: insights.closed,
+        critical: insights.critical,
+        high: insights.high,
+        medium: insights.medium,
+        low: insights.low,
+        avgProgress: insights.avg_progress,
+        clearanceRate: insights.clearance_rate,
+      }
+    : EMPTY_METRICS;
 
   if (total === 0) return null;
 

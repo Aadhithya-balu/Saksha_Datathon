@@ -91,6 +91,20 @@ class LocationSimpleOut(BaseModel):
     pincode: str | None = None
 
 
+class CrimeCaseInsightsOut(BaseModel):
+    total_cases: int
+    open: int
+    investigating: int
+    charge_sheet: int
+    closed: int
+    critical: int
+    high: int
+    medium: int
+    low: int
+    avg_progress: int
+    clearance_rate: int
+
+
 # --- Endpoints ---
 
 @router.get("", response_model=PaginatedResponse[CrimeCaseDetailOut])
@@ -246,6 +260,63 @@ def list_locations(
     """Return list of all locations."""
     locations = db.query(Location).all()
     return [LocationSimpleOut.model_validate(loc) for loc in locations]
+
+
+@router.get("/insights", response_model=CrimeCaseInsightsOut)
+def crime_case_insights(
+    status: str | None = None,
+    category_id: uuid.UUID | None = None,
+    district: str | None = None,
+    priority: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Aggregated crime case analytics computed directly from the database.
+
+    Mirrors the filters used by the case list so the telemetry ribbon reflects
+    the full filtered dataset rather than a single (paginated) page of rows.
+    """
+    base = db.query(CrimeCase)
+    if status:
+        base = base.filter(CrimeCase.status == status)
+    if category_id:
+        base = base.filter(CrimeCase.category_id == category_id)
+    if priority:
+        base = base.filter(CrimeCase.priority == priority)
+    if district:
+        base = base.join(Location, CrimeCase.location_id == Location.id).filter(
+            (Location.district == district) | (Location.station == district)
+        )
+
+    rows = base.all()
+
+    def s(*values: str) -> int:
+        return sum(1 for r in rows if (r.status or "").lower() in values)
+
+    def p(value: str) -> int:
+        return sum(1 for r in rows if (r.priority or "").lower() == value)
+
+    total = len(rows)
+    open_count = s("open", "assigned")
+    investigating_count = s("investigating", "evidence collected")
+    charge_sheet = s("charge sheet filed")
+    closed = s("closed")
+
+    total_progress = sum(r.progress or 0 for r in rows)
+
+    return CrimeCaseInsightsOut(
+        total_cases=total,
+        open=open_count,
+        investigating=investigating_count,
+        charge_sheet=charge_sheet,
+        closed=closed,
+        critical=p("critical"),
+        high=p("high"),
+        medium=p("medium"),
+        low=p("low"),
+        avg_progress=round(total_progress / total) if total else 0,
+        clearance_rate=round((closed / total) * 100) if total else 0,
+    )
 
 
 # --- Parameterized Routes ---

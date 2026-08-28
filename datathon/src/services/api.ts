@@ -1299,6 +1299,31 @@ export async function getCrimeCases(
   );
 }
 
+export interface CrimeCaseInsights {
+  total_cases: number;
+  open: number;
+  investigating: number;
+  charge_sheet: number;
+  closed: number;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  avg_progress: number;
+  clearance_rate: number;
+}
+
+export async function getCrimeCaseInsights(params?: {
+  status?: string;
+  category_id?: string;
+  district?: string;
+  priority?: string;
+}) {
+  return apiRequest<CrimeCaseInsights>(
+    `/crime-cases/insights${buildQueryString(params as any)}`,
+  );
+}
+
 export async function getCrimeCase(caseId: string) {
   return apiRequest<CrimeCaseDetailRecord>(`/crime-cases/${caseId}`);
 }

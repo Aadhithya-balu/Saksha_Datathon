@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   getCrimeCases,
+  getCrimeCaseInsights,
   deleteCrimeCase,
   getCrimeCategories,
   getLocationsList,
 } from '../../services/api';
-import type { CrimeCaseDetailRecord } from '../../services/api';
+import type { CrimeCaseDetailRecord, CrimeCaseInsights } from '../../services/api';
 import { Search, Plus, Eye, Edit2, Trash2, ShieldAlert } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useRealtimeStore } from '../../store/realtimeStore';
@@ -33,6 +34,21 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
   const [priorityFilter, setPriorityFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [insights, setInsights] = useState<CrimeCaseInsights | null>(null);
+
+  const fetchInsights = async () => {
+    try {
+      const result = await getCrimeCaseInsights({
+        status: statusFilter || undefined,
+        category_id: categoryFilter || undefined,
+        district: districtFilter || undefined,
+        priority: priorityFilter || undefined,
+      });
+      setInsights(result);
+    } catch {
+      setInsights(null);
+    }
+  };
 
   const fetchCases = async () => {
     setLoading(true);
@@ -53,6 +69,7 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
 
   useEffect(() => {
     fetchCases();
+    fetchInsights();
   }, [search, statusFilter, categoryFilter, districtFilter, priorityFilter]);
 
   // Load filter dropdown options once
@@ -88,6 +105,7 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
         } as unknown as CrimeCaseDetailRecord,
         ...prev.filter((c) => c.case_number !== liveCase.case_number),
       ].slice(0, 20));
+      fetchInsights();
     });
     return () => {
       unsubscribe();
@@ -100,6 +118,7 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
     try {
       await deleteCrimeCase(id);
       fetchCases();
+      fetchInsights();
     } catch (err: any) {
       alert(err?.message || 'Failed to delete case');
     }
@@ -174,7 +193,7 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
 
       {/* Visual Crime Telemetry & Insights Ribbon */}
       <CrimeInsightsBar
-        cases={cases}
+        insights={insights}
         activeStatus={statusFilter}
         activePriority={priorityFilter}
         onSelectStatus={(s) => setStatusFilter(s)}
