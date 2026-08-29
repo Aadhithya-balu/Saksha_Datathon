@@ -1031,6 +1031,13 @@ export async function listCriminals(q?: string, page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<CriminalRecord>>(`/criminals${buildQueryString({ q, page, page_size: pageSize })}`);
 }
 
+export async function createCriminal(payload: Partial<CriminalRecord>) {
+  return apiRequest<CriminalRecord>('/criminals', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function getCriminal(criminalId: string) {
   return apiRequest<CriminalRecord & {
     firs: Array<{ id: string; fir_number: string; complainant_name: string; status: string; filed_at: string | null; sections: string | null; crime_case_id: string | null; crime_case_number: string | null }>;

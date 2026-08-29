@@ -181,10 +181,28 @@ def validate_risk_model(model_dir: Path) -> dict[str, Any]:
 # Combined model health
 # ---------------------------------------------------------------------------
 
+def _model_dir(name: str) -> Path:
+    """Locate a model directory, preferring the canonical trainer path.
+
+    Domain pipelines save artifacts under ``app/ai/models/<name>``, but some
+    legacy copies also live under ``app/models/<name>``. Prefer the trainer's
+    canonical location; fall back to the legacy location when present so the
+    health report reflects exactly what the inference/training code uses.
+    """
+    app_dir = Path(__file__).resolve().parents[1]  # .../app
+    canonical = app_dir / "ai" / "models" / name
+    legacy = app_dir / "models" / name
+    if canonical.exists():
+        return canonical
+    if legacy.exists():
+        return legacy
+    return canonical
+
+
 def get_all_model_health() -> dict[str, Any]:
     """Aggregate validation for all ML models."""
-    hotspot_dir = Path(__file__).resolve().parents[1] / "models" / "hotspot"
-    risk_dir = Path(__file__).resolve().parents[1] / "models" / "risk"
+    hotspot_dir = _model_dir("hotspot")
+    risk_dir = _model_dir("risk")
 
     hotspot = validate_hotspot_model(hotspot_dir)
     risk = validate_risk_model(risk_dir)

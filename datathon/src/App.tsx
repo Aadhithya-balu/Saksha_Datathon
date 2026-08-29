@@ -3,6 +3,7 @@ import { useAuthStore } from './store/authStore';
 import { useAuditStore } from './store/auditStore';
 import { useAppStore } from './store/appStore';
 import Login from './pages/Login';
+import Landing from './pages/Landing';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import MobileBottomBar from './components/layout/MobileBottomBar';
@@ -183,20 +184,34 @@ function App() {
     addLog(user.name, user.badgeId, 'PAGE_VIEW', `Accessed ${tabLabels[activeTab] || activeTab}`);
   }, [activeTab, isAuthenticated, user, addLog]);
 
-  // Loading screen
+  // Global loading screen (shown while the session is hydrating on app load)
   if (isHydrating) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-[var(--bg-primary)] text-[var(--text-primary)]">
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 rounded-xl bg-[var(--accent-blue-subtle)] border border-[var(--accent-blue)]/20 flex items-center justify-center mx-auto">
-            <svg className="w-6 h-6 text-[var(--accent-blue)] animate-spin" fill="none" viewBox="0 0 24 24">
+      <div
+        className="fixed inset-0 z-[1000] flex items-center justify-center"
+        style={{ background: 'var(--bg-primary)' }}
+      >
+        <div className="text-center space-y-6 px-6">
+          <div className="flex items-center justify-center gap-3 select-none">
+            <div className="w-11 h-11 rounded-xl bg-[var(--accent-blue-subtle)] border border-[var(--accent-blue)]/25 flex items-center justify-center">
+              <svg className="w-6 h-6 text-[var(--accent-blue)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" />
+              </svg>
+            </div>
+            <div className="text-left">
+              <p className="text-lg font-bold tracking-wide text-[var(--text-primary)] leading-none">SAKSHA</p>
+              <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-[var(--text-muted)] mt-1">
+                Karnataka State Police
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-3">
+            <svg className="w-5 h-5 text-[var(--accent-blue)] animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-[var(--text-primary)]">Initializing Saksha</p>
-            <p className="text-xs text-[var(--text-muted)] mt-1">Establishing secure session...</p>
+            <p className="text-sm text-[var(--text-muted)]">Establishing secure session...</p>
           </div>
         </div>
       </div>
@@ -208,6 +223,15 @@ function App() {
   }
 
   if (!isAuthenticated) {
+    // Public pages that don't require authentication
+    const publicPath = currentPath === '/' || currentPath === '/index.html';
+    const publicDocs = currentPath === '/docs';
+    if (publicPath) {
+      return <Landing />;
+    }
+    if (publicDocs) {
+      return <DocsPage />;
+    }
     // Redirect to /login and render the login page cleanly
     if (currentPath !== '/login') {
       window.history.replaceState({}, '', `${basePath === '/' ? '' : basePath}/login`);
