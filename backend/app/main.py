@@ -312,6 +312,57 @@ def _prewarm_models() -> None:
     threading.Thread(target=_load, name="saksha-prewarm", daemon=True).start()
 
 
+def _prewarm_mo_profiles():
+    """Warm the MO profile cache in a background thread.
+
+    MO matching extracts a normalized profile for every crime case and every
+    criminal in the database (~40s on real data). With this warm-up, the first
+    criminal-detail / investigation lookup the operator performs is already
+    fast because the profiles are cached. Best-effort: any failure is logged
+    and left for the on-demand path.
+    """
+    import threading
+
+    def _warm():
+        try:
+            from app.database.postgres import SessionLocal
+            from sqlalchemy.orm import joinedload
+
+            from app.models.crime import CrimeCase
+            from app.models.criminal import Criminal
+            from app.services.mo_matching_service import (
+                extract_case_mo_profile,
+                extract_criminal_mo_profile,
+            )
+
+            db = SessionLocal()
+            try:
+                cases = (
+                    db.query(CrimeCase)
+                    .options(joinedload(CrimeCase.category), joinedload(CrimeCase.location))
+                    .all()
+                )
+                for case in cases:
+                    extract_case_mo_profile(db, case)
+                criminals = (
+                    db.query(Criminal)
+                    .options(joinedload(Criminal.fir_links))
+                    .all()
+                )
+                for criminal in criminals:
+                    extract_criminal_mo_profile(db, criminal)
+                logger.info(
+                    "[prewarm] MO profiles cached: %d cases, %d criminals",
+                    len(cases), len(criminals),
+                )
+            finally:
+                db.close()
+        except Exception as exc:
+            logger.warning("[prewarm] MO profile warm-up skipped: %s", exc)
+
+    threading.Thread(target=_warm, name="saksha-prewarm-mo", daemon=True).start()
+
+
 _bg_refresh_stop = False
 
 
@@ -419,6 +470,11 @@ async def lifespan(app: FastAPI):
     # Pre-warm all ML models in a background thread so the first inference
     # request is fast. Runs concurrently with server startup.
     _prewarm_models()
+
+    # Pre-warm the MO profile cache in the background so criminal-detail /
+    # investigation lookups don't pay the ~40s one-time extraction cost on the
+    # user's first request. Best-effort and non-blocking.
+    _prewarm_mo_profiles()
 
     # Move staleness checks off the hot inference path — run every 5 min.
     _start_background_refresh()

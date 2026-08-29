@@ -70,8 +70,11 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
   };
 
   useEffect(() => {
-    fetchCases();
-    fetchInsights();
+    const timer = window.setTimeout(() => {
+      fetchCases();
+      fetchInsights();
+    }, 400);
+    return () => window.clearTimeout(timer);
   }, [search, statusFilter, categoryFilter, districtFilter, priorityFilter]);
 
   // Load filter dropdown options once

@@ -1257,7 +1257,8 @@ input[type="week"] {
    same SAKSHA identity — auth components inherit these tokens.
    ============================================================ */
 
-.login-root {
+.login-root,
+.landing-root {
   position: relative;
   min-height: 100dvh;
   overflow-x: clip;
@@ -1296,7 +1297,8 @@ input[type="week"] {
 }
 
 /* ---- Light identity — designed for daylight, never inverted ---- */
-[data-theme="light"] .login-root {
+[data-theme="light"] .login-root,
+[data-theme="light"] .landing-root {
   --lp-bg: #edf1f7;
   --lp-bg-soft: #ffffff;
   --lp-surface: rgba(255, 255, 255, 0.93);

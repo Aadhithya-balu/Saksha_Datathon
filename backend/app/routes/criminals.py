@@ -66,10 +66,163 @@ def repeat_offenders(db: Session = Depends(get_db), current_user: User = Depends
     return rows
 
 
+def _load_criminal_network(criminal_id: str) -> dict:
+    """Build the criminal relationship graph using its own DB session.
+
+    Runs in a worker thread so the slow network assembly never blocks the
+    criminal detail response; each thread owns a session (SQLAlchemy Session is
+    not thread-safe, so it must not share the request's session). Results are
+    TTL-cached per criminal to keep repeated views cheap.
+    """
+    from app.services.ttl_cache import ttl_cached
+
+    def compute():
+        from app.database.postgres import SessionLocal
+        from app.services.analytics_service import network_person
+
+        net: dict = {"nodes": [], "edges": []}
+        try:
+            db = SessionLocal()
+            try:
+                net = network_person(db, f"criminal-{criminal_id}")
+            finally:
+                db.close()
+        except Exception:
+            net = {"nodes": [], "edges": []}
+        return net
+
+    try:
+        return ttl_cached(
+            "criminal_network", (criminal_id,), 300, compute, scope="criminal-network",
+        )
+    except Exception:
+        try:
+            return compute()
+        except Exception:
+            return {"nodes": [], "edges": []}
+
+
+def _criminal_risk_worker(criminal_id: str, fir_count: int) -> dict:
+    from app.database.postgres import SessionLocal
+    from app.ai.inference.criminal import score_criminal_risk
+
+    try:
+        db = SessionLocal()
+        try:
+            res = score_criminal_risk(db, criminal_id)
+            if "error" in res:
+                return {
+                    "risk_score": 45,
+                    "risk_band": "MEDIUM",
+                    "confidence": 0.72,
+                    "top_factors": ["Historical pattern link", "Geographic activity correlation"],
+                }
+            return res
+        finally:
+            db.close()
+    except Exception:
+        return {
+            "risk_score": 45,
+            "risk_band": "MEDIUM",
+            "confidence": 0.72,
+            "top_factors": ["Fallback active - model unavailable"],
+        }
+
+
+def _repeat_offender_worker(criminal_id: str, fir_count: int) -> dict:
+    from app.database.postgres import SessionLocal
+    from app.ai.inference.criminal import predict_repeat_offender
+
+    try:
+        db = SessionLocal()
+        try:
+            res = predict_repeat_offender(db, criminal_id)
+            if "error" in res:
+                return {
+                    "will_reoffend": fir_count >= 3,
+                    "probability": min(0.95, 0.2 + fir_count * 0.15),
+                    "risk_factors": ["Multiple FIR connections" if fir_count >= 2 else "Single crime record"],
+                }
+            return res
+        finally:
+            db.close()
+    except Exception:
+        return {
+            "will_reoffend": fir_count >= 3,
+            "probability": min(0.95, 0.2 + fir_count * 0.15),
+            "risk_factors": ["Database link analysis fallback"],
+        }
+
+
+def _similar_offenders_worker(criminal_id: str) -> dict:
+    from app.database.postgres import SessionLocal
+    from app.services.mo_matching_service import match_criminal_against_db
+
+    similar = {"similar": []}
+    try:
+        db = SessionLocal()
+        try:
+            from app.models.criminal import Criminal
+            target = db.query(Criminal).filter(Criminal.id == criminal_id).first()
+            if target is None:
+                return {"similar": []}
+            # Fast path: an offender with no MO notes and no linked FIRs has no
+            # profile to match on — a full-table similarity scan (up to ~30s on
+            # real data) would only return noise. Return immediately instead so
+            # the right-hand panel never blocks behind a pointless scan.
+            if not (target.mo_summary or (target.fir_links and len(target.fir_links) > 0)):
+                return {"similar": []}
+            mo = match_criminal_against_db(db, criminal_id, top_k=5, min_similarity=0.20)
+            if "error" not in mo:
+                similar = {
+                    "similar": [
+                        {
+                            "criminal_id": sim["criminal_id"],
+                            "name": sim["full_name"],
+                            "similarity": sim["similarity_score"],
+                            "rank": i + 1,
+                            "matching_factors": sim.get("matching_factors", []),
+                            "match_level": sim.get("match_level", "medium"),
+                        }
+                        for i, sim in enumerate(mo.get("similar_criminals", []))
+                    ]
+                }
+        finally:
+            db.close()
+    except Exception:
+        similar = {"similar": []}
+    return similar
+
+
+def _recommendations_worker(criminal_id: str) -> list:
+    from app.database.postgres import SessionLocal
+    from app.ai.inference.criminal import get_investigation_recommendations
+
+    fallback = [
+        "Address verification routine.",
+        "Review linked case diaries.",
+    ]
+    try:
+        db = SessionLocal()
+        try:
+            res = get_investigation_recommendations(db, criminal_id)
+            if "error" in res:
+                return [
+                    "Perform digital footprints analysis.",
+                    "Verify current residential address.",
+                    "Trace potential co-accused contacts.",
+                ]
+            return res.get("recommendations", fallback)
+        finally:
+            db.close()
+    except Exception:
+        return fallback
+
+
 @router.get("/{criminal_id}")
 def get_criminal(criminal_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     criminal = criminal_crud.get(db, criminal_id)
-    
+
     # Retrieve linked FIRs
     linked_firs = []
     for link in criminal.fir_links:
@@ -86,93 +239,61 @@ def get_criminal(criminal_id: uuid.UUID, db: Session = Depends(get_db), current_
                 "crime_case_id": str(case.id) if case else None,
                 "crime_case_number": case.case_number if case else None,
             })
-            
-    # Load AI risk score
+
+    cid = str(criminal_id)
+    fir_count = len(criminal.fir_links)
+
+    # The AI risk, repeat-offender, MO-similarity, recommendations and network
+    # calls are all independent and each opens its own DB session, so they run
+    # in parallel instead of serially. This was the dominant latency of the
+    # criminal detail endpoint (issue: slow right-hand panel).
+    from concurrent.futures import ThreadPoolExecutor
+
+    risk_res: dict = {}
+    repeat_res: dict = {}
+    similar_res: dict = {"similar": []}
+    recommendations: list = []
+    net_res: dict = {"nodes": [], "edges": []}
+
     try:
-        from app.ai.inference.criminal import score_criminal_risk
-        risk_res = score_criminal_risk(db, str(criminal_id))
-        if "error" in risk_res:
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            f_risk = pool.submit(_criminal_risk_worker, cid, fir_count)
+            f_repeat = pool.submit(_repeat_offender_worker, cid, fir_count)
+            f_mo = pool.submit(_similar_offenders_worker, cid)
+            f_rec = pool.submit(_recommendations_worker, cid)
+            f_net = pool.submit(_load_criminal_network, cid)
+            risk_res = f_risk.result(timeout=20)
+            repeat_res = f_repeat.result(timeout=20)
+            similar_res = f_mo.result(timeout=20)
+            recommendations = f_rec.result(timeout=20)
+            try:
+                net_res = f_net.result(timeout=15)
+            except Exception:
+                net_res = {"nodes": [], "edges": []}
+    except Exception:
+        if not risk_res:
             risk_res = {
                 "risk_score": 45,
                 "risk_band": "MEDIUM",
                 "confidence": 0.72,
-                "top_factors": ["Historical pattern link", "Geographic activity correlation"]
+                "top_factors": ["Historical pattern link", "Geographic activity correlation"],
             }
-    except Exception:
-        risk_res = {
-            "risk_score": 45,
-            "risk_band": "MEDIUM",
-            "confidence": 0.72,
-            "top_factors": ["Fallback active - model unavailable"]
-        }
-        
-    # Load repeat offender prediction
-    try:
-        from app.ai.inference.criminal import predict_repeat_offender
-        repeat_res = predict_repeat_offender(db, str(criminal_id))
-        if "error" in repeat_res:
+        if not repeat_res:
             repeat_res = {
-                "will_reoffend": len(criminal.fir_links) >= 3,
-                "probability": min(0.95, 0.2 + len(criminal.fir_links) * 0.15),
-                "risk_factors": ["Multiple FIR connections" if len(criminal.fir_links) >= 2 else "Single crime record"]
+                "will_reoffend": fir_count >= 3,
+                "probability": min(0.95, 0.2 + fir_count * 0.15),
+                "risk_factors": ["Database link analysis fallback"],
             }
-    except Exception:
-        repeat_res = {
-            "will_reoffend": len(criminal.fir_links) >= 3,
-            "probability": min(0.95, 0.2 + len(criminal.fir_links) * 0.15),
-            "risk_factors": ["Database link analysis fallback"]
-        }
-        
-    # Load similar offenders from real MO pattern matching engine
-    try:
-        from app.services.mo_matching_service import match_criminal_against_db
-        mo_res = match_criminal_against_db(db, criminal_id, top_k=5, min_similarity=0.20)
-        if "error" not in mo_res:
-            similar_res = {
-                "similar": [
-                    {
-                        "criminal_id": sim["criminal_id"],
-                        "name": sim["full_name"],
-                        "similarity": sim["similarity_score"],
-                        "rank": i + 1,
-                        "matching_factors": sim.get("matching_factors", []),
-                        "match_level": sim.get("match_level", "medium"),
-                    }
-                    for i, sim in enumerate(mo_res.get("similar_criminals", []))
-                ]
-            }
-        else:
+        if not similar_res.get("similar"):
             similar_res = {"similar": []}
-    except Exception:
-        similar_res = {"similar": []}
-        
-    # Load investigation recommendations
-    try:
-        from app.ai.inference.criminal import get_investigation_recommendations
-        rec_res = get_investigation_recommendations(db, str(criminal_id))
-        if "error" in rec_res:
-            rec_res = {
-                "recommendations": [
-                    "Perform digital footprints analysis.",
-                    "Verify current residential address.",
-                    "Trace potential co-accused contacts."
-                ]
-            }
-    except Exception:
-        rec_res = {
-            "recommendations": [
+        if not recommendations:
+            recommendations = [
                 "Address verification routine.",
-                "Review linked case diaries."
+                "Review linked case diaries.",
             ]
-        }
-        
-    # Load relationship viewer network data
-    try:
-        from app.services.analytics_service import network_person
-        net_res = network_person(db, f"criminal-{criminal_id}")
-    except Exception:
-        net_res = {"nodes": [], "edges": []}
-        
+        if not net_res.get("nodes") and not net_res.get("edges"):
+            net_res = {"nodes": [], "edges": []}
+
     return {
         "id": str(criminal.id),
         "full_name": criminal.full_name,
@@ -190,7 +311,7 @@ def get_criminal(criminal_id: uuid.UUID, db: Session = Depends(get_db), current_
         "ai_risk": risk_res,
         "ai_repeat": repeat_res,
         "ai_similar": similar_res,
-        "ai_recommendations": rec_res.get("recommendations", []),
+        "ai_recommendations": recommendations,
         "network": net_res
     }
 

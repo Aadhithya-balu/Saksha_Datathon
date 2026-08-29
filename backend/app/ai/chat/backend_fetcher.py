@@ -689,6 +689,15 @@ class BackendFetcher:
         if hasattr(case, "firs") and case.firs:
             fir_nums = [f.fir_number for f in case.firs]
             parts.append(f"Linked FIRs: {', '.join(fir_nums)}")
+        suspects: list[str] = []
+        for fir in getattr(case, "firs", []) or []:
+            for link in getattr(fir, "criminal_links", []) or []:
+                if getattr(link, "criminal", None) and link.criminal.full_name:
+                    name = link.criminal.full_name
+                    if name not in suspects:
+                        suspects.append(name)
+        if suspects:
+            parts.append(f"Accused/Suspects: {', '.join(suspects)}")
         if hasattr(case, "assigned_officer") and case.assigned_officer:
             parts.append(f"Assigned Officer: {case.assigned_officer.name} ({case.assigned_officer.badge_number})")
         return " | ".join(parts)
