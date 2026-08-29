@@ -291,7 +291,7 @@ def _prewarm_models() -> None:
                 ("hotspot",  "app.ai.inference.hotspot",  ["_load_model", "_load_feature_columns", "_load_metadata"]),
                 ("risk",     "app.ai.inference.risk",      ["_load_risk_model", "_load_forecast_model", "_load_metadata"]),
                 ("criminal", "app.ai.inference.criminal",  ["_load_models"]),
-                ("anomaly",  "app.ai.inference.anomaly",   ["_load_model"]),
+                ("anomaly",  "app.ai.inference.anomaly",   ["_load_default_model"]),
             ]
             import importlib
             for key, module_path, fn_names in loaders:
@@ -301,6 +301,8 @@ def _prewarm_models() -> None:
                         fn = getattr(mod, fn_name, None)
                         if callable(fn):
                             fn()
+                        else:
+                            logger.warning("[prewarm] %s has no callable %s — add it so the domain prewarms", key, fn_name)
                     logger.info("[prewarm] %s model loaded", key)
                 except Exception as exc:
                     logger.warning("[prewarm] %s skipped: %s", key, exc)
