@@ -135,6 +135,7 @@ _NAME_NOISE = {
     "dangerous", "active", "closed", "open", "pending", "released",
     "stations", "database", "databases", "system", "systems", "website",
     "scheme", "schemes", "management", "sectionheaders", "logs",
+    "duty", "shift", "roster", "patrol", "beat", "schedule",
     # superlatives / quantities — never person names
     "most", "least", "high", "highest", "low", "lowest", "top", "bottom",
     "maximum", "minimum", "max", "min", "rank", "ranking", "peak", "large",
@@ -156,6 +157,7 @@ _PERSON_HINT_AFTER = {
 _PERSON_HINT_BEFORE = {
     "named", "called", "about", "for", "of", "on", "regarding", "with",
     "against", "involving", "involves", "involve", "says", "who", "whom",
+    "is", "are", "was", "were", "am", "be", "does", "has",
 }
 
 # Superlative/comparative questions ("which district has the highest crime
@@ -1178,7 +1180,7 @@ class LLMGenerator:
         Running capitalized words are grouped into full names ('Ramu Swamy').
         """
         compact = re.sub(r"[^\w\s'-]", " ", message)
-        compact = re.sub(r"(\w)'(?:s|re|ve|d|m)\b", r" \1 ", compact)
+        compact = re.sub(r"(\w+)'(?:s|re|ve|d|m)\b", r" \1 ", compact)
         tokens = [t for t in compact.split() if t]
         names: list[str] = []
         i = 0
