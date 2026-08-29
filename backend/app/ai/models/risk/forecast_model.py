@@ -100,15 +100,24 @@ class DistrictForecastModel:
 
     def predict_batch(self, df: pd.DataFrame) -> list[ForecastPoint]:
         from app.ai.features.risk.feature_engineering import FORECAST_FEATURE_COLUMNS
+        if df is None or df.empty:
+            return []
+        districts = df["district"].tolist()
+        months = df["year_month"].tolist()
+        lag1s = df["lag_1"].tolist() if "lag_1" in df.columns else [0.0] * len(df)
+        X = df[FORECAST_FEATURE_COLUMNS].to_numpy(dtype=np.float64)
+        raw = np.clip(self._model.predict(X), 0, None)
+        half_ci = self._rmse * 1.96
         results = []
-        for row in df.itertuples(index=False):
-            x = np.array([getattr(row, c) for c in FORECAST_FEATURE_COLUMNS], dtype=np.float64)
-            lag1 = float(getattr(row, "lag_1", 0.0))
-            results.append(self.predict(
-                x,
-                district=getattr(row, "district", ""),
-                year_month=getattr(row, "year_month", ""),
-                lag1=lag1,
+        for district, year_month, pred, lag1 in zip(districts, months, raw, lag1s):
+            pred = float(pred)
+            results.append(ForecastPoint(
+                district=district,
+                year_month=year_month,
+                predicted_crime_count=round(pred, 2),
+                lower_bound=round(max(pred - half_ci, 0.0), 2),
+                upper_bound=round(pred + half_ci, 2),
+                trend=_trend(pred, float(lag1)),
             ))
         return results
 

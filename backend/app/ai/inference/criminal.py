@@ -93,6 +93,15 @@ def _invalidate_cache() -> None:
     _cluster_model.cache_clear()
 
 
+def _load_models() -> tuple[Any, Any, Any, Any]:
+    """Eagerly load all four criminal artifacts (used by startup prewarming).
+
+    Fills each lru_cache so the first inference request does not pay the
+    load/feature-staleness check on the request path.
+    """
+    return (_risk_model(), _repeat_model(), _sim_model(), _cluster_model())
+
+
 def invalidate_caches() -> None:
     """Public alias used by the central refresh service (issue #145)."""
     _invalidate_cache()

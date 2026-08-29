@@ -164,6 +164,26 @@ def test_failed_counter_resets_on_success(client, db_session):
     assert (user.failed_login_attempts or 0) == 0
 
 
+def test_failed_login_reports_remaining_attempts(client, db_session):
+    _seed_user(db_session)
+    r = _login(client, password="wrong-password")
+    assert r.status_code == 401
+    message = r.json()["error"]["message"].lower()
+    assert "attempt(s) remaining" in message
+    assert str(settings.LOGIN_MAX_FAILED_ATTEMPTS - 1) in message
+
+
+def test_attempt_that_locks_account_reports_lockout_immediately(client, db_session):
+    _seed_user(db_session)
+    r = None
+    for _ in range(settings.LOGIN_MAX_FAILED_ATTEMPTS):
+        r = _login(client, password="wrong-password")
+        assert r.status_code == 401
+    message = r.json()["error"]["message"].lower()
+    assert "temporarily locked" in message
+    assert "minutes" in message
+
+
 # ---------------------------------------------------------------------------
 # Password policy
 # ---------------------------------------------------------------------------
@@ -245,6 +265,38 @@ def test_rate_limit_returns_429(monkeypatch, client):
 
     statuses = [client.get("/api/v2/dashboard/summary").status_code for _ in range(5)]
     # The endpoint itself may 401 without auth, but the limiter must kick in.
+    assert statuses.count(429) >= 1
+    monkeypatch.setattr(settings, "APP_ENV", "test")
+
+
+def test_rate_limit_uses_trusted_forwarded_for_per_client(monkeypatch, client):
+    """Behind the nginx proxy every socket peer is the proxy; budgets must be
+    keyed on the real client IP from X-Forwarded-For so users are not
+    throttled as one shared IP."""
+    monkeypatch.setattr(settings, "RATE_LIMIT_ENABLED", True)
+    monkeypatch.setattr(settings, "APP_ENV", "development")
+    monkeypatch.setattr(settings, "RATE_LIMIT_MAX_REQUESTS", 3)
+    monkeypatch.setattr(settings, "RATE_LIMIT_TRUST_XFF", True)
+
+    user_a = [client.get("/api/v2/dashboard/summary", headers={"X-Forwarded-For": "203.0.113.1"}).status_code for _ in range(5)]
+    user_b = [client.get("/api/v2/dashboard/summary", headers={"X-Forwarded-For": "203.0.113.2"}).status_code for _ in range(3)]
+
+    # A exhausts its own budget; B stays comfortably under its own separate
+    # budget and is never throttled, even while A keeps hitting 429s.
+    assert user_a.count(429) >= 1
+    assert 429 not in user_b
+    monkeypatch.setattr(settings, "APP_ENV", "test")
+
+
+def test_rate_limit_ignores_spoofed_forwarded_for_when_untrusted(monkeypatch, client):
+    """With RATE_LIMIT_TRUST_XFF=false a client-sent header must not grant a
+    fresh budget — everyone shares the socket-peer key."""
+    monkeypatch.setattr(settings, "RATE_LIMIT_ENABLED", True)
+    monkeypatch.setattr(settings, "APP_ENV", "development")
+    monkeypatch.setattr(settings, "RATE_LIMIT_MAX_REQUESTS", 3)
+    monkeypatch.setattr(settings, "RATE_LIMIT_TRUST_XFF", False)
+
+    statuses = [client.get("/api/v2/dashboard/summary", headers={"X-Forwarded-For": f"203.0.113.{i}"}).status_code for i in range(4)]
     assert statuses.count(429) >= 1
     monkeypatch.setattr(settings, "APP_ENV", "test")
 

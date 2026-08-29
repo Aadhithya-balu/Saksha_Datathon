@@ -12,6 +12,44 @@ import {
 
 export type UserRole = 'SCRB' | 'IO' | 'SP' | 'INSPECTOR' | 'FORENSIC' | 'VIEWER' | 'ADMIN';
 
+export type AuthErrorTone = 'error' | 'warning';
+
+export interface AuthErrorBox {
+  message: string;
+  tone: AuthErrorTone;
+}
+
+/** Translate raw backend/store failures into calm, human language and pick a
+ *  UI tone. Lockout and attempts-remaining messages pass through as warnings
+ *  so operators see the real account state instead of a generic rejection. */
+export const classifyAuthError = (raw: string | null): AuthErrorBox => {
+  const msg = (raw || '').toLowerCase();
+  if (!msg) return { message: 'Authentication failed. Please try again.', tone: 'error' };
+  if (
+    msg.includes('temporarily unavailable') ||
+    msg.includes('offline') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror') ||
+    msg.includes('load failed') ||
+    msg.includes('aborted')
+  ) {
+    return {
+      message: 'The secure authentication service is temporarily unavailable. Please try again shortly.',
+      tone: 'error',
+    };
+  }
+  if (msg.includes('session expired')) {
+    return { message: 'Your session could not be restored. Please authenticate again.', tone: 'error' };
+  }
+  if (msg.includes('locked') || msg.includes('lockout') || msg.includes('attempt')) {
+    return { message: raw as string, tone: 'warning' };
+  }
+  if (msg.includes('too many requests')) {
+    return { message: raw as string, tone: 'warning' };
+  }
+  return { message: raw || 'Authentication failed. Please try again.', tone: 'error' };
+};
+
 export interface UserSession {
   name: string;
   badgeId: string;

@@ -118,7 +118,20 @@ def authenticate_user(db: Session, username: str, password: str) -> User:
         if not verify_password(password, user.hashed_password):
             _register_failed_login(db, user)
             db.commit()
-            raise UnauthorizedException("Incorrect username or password")
+            # Surface how close an account is to lockout so the frontend can
+            # show a warning instead of a generic rejection. The attempt that
+            # trips the threshold reports the lockout itself, so the user is
+            # told immediately rather than on their next try.
+            if _is_locked(user):
+                raise UnauthorizedException(
+                    f"Account temporarily locked due to repeated failed logins. "
+                    f"Try again in {settings.LOGIN_LOCKOUT_MINUTES} minutes."
+                )
+            remaining = settings.LOGIN_MAX_FAILED_ATTEMPTS - (user.failed_login_attempts or 0)
+            raise UnauthorizedException(
+                f"Incorrect username or password. {remaining} attempt(s) "
+                f"remaining before the account is temporarily locked."
+            )
         if not user.is_active:
             raise UnauthorizedException("Account is deactivated")
 

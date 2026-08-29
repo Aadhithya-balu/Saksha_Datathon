@@ -33,6 +33,30 @@ def _bucket_for(path: str) -> tuple[str, int]:
     return ("general", settings.RATE_LIMIT_MAX_REQUESTS)
 
 
+def resolve_client_ip(request: Request) -> str:
+    """Return the real client IP used as the rate-limit / audit key.
+
+    Behind the packaged nginx reverse proxy, `request.client.host` is always
+    the proxy (127.0.0.1), so every request would otherwise share a single
+    budget and genuine users behind the proxy would hit 429s together. When
+    ``RATE_LIMIT_TRUST_XFF`` is enabled (default) we key on the original client
+    IP from the ``X-Forwarded-For`` chain (leftmost hop, as appended by nginx),
+    falling back to ``X-Real-IP`` and finally the socket peer. Set the flag to
+    false when the backend is directly exposed (no trusted proxy) so clients
+    cannot spoof fresh budgets by sending their own forwarding headers.
+    """
+    if settings.RATE_LIMIT_TRUST_XFF:
+        xff = request.headers.get("X-Forwarded-For")
+        if xff:
+            first = xff.split(",")[0].strip()
+            if first:
+                return first
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip:
+            return real_ip.strip()
+    return request.client.host if request.client else "unknown"
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     EXCLUDED_PREFIXES = ("/health", "/docs", "/redoc", "/openapi.json")
 
@@ -72,7 +96,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if now - self._last_prune > 300:
             self._prune(now)
 
-        ip = request.client.host if request.client else "unknown"
+        ip = resolve_client_ip(request)
         bucket, limit = _bucket_for(request.url.path)
         window = settings.RATE_LIMIT_WINDOW_SECONDS
 

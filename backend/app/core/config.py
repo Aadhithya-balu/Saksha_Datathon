@@ -77,6 +77,21 @@ class Settings(BaseSettings):
     RATE_LIMIT_AUTH_MAX_REQUESTS: int = 20        # /auth/* (login, refresh, register)
     RATE_LIMIT_UPLOAD_MAX_REQUESTS: int = 30      # evidence/file upload endpoints
     RATE_LIMIT_AI_MAX_REQUESTS: int = 40          # AI chat / prediction endpoints
+    # When the backend runs behind the packaged nginx reverse proxy, the socket
+    # peer is always the proxy (127.0.0.1), so `request.client.host` is the same
+    # for every user. Trusting the X-Forwarded-For / X-Real-IP headers (which
+    # nginx forwards) keys each budget on the real client IP instead of
+    # throttling the whole user base as one. Set to false ONLY if the backend is
+    # directly reachable without a trusted proxy (a spoofable header would then
+    # let clients rotate their own budget).
+    RATE_LIMIT_TRUST_XFF: bool = True
+
+    # --- Notification broadcast deduplication ---
+    # An identical broadcast (same notification_type + category + subject +
+    # title) created within this many hours is treated as a duplicate and is
+    # NOT re-created for every user. Guards against page-reload/tab/retry loops
+    # flooding the notification center (e.g. repeated hotspot spike alerts).
+    NOTIFICATION_BROADCAST_DEDUP_HOURS: int = 24
 
     # --- Request body size limit (bytes). Evidence uploads are separately
     # capped at MAX_FILE_SIZE_MB; this is a coarse DoS guard for JSON bodies.
