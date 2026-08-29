@@ -25,10 +25,11 @@ interface DemoProfile {
   tone: 'blue' | 'teal' | 'amber' | 'green';
 }
 
-/* Development/demo access profiles — only shown in non-production environments. */
-const IS_PROD = import.meta.env.VITE_APP_ENV === 'production' || import.meta.env.PROD;
-
-const DEMO_PROFILES: DemoProfile[] = IS_PROD ? [] : [
+/* Demo access profiles — always shown on the login card so reviewers can
+   sign in instantly with the seeded demo users (admin/564738, SP-0088/987654,
+   IO-3921/456789, SCRB-7740/123456). They work in any environment, including
+   deployed production builds, because the seed users are part of the app. */
+const DEMO_PROFILES: DemoProfile[] = [
   { badge: 'admin', pin: '564738', title: 'Administrator', rank: 'System Administration', initials: 'AD', tone: 'blue' },
   { badge: 'SP-0088', pin: '987654', title: 'Superintendent', rank: 'District Command · SP', initials: 'SP', tone: 'amber' },
   { badge: 'IO-3921', pin: '456789', title: 'Investigator', rank: 'Investigation Officer · DSP', initials: 'IO', tone: 'green' },
@@ -445,7 +446,7 @@ export const BadgeLogin: React.FC<BadgeLoginProps> = ({ onSuccess }) => {
         </span>
       </button>
 
-      {/* Authorized access profiles (demo environment only) */}
+      {/* Authorized access profiles — seeded demo users, always available */}
       {DEMO_PROFILES.length > 0 && (
       <div className="bl-profiles pt-1">
         <div className="mb-2.5 flex items-center gap-2.5">
