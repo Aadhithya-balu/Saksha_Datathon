@@ -8,6 +8,7 @@ from typing import AsyncIterator
 
 import httpx
 
+from app.ai.chat.entity_extractor import _CRIME_CATEGORIES, _KARNATAKA_DISTRICTS
 from app.core.config import settings
 
 
@@ -68,7 +69,8 @@ _NO_DATA_MARKERS = (
 
 _REFUSAL_MESSAGE = (
     "I could not find matching records in the Saksha database for that query. "
-    "Please try rephrasing your question or check the case/FIR number."
+    "If you can tell me a little more — a case or FIR number, a name, or a "
+    "district — I'll take another look."
 )
 
 _SYSTEM_CLOCK_HEADER = "System Clock"
@@ -81,6 +83,80 @@ _TEMPORAL_WORDS = {
     "week", "month", "year", "day", "now", "current",
 }
 _MAX_OVERVIEW_LINES = 12
+
+# Words that can never be mistaken for a person's name when they appear in a
+# question — question openers, entity/domain vocabulary, districts, temporal
+# words, directions, etc. Guard against the name-honesty gate (issue #203) ever
+# refusing on plain vocabulary instead of on a genuinely absent person.
+_NAME_NOISE = {
+    # question openers / commands
+    "what", "which", "who", "whom", "whose", "where", "when", "why", "how",
+    "tell", "show", "showme", "find", "list", "search", "give", "describe",
+    "please", "look", "get", "fetch", "has", "have", "had", "do", "does",
+    "did", "is", "are", "was", "were", "will", "would", "can", "could",
+    "should", "may", "might", "there", "also", "and", "or", "the", "any",
+    "all", "some", "this", "these", "those", "your", "my", "our", "want",
+    "need", "check", "help", "support", "login", "password", "access",
+    # domain entities / vocabulary
+    "crime", "crimes", "criminal", "criminals", "offender", "offenders",
+    "suspect", "suspects", "accused", "case", "cases", "complaint",
+    "complaints", "fir", "firs", "victim", "victims", "victimology",
+    "officer", "officers", "police", "inspector", "superintendent", "badge",
+    "record", "records", "stastics", "statistics", "stats", "overview",
+    "summary", "dashboard", "analytics", "analysis", "breakdown", "detail",
+    "details", "info", "information", "report", "reports", "notification",
+    "notifications", "evidence", "evidences", "evidence", "hotspot",
+    "hotspots", "prediction", "predictions", "forecast", "forecasts",
+    "anomaly", "anomalies", "trend", "trends", "compare", "comparison",
+    "risk", "riskiness", "profile", "dossier", "dossiers", "history",
+    "activity", "activities", "file", "files", "narrative", "section",
+    "sections", "status", "progress", "priority", "category", "categories",
+    "district", "districts", "area", "region", "state", "station", "charge",
+    "fine", "warrant", "license", "identity", "verify", "verification",
+    "approval", "permission", "application", "request", "ticket", "account",
+    # crime nouns
+    "theft", "robbery", "dacoity", "burglary", "murder", "homicide", "rape",
+    "assault", "kidnap", "kidnapping", "extortion", "forgery", "fraud",
+    "smuggling", "narcotics", "cyber", "domestic", "property", "illegal",
+    "mining", "riot", "riots", "bomb", "gang", "chain", "snatching",
+    "counterfeit", "violence", "border",
+    # geography / directions / location suffixes
+    "karnataka", "india", "bangalore", "bengaluru", "mysuru", "mangaluru",
+    "belagavi", "ballari", "kalaburagi", "dharwad", "hassan", "tumkuru",
+    "whitefield", "udupi", "davangere", "shivamogga", "raichur", "bidar",
+    "urban", "rural", "north", "south", "east", "west", "central",
+    "main", "road", "street", "market", "fort", "gate", "harbor", "zone",
+    "city", "town", "village",
+    # temporal
+    "today", "yesterday", "tomorrow", "tonight", "morning", "afternoon",
+    "evening", "night", "recent", "recently", "latest", "newest", "new",
+    "week", "month", "year", "now", "current",
+    # misc capitalized words users type
+    "dangerous", "active", "closed", "open", "pending", "released",
+    "stations", "database", "databases", "system", "systems", "website",
+    "scheme", "schemes", "management", "sectionheaders", "logs",
+    # superlatives / quantities — never person names
+    "most", "least", "high", "highest", "low", "lowest", "top", "bottom",
+    "maximum", "minimum", "max", "min", "rank", "ranking", "peak", "large",
+    "largest", "big", "biggest", "more", "fewer", "less", "few", "several",
+    "many", "much", "number", "count", "total", "compare", "comparison",
+    "saksha", "crimecases", "northregion", "regarding", "called", "named",
+    "about", "involving", "against",
+}
+
+# Words that strongly hint the preceding word is a person's name: "X crime
+# records?", "X's case history", "records of X".
+_PERSON_HINT_AFTER = {
+    "crime", "crimes", "record", "records", "case", "cases", "fir", "firs",
+    "complaint", "complaints", "criminal", "criminals", "offender",
+    "offenders", "suspect", "suspects", "victim", "profile", "dossier",
+    "dossiers", "history", "file", "files", "narrative", "details",
+    "detail", "activity", "activities", "information", "info", "ioc",
+}
+_PERSON_HINT_BEFORE = {
+    "named", "called", "about", "for", "of", "on", "regarding", "with",
+    "against", "involving", "involves", "involve", "says", "who", "whom",
+}
 
 # Superlative/comparative questions ("which district has the highest crime
 # rate?") get a direct ranked answer synthesized from numeric context lines.
@@ -106,7 +182,23 @@ _SYNONYMS: dict[str, tuple[str, ...]] = {
     "victim": ("complainant",),
     "officer": ("police", "badge"),
     "gang": ("network", "organization"),
+    # Generic analytics wording (issue #203: "what are the statistics?" used to
+    # refuse because no section literally contained the word "statistics").
+    "statistics": ("crime", "cases", "breakdown", "district", "category", "rate", "total"),
+    "stats": ("statistics", "crimes", "cases", "breakdown", "district", "category", "rate"),
+    "overview": ("summary", "statistics", "breakdown", "total"),
+    "dashboard": ("summary", "statistics", "breakdown", "total"),
+    "summary": ("statistics", "total", "breakdown"),
 }
+
+# Distribution lines emitted by the analytics engine ("District Bengaluru Urban
+# has 20 registered crime cases", "Category Cyber Crime accounts for 15 cases").
+# Used to answer per-area/per-category count questions from the REAL totals
+# instead of counting whichever rows happened to be retrieved (issue #203).
+_DISTRIBUTION_PATTERNS = (
+    re.compile(r"\b([A-Za-z][A-Za-z .\-']{1,40})\s+has\s+(\d[\d,]*)\s+registered\b", re.I),
+    re.compile(r"\b([A-Za-z][A-Za-z .\-']{1,40})\s+accounts\s+for\s+(\d[\d,]*)\s+cases?\b", re.I),
+)
 
 _GREETING_MESSAGE = (
     "I'm SAKSHA AI, your crime intelligence assistant. "
@@ -415,6 +507,19 @@ class LLMGenerator:
 
         sections = self._useful_sections(context)
 
+        # Honesty gate: if the question names a specific person and that name
+        # appears in NO retrieved record, say so rather than dumping aggregate
+        # statistics that merely share a keyword (issue #203).
+        missing_person = self._named_person_not_in_context(message, sections)
+        if missing_person:
+            full_response = "\n".join([
+                f"I could not find any records for **{missing_person}** in the Saksha database.",
+                f"Double-check the spelling, or share a case/FIR number and I'll look again.\n\n{_FOOTER_MESSAGE}",
+            ]).strip()
+            for chunk in self._stream_text(full_response):
+                yield chunk
+            return
+
         if not sections:
             # No database records — try to answer from system prompt knowledge
             # (project overview, general Saksha info).
@@ -449,14 +554,39 @@ class LLMGenerator:
                 yield chunk
             return
 
+        # Which entity type the question actually targets (officer/criminal/fir/
+        # case/victim). Answers are then shaped around that kind instead of
+        # whichever record happened to score highest (issue #203).
+        focus_kind = self._query_target_kind(message)
+
+        # Question-type awareness: the response shape follows the KIND of
+        # question asked, not merely which context lines match (issue #203).
+        intent = self._classify_question(message)
+
         positive = [item for item in scored if item[0] > 0]
 
         if not positive:
-            response_parts: list[str] = [
-                "I could not find records that directly match your question in the Saksha database.",
-                "",
-                _REFUSAL_MESSAGE,
-            ]
+            # No retrieved record actually matched the words of the question.
+            # A real ground-truth-only assistant does not echo keywords back or
+            # dump whatever partially scored — it is honest about the miss and
+            # naturally surfaces what the retrieved (vector/RAG) context DOES
+            # cover, so the user can steer (issue #203).
+            lead = {
+                "count": "I could not find a live count in the Saksha database that answers that.",
+                "field": "I could not find that detail in the Saksha database.",
+                "profile": "I could not find a matching record in the Saksha database.",
+                "rank": "I could not produce that ranking from the Saksha database.",
+                "generic": "I could not find anything in the Saksha database that directly answers that question.",
+            }[intent]
+            coverage = self._context_coverage(sections)
+            if coverage:
+                response_parts: list[str] = [
+                    lead, "",
+                    f"The records I have on hand cover {coverage}. "
+                    f"Tell me which of those you'd like and I'll pull the specifics.",
+                ]
+            else:
+                response_parts = [lead, "", _REFUSAL_MESSAGE]
             full_response = "\n".join(response_parts).strip()
             for chunk in self._stream_text(full_response):
                 yield chunk
@@ -477,25 +607,31 @@ class LLMGenerator:
         # 2. ANSWER THE ACTUAL QUESTION instead of blindly dumping records:
         #    counts, field lookups (status/progress/when/where), and specific
         #    entity profiles are much more useful than a raw list.
-        count_answer = self._count_answer(message, kept)
+        distribution_answer = self._distribution_count_answer(message, kept)
+        if distribution_answer:
+            for chunk in self._stream_text(distribution_answer):
+                yield chunk
+            return
+
+        count_answer = self._count_answer(message, kept, temporal, focus_kind)
         if count_answer:
             for chunk in self._stream_text(count_answer):
                 yield chunk
             return
 
-        field_answer = self._field_answer(message, kept)
+        field_answer = self._field_answer(message, kept, temporal, focus_kind)
         if field_answer:
             for chunk in self._stream_text(field_answer):
                 yield chunk
             return
 
-        entity_answer = self._entity_profile_answer(message, kept)
+        entity_answer = self._entity_profile_answer(message, kept, temporal, focus_kind)
         if entity_answer:
             for chunk in self._stream_text(entity_answer):
                 yield chunk
             return
 
-        ranked_answer = self._build_ranked_answer(message, kept)
+        ranked_answer = self._build_ranked_answer(message, kept, temporal)
         if ranked_answer:
             for chunk in self._stream_text(ranked_answer):
                 yield chunk
@@ -503,8 +639,28 @@ class LLMGenerator:
 
         # 3. General multi-record answer: a friendly lead-in followed by the
         #    deduplicated records rendered as clean bullet points.
-        records = self._dedupe_lines(kept, _MAX_CONTEXT_LINES)
+        records = self._dedupe_lines(kept, _MAX_CONTEXT_LINES, temporal, focus_kind)
         if records:
+            if (
+                focus_kind
+                and self._is_specific_entity_request(message)
+                and not any(
+                    LLMGenerator._record_kind(LLMGenerator._parse_record(line)) == focus_kind
+                    for line in records
+                )
+            ):
+                noun = {
+                    "fir": "FIR", "case": "case", "criminal": "criminal",
+                    "officer": "officer", "victim": "victim",
+                }.get(focus_kind, "record")
+                article = "an" if focus_kind == "officer" else "a"
+                full_response = "\n".join([
+                    f"I could not find {article} {noun} record matching that in the Saksha database.",
+                    f"Double-check the name or number and I'll take another look.\n\n{_FOOTER_MESSAGE}",
+                ]).strip()
+                for chunk in self._stream_text(full_response):
+                    yield chunk
+                return
             response_parts: list[str] = self._list_intro(message, len(records)) + [""]
             for i, line in enumerate(records, 1):
                 response_parts.append(f"{i}. {self._format_line(line)}")
@@ -576,11 +732,11 @@ class LLMGenerator:
         ))
 
     @staticmethod
-    def _count_answer(message: str, kept: list) -> str | None:
+    def _count_answer(message: str, kept: list, temporal: bool = False, focus_kind: str | None = None) -> str | None:
         """Answers 'how many' type questions with a concrete number."""
         if not LLMGenerator._is_count_question(message):
             return None
-        records = LLMGenerator._dedupe_records(kept)
+        records = LLMGenerator._dedupe_records(kept, temporal, focus_kind)
         if not records:
             return None
         tokens = [t.rstrip("s") for t in LLMGenerator._query_tokens(message)]
@@ -614,9 +770,86 @@ class LLMGenerator:
         return "records"
 
     @staticmethod
-    def _field_answer(message: str, kept: list) -> str | None:
+    def _named_district_or_category(lower: str) -> tuple[str, str] | None:
+        """Returns ('district'|'category', canonical lower-case name) when the
+        message explicitly names a Karnataka district or crime category."""
+        for label in sorted(_KARNATAKA_DISTRICTS, key=len, reverse=True):
+            if label.lower() in lower:
+                return "district", label.lower()
+        for label in sorted(_CRIME_CATEGORIES, key=len, reverse=True):
+            if re.search(rf"\b{re.escape(label)}\b", lower):
+                return "category", label.lower()
+        return None
+
+    @staticmethod
+    def _label_dimension(label: str) -> str | None:
+        """Classifies a distribution label as district/category (or None)."""
+        low = label.lower()
+        if any(district.lower() in low or low in district.lower() for district in _KARNATAKA_DISTRICTS):
+            return "district"
+        if any(category.lower() in low or low in category.lower() for category in _CRIME_CATEGORIES):
+            return "category"
+        return None
+
+    @staticmethod
+    def _question_dimension(message: str) -> str | None:
+        """Infers whether a question is asking for a district- or category-level
+        breakdown ('which district has the highest crime?' → district)."""
+        lower = message.lower()
+        if LLMGenerator._named_district_or_category(lower):
+            return LLMGenerator._named_district_or_category(lower)[0]
+        if re.search(r"\b(?:district|districts|area|region)\b", lower):
+            return "district"
+        if re.search(r"\b(?:category|categories|crime|criminal)\b", lower):
+            return "category"
+        return None
+
+    @staticmethod
+    def _distribution_count_answer(message: str, kept: list) -> str | None:
+        """Answers 'how many <thing> in <named district/category>?' from the
+        analytics distribution lines ('District Bengaluru Urban has 20 registered
+        crime cases'), i.e. from the REAL per-area totals rather than the number
+        of record rows that happened to be retrieved (issue #203)."""
+        lower = message.lower()
+        if not LLMGenerator._is_count_question(message):
+            return None
+        target = LLMGenerator._named_district_or_category(lower)
+        if not target:
+            return None
+        dimension, name = target
+        for _total, _max_score, _header, lines, _line_scores in kept:
+            for line in lines:
+                for pattern in _DISTRIBUTION_PATTERNS:
+                    match = pattern.search(line)
+                    if not match:
+                        continue
+                    raw_label = re.sub(
+                        r"^(?:district|category|area|region)\s+", "", match.group(1), flags=re.I,
+                    ).strip()
+                    number = int(match.group(2).replace(",", ""))
+                    label = raw_label.lower()
+                    if not (
+                        label.startswith(name) and (len(label) == len(name) or label[len(name)] in " ()-")
+                    ):
+                        continue
+                    if LLMGenerator._label_dimension(raw_label) != dimension:
+                        continue
+                    noun = "case" if number == 1 else "cases"
+                    return (
+                        f"**{raw_label}** has **{number}** {noun} on record in the Saksha database."
+                        + f"\n\n{_FOOTER_MESSAGE}"
+                    )
+        return None
+
+    @staticmethod
+    def _field_answer(message: str, kept: list, temporal: bool = False, focus_kind: str | None = None) -> str | None:
         """Answers field-specific questions (status/progress/when/where/who)."""
         lower = message.lower()
+        # Ranking/comparison questions ("which district has the most crime
+        # cases?") must reach the ranked path instead of collapsing into one
+        # random record's field (issue #203).
+        if set(LLMGenerator._query_tokens(message)) & set(_SUPERLATIVE_WORDS):
+            return None
         field = None
         if any(w in lower for w in ("status", "state of", "condition")):
             field = "status"
@@ -629,7 +862,7 @@ class LLMGenerator:
         if field is None:
             return None
 
-        records = LLMGenerator._dedupe_records(kept)
+        records = LLMGenerator._dedupe_records(kept, temporal, focus_kind)
         if not records:
             return None
         # Pick the record that best matches the question tokens.
@@ -659,19 +892,29 @@ class LLMGenerator:
         )
 
     @staticmethod
-    def _entity_profile_answer(message: str, kept: list) -> str | None:
+    def _entity_profile_answer(message: str, kept: list, temporal: bool = False, focus_kind: str | None = None) -> str | None:
         """Builds a clean profile for a specific named/id'd entity.
 
         Only fires when the message clearly targets one entity (an explicit id,
         a named person, or a short 'tell me about X' request); blanket analytics
         questions never collapse into a single-entity profile.
+
+        When the question names a record kind (officer/criminal/fir/case/victim)
+        the candidate pool is narrowed to THAT kind first, so an officer query is
+        never answered with a random case record that merely mentions the
+        officer's name (issue #203).
         """
         tokens = [t.rstrip("s") for t in LLMGenerator._query_tokens(message)]
         if not tokens:
             return None
-        records = LLMGenerator._dedupe_records(kept)
+        records = LLMGenerator._dedupe_records(kept, temporal, focus_kind)
         if not records:
             return None
+        if focus_kind:
+            candidates = [r for r in records if LLMGenerator._record_kind(r) == focus_kind]
+            if not candidates:
+                return None
+            records = candidates
         records.sort(key=lambda r: -LLMGenerator._line_score(LLMGenerator._record_text(r), tokens))
         best = records[0]
         if not LLMGenerator._mentions_specific_entity(message, best):
@@ -693,6 +936,21 @@ class LLMGenerator:
             lines.append(f"- **{key}**: {val}")
         lines += ["", _FOOTER_MESSAGE]
         return "\n".join(lines)
+
+    @staticmethod
+    def _is_specific_entity_request(message: str) -> bool:
+        """True when the question targets ONE specific entity (an id, a named
+        person, or 'tell me about X') rather than a collection/list of records.
+        Used to decide whether a list answer may safely refuse when no record of
+        the requested kind was retrieved (issue #203)."""
+        lower = message.lower()
+        if re.search(r"\b(?:show\s+all|list|all\s+the|every)\b", lower):
+            return False
+        if re.search(r"\b(?:cr|case|fir|if?r|no)[\s:-]{0,2}\d", lower) or re.search(r"\b\w{1,4}-\d{3,}\b", lower):
+            return True
+        if re.search(r"\b(?:about|profile|tell me about|details? on|info on|who is|what is)\b", lower):
+            return True
+        return False
 
     @staticmethod
     def _mentions_specific_entity(message: str, best: dict) -> bool:
@@ -745,22 +1003,33 @@ class LLMGenerator:
 
     @staticmethod
     def _record_kind(record: dict) -> str:
-        """Classifies a parsed record as case/fir/criminal/victim/officer."""
+        """Classifies a parsed record as case/fir/criminal/victim/officer.
+
+        Ordering matters: an FIR exposes fields such as 'Sections' and the
+        'Accused/Suspects' link column, so it must be recognized as an FIR
+        before criminal detection sees the suspect keyword (issue #203 — FIRs
+        used to be counted as criminal records for 'how many' questions).
+        """
         _id = str(record.get("_id", "")).upper()
-        if _id.startswith(("CR-", "CASE")) or "case_number" in record:
+        if _id.startswith(("CR-", "CASE")):
             return "case"
         if _id.startswith("FIR"):
             return "fir"
         keys = [k.lower().replace(" ", "_") for k in record.keys()]
-        if any("criminal" in k or "offender" in k or "suspect" in k for k in keys):
-            return "criminal"
-        if any("victim" in k for k in keys):
-            return "victim"
-        if any("officer" in k or "badge" in k for k in keys):
-            return "officer"
-        if any("fir_number" in k or "fir" == k for k in keys):
+        if "fir_number" in keys or "complainant" in keys or "sections" in keys:
             return "fir"
-        if any("case" in k or "category" in k or "priority" in k for k in keys):
+        if any(k in ("officer", "officer_name", "badge", "badge_number") for k in keys):
+            return "officer"
+        if any("victim" in k or "complainant" in k for k in keys):
+            return "victim"
+        if any(("criminal" in k or "offender" in k or "suspect" in k or "accused" in k) for k in keys):
+            return "criminal"
+        joined = " ".join(keys)
+        if any(n in joined for n in ("aliases", "identifying_marks", "mo_", " marks")) and any(
+            k in ("name", "person_name", "full_name") for k in keys
+        ):
+            return "criminal"
+        if any(k.startswith("case_") or k in ("case", "priority", "category") or "progress" in k for k in keys):
             return "case"
         return "record"
 
@@ -780,12 +1049,12 @@ class LLMGenerator:
         return None
 
     @staticmethod
-    def _dedupe_lines(kept: list, cap: int) -> list[str]:
+    def _dedupe_lines(kept: list, cap: int, temporal: bool = False, focus_kind: str | None = None) -> list[str]:
         """Collects deduplicated, non-junk context lines up to a cap."""
         emitted = 0
         seen_signatures: set[str] = set()
         out: list[str] = []
-        for _, _, _header, lines, line_scores in kept:
+        for _header, lines, line_scores in LLMGenerator._filtered_sections(kept, temporal, focus_kind):
             if emitted >= cap:
                 break
             ranked = sorted(zip(lines, line_scores), key=lambda pair: -pair[1])
@@ -805,11 +1074,11 @@ class LLMGenerator:
         return out
 
     @staticmethod
-    def _dedupe_records(kept: list) -> list[dict]:
+    def _dedupe_records(kept: list, temporal: bool = False, focus_kind: str | None = None) -> list[dict]:
         """Parses raw lines into ordered field/values, deduped by signature."""
         seen: set[str] = set()
         records: list[dict] = []
-        for _, _, _header, lines, line_scores in kept:
+        for _header, lines, line_scores in LLMGenerator._filtered_sections(kept, temporal, focus_kind):
             ranked = sorted(zip(lines, line_scores), key=lambda pair: -pair[1])
             for line, _score in ranked:
                 clean = _strip_markdown(line)
@@ -822,6 +1091,202 @@ class LLMGenerator:
                     seen.add(sig)
                 records.append(LLMGenerator._parse_record(clean))
         return [r for r in records if r]
+
+    @staticmethod
+    def _metadata_section(header: str) -> bool:
+        """Headers that carry recency/clock noise rather than records."""
+        lower = header.lower()
+        return header == _SYSTEM_CLOCK_HEADER or _RECENT_ACTIVITY_MARK in lower
+
+    @classmethod
+    def _filtered_sections(
+        cls,
+        kept: list[tuple[int, int, str, list[str], list[int]]],
+        temporal: bool = False,
+        focus_kind: str | None = None,
+    ) -> list[tuple[str, list[str], list[int]]]:
+        """Narrows context sections for list/record rendering:
+        - metadata sections are dropped unless the question is temporal;
+        - sections that explicitly target one record kind (focus_kind) keep only
+          lines whose relevance score is strictly positive, so a firm list is
+          never diluted by unrelated records;
+        - generic questions (no focus_kind) keep every non-metadata line, so a
+          broad query such as 'show me all data' still surfaces whatever context
+          exists instead of silently emptying the answer (issue #203 regression);
+        - temporal questions always show the whole recency window — filtered
+          highlights would drop 'New FIRs filed: 0'-style facts from the answer;
+        - entity-kind lists never include aggregate-analytics sections ('Show all
+          FIRs' must not answer with the summary line 'Total FIRs: 449') — unless
+          the question is temporal, where the full recency window must survive;
+        - sections matching the focused entity kind lead the answer;
+        - when a focus section exists, non-focus sections must clear a higher
+          relevance bar so a direct entity question is never buried in noise.
+        """
+        lenient = focus_kind is None or temporal
+        gathered: list[tuple[str, list[str], list[int], list[tuple[str, int]]]] = []
+        for _total, _max_score, header, lines, line_scores in kept:
+            if not temporal and cls._metadata_section(header):
+                continue
+            if focus_kind is not None and not temporal and cls._is_aggregate_section(header):
+                continue
+            usable = [
+                (line, score) for line, score in zip(lines, line_scores)
+                if score > 0 or lenient
+            ]
+            if not usable:
+                continue
+            gathered.append((header, lines, line_scores, usable))
+        focus_found = focus_kind is not None and any(
+            cls._section_matches_kind(header, focus_kind) for header, *_ in gathered
+        )
+        out: list[tuple[str, list[str], list[int]]] = []
+        for header, _lines, _scores, usable in gathered:
+            if focus_found and not cls._section_matches_kind(header, focus_kind):
+                usable = [(line, score) for line, score in usable if score >= 2]
+            if not usable:
+                continue
+            out.append((header, [line for line, _ in usable], [score for _, score in usable]))
+        if focus_kind is not None:
+            out.sort(key=lambda item: not cls._section_matches_kind(item[0], focus_kind))
+        return out
+
+    @staticmethod
+    def _section_matches_kind(header: str, kind: str | None) -> bool:
+        """True when a section header belongs to the focused entity kind."""
+        if not kind:
+            return False
+        lower = header.lower()
+        if kind == "case":
+            return re.search(r"\b(?:cases?|crime case|crime cases)\b", lower) is not None
+        if kind == "fir":
+            return re.search(r"\bfirs?\b", lower) is not None or "first information" in lower
+        if kind == "criminal":
+            return re.search(r"\b(?:criminals?|offenders?|dossiers?|suspects?)\b", lower) is not None or "gang" in lower
+        if kind == "officer":
+            return re.search(r"\b(?:officers?|police|badge)\b", lower) is not None
+        if kind == "victim":
+            return re.search(r"\b(?:victims?|complainants?|witnesses?)\b", lower) is not None
+        return False
+
+    @staticmethod
+    def _extract_person_names(message: str) -> list[str]:
+        """Pulls person-name candidates from a question.
+
+        A word is treated as a person reference when it survives the noise set
+        AND either starts with an uppercase letter (proper noun) or sits next to
+        a strong hint ('X crime records?', 'cases involving X', 'named X').
+        Running capitalized words are grouped into full names ('Ramu Swamy').
+        """
+        compact = re.sub(r"[^\w\s'-]", " ", message)
+        compact = re.sub(r"(\w)'(?:s|re|ve|d|m)\b", r" \1 ", compact)
+        tokens = [t for t in compact.split() if t]
+        names: list[str] = []
+        i = 0
+        while i < len(tokens):
+            bare = tokens[i].strip("'-")
+            low = bare.lower()
+            if (
+                len(bare) >= 3
+                and not any(ch.isdigit() for ch in bare)
+                and bare.isalnum()
+                and low not in _NAME_NOISE
+            ):
+                nxt = tokens[i + 1].strip("'-").lower() if i + 1 < len(tokens) else ""
+                prev = tokens[i - 1].strip("'-").lower() if i > 0 else ""
+                highlighted = (
+                    bare[0].isupper()
+                    or nxt in _PERSON_HINT_AFTER
+                    or prev in _PERSON_HINT_BEFORE
+                )
+                if highlighted:
+                    j = i
+                    while j + 1 < len(tokens):
+                        nxt_bare = tokens[j + 1].strip("'-")
+                        nxt_low = nxt_bare.lower()
+                        if (
+                            nxt_bare
+                            and nxt_bare[0].isupper()
+                            and nxt_low not in _NAME_NOISE
+                            and len(nxt_bare) >= 3
+                            and not any(ch.isdigit() for ch in nxt_bare)
+                        ):
+                            j += 1
+                        else:
+                            break
+                    names.append(" ".join(t.strip("'-") for t in tokens[i:j + 1]))
+                    i = j + 1
+                    continue
+            i += 1
+        return names
+
+    @classmethod
+    def _named_person_not_in_context(
+        cls, message: str, sections: list[tuple[str, list[str]]],
+    ) -> str | None:
+        """Returns a person's name when the question names a specific person
+        whose name appears in NO retrieved record. The chat must answer 'I don't
+        have that information' instead of dumping partially-matching aggregate
+        statistics (issue #203) — a personal name is a strong relevance signal
+        that a generic summary cannot satisfy."""
+        names = cls._extract_person_names(message)
+        if not names:
+            return None
+        haystack = ""
+        for header, content in sections:
+            haystack += " " + header + " " + " ".join(content)
+        haystack = haystack.lower()
+        for name in names:
+            if name.lower() in haystack:
+                return None  # this person exists in context — let the normal path answer
+        return names[0]
+
+    @staticmethod
+    def _classify_question(message: str) -> str:
+        """Names the KIND of question being asked so answers are shaped by
+        intent — counts stay counts, single fields stay single fields, and a
+        broad query is never answered with one random profile (issue #203).
+
+        One of:
+        - 'count':   "how many …?" — a bare number is the right answer;
+        - 'field':   single-attribute lookups (status/progress/when/where);
+        - 'rank':    superlative/comparative ("which district has the most?");
+        - 'profile': one specific named/id'd entity ("tell me about X");
+        - 'generic': an open request for records (list / overview).
+        """
+        lower = message.lower()
+        if LLMGenerator._is_count_question(message):
+            return "count"
+        if any(w in lower for w in (
+            "status", "state of", "condition", "progress", "how far",
+            "when", "date", "filed on", "occurred", "where", "location",
+            "district", "area",
+        )):
+            return "field"
+        if LLMGenerator._has_superlative_intent(message)[0]:
+            return "rank"
+        if LLMGenerator._is_specific_entity_request(message):
+            return "profile"
+        return "generic"
+
+    @staticmethod
+    def _query_target_kind(message: str) -> str | None:
+        """Maps an entity word in the question to a record kind so answers focus
+        on the requested entity type (issue #203: officer queries used to be
+        answered with whichever record merely mentioned the officer's name)."""
+        lower = message.lower()
+        if re.search(r"\b(?:officer|officers|police|badge|inspector|superintendent)\b", lower):
+            return "officer"
+        if re.search(r"\b(?:criminal|criminals|offender|offenders|suspect|suspects|accused)\b", lower):
+            return "criminal"
+        # 'complainant' is deliberately excluded: that wording usually asks for a
+        # field of an FIR record, not for the victim profile itself.
+        if re.search(r"\b(?:victim|victims|witness|witnesses)\b", lower):
+            return "victim"
+        if re.search(r"\bfirs?\b|\bfirst\s+information\b", lower):
+            return "fir"
+        if re.search(r"\bcases?\b|\bcomplaints?\b", lower):
+            return "case"
+        return None
 
     @staticmethod
     def _parse_record(line: str) -> dict:
@@ -850,6 +1315,8 @@ class LLMGenerator:
         lower = message.lower()
         if _is_platform_question(message):
             return ["Here's what I found about Saksha:", ""]
+        if any(w in lower for w in _TEMPORAL_WORDS):
+            return [f"Here's what the Saksha database shows for that period ({count} details):", ""]
         if any(w in lower for w in ("criminal", "offender", "suspect", "gang")):
             return [f"Here are the criminal/offender records I found ({count}):", ""]
         if any(w in lower for w in ("fir", "first information")):
@@ -926,6 +1393,63 @@ class LLMGenerator:
         return useful
 
     @staticmethod
+    def _is_aggregate_section(header: str) -> bool:
+        """Headers that carry aggregate analytics (summaries, category/district
+        breakdowns, forecasts) rather than concrete record lines. These must
+        never leak into an entity-kind list answer ('Show all FIRs' is answered
+        by FIR records, not by 'Total FIRs: 449'% statistics)."""
+        return bool(re.search(
+            r"(?:summary|statistics|comparison|breakdown|analytics\s+engine|forecast|hotspot)",
+            header.lower(),
+        ))
+
+    @staticmethod
+    def _context_coverage(sections: list[tuple[str, list[str]]]) -> str | None:
+        """A natural phrase describing what the retrieved context covers, used
+        when no record matched the user's words — a grounded assistant name-drops
+        what it DOES hold instead of repeating the question back."""
+        labels: list[str] = []
+        for header, _lines in sections:
+            lower = header.lower()
+            if _RECENT_ACTIVITY_MARK in lower or lower == _SYSTEM_CLOCK_HEADER.lower():
+                continue
+            if "vector retrieval" in lower:
+                label = "retrieved record snippets"
+            elif "recent activity" in lower:
+                continue
+            elif "comparison" in lower:
+                label = "district-by-district comparisons"
+            elif "breakdown" in lower or "distribution" in lower:
+                label = "category-by-category breakdowns"
+            elif "summary" in lower or "statistics" in lower:
+                label = "crime statistics"
+            elif "network" in lower or "gang" in lower:
+                label = "criminal network relationships"
+            elif "hotspot" in lower:
+                label = "hotspot predictions"
+            elif "forecast" in lower:
+                label = "district forecasts"
+            elif "fir" in lower:
+                label = "FIR records"
+            elif "case" in lower:
+                label = "crime case records"
+            elif "criminal" in lower or "offender" in lower or "dossier" in lower:
+                label = "criminal profiles"
+            elif "victim" in lower:
+                label = "victim records"
+            elif "officer" in lower:
+                label = "officer records"
+            else:
+                continue
+            if label not in labels:
+                labels.append(label)
+        if not labels:
+            return None
+        if len(labels) == 1:
+            return labels[0]
+        return ", ".join(labels[:-1]) + f", and {labels[-1]}"
+
+    @staticmethod
     def _is_no_data_line(line: str) -> bool:
         lowered = line.lower()
         return any(marker in lowered for marker in _NO_DATA_MARKERS)
@@ -968,11 +1492,15 @@ class LLMGenerator:
         return True, ascending
 
     @staticmethod
-    def _extract_ranked_pairs(lines: list[str], tokens: list[str]) -> list[tuple[str, int]]:
+    def _extract_ranked_pairs(
+        lines: list[str], tokens: list[str], dimension: str | None = None,
+    ) -> list[tuple[str, int]]:
         """Extracts (label, single_number) pairs like 'District Bengaluru Urban
         has 28 registered crime cases'. Comma-joined enumerations (how the
         analytics service emits district/category distributions) are split
-        into fragments first."""
+        into fragments first. When `dimension` is set ('district'/'category'),
+        only labels of that dimension survive so a district question is not
+        answered with a summary metric like 'Total crimes' (issue #203)."""
         pairs: list[tuple[str, int]] = []
         seen_labels: set[str] = set()
         for line in lines:
@@ -993,6 +1521,8 @@ class LLMGenerator:
                 while label_words and label_words[-1].lower() in _TRAILING_LABEL_WORDS:
                     label_words.pop()
                 label = " ".join(label_words)
+                if dimension is not None and LLMGenerator._label_dimension(label) != dimension:
+                    continue
                 number = int(numbers[0].replace(",", ""))
                 if not label or len(label) > 60 or number < 0 or label.lower() in seen_labels:
                     continue
@@ -1001,21 +1531,26 @@ class LLMGenerator:
         return pairs
 
     @classmethod
-    def _build_ranked_answer(cls, message: str, kept: list[tuple[int, int, str, list[str], list[int]]]) -> str | None:
+    def _build_ranked_answer(
+        cls, message: str, kept: list[tuple[int, int, str, list[str], list[int]]], temporal: bool = False,
+    ) -> str | None:
         superlative, ascending = cls._has_superlative_intent(message)
         if not superlative:
             return None
 
         tokens = [t.rstrip("s") for t in cls._query_tokens(message)]
+        dimension = cls._question_dimension(message)
         scored_lines: list[tuple[str, int]] = []
-        for total, _max_score, _header, lines, line_scores in kept:
+        for total, _max_score, header, lines, line_scores in kept:
             if total <= 0:
+                continue
+            if not temporal and cls._metadata_section(header):
                 continue
             for line, line_score in zip(lines, line_scores):
                 if line_score > 0:
                     scored_lines.append((line, line_score))
 
-        ranked = cls._extract_ranked_pairs([line for line, _ in scored_lines], tokens)
+        ranked = cls._extract_ranked_pairs([line for line, _ in scored_lines], tokens, dimension)
         if not ranked:
             return None
         ranked.sort(key=lambda pair: pair[1], reverse=not ascending)
