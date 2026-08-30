@@ -57,11 +57,11 @@ export const VictimologyPanel: React.FC = () => {
             </div>
             <div className="rounded border border-border-color bg-[var(--bg-tertiary)]/40 p-3">
               <span className="block text-[7.5px] uppercase text-[var(--text-muted)]">Linked to FIRs</span>
-              <span className="text-lg font-bold text-[var(--text-primary)]">{overview.victims_with_firs}</span>
+              <span className="text-lg font-bold text-[var(--text-primary)]">{overview.victims_with_linked_firs}</span>
             </div>
             <div className="rounded border border-border-color bg-[var(--bg-tertiary)]/40 p-3">
               <span className="block text-[7.5px] uppercase text-[var(--text-muted)]">Repeat victims</span>
-              <span className="text-lg font-bold text-amber-400">{overview.repeat_victim_count}</span>
+              <span className="text-lg font-bold text-amber-400">{overview.repeat_victims}</span>
             </div>
             <div className="rounded border border-border-color bg-[var(--bg-tertiary)]/40 p-3">
               <span className="block text-[7.5px] uppercase text-[var(--text-muted)]">Revictimization rate</span>
@@ -88,8 +88,8 @@ export const VictimologyPanel: React.FC = () => {
                     <tr key={victim.id}>
                       <td className="py-1.5 pr-3 font-bold text-[var(--text-primary)]">{victim.name}</td>
                       <td className="py-1.5 pr-3 text-amber-400 font-bold">{victim.fir_count}</td>
-                      <td className="py-1.5 pr-3 truncate max-w-[140px]">{victim.districts.join(', ') || '—'}</td>
-                      <td className="py-1.5 pr-3 truncate max-w-[160px]">{victim.categories.join(', ') || '—'}</td>
+                      <td className="py-1.5 pr-3 truncate max-w-[140px]">{(victim.districts ?? []).join(', ') || '—'}</td>
+                      <td className="py-1.5 pr-3 truncate max-w-[160px]">{(victim.categories ?? []).join(', ') || '—'}</td>
                       <td className={`py-1.5 font-bold ${victim.vulnerability_index === null ? 'text-[var(--text-muted)]' : severityColor(victim.vulnerability_index)}`}>
                         {victim.vulnerability_index === null ? '—' : victim.vulnerability_index}
                       </td>
@@ -117,12 +117,12 @@ export const VictimologyPanel: React.FC = () => {
                     <span className="w-32 truncate text-[var(--text-muted)]">{entry.district ?? 'Unknown district'}</span>
                     <div className="flex-1 h-1.5 rounded-full bg-black/30 overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${entry.vulnerability_index >= 70 ? 'bg-red-500/70' : entry.vulnerability_index >= 45 ? 'bg-amber-500/70' : 'bg-[#0E9E78]/70'}`}
-                        style={{ width: `${entry.vulnerability_index}%` }}
+                        className={`h-full rounded-full ${(entry.vulnerability_index ?? 0) >= 70 ? 'bg-red-500/70' : (entry.vulnerability_index ?? 0) >= 45 ? 'bg-amber-500/70' : 'bg-[#0E9E78]/70'}`}
+                        style={{ width: `${entry.vulnerability_index ?? 0}%` }}
                       />
                     </div>
-                    <span className={`w-8 text-right font-bold ${severityColor(entry.vulnerability_index)}`}>{entry.vulnerability_index}</span>
-                    <span className="hidden md:inline w-56 truncate text-[7.5px] uppercase text-[var(--text-muted)]">{entry.risk_factors.join(' · ')}</span>
+                    <span className={`w-8 text-right font-bold ${severityColor(entry.vulnerability_index ?? 0)}`}>{entry.vulnerability_index ?? 0}</span>
+                    <span className="hidden md:inline w-56 truncate text-[7.5px] uppercase text-[var(--text-muted)]">{(entry.risk_factors ?? []).join(' · ')}</span>
                   </div>
                 ))
               )}

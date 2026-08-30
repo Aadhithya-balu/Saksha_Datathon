@@ -303,7 +303,7 @@ def _prewarm_models() -> None:
                             fn()
                         else:
                             logger.warning("[prewarm] %s has no callable %s — add it so the domain prewarms", key, fn_name)
-                    logger.info("[prewarm] %s model loaded", key)
+                    logger.info(f"[prewarm] {key} model loaded")
                 except Exception as exc:
                     logger.warning("[prewarm] %s skipped: %s", key, exc)
         except Exception as exc:
@@ -352,8 +352,7 @@ def _prewarm_mo_profiles():
                 for criminal in criminals:
                     extract_criminal_mo_profile(db, criminal)
                 logger.info(
-                    "[prewarm] MO profiles cached: %d cases, %d criminals",
-                    len(cases), len(criminals),
+                    f"[prewarm] MO profiles cached: {len(cases)} cases, {len(criminals)} criminals"
                 )
             finally:
                 db.close()

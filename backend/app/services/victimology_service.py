@@ -30,7 +30,7 @@ _ELDERLY_AGE = 65
 
 
 def _victim_case_details(db: Session) -> dict[Any, list[dict[str, Any]]]:
-    """Map victim_id -> [{fir_number, filed_at, status, sections}] from FIR links."""
+    """Map victim_id -> [{fir_number, filed_at, status, sections, district, category}] from FIR links."""
     rows = (
         db.query(FIRVictimLink)
         .all()
@@ -40,11 +40,14 @@ def _victim_case_details(db: Session) -> dict[Any, list[dict[str, Any]]]:
         fir = link.fir
         if fir is None:
             continue
+        case = fir.crime_case
         details[link.victim_id].append({
             "fir_number": fir.fir_number,
             "status": fir.status,
             "sections": fir.sections,
             "filed_at": fir.filed_at.isoformat() if fir.filed_at else None,
+            "district": case.location.district if case is not None and case.location is not None else None,
+            "category": case.category.name if case is not None and case.category is not None else None,
         })
     return details
 
@@ -129,14 +132,20 @@ def get_repeat_victims(db: Session) -> dict[str, Any]:
         if len(rows) < 2:
             continue
         analysis = compute_vulnerability_index(victim, rows, is_repeat=True)
+        districts = sorted({row.get("district") for row in rows if row.get("district")})
+        categories = sorted({row.get("category") for row in rows if row.get("category")})
         results.append({
             "id": str(victim.id),
+            "name": victim.full_name,
             "full_name": victim.full_name,
             "gender": victim.gender,
             "age": victim.age,
             "district_hint": (victim.address or "").split(",")[-1].strip() if victim.address else None,
             "fir_count": len(rows),
+            "districts": districts,
+            "categories": categories,
             "firs": rows,
+            "vulnerability_index": analysis["score"],
             "vulnerability": analysis,
         })
 
@@ -163,12 +172,18 @@ def get_vulnerability_index(db: Session) -> dict[str, Any]:
         rows = case_details.get(victim.id, [])
         is_repeat = len(rows) >= 2
         analysis = compute_vulnerability_index(victim, rows, is_repeat=is_repeat)
+        districts = sorted({row.get("district") for row in rows if row.get("district")})
+        district_hint = (victim.address or "").split(",")[-1].strip() if victim.address else None
         ranked.append({
             "id": str(victim.id),
+            "name": victim.full_name,
             "full_name": victim.full_name,
             "age": victim.age,
             "gender": victim.gender,
             "linked_firs": len(rows),
+            "fir_count": len(rows),
+            "district": districts[0] if districts else district_hint,
+            "vulnerability_index": analysis["score"],
             "vulnerability_score": analysis["score"],
             "vulnerability_band": analysis["band"],
             "risk_factors": [f["factor"] for f in analysis["factors"]],

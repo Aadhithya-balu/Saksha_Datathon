@@ -2,7 +2,7 @@
     "model_name": "SAKSHA District Risk & Forecast",
     "risk_algorithm": "RandomForest",
     "forecast_algorithm": "XGBoost",
-    "version": "20260829_114108",
+    "version": "20260830_034142",
     "risk_features": [
         "crime_count",
         "night_crime_ratio",
@@ -82,5 +82,5 @@
         "mae_improvement_pct": 2.52,
         "outperforms_baseline": false
     },
-    "trained_on": "2026-08-29T11:41:08.176501+00:00"
+    "trained_on": "2026-08-30T03:41:42.632451+00:00"
 }

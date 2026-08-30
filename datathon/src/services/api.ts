@@ -2134,8 +2134,8 @@ export async function getDailySummary() {
 
 export interface VictimologyOverview {
   total_victims: number;
-  victims_with_firs: number;
-  repeat_victim_count: number;
+  victims_with_linked_firs: number;
+  repeat_victims: number;
   repeat_victimization_rate: number | null;
   average_age: number | null;
   gender_distribution: Array<{ gender: string; count: number }>;
@@ -2167,13 +2167,20 @@ export async function getVictimologyOverview() {
 }
 
 export async function getRepeatVictims(minFirCount = 2) {
-  return apiRequest<{ count: number; repeat_victims: RepeatVictim[] }>(
-    `/victimology/repeat-victims?min_fir_count=${minFirCount}`
-  );
+  const raw = await apiRequest<{
+    total_victims: number;
+    repeat_victims: number;
+    results: RepeatVictim[];
+  }>(`/victimology/repeat-victims?min_fir_count=${minFirCount}`);
+  return { count: raw.repeat_victims, repeat_victims: raw.results };
 }
 
 export async function getVulnerabilityIndex() {
-  return apiRequest<{ count: number; entries: VulnerabilityEntry[] }>('/victimology/vulnerability-index');
+  const raw = await apiRequest<{
+    total_assessed: number;
+    results: VulnerabilityEntry[];
+  }>('/victimology/vulnerability-index');
+  return { count: raw.total_assessed, entries: raw.results };
 }
 
 // ── Interventions (issue #139 M7) ───────────────────────────────────────────

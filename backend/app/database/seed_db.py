@@ -618,7 +618,53 @@ def _generate_comprehensive_cases():
     return cases
 
 
-ALL_CASES = HANDCRAFTED_CASES + _generate_comprehensive_cases()
+# ---------------------------------------------------------------------------
+# RECENT_CASES — 24 forward-dated cases (>=2 per day) spanning Aug 31 - Sep 9,
+# 2026. Positive day offsets relative to seed time keep the demo valuation
+# window dense so time-series charts, forecasts, and rankings have fresh input.
+# ---------------------------------------------------------------------------
+RECENT_CASES = [
+    # Aug 31 (day +1)
+    ("CR-2026-NXT-001", "Cyber Crime & Online Fraud", "Koramangala Police Station", 1, "investigating", "phishing bank-login clone targeting festival shoppers, OTP interception", ["Prasad Shenoy"], ["Sunita Devi"], "FIR-NXT-001/2026", "IPC 420, IT Act 66D", "high", 35),
+    ("CR-2026-NXT-002", "Theft & Burglaries", "Devaraja Police Station", 1, "open", "night shop break-in, cash register targeted, crowbar entry", ["Vijay Kumar S"], ["Mohan Krishna"], "FIR-NXT-002/2026", "IPC 379, 457", "medium", 15),
+    ("CR-2026-NXT-003", "Narcotics Smuggling Services", "Pandeshwar Police Station", 1, "investigating", "coastal courier parcel flagged for synthetic MDMA, harbor concealment", ["Sayed Ibrahim"], [], "FIR-NXT-003/2026", "NDPS 21, 22", "critical", 40),
+    # Sep 1 (day +2)
+    ("CR-2026-NXT-004", "Illegal Mining Violations", "Chitradurga Town Police Station", 2, "open", "night iron ore truck convoy, forged e-challan transit slips", ["Mohsin Pasha"], [], "FIR-NXT-004/2026", "MMDR Act 21", "high", 20),
+    ("CR-2026-NXT-005", "Assault", "Nazarbad Police Station", 2, "investigating", "market place altercation escalated, weapon seized, witness threats", ["Anil Kumar J"], ["Chitra K"], "FIR-NXT-005/2026", "IPC 323, 324, 506", "medium", 30),
+    ("CR-2026-NXT-006", "Smuggling & Excise Violations", "Camp Police Station", 2, "open", "illicit liquor stock raid at godown, unbranded bottles seized", ["Lokesh Biradar"], [], "FIR-NXT-006/2026", "Excise Act 32", "medium", 25),
+    # Sep 2 (day +3)
+    ("CR-2026-NXT-007", "Cyber Crime & Online Fraud", "HSR Layout Police Station", 3, "open", "cryptocurrency investment fraud via social media, fake KYC wallet", ["Farhan Ahmed"], ["Ayesha Parveen"], "FIR-NXT-007/2026", "IPC 420, IT Act 66D", "critical", 10),
+    ("CR-2026-NXT-008", "Domestic Violence", "Mandya Town Police Station", 3, "investigating", "repeat domestic complaint, protective order sought", [], ["Shashikala Devi"], "FIR-NXT-008/2026", "DV Act, IPC 498A", "medium", 45),
+    ("CR-2026-NXT-009", "Theft & Burglaries", "Kolar Town Police Station", 3, "open", "gold chain snatching near temple complex, getaway bike", ["Mohammed Ali"], ["Chandrakala Devi"], "FIR-NXT-009/2026", "IPC 392, 356", "high", 15),
+    # Sep 3 (day +4)
+    ("CR-2026-NXT-010", "Narcotics Smuggling Services", "Hubli City Police Station", 4, "investigating", "interstate drug courier via bus terminal, concealed false compartment", ["Zaheer Ahmed"], [], "FIR-NXT-010/2026", "NDPS 21, 22", "critical", 50),
+    ("CR-2026-NXT-011", "Assault", "Gadag Town Police Station", 4, "open", "road rage assault near bus stand, public CCTV captured", ["Anil Kumar J"], ["Sarojini Bhat"], "FIR-NXT-011/2026", "IPC 323, 324", "medium", 15),
+    ("CR-2026-NXT-012", "Property Disputes", "Ramanagara Town Police Station", 4, "investigating", "encroachment with fabricated title documents, intimidation calls", ["Mahesh Jain"], [], "FIR-NXT-012/2026", "IPC 447, 468, 506", "medium", 40),
+    # Sep 4 (day +5)
+    ("CR-2026-NXT-013", "Cyber Crime & Online Fraud", "Chowk Police Station", 5, "open", "UPI payment fraud via fake QR codes at commercial outlet", ["Naveen Reddy"], [], "FIR-NXT-013/2026", "IPC 420, IT Act 66D", "high", 20),
+    ("CR-2026-NXT-014", "Theft & Burglaries", "Udupi Town Police Station", 5, "open", "residential burglary, smart lock bypass, jewellery targeted", ["Ramu Swamy"], ["Sunanda Poojary"], "FIR-NXT-014/2026", "IPC 380, 457", "high", 25),
+    ("CR-2026-NXT-015", "Illegal Mining Violations", "Hospet Town Police Station", 5, "investigating", "weighbridge tampering on iron ore convoy, forged manifests", ["Mohsin Pasha", "Tariq Hussain"], [], "FIR-NXT-015/2026", "MMDR Act 21", "high", 45),
+    # Sep 5 (day +6)
+    ("CR-2026-NXT-016", "Domestic Violence", "Haveri Town Police Station", 6, "open", "new domestic assault complaint, prior FIRs on record", [], ["Kavita Banakar"], "FIR-NXT-016/2026", "DV Act, IPC 498A", "medium", 15),
+    ("CR-2026-NXT-017", "Smuggling & Excise Violations", "Sirsi Police Station", 6, "investigating", "forest fringe arrack distillation bust, midnight raid", ["Lokesh Biradar"], [], "FIR-NXT-017/2026", "Excise Act 32", "medium", 35),
+    ("CR-2026-NXT-018", "Cyber Crime & Online Fraud", "Mantralayam Road Police Station", 6, "open", "temple donation fraud portal, cloned helpline number", ["Sunil Khot"], ["Rajendra Prasad"], "FIR-NXT-018/2026", "IPC 420, IT Act 66D", "medium", 10),
+    # Sep 6 (day +7)
+    ("CR-2026-NXT-019", "Narcotics Smuggling Services", "Bidar Town Police Station", 7, "investigating", "cannabis supply consignment from inter-state border", ["Imran Khan Pathan"], [], "FIR-NXT-019/2026", "NDPS 20, 21", "critical", 55),
+    ("CR-2026-NXT-020", "Theft & Burglaries", "Shimoga Town Police Station", 7, "open", "bike theft spree near commercial hub, stripped for parts", ["Rohit Shetty K"], ["Arun Kumar"], "FIR-NXT-020/2026", "IPC 379", "medium", 20),
+    ("CR-2026-NXT-021", "Illegal Mining Violations", "Hoskote Police Station", 7, "investigating", "granite slab heist from quarry depot, marked lorries", ["Satish Mudiraj"], [], "FIR-NXT-021/2026", "MMDR Act 21", "high", 40),
+    # Sep 7 (day +8)
+    ("CR-2026-NXT-022", "Cyber Crime & Online Fraud", "Whitefield Police Station", 8, "open", "corporate phishing email leads to invoice fraud", ["Vikram Yadav"], ["Vijaya Kumari"], "FIR-NXT-022/2026", "IPC 419, IT Act 66C, 66D", "high", 15),
+    ("CR-2026-NXT-023", "Theft & Burglaries", "Davanagere Town Police Station", 8, "investigating", "textile godown break-in, goods worth 8L stolen", ["Rohit Shetty K"], [], "FIR-NXT-023/2026", "IPC 379, 457", "high", 50),
+    # Sep 8 (day +9)
+    ("CR-2026-NXT-024", "Assault", "Karwar Town Police Station", 9, "open", "coastal parking dispute turned violent, bystander injured", [], ["Rajesh Kharvi"], "FIR-NXT-024/2026", "IPC 323, 324", "medium", 12),
+    ("CR-2026-NXT-025", "Smuggling & Excise Violations", "Puttur Police Station", 9, "investigating", "coastal electronics smuggling via fishing boat", ["Irfan Hassan", "Nasir Shaikh"], [], "FIR-NXT-025/2026", "Excise Act, Customs Act", "high", 35),
+    # Sep 9 (day +10)
+    ("CR-2026-NXT-026", "Narcotics Smuggling Services", "Vani Vilas Mohalla Police Station", 10, "open", "dead-drop MDMA parcel intercepted near college zone", ["Rahul Deshpande"], [], "FIR-NXT-026/2026", "NDPS 21, 22", "critical", 18),
+    ("CR-2026-NXT-027", "Theft & Burglaries", "Jayanagar Police Station", 10, "investigating", "apartment block chain-snatching, multi-floor entry", ["Mohammed Ali"], ["Anupama Sharma"], "FIR-NXT-027/2026", "IPC 392, 380", "high", 42),
+    ("CR-2026-NXT-028", "Cyber Crime & Online Fraud", "Afzalpur Road Police Station", 10, "open", "loan-app extortion ring operating via cloned numbers", ["Prasad Shenoy", "Naveen Reddy"], [], "FIR-NXT-028/2026", "IPC 420, IT Act 66D", "high", 10),
+]
+
+ALL_CASES = HANDCRAFTED_CASES + _generate_comprehensive_cases() + RECENT_CASES
 
 
 DEMO_NOTIFICATIONS = [
