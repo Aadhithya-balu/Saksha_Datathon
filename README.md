@@ -343,6 +343,11 @@ Visualization & Conversational AI Platform
 Saksha transforms traditional crime records into a comprehensive intelligence platform by combining geospatial analytics, criminological network analysis, machine learning, predictive intelligence, anomaly detection, and conversational AI. The solution enables Karnataka State Police to move beyond manual reporting and fragmented records, creating a proactive, intelligence-driven policing ecosystem focused on prevention, investigation, and strategic decision-making.
 
 ---
+# Demo values
+- **Admin** - 564738
+- **SP-0088** - 123456
+- **IO-3921** - 123456
+- **SCRB-7740** - 123456
 
 # Operational Documentation
 
