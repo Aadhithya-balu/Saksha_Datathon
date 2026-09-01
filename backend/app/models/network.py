@@ -144,6 +144,46 @@ class ShortestPathResponse(BaseModel):
     explanation: str
 
 
+class NetworkPathNode(BaseModel):
+    id: str
+    name: str
+    category: NetworkNodeCategory
+    riskScore: float = 0.0
+    casesCount: int = 0
+    district: str | None = None
+    status: str | None = None
+    isSeed: bool = False
+
+
+class NetworkPathRelationship(BaseModel):
+    source_id: str
+    target_id: str
+    relationship_type: str = "shared_fir"
+    relationship: str = "Shared FIR participation"
+    # Evidence: every FIR (and its case context) that supports this segment.
+    fir_numbers: list[str] = Field(default_factory=list)
+    case_numbers: list[str] = Field(default_factory=list)
+    crime_types: list[str] = Field(default_factory=list)
+    districts: list[str] = Field(default_factory=list)
+    stations: list[str] = Field(default_factory=list)
+    dates: list[str] = Field(default_factory=list)
+    # role each endpoint played in the supporting FIRs, e.g. "accused"/"victim".
+    roles: dict[str, str] = Field(default_factory=dict)
+
+
+class NetworkPathResponse(BaseModel):
+    found: bool
+    distance: int = 0
+    source: NetworkPathNode | None = None
+    target: NetworkPathNode | None = None
+    nodes: list[NetworkPathNode] = Field(default_factory=list)
+    relationships: list[NetworkPathRelationship] = Field(default_factory=list)
+    message: str
+    explanation: str = ""
+    # Summary metrics: entities, hops, supporting_firs, crime_types, districts.
+    summary: dict[str, int] = Field(default_factory=dict)
+
+
 class CentralityMetric(BaseModel):
     node_id: str
     node_name: str

@@ -3,6 +3,7 @@ FastAPI Router for Graph-Based Criminal Intelligence, Neo4j Graph Queries,
 Link Analysis, Gang Networks, Shortest Path Analysis, and AI Graph Insights.
 """
 
+from datetime import datetime, timezone
 from typing import Any
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
@@ -16,6 +17,7 @@ from app.models.network import (
     GangNetworkSummary,
     LinkAnalysisResponse,
     NetworkGraphResponse,
+    NetworkPathResponse,
     ShortestPathRequest,
     ShortestPathResponse,
 )
@@ -25,6 +27,32 @@ from app.services.network import network_service
 router = APIRouter(prefix="/network", tags=["Network Graph Intelligence"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
 
+def _parse_network_date(value: str | None, *, end_of_day: bool = False) -> datetime | None:
+    """Parse an optional date filter (YYYY-MM-DD or ISO 8601) into a naive UTC datetime.
+
+    ``end_of_day`` widens a bare date to 23:59:59.999999 so date ranges are inclusive.
+    Invalid values are rejected with 422 rather than silently ignored.
+    """
+    if not value:
+        return None
+    text = value.strip()
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"Invalid date value '{value}'. Expected YYYY-MM-DD or ISO 8601 "
+                "e.g. 2026-06-01 or 2026-06-01T14:30:00."
+            ),
+        )
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    if end_of_day and parsed.hour == 0 and parsed.minute == 0 and parsed.second == 0:
+        parsed = parsed.replace(hour=23, minute=59, second=59, microsecond=999999)
+    return parsed
+
+
 @router.get("/graph", response_model=NetworkGraphResponse)
 def get_full_graph(
     category_filter: str | None = Query(None),
@@ -32,10 +60,23 @@ def get_full_graph(
     provenance_filter: str | None = Query(None),
     exclude_demo: bool = Query(False),
     limit: int = Query(500, ge=1, le=2000, description="Max nodes returned. Large values may be slow."),
+    criminal_name: str | None = Query(None, max_length=255, description="Filter by criminal/suspect name (substring, case-insensitive)."),
+    crime_type: str | None = Query(None, max_length=500, description="Comma-separated crime types (OR)."),
+    district: str | None = Query(None, max_length=500, description="Comma-separated districts (OR, case-insensitive)."),
+    police_station: str | None = Query(None, max_length=500, description="Comma-separated police station jurisdictions (OR)."),
+    fir_number: str | None = Query(None, max_length=500, description="Comma-separated FIR or case numbers (OR)."),
+    victim_name: str | None = Query(None, max_length=255, description="Filter by victim name (substring, case-insensitive)."),
+    date_from: str | None = Query(None, description="Only incidents on/after this date (YYYY-MM-DD or ISO 8601)."),
+    date_to: str | None = Query(None, description="Only incidents on/before this date (YYYY-MM-DD or ISO 8601)."),
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
 ):
-    """Retrieve full criminal relationship network graph."""
+    """Retrieve full criminal relationship network graph.
+
+    Multi-parameter filters (issue #226) are combined with AND semantics; values
+    within a single comma-separated parameter are OR-ed. All filters are optional,
+    so existing unfiltered queries are unchanged.
+    """
     return network_service.get_full_network_graph(
         db,
         category_filter=category_filter,
@@ -43,6 +84,14 @@ def get_full_graph(
         provenance_filter=provenance_filter,
         exclude_demo=exclude_demo,
         limit=limit,
+        criminal_name=criminal_name,
+        crime_type=crime_type,
+        district=district,
+        police_station=police_station,
+        fir_number=fir_number,
+        victim_name=victim_name,
+        date_from=_parse_network_date(date_from),
+        date_to=_parse_network_date(date_to, end_of_day=True),
     )
 
 
@@ -206,6 +255,50 @@ def calculate_shortest_path(
 ):
     """Calculate shortest relationship path and degree separation between two entities in the graph."""
     return network_service.find_shortest_path(db, source_id=req.source_id, target_id=req.target_id, max_depth=req.max_depth)
+
+
+@router.get("/path", response_model=NetworkPathResponse)
+def find_connection_path(
+    source_id: str = Query(..., min_length=1, max_length=300, description="Source entity id (e.g. criminal-<id>, victim-<id>, officer-<id>)."),
+    target_id: str = Query(..., min_length=1, max_length=300, description="Target entity id."),
+    max_hops: int = Query(3, ge=1, le=5, description="Maximum relationship hops to search (1-5)."),
+    criminal_name: str | None = Query(None, max_length=255, description="Filter by criminal/suspect name (substring, case-insensitive)."),
+    crime_type: str | None = Query(None, max_length=500, description="Comma-separated crime types (OR)."),
+    district: str | None = Query(None, max_length=500, description="Comma-separated districts (OR, case-insensitive)."),
+    police_station: str | None = Query(None, max_length=500, description="Comma-separated police station jurisdictions (OR)."),
+    fir_number: str | None = Query(None, max_length=500, description="Comma-separated FIR or case numbers (OR)."),
+    victim_name: str | None = Query(None, max_length=255, description="Filter by victim name (substring, case-insensitive)."),
+    date_from: str | None = Query(None, description="Only incidents on/after this date (YYYY-MM-DD or ISO 8601)."),
+    date_to: str | None = Query(None, description="Only incidents on/before this date (YYYY-MM-DD or ISO 8601)."),
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user),
+):
+    """Find the shortest evidence-backed person-to-person connection path.
+
+    Uses the same source-of-truth filters as GET /network/graph (issue #226):
+    the path is computed only over FIRs matching the active filters, so a
+    connection can never leak through a relationship the investigator excluded.
+    `max_hops` bounds BFS depth; `max_hops=1` means a shared FIR only.
+    """
+    if source_id.strip().lower() == target_id.strip().lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please select two different entities.",
+        )
+    return network_service.find_connection_path(
+        db,
+        source_id=source_id,
+        target_id=target_id,
+        max_hops=max_hops,
+        criminal_name=criminal_name,
+        crime_type=crime_type,
+        district=district,
+        police_station=police_station,
+        fir_number=fir_number,
+        victim_name=victim_name,
+        date_from=_parse_network_date(date_from),
+        date_to=_parse_network_date(date_to, end_of_day=True),
+    )
 
 
 @router.post("/link-analysis", response_model=LinkAnalysisResponse)

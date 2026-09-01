@@ -11,7 +11,7 @@ import CommandPalette from './components/ui/CommandPalette';
 import Overview from './pages/Overview';
 import CommandCenter from './pages/CommandCenter';
 import Hotspots from './pages/Hotspots';
-import Network from './pages/Network';
+import Network from './pages/Network/index';
 import Predictions from './pages/Predictions';
 import Anomalies from './pages/Anomalies';
 import Offenders from './pages/Offenders';

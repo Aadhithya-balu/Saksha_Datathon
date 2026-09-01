@@ -331,6 +331,87 @@ export interface ShortestPathResult {
   explanation: string;
 }
 
+export type NetworkPathEntityCategory =
+  | 'suspect'
+  | 'offender'
+  | 'victim'
+  | 'officer';
+export type NetworkPathEntityCategoryRaw =
+  | NetworkPathEntityCategory
+  | NetworkNodeCategory
+  | 'case'
+  | 'location'
+  | 'gang'
+  | 'vehicle'
+  | 'weapon';
+
+export interface NetworkPathNodeRecord {
+  id: string;
+  name: string;
+  category: NetworkPathEntityCategoryRaw;
+  riskScore?: number;
+  casesCount?: number;
+  district?: string | null;
+  status?: string | null;
+  isSeed?: boolean;
+}
+
+export interface NetworkPathRelationshipRecord {
+  source_id: string;
+  target_id: string;
+  relationship_type: string;
+  relationship: string;
+  fir_numbers: string[];
+  case_numbers: string[];
+  crime_types: string[];
+  districts: string[];
+  stations: string[];
+  dates: string[];
+  roles: Record<string, string>;
+}
+
+export interface NetworkPathResponse {
+  found: boolean;
+  distance: number;
+  source?: NetworkPathNodeRecord | null;
+  target?: NetworkPathNodeRecord | null;
+  nodes: NetworkPathNodeRecord[];
+  relationships: NetworkPathRelationshipRecord[];
+  message: string;
+  explanation?: string;
+  summary?: {
+    entities: number;
+    hops: number;
+    supporting_firs: number;
+    crime_types: number;
+    districts: number;
+  };
+}
+
+export async function findNetworkPath(
+  sourceId: string,
+  targetId: string,
+  maxHops: number,
+  filters?: NetworkFilterParams
+): Promise<NetworkPathResponse> {
+  const params: Record<string, string | number> = {
+    source_id: sourceId,
+    target_id: targetId,
+    max_hops: maxHops,
+  };
+  if (filters) {
+    if (filters.criminalName) params.criminal_name = filters.criminalName;
+    if (filters.crimeTypes?.length) params.crime_type = filters.crimeTypes.join(',');
+    if (filters.districts?.length) params.district = filters.districts.join(',');
+    if (filters.policeStations?.length) params.police_station = filters.policeStations.join(',');
+    if (filters.firNumbers?.length) params.fir_number = filters.firNumbers.join(',');
+    if (filters.victimName) params.victim_name = filters.victimName;
+    if (filters.dateFrom) params.date_from = filters.dateFrom;
+    if (filters.dateTo) params.date_to = filters.dateTo;
+  }
+  return apiRequest<NetworkPathResponse>(`/network/path${buildQueryString(params)}`);
+}
+
 export interface CentralityMetric {
   node_id: string;
   node_name: string;
@@ -837,11 +918,23 @@ export async function getNetworkCase(
   );
 }
 
+export interface NetworkFilterParams {
+  criminalName?: string;
+  crimeTypes?: string[];
+  districts?: string[];
+  policeStations?: string[];
+  firNumbers?: string[];
+  victimName?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 export async function getFullNetworkGraph(
   categoryFilter?: string,
   minRisk?: number,
   provenanceFilter?: string,
-  excludeDemo?: boolean
+  excludeDemo?: boolean,
+  filters?: NetworkFilterParams
 ) {
   return apiRequest<NetworkGraphResponse>(
     `/network/graph${buildQueryString({
@@ -849,6 +942,14 @@ export async function getFullNetworkGraph(
       min_risk: minRisk,
       provenance_filter: provenanceFilter,
       exclude_demo: excludeDemo,
+      criminal_name: filters?.criminalName,
+      crime_type: filters?.crimeTypes?.length ? filters.crimeTypes.join(',') : undefined,
+      district: filters?.districts?.length ? filters.districts.join(',') : undefined,
+      police_station: filters?.policeStations?.length ? filters.policeStations.join(',') : undefined,
+      fir_number: filters?.firNumbers?.length ? filters.firNumbers.join(',') : undefined,
+      victim_name: filters?.victimName,
+      date_from: filters?.dateFrom,
+      date_to: filters?.dateTo,
     })}`
   );
 }

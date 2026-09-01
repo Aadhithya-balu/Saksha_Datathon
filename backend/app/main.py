@@ -447,15 +447,18 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.error(f"PostgreSQL setup error: {exc}")
 
-    # Auto-seed demo data when running on SQLite (no real DB) and the
-    # users table is empty — gives operators a working login out of the box.
+    # Auto-seed demo data when the database has no users yet and demo fallback
+    # is permitted (never in production). This gives operators a working login —
+    # and the demo gang networks — out of the box on any fresh environment,
+    # including Supabase/PostgreSQL deploys with an empty database.
     try:
-        from app.database.postgres import SessionLocal, engine as _eng
-        if _eng.url.drivername.startswith("sqlite"):
+        from app.core import data_mode as _data_mode
+        from app.database.postgres import SessionLocal
+        if not _data_mode.is_production():
             with SessionLocal() as _db:
                 from app.models.user import User
                 if _db.query(User).count() == 0:
-                    logger.info("SQLite DB has no users — seeding demo data...")
+                    logger.info("Database has no users — seeding demo data...")
                     from app.database.seed_db import seed
                     seed()
                     logger.info("Demo data seeded successfully")
