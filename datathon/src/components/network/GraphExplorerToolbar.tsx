@@ -3,6 +3,7 @@ import type { NetworkWorkspaceView } from '../../hooks/useNetwork';
 import {
   Share2,
   GitCommit,
+  Waypoints,
   Users,
   BarChart3,
   Calendar,
@@ -10,7 +11,6 @@ import {
   RefreshCw,
   Sliders,
   Database,
-  Search,
 } from 'lucide-react';
 
 interface GraphExplorerToolbarProps {
@@ -23,8 +23,6 @@ interface GraphExplorerToolbarProps {
   isNeo4jBacked: boolean;
   onExportMatrix: () => void;
   onNeo4jSync: () => void;
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
 }
 
 export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
@@ -37,12 +35,11 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
   isNeo4jBacked,
   onExportMatrix,
   onNeo4jSync,
-  searchQuery,
-  setSearchQuery,
 }) => {
   const views: { id: NetworkWorkspaceView; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: '3d_explorer', label: '3D Graph Explorer', icon: Share2 },
     { id: 'shortest_path', label: 'Shortest Path', icon: GitCommit },
+    { id: 'path_finder', label: 'Connection Path', icon: Waypoints },
     { id: 'gangs', label: 'Gang Networks', icon: Users },
     { id: 'link_analysis', label: 'Link Analysis', icon: BarChart3 },
     { id: 'timeline', label: 'Timeline View', icon: Calendar },
@@ -110,18 +107,6 @@ export const GraphExplorerToolbar: React.FC<GraphExplorerToolbarProps> = ({
 
       {/* Bottom Filter & Search Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[var(--border-primary)] text-[11px]">
-        {/* Node Search Bar */}
-        <div className="relative flex-1 min-w-[220px] max-w-sm">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[var(--text-muted)]" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search suspect, case, location..."
-            className="w-full bg-[var(--bg-primary)] border border-[var(--border-secondary)] rounded-btn pl-8 pr-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
-          />
-        </div>
-
         {/* Category Filters */}
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold flex items-center gap-1">

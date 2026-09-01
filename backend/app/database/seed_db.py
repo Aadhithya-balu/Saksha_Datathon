@@ -342,6 +342,43 @@ CRIMINALS = [
     ("Nasir Shaikh", "Nasir", date(1989, 8, 14), "Male", "Short, heavy build", "Fish export smuggling", "at_large"),
 ]
 
+# Demo syndicate rosters (issue #53 gang view). Members are drawn from CRIMINALS;
+# the Network gang hierarchy service derives Kingpin/Lieutenant/Operative roles
+# from FIR-link count + risk, and flags every roster here as DEMO_SEED derived.
+CRIMINAL_GANG_MAP = {
+    "Ramu Swamy": "Whitefield Chain Snatchers",
+    "Mohammed Ali": "Whitefield Chain Snatchers",
+    "Ravi Shankar Bhat": "Whitefield Chain Snatchers",
+    "Manjunath Holla": "Whitefield Chain Snatchers",
+    "Rohit Shetty K": "Whitefield Chain Snatchers",
+    "Vijay Kumar S": "Whitefield Chain Snatchers",
+    "Vasanth Kumar": "Whitefield Chain Snatchers",
+    "Ashok Kamble": "Whitefield Chain Snatchers",
+    "Sayed Ibrahim": "Konkan Narcotics Cartel",
+    "Imran Khan Pathan": "Konkan Narcotics Cartel",
+    "Khalid Mehmood": "Konkan Narcotics Cartel",
+    "Zaheer Ahmed": "Konkan Narcotics Cartel",
+    "Irfan Hassan": "Konkan Narcotics Cartel",
+    "Rahul Deshpande": "Konkan Narcotics Cartel",
+    "Hafeez Rehman": "Konkan Narcotics Cartel",
+    "Vikram Yadav": "Digital Extortion Syndicate",
+    "Prasad Shenoy": "Digital Extortion Syndicate",
+    "Naveen Reddy": "Digital Extortion Syndicate",
+    "Deepak Sharma": "Digital Extortion Syndicate",
+    "Farhan Ahmed": "Digital Extortion Syndicate",
+    "Sunil Khot": "Digital Extortion Syndicate",
+    "Pavan Kalyan R": "Digital Extortion Syndicate",
+    "Karthik Gowda": "Deccan Land Grabbing Network",
+    "Suresh Babu": "Deccan Land Grabbing Network",
+    "Mahesh Jain": "Deccan Land Grabbing Network",
+    "Rakesh Tiwari": "Deccan Land Grabbing Network",
+    "Satish Mudiraj": "Deccan Land Grabbing Network",
+    "Javed Sheikh": "Deccan Land Grabbing Network",
+    "Tariq Hussain": "Deccan Land Grabbing Network",
+    "Zubair Sheikh": "Deccan Land Grabbing Network",
+    "Mohsin Pasha": "Deccan Land Grabbing Network",
+}
+
 # ---------------------------------------------------------------------------
 # VICTIMS — Profiles across all regions
 # ---------------------------------------------------------------------------
@@ -856,6 +893,7 @@ def _seed_criminals(db):
     criminals = {}
     existing_criminals = {c.full_name: c for c in db.query(Criminal).all()}
     for full_name, aliases, dob, gender, marks, mo, status in CRIMINALS:
+        gang = CRIMINAL_GANG_MAP.get(full_name)
         criminal = existing_criminals.get(full_name)
         if not criminal:
             criminal = Criminal(
@@ -866,6 +904,7 @@ def _seed_criminals(db):
                 identifying_marks=marks,
                 mo_summary=mo,
                 status=status,
+                gang_affiliation=gang,
                 dataset_provenance=_SEED_PROVENANCE,
             )
             db.add(criminal)
@@ -873,6 +912,10 @@ def _seed_criminals(db):
         elif getattr(criminal, "dataset_provenance", None) in (None, "live", "unknown", ""):
             criminal.dataset_provenance = _SEED_PROVENANCE
             criminal.status = status
+        # Backfill demo syndicate rosters idempotently so an already-seeded
+        # database gains the gang affiliations on the next seed run.
+        if gang:
+            criminal.gang_affiliation = gang
         criminals[full_name] = criminal
     db.flush()
     return criminals
