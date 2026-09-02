@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Load .env from backend directory
 _backend_dir = os.path.join(os.path.dirname(__file__), '..')
 load_dotenv(os.path.join(_backend_dir, '.env'))
-load_dotenv(os.path.join(_backend_dir.parent, '.env'))
+load_dotenv(os.path.join(os.path.dirname(_backend_dir), '.env'))
 
 DB_HOST = os.getenv('SUPABASE_DB_HOST', os.getenv('POSTGRES_HOST', ''))
 DB_PORT = int(os.getenv('SUPABASE_DB_PORT', os.getenv('POSTGRES_PORT', '5432')))

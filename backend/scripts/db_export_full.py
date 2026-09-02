@@ -56,6 +56,8 @@ def get_pk_columns(cur, table):
         FROM information_schema.table_constraints tc
         JOIN information_schema.key_column_usage kcu
             ON tc.constraint_name = kcu.constraint_name
+            AND tc.table_schema = kcu.table_schema
+            AND tc.table_name = kcu.table_name
         WHERE tc.table_name = %s AND tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = 'public'
         ORDER BY kcu.ordinal_position
     """, (table,))
@@ -68,8 +70,11 @@ def get_fk_constraints(cur, table):
         FROM information_schema.table_constraints tc
         JOIN information_schema.key_column_usage kcu
             ON tc.constraint_name = kcu.constraint_name
+            AND tc.table_schema = kcu.table_schema
+            AND tc.table_name = kcu.table_name
         JOIN information_schema.constraint_column_usage ccu
             ON ccu.constraint_name = tc.constraint_name
+            AND ccu.table_schema = tc.table_schema
         WHERE tc.table_name = %s AND tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public'
     """, (table,))
     return cur.fetchall()
@@ -78,9 +83,9 @@ def get_indexes(cur, table):
     cur.execute("""
         SELECT indexname, indexdef
         FROM pg_indexes
-        WHERE tablename = %s AND schemaname = 'public'
-        AND indexname NOT LIKE '%_pkey'
-    """, (table,))
+        WHERE tablename = %(tbl)s AND schemaname = 'public'
+        AND indexname NOT LIKE '%%_pkey'
+    """, {"tbl": table})
     return cur.fetchall()
 
 def pg_type_to_sql(col_name, data_type, nullable, default, max_len, num_prec):
@@ -140,15 +145,15 @@ def pg_type_to_sql(col_name, data_type, nullable, default, max_len, num_prec):
             t += ' DEFAULT FALSE'
     return t
 
-def escape_val(val):
+def escape_insert_val(val):
+    """Escape a value for use inside SQL INSERT VALUES."""
     if val is None:
         return 'NULL'
     if isinstance(val, bool):
         return 'TRUE' if val else 'FALSE'
     if isinstance(val, (int, float)):
         return str(val)
-    s = str(val)
-    s = s.replace('\\', '\\\\').replace("'", "''")
+    s = str(val).replace("'", "''")
     return f"'{s}'"
 
 def main():
@@ -177,14 +182,13 @@ def main():
         f.write("DROP SCHEMA public CASCADE;\n")
         f.write("CREATE SCHEMA public;\n\n")
 
-        for idx, table in enumerate(tables):
-            log(f"[{idx+1}/{len(tables)}] Exporting {table}...")
+        for tbl_num, table in enumerate(tables):
+            log(f"[{tbl_num+1}/{len(tables)}] Exporting {table}...")
 
-            # Get column info
             columns = get_columns(cur, table)
             pk_cols = get_pk_columns(cur, table)
             fks = get_fk_constraints(cur, table)
-            indexes = get_indexes(cur, table)
+            index_rows = get_indexes(cur, table)
 
             # CREATE TABLE
             f.write(f'DROP TABLE IF EXISTS public."{table}" CASCADE;\n')
@@ -211,9 +215,10 @@ def main():
                 f.write('\n')
 
             # Indexes
-            for idx_name, idx_def in indexes:
+            for index_row in index_rows:
+                idx_name, idx_def = index_row[0], index_row[1]
                 f.write(f'{idx_def};\n')
-            if indexes:
+            if index_rows:
                 f.write('\n')
 
             # Data
@@ -226,9 +231,9 @@ def main():
             if total > 0:
                 col_names = [c[0] for c in columns]
                 cols_str = ', '.join(f'"{c}"' for c in col_names)
-                f.write(f"COPY public.\"{table}\" ({cols_str}) FROM stdin;\n")
+                insert_prefix = f'INSERT INTO public."{table}" ({cols_str}) VALUES\n'
 
-                BATCH = 5000
+                BATCH = 500
                 offset = 0
                 exported = 0
                 while offset < total:
@@ -236,15 +241,16 @@ def main():
                     rows = cur.fetchall()
                     if not rows:
                         break
+                    value_rows = []
                     for row in rows:
-                        vals = '\t'.join(escape_val(v) for v in row)
-                        f.write(vals + '\n')
+                        vals = ', '.join(escape_insert_val(v) for v in row)
+                        value_rows.append(f'({vals})')
+                    f.write(insert_prefix + ',\n'.join(value_rows) + ';\n\n')
                     exported += len(rows)
                     offset += BATCH
-                    if exported % 50000 == 0:
+                    if exported % 10000 == 0:
                         log(f"    {table}: exported {exported}/{total}")
 
-                f.write("\\.\n\n")
                 log(f"  {table}: {total} rows exported")
             else:
                 log(f"  {table}: 0 rows (empty)")
