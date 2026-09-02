@@ -98,6 +98,71 @@ _KANNADA_CONNECTORS = {
     "ಸಂಬಂಧ": "related", "ಹಿಂದಿನ": "previous", "ಇದೇ": "similar",
 }
 
+# Kanglish (Kannada in Roman characters) normalization
+_KANGLISH_TO_KANNADA: dict[str, str] = {
+    "tanike": "ತನಿಖೆ",
+    "thanike": "ತನಿಖೆ",
+    "shankita": "ಶಂಕಿತ",
+    "shankitha": "ಶಂಕಿತ",
+    "saakshya": "ಸಾಕ್ಷ್ಯ",
+    "sakshya": "ಸಾಕ್ಷ್ಯ",
+    "aparadha": "ಅಪರಾಧ",
+    "prakarana": "ಪ್ರಕರಣ",
+    "guptachara": "ಗುಪ್ತಚರ",
+    "huduku": "ಹುಡುಕು",
+    "huduki": "ಹುಡುಕು",
+    "adhikari": "ಅಧಿಕಾರಿ",
+    "badhita": "ಬಾಧಿತ",
+    "nirbandha": "ಬಂಧನ",
+    "varadhi": "ವರದಿ",
+    "jaala": "ಜಾಲ",
+    "apaya": "ಅಪಾಯ",
+    "namaskara": "ನಮಸ್ಕಾರ",
+    "namaskar": "ನಮಸ್ಕಾರ",
+    "police": "ಪೊಲೀಸ್",
+    "kelsa": "ಕೆಲಸ",
+    "maneya": "ಮನೆಯ",
+    "halli": "ಹಳ್ಳಿ",
+    "nagara": "ನಗರ",
+    "jilla": "ಜಿಲ್ಲೆ",
+    "thani": "ತನಿ",
+    "case": "ಕೇಸ್",
+    "murder": "ಕೊಲೆ",
+    "theft": "ಕಳ್ಳತನ",
+    "robbery": "ದರೋಡೆ",
+    "assault": "ಹಲ್ಲೆ",
+    "fraud": "ಮೋಸ",
+    "cyber": "ಸೈಬರ್",
+    "drug": "ಮಾದಕ",
+    "gang": "ಗ್ಯಾಂಗ್",
+    "weapon": "ಆಯುಧ",
+    "vehicle": "ವಾಹನ",
+    "phone": "ಫೋನ್",
+    "night": "ರಾತ್ರಿ",
+    "day": "ಹಗಲು",
+    "morning": "ಬೆಳಿಗ್ಗೆ",
+    "evening": "ಸಂಜೆ",
+}
+
+
+def _is_kanglish(text: str) -> bool:
+    """Detect if text is Kanglish (Roman characters used for Kannada words)."""
+    if not text:
+        return False
+    text_lower = text.lower().strip()
+    words = text_lower.split()
+    kanglish_hits = sum(1 for w in words if w in _KANGLISH_TO_KANNADA or any(k in w for k in _KANGLISH_TO_KANNADA))
+    return kanglish_hits >= len(words) * 0.3 and len(words) >= 1
+
+
+def _normalize_kanglish(text: str) -> str:
+    """Convert Kanglish terms to their English equivalents for search."""
+    text_lower = text.lower()
+    result = text_lower
+    for kanglish, kannada in _KANGLISH_TO_KANNADA.items():
+        result = result.replace(kanglish, kannada)
+    return result
+
 _KANNADA_TIME = {
     "ಕಳೆದ ವಾರ": 7, "ಕಳೆದ ತಿಂಗಳ": 30, "ಕಳೆದ ವರ್ಷ": 365,
     "ಈ ವಾರ": 7, "ಈ ತಿಂಗಳ": 30, "ಈ ವರ್ಷ": 365, "ಇತ್ತೀಚಿನ": 30,
@@ -135,7 +200,7 @@ class Interpretation(BaseModel):
     """Structured interpretation of a natural-language clue."""
 
     query: str
-    detected_language: str  # "kannada" | "english" | "mixed"
+    detected_language: str  # "kannada" | "english" | "mixed" | "kanglish"
     person_name: str | None = None
     case_number: str | None = None
     fir_number: str | None = None
@@ -196,10 +261,18 @@ def interpret_query(
         mixed = bool(re.search(r"[a-zA-Z]", q))
         if mixed:
             detected = "mixed"
+    elif _is_kanglish(q):
+        detected = "kanglish"
     else:
         detected = "english"
 
     result = Interpretation(query=q, detected_language=detected, search_term=q.strip())
+
+    # Kanglish normalization: map Romanized Kannada words to Kannada script
+    # so existing gazetteers can match them.
+    normalized_q = q
+    if detected == "kanglish":
+        normalized_q = _normalize_kanglish(q)
 
     # Case / FIR / phone identifiers
     case_match = _CASE_RE.search(q)
@@ -221,7 +294,7 @@ def interpret_query(
         result.phone = phone_match.group(1)
 
     # District & station — Kannada then English gazetteers.
-    result.district = _fuzzy_kannada(q, _KANNADA_DISTRICT)
+    result.district = _fuzzy_kannada(normalized_q, _KANNADA_DISTRICT)
     if not result.district:
         for d in [
             "Bengaluru Urban", "Bengaluru Rural", "Mysuru", "Mangaluru",
@@ -232,7 +305,7 @@ def interpret_query(
                 result.district = d
                 break
 
-    result.station = _fuzzy_kannada(q, _KANNADA_STATION)
+    result.station = _fuzzy_kannada(normalized_q, _KANNADA_STATION)
     if not result.station:
         for s in [
             "Whitefield", "KR Puram", "Kempegowda Nagar", "Indiranagar",
@@ -244,16 +317,16 @@ def interpret_query(
                 break
 
     # Crime type
-    result.crime_type = _fuzzy_kannada(q, _KANNADA_CRIME)
+    result.crime_type = _fuzzy_kannada(normalized_q, _KANNADA_CRIME)
     if not result.crime_type:
         result.crime_type = _normalise_crime(q)
 
     # MO / injury indicators
-    result.mo_keywords = _collect_mo_keywords(q)
+    result.mo_keywords = _collect_mo_keywords(normalized_q)
 
     # Time ranges — Kannada then English.
     for kan, days in _KANNADA_TIME.items():
-        if kan in q:
+        if kan in normalized_q:
             result.date_range_days = days
             break
     if result.date_range_days is None:
@@ -315,7 +388,7 @@ def interpret_query(
     if case_match or fir_match:
         result.confidence = "high"
 
-    if not strength and detected in ("kannada", "mixed"):
+    if not strength and detected in ("kannada", "mixed", "kanglish"):
         result.notes.append(
             "Kannada query interpreted, but no district/crime/person filter could be "
             "matched confidently. Suggest searching by district, station or crime type."

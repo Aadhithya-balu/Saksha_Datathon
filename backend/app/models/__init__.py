@@ -26,6 +26,7 @@ from app.models.import_job import ImportJob, ImportStagedRecord
 from app.models.intervention import Intervention
 from app.models.mo_tag import MOTag, CaseMOTag, CriminalMOTag
 from app.models.revoked_token import RevokedToken
+from app.models.intelligence_report import IntelligenceReportRun
 from app.models.identity import (
     IdentityRelationship,
     IdentityAlias,
@@ -45,6 +46,7 @@ __all__ = [
     "Notification", "InvestigationNote", "ChatConversation", "ChatMessage",
     "ImportJob", "ImportStagedRecord", "Intervention", "MOTag", "CaseMOTag", "CriminalMOTag",
     "RevokedToken",
+    "IntelligenceReportRun",
     "IdentityRelationship", "IdentityAlias", "IdentityIdentifier",
     "IdentityEvidence", "IdentityConflict", "IntegrityAlert",
     "ProxyPattern", "ProxyPatternEvidence",

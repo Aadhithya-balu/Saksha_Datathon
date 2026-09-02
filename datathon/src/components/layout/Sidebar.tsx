@@ -3,14 +3,12 @@ import { useRBAC } from '../../hooks/useRBAC';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useTranslation } from '../../i18n';
 import {
   LayoutDashboard,
-  FileText,
   Map,
   Network,
   Brain,
-  Briefcase,
-  Search,
   Bell,
   AlertTriangle,
   Users,
@@ -27,9 +25,10 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Fingerprint,
   Crosshair,
   FileWarning,
+  ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -51,58 +50,6 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const navGroups: NavGroup[] = [
-  {
-    label: 'COMMAND',
-    items: [
-      { id: 'dashboard', label: 'Analytics Dashboard', path: '/dashboard', icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
-      { id: 'command_center', label: 'Command Center', path: '/command-center', icon: <Crosshair className="w-[18px] h-[18px]" /> },
-      { id: 'notifications', label: 'Intelligence', path: '/notifications', icon: <Bell className="w-[18px] h-[18px]" /> },
-      { id: 'anomaly', label: 'Anomaly Feed', path: '/anomalies', icon: <AlertTriangle className="w-[18px] h-[18px]" /> },
-      { id: 'strategic', label: 'Strategic Intel', path: '/strategic', icon: <Shield className="w-[18px] h-[18px]" /> },
-    ],
-  },
-  {
-    label: 'INVESTIGATIONS',
-    items: [
-      { id: 'intelligence', label: 'Investigation Hub', path: '/intelligence', icon: <Fingerprint className="w-[18px] h-[18px]" /> },
-      { id: 'crime_cases', label: 'Crime Cases', path: '/crime-cases', icon: <Briefcase className="w-[18px] h-[18px]" /> },
-      { id: 'investigation', label: 'Investigation', path: '/investigation', icon: <Search className="w-[18px] h-[18px]" /> },
-      { id: 'fir', label: 'FIR Registry', path: '/firs', icon: <FileText className="w-[18px] h-[18px]" /> },
-      { id: 'evidence', label: 'Evidence', path: '/evidence', icon: <FolderOpen className="w-[18px] h-[18px]" /> },
-    ],
-  },
-  {
-    label: 'ANALYTICS',
-    items: [
-      { id: 'hotspot', label: 'Hotspot Map', path: '/hotspots', icon: <Map className="w-[18px] h-[18px]" /> },
-      { id: 'network', label: 'Network Graph', path: '/network', icon: <Network className="w-[18px] h-[18px]" /> },
-      { id: 'identity', label: 'Identity Resolution', path: '/identity-resolution', icon: <FileWarning className="w-[18px] h-[18px]" /> },
-      { id: 'predictive', label: 'Predictive AI', path: '/predictions', icon: <Brain className="w-[18px] h-[18px]" /> },
-      { id: 'sociological', label: 'Socio Intel', path: '/sociological', icon: <Globe2 className="w-[18px] h-[18px]" /> },
-      { id: 'reports', label: 'Reports', path: '/reports', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
-    ],
-  },
-  {
-    label: 'REGISTRY',
-    items: [
-      { id: 'offenders', label: 'Offenders', path: '/offenders', icon: <ShieldAlert className="w-[18px] h-[18px]" /> },
-      { id: 'criminals', label: 'Criminals', path: '/criminals', icon: <Users className="w-[18px] h-[18px]" /> },
-      { id: 'victims', label: 'Victims', path: '/victims', icon: <Heart className="w-[18px] h-[18px]" /> },
-      { id: 'officers', label: 'Officers', path: '/officers', icon: <UserCog className="w-[18px] h-[18px]" /> },
-    ],
-  },
-  {
-    label: 'TOOLS',
-    items: [
-      { id: 'ai_chat', label: 'AI Assistant', path: '/ai-chat', icon: <MessageSquare className="w-[18px] h-[18px]" /> },
-      { id: 'docs', label: 'Documentation', path: '/docs', icon: <BookOpen className="w-[18px] h-[18px]" /> },
-      { id: 'settings_help', label: 'Settings', path: '/settings', icon: <Settings className="w-[18px] h-[18px]" /> },
-      { id: 'admin', label: 'Admin Panel', path: '/admin', icon: <ShieldAlert className="w-[18px] h-[18px]" /> },
-    ],
-  },
-];
-
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
@@ -113,6 +60,59 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { checkPermission, isAdmin } = useRBAC();
   const { unread } = useNotificationStore((s) => s.counts);
   const setMobileMenuOpen = useAppStore((s) => s.setMobileMenuOpen);
+  const t = useTranslation();
+
+  const navGroups: NavGroup[] = [
+    {
+      label: 'COMMAND',
+      items: [
+        { id: 'dashboard', label: t.nav_dashboard, path: '/dashboard', icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
+        { id: 'command_center', label: t.nav_command_center, path: '/command-center', icon: <Crosshair className="w-[18px] h-[18px]" /> },
+        { id: 'notifications', label: t.nav_notifications, path: '/notifications', icon: <Bell className="w-[18px] h-[18px]" /> },
+        { id: 'anomaly', label: t.nav_anomaly, path: '/anomalies', icon: <AlertTriangle className="w-[18px] h-[18px]" /> },
+        { id: 'strategic', label: t.nav_strategic, path: '/strategic', icon: <Shield className="w-[18px] h-[18px]" /> },
+      ],
+    },
+{
+        label: 'INVESTIGATIONS',
+        items: [
+          { id: 'crime_cases', label: t.nav_crime_cases, path: '/crime-cases', icon: <FolderOpen className="w-[18px] h-[18px]" /> },
+          { id: 'investigation', label: t.nav_investigation, path: '/investigation', icon: <Crosshair className="w-[18px] h-[18px]" /> },
+          { id: 'fir', label: t.nav_fir, path: '/firs', icon: <FileWarning className="w-[18px] h-[18px]" /> },
+          { id: 'evidence', label: t.nav_evidence, path: '/evidence', icon: <ShieldCheck className="w-[18px] h-[18px]" /> },
+          { id: 'investigation_intelligence', label: t.nav_intelligence_engine, path: '/intelligence-engine', icon: <Sparkles className="w-[18px] h-[18px]" /> },
+        ],
+      },
+    {
+      label: 'ANALYTICS',
+      items: [
+        { id: 'hotspot', label: t.nav_hotspot, path: '/hotspots', icon: <Map className="w-[18px] h-[18px]" /> },
+        { id: 'network', label: t.nav_network, path: '/network', icon: <Network className="w-[18px] h-[18px]" /> },
+        { id: 'identity', label: t.nav_identity, path: '/identity-resolution', icon: <FileWarning className="w-[18px] h-[18px]" /> },
+        { id: 'predictive', label: t.nav_predictive, path: '/predictions', icon: <Brain className="w-[18px] h-[18px]" /> },
+        { id: 'sociological', label: t.nav_sociological, path: '/sociological', icon: <Globe2 className="w-[18px] h-[18px]" /> },
+        { id: 'reports', label: t.nav_reports, path: '/reports', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
+      ],
+    },
+    {
+      label: 'REGISTRY',
+      items: [
+        { id: 'offenders', label: t.nav_offenders, path: '/offenders', icon: <ShieldAlert className="w-[18px] h-[18px]" /> },
+        { id: 'criminals', label: t.nav_criminals, path: '/criminals', icon: <Users className="w-[18px] h-[18px]" /> },
+        { id: 'victims', label: t.nav_victims, path: '/victims', icon: <Heart className="w-[18px] h-[18px]" /> },
+        { id: 'officers', label: t.nav_officers, path: '/officers', icon: <UserCog className="w-[18px] h-[18px]" /> },
+      ],
+    },
+    {
+      label: 'TOOLS',
+      items: [
+        { id: 'ai_chat', label: t.nav_ai_chat, path: '/ai-chat', icon: <MessageSquare className="w-[18px] h-[18px]" /> },
+        { id: 'docs', label: t.nav_docs, path: '/docs', icon: <BookOpen className="w-[18px] h-[18px]" /> },
+        { id: 'settings_help', label: t.nav_settings, path: '/settings', icon: <Settings className="w-[18px] h-[18px]" /> },
+        { id: 'admin', label: t.nav_admin, path: '/admin', icon: <ShieldAlert className="w-[18px] h-[18px]" /> },
+      ],
+    },
+  ];
 
   const filteredNavGroups = navGroups.map(group => ({
     ...group,

@@ -34,6 +34,10 @@ _orchestrator = None
 
 def _get_orchestrator():
     global _orchestrator
+    # The orchestrator's system context (ContextBuilder.SYSTEM_PROMPT) carries
+    # the multilingual answer instructions, so every /ai/chat exchange
+    # understands English, Kannada, Kanglish, and other languages and responds
+    # in the user's own language.
     if _orchestrator is None:
         from app.ai.chat.orchestrator import ChatOrchestrator
         _orchestrator = ChatOrchestrator()

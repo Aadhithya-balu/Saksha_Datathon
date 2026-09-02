@@ -22,6 +22,7 @@ import { useDataMode } from '../hooks/useDataMode';
 import type { DistrictInfo } from '../store/mapStore';
 import { PageHeader } from '../components/ui/PageHeader';
 import { PageSkeleton } from '../components/ui/Skeleton';
+import { useTranslation } from '../i18n';
 
 type HotspotSource = 'backend' | 'stations' | 'demo';
 
@@ -30,6 +31,7 @@ export const Hotspots: React.FC = () => {
   const { addLog } = useAuditStore();
   const { selectedDistrict, selectedStation, setSelectedDistrict, setSelectedStation, setTimeOfDay, timeOfDay } = useMapStore();
   const { isProduction } = useDataMode();
+  const t = useTranslation();
 
   const [hotspots, setHotspots] = useState<HotspotPoint[]>([]);
   // Provenance of the currently displayed hotspot list — reset on every load
@@ -320,7 +322,7 @@ export const Hotspots: React.FC = () => {
   if (loading) {
     return (
       <div className="h-[84vh] flex flex-col gap-4 md:p-1">
-        <PageHeader title="Spatiotemporal Hotspots" subtitle="Loading geospatial data & temporal telemetry…" icon={<Compass className="w-5 h-5" />} />
+        <PageHeader title={t.page_hotspot_title} subtitle={t.page_hotspot_subtitle} icon={<Compass className="w-5 h-5" />} />
         <PageSkeleton />
       </div>
     );
@@ -329,7 +331,7 @@ export const Hotspots: React.FC = () => {
   if (error && hotspots.length === 0) {
     return (
       <div className="h-[84vh] flex flex-col gap-4 md:p-1">
-        <PageHeader title="Spatiotemporal Hotspots" icon={<Compass className="w-5 h-5" />} />
+        <PageHeader title={t.page_hotspot_title} icon={<Compass className="w-5 h-5" />} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-3">
             <div className="w-12 h-12 rounded-xl bg-[var(--accent-coral-subtle)] border border-[var(--accent-coral)]/20 flex items-center justify-center mx-auto text-[var(--accent-coral)]">
@@ -350,8 +352,8 @@ export const Hotspots: React.FC = () => {
 
       {/* Page header */}
       <PageHeader
-        title="Spatiotemporal Crime Cluster & Hotspots"
-        subtitle="Geospatial incident density & interactive temporal shift analysis across Karnataka"
+        title={t.page_hotspot_title}
+        subtitle={t.page_hotspot_subtitle}
         icon={<Compass className="w-5 h-5" />}
         actions={
           <div className="flex items-center gap-2">
@@ -368,7 +370,7 @@ export const Hotspots: React.FC = () => {
                 }`}
               >
                 <MapIcon className="w-3.5 h-3.5" />
-                Vector Map
+                {t.page_hotspot_vector_map}
               </button>
               <button
                 onClick={() => setViewMode('matrix')}
@@ -377,13 +379,13 @@ export const Hotspots: React.FC = () => {
                 }`}
               >
                 <BarChart3 className="w-3.5 h-3.5" />
-                Spatiotemporal Matrix
+                {t.page_hotspot_matrix}
               </button>
             </div>
 
             <button onClick={handleExportGeoJSON} className="sk-btn sk-btn-secondary">
               <Download className="w-4 h-4" />
-              GeoJSON Export
+              {t.page_hotspot_export}
             </button>
           </div>
         }
@@ -395,7 +397,7 @@ export const Hotspots: React.FC = () => {
           <div className="flex items-center gap-2 shrink-0">
             <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold uppercase flex items-center gap-1 animate-pulse border border-red-500/40">
               <Flame className="w-3 h-3 text-red-400" />
-              Emerging Trend Alerts
+              {t.page_hotspot_emerging_alerts}
             </span>
             <span className="text-[var(--text-secondary)] hidden lg:inline">
               Crime categories exhibiting significant surge vs 30-day baseline:

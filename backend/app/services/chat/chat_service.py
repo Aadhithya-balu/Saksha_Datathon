@@ -6,6 +6,7 @@ from typing import AsyncIterator
 from sqlalchemy.orm import Session
 
 from app.ai.models.rag.chat_model import InvestigationChatModel, ChatResponse
+from app.ai.prompts.chat import build_multilingual_answer_prompt
 from app.services.rag.rag_service import build_rag_documents
 
 
@@ -14,6 +15,7 @@ class InvestigationChatService:
 
     def __init__(self, db: Session) -> None:
         self.db = db
+        self.system_context = build_multilingual_answer_prompt()
 
     def process_query(
         self,
@@ -24,7 +26,12 @@ class InvestigationChatService:
         evidence_id: str | None = None,
         case_id: str | None = None,
     ) -> ChatResponse:
-        """Fetch RAG documents and perform model prediction."""
+        """Fetch RAG documents and perform model prediction.
+
+        The multilingual system context is threaded into the answer generation
+        so the assistant answers in the user's detected language (English,
+        Kannada, Kanglish, Hindi, etc.) while retaining entities verbatim.
+        """
         docs = build_rag_documents(
             self.db,
             fir_id=fir_id,
@@ -34,7 +41,7 @@ class InvestigationChatService:
         )
         model = InvestigationChatModel()
         model.train(docs)
-        return model.predict(message)
+        return model.predict(message, system_instructions=self.system_context)
 
     async def stream_response(
         self,

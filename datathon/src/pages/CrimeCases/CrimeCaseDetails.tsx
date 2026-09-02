@@ -26,6 +26,7 @@ import {
   MapPin,
   Tag
 } from 'lucide-react';
+import { useTranslation } from '../../i18n';
 
 interface CrimeCaseDetailsProps {
   caseId: string;
@@ -38,6 +39,7 @@ const CrimeCaseDetails: React.FC<CrimeCaseDetailsProps> = ({
   onBack,
   onEdit
 }) => {
+  const t = useTranslation();
   const [caseData, setCaseData] = useState<CrimeCaseDetailRecord | null>(null);
   const [officers, setOfficers] = useState<OfficerWithUserRecord[]>([]);
   const [unlinkedFirs, setUnlinkedFirs] = useState<any[]>([]);
@@ -199,7 +201,7 @@ const CrimeCaseDetails: React.FC<CrimeCaseDetailsProps> = ({
           <span>{error || 'Case not found'}</span>
         </div>
         <button onClick={onBack} className="flex items-center gap-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] uppercase font-bold text-[10px]">
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
+          <ArrowLeft className="w-3.5 h-3.5" /> {t.cc_back}
         </button>
       </div>
     );
@@ -213,7 +215,7 @@ const CrimeCaseDetails: React.FC<CrimeCaseDetailsProps> = ({
           onClick={onBack}
           className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer text-xs uppercase font-bold"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Dossier List
+          <ArrowLeft className="w-4 h-4" /> {t.cc_back}
         </button>
         <div className="flex items-center gap-2">
           <button
