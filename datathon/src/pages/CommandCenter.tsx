@@ -194,7 +194,7 @@ export const CommandCenter: React.FC = () => {
     if (item.type === 'person') {
       const id = item.meta?.criminal_id || item.id.replace('criminal-', '');
       trackRecent({ type: 'person', id, label: item.name, detail: item.subtitle || undefined, ts: Date.now() });
-      goTo('intelligence', id);
+      goTo('criminals', id);
     } else if (item.type === 'case') {
       const id = item.meta?.case_id || item.id.replace('case-', '');
       trackRecent({ type: 'case', id, label: item.name, detail: item.subtitle || undefined, ts: Date.now() });
@@ -205,7 +205,10 @@ export const CommandCenter: React.FC = () => {
       if (id) goTo('crime_cases', id); else goTo('fir');
     } else if (item.type === 'mo') {
       trackRecent({ type: 'mo', id: item.id, label: item.name, detail: `MO · ${item.status}`, ts: Date.now() });
-      goTo('intelligence');
+      const docId = String(item.meta?.doc_id || item.id || '').replace(/^(criminal|crime_case|fir)-/, '');
+      if (item.status === 'criminal' && docId) goTo('criminals', docId);
+      else if (item.status === 'crime_case' && docId) goTo('crime_cases', docId);
+      else goTo('criminals');
     } else if (item.type === 'location' || item.type === 'station') {
       setQuery(item.meta?.district || item.name.split(',')[0]);
     }

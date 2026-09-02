@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from '../../i18n';
 import { useAuthStore } from "../../store/authStore";
 import { useAuditStore } from "../../store/auditStore";
 import { downloadSecureDossier } from "../../utils/downloader";
@@ -15,6 +16,7 @@ import { FIRForm } from "../../components/fir/FIRForm";
 import { FIRTimeline } from "../../components/fir/FIRTimeline";
 import { FIRAttachments } from "../../components/fir/FIRAttachments";
 import { FIRRiskScore } from "../../components/fir/FIRRiskScore";
+import { IntelligenceWorkspace } from "../../components/intelligence/IntelligenceWorkspace";
 import {
   Search,
   Plus,
@@ -28,6 +30,7 @@ import {
   FolderOpen,
   UserCheck,
   ArrowRight,
+  Brain,
 } from "lucide-react";
 import { ExportMenu } from "../../components/reports";
 import { CardSkeleton } from "../../components/ui/Skeleton";
@@ -67,6 +70,7 @@ const DISTRICTS = [
 ];
 
 export const FIRPage: React.FC = () => {
+  const t = useTranslation();
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
 
@@ -78,6 +82,7 @@ export const FIRPage: React.FC = () => {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showIntelligence, setShowIntelligence] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Search & Filters State
@@ -317,11 +322,10 @@ export const FIRPage: React.FC = () => {
         <div>
           <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
             <FileText className="w-5 h-5 text-[#1E6FD9] animate-pulse" />
-            FIR Lifecycle Registry Center
+            {t.fir_title}
           </h2>
           <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
-            KARNATAKA POLICE DEPT â€” LAW ENFORCEMENT RECORDS, CRIMINAL LINKAGES
-            & AI ANALYSIS TELEMETRY
+            {t.fir_subtitle}
           </p>
           {error && (
             <p className="text-[9px] font-mono text-amber-400 uppercase mt-1">
@@ -337,7 +341,7 @@ export const FIRPage: React.FC = () => {
             className="px-3 py-1.5 bg-[#1E6FD9] hover:bg-[#1E6FD9]/80 border border-[#1E6FD9]/20 text-[var(--text-primary)] font-mono text-[10px] uppercase font-bold rounded-btn transition-colors cursor-pointer flex items-center gap-1.5 shadow-glow-blue select-none shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            Register New FIR
+            {t.fir_create_new}
           </button>
         )}
       </div>
@@ -348,7 +352,7 @@ export const FIRPage: React.FC = () => {
         <div className="lg:col-span-4 bg-[var(--bg-tertiary)]/20 border border-border-color p-4 rounded-card flex flex-col justify-between overflow-hidden">
           <div className="flex flex-col gap-3 overflow-hidden flex-1">
             <span className="text-[10px] font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider border-b border-[var(--border-primary)] pb-2 shrink-0">
-              FIR Document Directory
+              {t.fir_directory}
             </span>
 
             {/* Filters panel */}
@@ -357,7 +361,7 @@ export const FIRPage: React.FC = () => {
               <div className="flex items-center relative">
                 <input
                   type="text"
-                  placeholder="Search FIR id, complainant, sections..."
+                  placeholder={t.fir_search_hint}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-8 pr-3 py-1.5 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] rounded text-[var(--text-primary)] outline-none focus:border-[#1E6FD9] text-[10.5px]"
@@ -373,7 +377,7 @@ export const FIRPage: React.FC = () => {
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="w-full px-2 py-1.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-[var(--text-secondary)] outline-none focus:border-[#1E6FD9] cursor-pointer"
                 >
-                  <option value="">All Statuses</option>
+                  <option value="">{t.ui_filter_all}</option>
                   <option value="registered">Registered</option>
                   <option value="in_progress">In Inquiry</option>
                   <option value="closed">Resolved</option>
@@ -455,7 +459,16 @@ export const FIRPage: React.FC = () => {
 
         {/* Right Side: detail view / form panels */}
         <div className="lg:col-span-8 flex flex-col overflow-hidden relative">
-          {showForm ? (
+          {showIntelligence && selectedFir ? (
+            <div className="flex-grow overflow-y-auto custom-scrollbar">
+              <IntelligenceWorkspace
+                entityType="fir"
+                entityId={selectedFir.id}
+                entityLabel={selectedFir.fir_number}
+                onClose={() => setShowIntelligence(false)}
+              />
+            </div>
+          ) : showForm ? (
             /* Create / Edit Form */
             <div className="flex-grow overflow-y-auto custom-scrollbar">
               <FIRForm
@@ -473,22 +486,29 @@ export const FIRPage: React.FC = () => {
             /* Detailed View */
             <div className="flex-grow flex flex-col justify-between overflow-y-auto custom-scrollbar pr-1 gap-4">
               {/* Detail Header HUD */}
-              <div className="p-4 bg-[var(--bg-tertiary)]/35 border border-border-color rounded-card shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                <div className="min-w-0">
+              <div className="p-4 bg-[var(--bg-tertiary)]/35 border border-border-color rounded-card shrink-0 flex flex-col gap-3 w-full">
+                <div className="min-w-0 w-full">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-extrabold text-[var(--text-primary)] font-mono select-all tracking-wide">
+                    <h3 className="text-sm font-extrabold text-[var(--text-primary)] font-mono select-all tracking-wide break-words">
                       {selectedFir.fir_number}
                     </h3>
                     {getStatusBadge(selectedFir.status)}
                   </div>
-                  <p className="text-[8.5px] font-mono text-[var(--text-muted)] mt-1 uppercase">
+                  <p className="text-[8.5px] font-mono text-[var(--text-muted)] mt-1 uppercase break-words">
                     SAKSHA CASE COMMAND DOSSIER INDEXID:{" "}
                     {selectedFir.id.slice(0, 8)}...
                   </p>
                 </div>
 
                 {/* Actions Toolbar */}
-                <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase shrink-0">
+                <div className="flex flex-wrap items-center gap-1.5 font-mono text-[9px] uppercase shrink-0 justify-start">
+                  <button
+                    onClick={() => setShowIntelligence(true)}
+                    className="px-2.5 py-1.5 bg-[#a855f7]/10 hover:bg-[#a855f7]/20 border border-[#a855f7]/20 hover:border-[#a855f7]/40 text-[#a855f7] rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Brain className="w-3.5 h-3.5" />
+                    {t.fir_build_intelligence}
+                  </button>
                   {(user?.role === "ADMIN" || user?.role === "IO") && (
                     <>
                       <button
@@ -499,14 +519,14 @@ export const FIRPage: React.FC = () => {
                         className="px-2.5 py-1.5 bg-[var(--bg-tertiary)] hover:bg-[#1E6FD9]/15 border border-[var(--border-primary)] hover:border-[#1E6FD9]/30 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
-                        Edit FIR
+                        {t.fir_edit}
                       </button>
                       <button
                         onClick={handleDeleteClick}
                         className="px-2.5 py-1.5 bg-[#C94A2A]/10 hover:bg-[#C94A2A]/20 border border-[#C94A2A]/20 hover:border-[#C94A2A]/40 text-[#C94A2A] rounded-btn transition-colors cursor-pointer flex items-center gap-1.5"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        Purge
+                        {t.fir_purge}
                       </button>
                     </>
                   )}
@@ -525,7 +545,7 @@ export const FIRPage: React.FC = () => {
                   <div className="grid grid-cols-2 gap-3 text-[10.5px]">
                     <div>
                       <span className="text-[8px] text-[var(--text-muted)] uppercase block">
-                        Complainant name
+                        {t.fir_complainant}
                       </span>
                       <span className="text-[var(--text-primary)] font-bold block mt-0.5">
                         {selectedFir.complainant_name}
@@ -533,7 +553,7 @@ export const FIRPage: React.FC = () => {
                     </div>
                     <div>
                       <span className="text-[8px] text-[var(--text-muted)] uppercase block">
-                        Contact number
+                        {t.fir_contact}
                       </span>
                       <span className="text-[var(--text-primary)] font-semibold block mt-0.5">
                         {selectedFir.complainant_contact || "NOT LOGGED"}
@@ -552,7 +572,7 @@ export const FIRPage: React.FC = () => {
 
                   <div className="space-y-1">
                     <span className="text-[8px] text-[var(--text-muted)] uppercase block">
-                      Accused Statement Summary
+                      {t.fir_narrative}
                     </span>
                     <div className="p-3 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] text-[var(--text-primary)] rounded text-[10px] leading-relaxed max-h-[120px] overflow-y-auto custom-scrollbar">
                       {selectedFir.narrative ||
@@ -630,7 +650,7 @@ export const FIRPage: React.FC = () => {
                 {/* Linked Suspects */}
                 <div className="bg-[var(--bg-tertiary)]/10 border border-[var(--border-primary)] rounded-lg p-4">
                   <span className="block text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-wider mb-2.5">
-                    Accused / Named Suspects ({selectedFir.criminals.length})
+                    {t.fir_accused} ({selectedFir.criminals.length})
                   </span>
                   <div className="space-y-2 max-h-[140px] overflow-y-auto custom-scrollbar">
                     {selectedFir.criminals.map((c) => (
@@ -662,7 +682,7 @@ export const FIRPage: React.FC = () => {
                 {/* Linked Victims */}
                 <div className="bg-[var(--bg-tertiary)]/10 border border-[var(--border-primary)] rounded-lg p-4">
                   <span className="block text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-wider mb-2.5">
-                    Victims Named ({selectedFir.victims.length})
+                    {t.fir_victims} ({selectedFir.victims.length})
                   </span>
                   <div className="space-y-2 max-h-[140px] overflow-y-auto custom-scrollbar">
                     {selectedFir.victims.map((v) => (
@@ -743,7 +763,7 @@ export const FIRPage: React.FC = () => {
                     {/* Stats metrics */}
                     <div className="p-3 bg-[var(--bg-secondary)]/50 border border-[var(--border-primary)] rounded space-y-2 text-center">
                       <span className="text-[7.5px] text-[var(--text-muted)] uppercase tracking-widest block font-bold">
-                        Predictive Risk Index
+                        {t.fir_risk_index}
                       </span>
                       <span className="text-xl font-extrabold text-red-400 block leading-none">
                         82%
@@ -782,11 +802,10 @@ export const FIRPage: React.FC = () => {
               <FolderOpen className="w-10 h-10 text-[var(--text-muted)] animate-bounce" />
               <div className="space-y-1 select-none">
                 <span className="text-xs uppercase tracking-wider text-[var(--text-primary)] font-bold font-mono">
-                  No FIR Selected
+                  {t.fir_no_fir_selected}
                 </span>
                 <p className="text-[9.5px] text-[var(--text-muted)] font-mono uppercase">
-                  Select a First Information Report file from the directory
-                  sidebar console
+                  {t.fir_select_hint}
                 </p>
               </div>
             </div>

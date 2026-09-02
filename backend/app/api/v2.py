@@ -63,6 +63,9 @@ from app.routes import investigation_hub
 # Issue #225: identity resolution + proxy detection + data integrity engine
 from app.routes import identity
 
+# Intelligence Engine: unified investigation intelligence builder
+from app.routes import intelligence
+
 
 api_router = APIRouter()
 
@@ -116,3 +119,6 @@ api_router.include_router(investigation_hub.router)
 
 # Issue #225: identity resolution + proxy detection + data integrity engine
 api_router.include_router(identity.router)
+
+# Intelligence Engine: unified investigation intelligence builder
+api_router.include_router(intelligence.router)

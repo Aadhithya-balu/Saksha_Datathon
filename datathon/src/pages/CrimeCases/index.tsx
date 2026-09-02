@@ -11,12 +11,13 @@ const CrimeCases: React.FC = () => {
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Honor cross-module navigation (e.g. anomaly feed -> linked case file)
     const redirectId = sessionStorage.getItem('selected_entity_id');
     if (redirectId) {
       sessionStorage.removeItem('selected_entity_id');
-      setSelectedCaseId(redirectId);
-      setView('details');
+      if (/^[0-9a-f-]{36}$/i.test(redirectId)) {
+        setSelectedCaseId(redirectId);
+        setView('details');
+      }
     }
   }, []);
 

@@ -6,7 +6,11 @@ from typing import Any, Iterable
 
 import numpy as np
 
-from app.ai.prompts.chat import build_answer_prompt, build_summary_prompt
+from app.ai.prompts.chat import (
+    build_answer_prompt,
+    build_multilingual_answer_prompt,
+    build_summary_prompt,
+)
 from app.ai.vectorstore.memory import InMemoryVectorStore, VectorDocument
 
 
@@ -78,10 +82,10 @@ class InvestigationChatModel:
             "queries": float(len(query_list)),
         }
 
-    def predict(self, message: str, *, top_k: int = 4) -> ChatResponse:
+    def predict(self, message: str, *, top_k: int = 4, system_instructions: str | None = None) -> ChatResponse:
         retrievals = self.vectorstore.search(message, top_k=top_k)
         summary = self._build_summary(retrievals, message)
-        answer = self._build_answer(message, retrievals, summary)
+        answer = self._build_answer(message, retrievals, summary, system_instructions)
         citations = [ChatCitation(source=item.metadata.get("source", item.document_id), title=item.title, score=item.score) for item in retrievals]
         entities = self._extract_entities(message, retrievals)
         classification = self._classify_query(message)
@@ -111,7 +115,15 @@ class InvestigationChatModel:
         snippets = [item.content[:240] for item in retrievals[:3]]
         return build_summary_prompt(message, snippets)
 
-    def _build_answer(self, message: str, retrievals: list[RetrievalChunk], summary: str) -> str:
+    def _build_answer(
+        self,
+        message: str,
+        retrievals: list[RetrievalChunk],
+        summary: str,
+        system_instructions: str | None = None,
+    ) -> str:
+        if system_instructions is None:
+            system_instructions = build_multilingual_answer_prompt()
         if not retrievals:
             return build_answer_prompt(message, summary, [])
         evidence_lines = [

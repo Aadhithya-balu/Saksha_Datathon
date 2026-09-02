@@ -3082,3 +3082,166 @@ export async function runProxyDetection(): Promise<{ patterns_detected: number; 
   return apiRequest<{ patterns_detected: number; patterns: ProxyPatternRecord[] }>('/identity/proxy/run', { method: 'POST' });
 }
 
+// ── Intelligence Engine ─────────────────────────────────────────────────────
+
+export interface IntelligenceConnection {
+  entity_type: string;
+  entity_id: string;
+  entity_name: string;
+  entity_detail: string;
+  connection_type: string;
+  confidence: 'confirmed' | 'probable' | 'possible' | 'insufficient';
+  confidence_score: number;
+  explanation: string;
+  source_records: Array<{ type: string; id: string; label: string }>;
+}
+
+export interface IntelligenceThread {
+  attribute: string;
+  value: string;
+  case_count: number;
+  confidence: 'confirmed' | 'probable' | 'possible' | 'insufficient';
+  source_records: Array<{ type: string; id: string; label: string }>;
+}
+
+export interface IntelligenceComparisonItem {
+  attribute: string;
+  primary_value: string | null;
+  compare_value: string | null;
+  status: 'matching' | 'different' | 'missing' | 'conflicting';
+  source_records: Array<{ type: string; id: string; label: string }>;
+}
+
+export interface IntelligenceComparison {
+  case_number: string;
+  case_id: string;
+  similarity_score: number;
+  matching_attributes: IntelligenceComparisonItem[];
+  different_attributes: IntelligenceComparisonItem[];
+  missing_attributes: IntelligenceComparisonItem[];
+  conflicting_attributes: IntelligenceComparisonItem[];
+}
+
+export interface IntelligenceCrimeDNA {
+  profile: Record<string, string>;
+  similar_cases: Array<{
+    case_id: string;
+    case_number: string;
+    similarity_score: number;
+    matching_attributes: string[];
+    explanation: string;
+    kind?: string;
+  }>;
+  method: string;
+}
+
+export interface IntelligenceLead {
+  rank: number;
+  entity_type: string;
+  entity_id: string;
+  entity_name: string;
+  entity_detail: string;
+  reason: string;
+  relevance_score: number;
+  source_records: Array<{ type: string; id: string; label: string }>;
+}
+
+export interface IntelligenceTimelineEvent {
+  timestamp: string;
+  event: string;
+  event_type: string;
+  source_type: string;
+  source_id: string;
+  source_label: string;
+}
+
+export interface IntelligencePatternBreak {
+  pattern_type: string;
+  baseline: string;
+  deviation: string;
+  confidence: 'confirmed' | 'probable' | 'possible' | 'insufficient';
+  supporting_records: Array<{ type: string; id: string; label: string }>;
+}
+
+export interface IntelligenceReport {
+  entity_info: {
+    entity_type: string;
+    entity_id: string;
+    entity_name: string;
+    entity_detail: string;
+  };
+  summary: string;
+  connections: IntelligenceConnection[];
+  common_threads: IntelligenceThread[];
+  case_comparison: IntelligenceComparison[];
+  crime_dna: IntelligenceCrimeDNA;
+  investigation_leads: IntelligenceLead[];
+  timeline: IntelligenceTimelineEvent[];
+  network_snapshot: {
+    nodes: Array<{ id: string; name: string; type: string; detail: string }>;
+    edges: Array<{ source: string; target: string; relationship: string; confidence: string }>;
+  };
+  pattern_breaks: IntelligencePatternBreak[];
+  confidence_summary: {
+    confirmed: number;
+    probable: number;
+    possible: number;
+    insufficient: number;
+  };
+  explainability: {
+    method: string;
+    data_sources: string[];
+    limitations: string[];
+  };
+}
+
+export async function buildIntelligence(
+  entityType: string,
+  entityId: string
+): Promise<IntelligenceReport> {
+  return apiRequest<IntelligenceReport>('/intelligence/build', {
+    method: 'POST',
+    body: JSON.stringify({ entity_type: entityType, entity_id: entityId }),
+  });
+}
+
+export async function searchIntelligenceEntities(
+  query: string,
+  entityType?: string
+): Promise<Array<{ id: string; type: string; name: string; subtitle: string }>> {
+  const params = new URLSearchParams({ q: query });
+  if (entityType) params.set('entity_type', entityType);
+  const response = await apiRequest<{ results: Array<{ id: string; type: string; name: string; subtitle: string }> }>(
+    `/intelligence/entity-search?${params.toString()}`
+  );
+  return response.results || [];
+}
+
+export interface IntelligenceHistoryItem {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  entity_label: string;
+  summary: string | null;
+  connections: number;
+  leads: number;
+  threads: number;
+  timeline_events: number;
+  confirmed: number;
+  probable: number;
+  possible: number;
+  created_at: string | null;
+}
+
+export async function getIntelligenceHistory(limit = 20): Promise<IntelligenceHistoryItem[]> {
+  return apiRequest<IntelligenceHistoryItem[]>(
+    `/intelligence/history?limit=${limit}`
+  );
+}
+
+export async function deleteIntelligenceHistory(runId: string): Promise<{ deleted: boolean }> {
+  return apiRequest<{ deleted: boolean }>(`/intelligence/history/${runId}`, {
+    method: 'DELETE',
+  });
+}
+

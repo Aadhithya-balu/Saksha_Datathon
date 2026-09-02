@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from '../../i18n';
 import { useAuthStore } from '../../store/authStore';
 import { useAuditStore } from '../../store/auditStore';
 import { useRBAC } from '../../hooks/useRBAC';
@@ -22,9 +23,11 @@ import {
   ExternalLink,
   Sparkles,
   Camera,
+  Brain,
 } from 'lucide-react';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 import { PersonAvatar } from '../../components/ui/PersonAvatar';
+import { IntelligenceWorkspace } from '../../components/intelligence/IntelligenceWorkspace';
 
 interface CriminalSummary {
   id: string;
@@ -36,6 +39,7 @@ interface CriminalSummary {
 }
 
 export const Criminals: React.FC = () => {
+  const t = useTranslation();
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
   const { isAdmin, isIO } = useRBAC();
@@ -50,6 +54,7 @@ export const Criminals: React.FC = () => {
   const [updatingStatus, setUpdatingStatus] = useState<boolean>(false);
   const [criminalDetails, setCriminalDetails] = useState<any>(null);
   const [hoveredNode, setHoveredNode] = useState<any>(null);
+  const [showIntelligence, setShowIntelligence] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const imageInputRef = React.useRef<HTMLInputElement>(null);
@@ -407,10 +412,10 @@ export const Criminals: React.FC = () => {
         <div>
           <h2 className="text-md font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-[#1E6FD9] animate-pulse" />
-            Intelligence-Driven Criminal Dossiers
+            {t.criminal_title}
           </h2>
           <p className="text-[9.5px] font-mono text-[var(--text-muted)] mt-0.5">
-            SECURE INTEL REGISTRY — MACHINE LEARNING RECIDIVISM RISKS & BIO-ASSOCIATIVE NETWORKS
+            {t.criminal_subtitle}
           </p>
         </div>
 
@@ -428,7 +433,7 @@ export const Criminals: React.FC = () => {
         >
           <ArrowLeft className="w-4 h-4" />
           <span>
-            Return to Investigation
+            {t.action_back}
             {sessionStorage.getItem('return_to_case_number')
               ? ` (${sessionStorage.getItem('return_to_case_number')})`
               : ''}
@@ -524,6 +529,13 @@ export const Criminals: React.FC = () => {
             <div className="h-full w-full flex items-center justify-center">
               <CardSkeleton />
             </div>
+          ) : showIntelligence && criminalDetails ? (
+            <IntelligenceWorkspace
+              entityType="criminal"
+              entityId={criminalDetails.id}
+              entityLabel={criminalDetails.full_name}
+              onClose={() => setShowIntelligence(false)}
+            />
           ) : criminalDetails ? (
             <div className="space-y-6">
               
@@ -566,6 +578,12 @@ export const Criminals: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap justify-center md:justify-end">
+                      <button
+                        onClick={() => setShowIntelligence(true)}
+                        className="inline-flex items-center gap-1 text-[10px] bg-[#a855f7]/15 text-[#a855f7] px-2 py-1 rounded border border-[#a855f7]/30 hover:bg-[#a855f7]/30 transition-colors cursor-pointer"
+                      >
+                        <Brain className="w-3 h-3" /> {t.criminal_build_intelligence}
+                      </button>
                       <button
                         onClick={() => {
                           window.dispatchEvent(new CustomEvent('open-ai-assistant', {

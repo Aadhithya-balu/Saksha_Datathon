@@ -25,7 +25,7 @@ import Victims from './pages/Victims';
 import OfficersPage from './pages/Officers';
 import EvidencePage from './pages/Evidence';
 import InvestigationPage from './pages/Investigation';
-import IntelligenceHub from './pages/Intelligence';
+import InvestigationIntelligence from './pages/InvestigationIntelligence';
 import NotificationsPage from './pages/Notifications';
 import SociologicalPage from './pages/Sociological';
 import StrategicPage from './pages/Strategic';
@@ -39,7 +39,7 @@ import NotFound from './pages/NotFound';
 const routeEntries = [
   ['dashboard', '/dashboard'],
   ['command_center', '/command-center'],
-  ['intelligence', '/intelligence'],
+  ['investigation_intelligence', '/intelligence-engine'],
   ['identity', '/identity-resolution'],
   ['fir', '/firs'],
   ['hotspot', '/hotspots'],
@@ -161,7 +161,7 @@ function App() {
     const tabLabels: Record<string, string> = {
       dashboard: 'Analytics Dashboard',
       command_center: 'Command Center',
-      intelligence: 'Investigation Hub',
+      investigation_intelligence: 'Intelligence Engine',
       identity: 'Identity Resolution & Data Integrity',
       fir: 'FIR Registry',
       hotspot: 'Hotspot Map',
@@ -256,7 +256,7 @@ function App() {
     switch (routeTab || activeTab) {
       case 'dashboard': return <RoleGuard path="/dashboard"><Overview /></RoleGuard>;
       case 'command_center': return <RoleGuard path="/command-center"><CommandCenter /></RoleGuard>;
-      case 'intelligence': return <RoleGuard path="/intelligence"><IntelligenceHub /></RoleGuard>;
+      case 'investigation_intelligence': return <RoleGuard path="/intelligence-engine"><InvestigationIntelligence /></RoleGuard>;
       case 'identity': return <RoleGuard path="/identity-resolution"><IdentityResolution /></RoleGuard>;
       case 'fir': return <RoleGuard path="/firs"><FIRPage /></RoleGuard>;
       case 'hotspot': return <RoleGuard path="/hotspots"><Hotspots /></RoleGuard>;
