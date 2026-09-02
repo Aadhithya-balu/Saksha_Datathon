@@ -118,15 +118,45 @@ class DistrictRiskModel:
 
     def predict_batch(self, df: pd.DataFrame) -> list[RiskPrediction]:
         from app.ai.features.risk.feature_engineering import RISK_FEATURE_COLUMNS
-        results = []
-        for row in df.itertuples(index=False):
-            x = np.array([getattr(row, c) for c in RISK_FEATURE_COLUMNS], dtype=np.float64)
-            results.append(self.predict(
-                x,
-                district=getattr(row, "district", ""),
-                year_month=getattr(row, "year_month", ""),
-            ))
-        return results
+        if df is None or df.empty:
+            return []
+        districts = df["district"].tolist()
+        months = df["year_month"].tolist()
+        X = df[RISK_FEATURE_COLUMNS].to_numpy(dtype=np.float64)
+        # Single batched predict: a per-row loop would re-spawn sklearn's
+        # thread pool for every sample (~115ms each for the 200-tree forest),
+        # turning a few hundred rows into ~35s of wall time.
+        raw_preds = np.clip(self._model.predict(X), 0.0, None)
+
+        # Feature importances are model-global — compute once, not per row.
+        importances = self._model.feature_importances_
+        top_idx = np.argsort(-importances)[:5]
+        top_factors = [
+            {"feature": self.feature_names[i], "importance": round(float(importances[i]), 4)}
+            for i in top_idx
+        ]
+
+        span = self._score_max - self._score_min
+        if span < 1e-9:
+            scores = np.full(len(raw_preds), 50.0)
+        else:
+            scores = np.clip((raw_preds - self._score_min) / span * 100.0, 0.0, 100.0)
+        confidence = np.clip(np.count_nonzero(X, axis=1) / len(self.feature_names), 0.0, 1.0)
+
+        return [
+            RiskPrediction(
+                district=district,
+                year_month=year_month,
+                risk_score=round(float(score), 2),
+                predicted_crime_count=round(float(raw), 2),
+                risk_band=_band(score),
+                confidence=round(float(conf), 3),
+                top_factors=top_factors,
+            )
+            for district, year_month, raw, score, conf in zip(
+                districts, months, raw_preds, scores, confidence
+            )
+        ]
 
     def save_model(self, path: str | Path) -> None:
         if self._model is None:

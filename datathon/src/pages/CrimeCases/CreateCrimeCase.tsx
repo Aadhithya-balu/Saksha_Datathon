@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { createCrimeCase, getCrimeCategories, getLocationsList, getUnassignedOfficers, type OfficerWithUserRecord } from '../../services/api';
+import { 
+  createCrimeCase, 
+  createCriminal, 
+  createFIR, 
+  listCriminals, 
+  getCrimeCategories, 
+  getLocationsList, 
+  getUnassignedOfficers, 
+  type OfficerWithUserRecord 
+} from '../../services/api';
 import type { CrimeCategoryRecord, LocationSimpleRecord } from '../../services/api';
 import { ArrowLeft, Save, AlertTriangle, ShieldCheck } from 'lucide-react';
 
@@ -26,6 +35,10 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
   const [status, setStatus] = useState('open');
   const [foundByPolice, setFoundByPolice] = useState(false);
   const [assignedOfficerId, setAssignedOfficerId] = useState('');
+
+  // Optional accused / criminal linkage fields
+  const [accusedNames, setAccusedNames] = useState('');
+  const [complainantName, setComplainantName] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +76,16 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
       return;
     }
 
+    const names = accusedNames
+      .split(/[\n,;]/)
+      .map(n => n.trim())
+      .filter(Boolean);
+
+    if (names.length > 0 && complainantName.trim().length < 3) {
+      setError('PLEASE PROVIDE A COMPLAINANT NAME (3+ CHARS) TO LINK THE ACCUSED VIA FIR.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -78,7 +101,39 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
         found_by_police: foundByPolice,
       };
 
-      await createCrimeCase(payload as any);
+      const created = await createCrimeCase(payload as any);
+
+      // Optional: link accused criminals through an auto-created FIR
+      if (names.length > 0 && created?.id) {
+        const criminalIds: string[] = [];
+        for (const name of names) {
+          const search = await listCriminals(name, 1, 5).catch(() => null);
+          let existing = search?.results?.find(
+            c => c.full_name.toLowerCase() === name.toLowerCase()
+          );
+          if (!existing) {
+            existing = await createCriminal({ full_name: name, status: 'at_large' });
+          }
+          if (existing?.id) criminalIds.push(existing.id);
+        }
+
+        const year = new Date().getFullYear();
+        const station = locationId ? (locations.find(l => l.id === locationId)?.station || 'PS') : 'PS';
+        const firNumber = `FIR-${Math.floor(100 + Math.random() * 900)}/${station.replace(/[^A-Z0-9]/gi, '').slice(0, 10).toUpperCase()}/${year}`;
+
+        await createFIR({
+          fir_number: firNumber,
+          crime_case_id: created.id,
+          complainant_name: complainantName.trim(),
+          sections: moTags || null,
+          narrative: description || null,
+          status: 'registered',
+          criminal_ids: criminalIds,
+          investigating_officer_id: assignedOfficerId || null,
+          found_by_police: foundByPolice,
+        });
+      }
+
       onSuccess();
     } catch (err: any) {
       setError(err?.message || 'Failed to create crime case record.');
@@ -254,6 +309,35 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
             onChange={(e) => setDescription(e.target.value)}
             className="w-full p-3.5 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[#1E6FD9]/60 focus:outline-none resize-none uppercase"
           />
+        </div>
+
+        {/* Optional Accused / Criminal Names */}
+        <div className="border border-border-color/40 rounded p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Accused / Criminal Name(s) (Optional)</label>
+            {accusedNames.trim() && (
+              <span className="text-[10px] text-[var(--accent-teal)] uppercase font-bold">Will auto-create linked FIR</span>
+            )}
+          </div>
+          <textarea
+            placeholder="e.g. Ramu Swamy, Vikram Yadav (one per line, comma or semicolon separated). Leave blank if no accused is known yet."
+            rows={3}
+            value={accusedNames}
+            onChange={(e) => setAccusedNames(e.target.value)}
+            className="w-full p-3.5 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[#1E6FD9]/60 focus:outline-none resize-none"
+          />
+          {accusedNames.trim().length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Complainant Name (required to register FIR) *</label>
+              <input
+                type="text"
+                placeholder="e.g. Anil Kumar"
+                value={complainantName}
+                onChange={(e) => setComplainantName(e.target.value)}
+                className="px-3.5 py-2 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] focus:border-[#1E6FD9]/60 focus:outline-none"
+              />
+            </div>
+          )}
         </div>
 
         {/* Submit Actions */}
