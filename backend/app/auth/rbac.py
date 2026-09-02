@@ -28,6 +28,16 @@ ALL_ROLES = [
     ROLE_VIEWER,
 ]
 
+# Roles that can confirm/reject identity relationships, integrity alerts and
+# proxy patterns. Identity is never auto-confirmed — only these reviewers can
+# change lifecycle state (issue #225 section 15).
+REVIEW_ROLES = [
+    ROLE_ADMIN,
+    ROLE_CRIME_ANALYST,
+    ROLE_INVESTIGATOR,
+    ROLE_INSPECTOR,
+]
+
 
 def require_roles(*allowed_roles: str):
     def dependency(current_user: User = Depends(get_current_user)) -> User:

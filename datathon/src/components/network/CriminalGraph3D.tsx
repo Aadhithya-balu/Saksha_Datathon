@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback, type RefObject } from 'react';
 import ForceGraph3D from 'react-force-graph-3d';
-import { Search, AlertTriangle, ZoomIn, ZoomOut, Maximize2, ChevronUp, ChevronDown, Crosshair } from 'lucide-react';
+import { AlertTriangle, Maximize2, ChevronUp, ChevronDown, Crosshair, ZoomIn, ZoomOut } from 'lucide-react';
 import type { NetworkNodeCategory } from '../../services/api';
 import { useAppStore } from '../../store/appStore';
 
@@ -57,11 +57,16 @@ interface CriminalGraph3DProps {
     nodes: GraphNode[];
     links: GraphLink[];
   };
+  /** Issue #230: node ids + undirected edge keys (`min~max`) to emphasize after a
+   *  connection-path search. All non-highlighted content is dimmed while active. */
+  highlightPath?: {
+    nodeIds: string[];
+    linkKeys: string[];
+  } | null;
 }
 
-export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, onLinkSelect, graphData }) => {
+export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, onLinkSelect, graphData, highlightPath }) => {
   const fgRef = useRef<any>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const resolvedGraphData = useMemo(() => graphData ?? EMPTY_GRAPH_DATA, [graphData]);
   const [currentGraphData, setCurrentGraphData] = useState(resolvedGraphData);
@@ -73,6 +78,32 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
+
+  // Issue #230: normalize the highlighted path so nodes/edges can be emphasized.
+  const pathNodeIds = useMemo(() => {
+    const set = new Set(highlightPath?.nodeIds ?? []);
+    return set;
+  }, [highlightPath]);
+  const pathLinkKeys = useMemo(() => {
+    const set = new Set(highlightPath?.linkKeys ?? []);
+    return set;
+  }, [highlightPath]);
+  const hasHighlight = !!highlightPath && (pathNodeIds.size > 0 || pathLinkKeys.size > 0);
+
+  const linkKey = (link: GraphLink): string => {
+    const sId = typeof link.source === 'object' ? (link.source as any).id : link.source;
+    const tId = typeof link.target === 'object' ? (link.target as any).id : link.target;
+    return [String(sId), String(tId)].sort().join('~');
+  };
+  const isPathLink = (link: GraphLink): boolean => pathLinkKeys.has(linkKey(link));
+  const isPathNode = (node: GraphNode): boolean => pathNodeIds.has(node.id);
+
+  // Issue #230: nodes that keep a permanent on-canvas label — the selection plus
+  // every entity on the highlighted connection path.
+  const labeledNodes = useMemo(() => {
+    if (!selectedNodeId && !hasHighlight) return [];
+    return currentGraphData.nodes.filter((n) => n.id === selectedNodeId || (hasHighlight && isPathNode(n)));
+  }, [currentGraphData, selectedNodeId, hasHighlight, pathNodeIds]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -146,39 +177,6 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
       }, 2500);
     }
   }, [currentGraphData, hasError]);
-
-  // Filter nodes matching search criteria
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) {
-      setCurrentGraphData(resolvedGraphData);
-      return;
-    }
-
-    const matchedNode = currentGraphData.nodes.find((node) =>
-      node.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    if (matchedNode) {
-      if (fgRef.current && !hasError) {
-        const distance = 45;
-        const norm = Math.hypot(matchedNode.x || 0, matchedNode.y || 0, matchedNode.z || 0) || 1;
-        if (fgRef.current.cameraPosition) {
-          fgRef.current.cameraPosition(
-            {
-              x: (matchedNode.x || 0) + (matchedNode.x || 0) / norm * distance,
-              y: (matchedNode.y || 0) + (matchedNode.y || 0) / norm * distance + 15,
-              z: (matchedNode.z || 0) + (matchedNode.z || 0) / norm * distance + distance,
-            },
-            matchedNode,
-            1500
-          );
-        }
-      }
-      onNodeSelect?.(matchedNode);
-      setSelectedNodeId(matchedNode.id);
-    }
-  };
 
   // Node Clicked Action — zoom camera close to the node
   const handleNodeClick = (node: any) => {
@@ -267,31 +265,20 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
   return (
     <div className="w-full h-full relative bg-[var(--bg-surface)] rounded-card border border-border-color flex flex-col justify-between overflow-hidden" style={{ minHeight: '500px' }}>
       
-      {/* SEARCH HEADER BAR */}
-      <div className="absolute top-4 left-4 z-20 flex gap-2 w-full max-w-sm pointer-events-auto">
-        <form onSubmit={handleSearch} className="flex-grow flex items-center relative">
-          <input
-            type="text"
-            placeholder="Search suspect or entity name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-secondary-bg/90 backdrop-blur-sm text-[var(--text-primary)] font-mono text-xs border border-border-color focus:border-[var(--accent-blue)] rounded-btn outline-none transition-colors"
-          />
-          <Search className="absolute left-3 w-4 h-4 text-[var(--text-secondary)]" />
-        </form>
-        
-        <button
-          type="button"
-          onClick={() => {
-            setSearchQuery('');
-            setSelectedNodeId(null);
-            setCurrentGraphData(resolvedGraphData);
-            if (fgRef.current) fgRef.current.zoomToFit(400, 30);
-          }}
-          className="px-3 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/15 border border-border-color hover:border-[var(--accent-blue)]/30 rounded text-xs text-[var(--text-secondary)] cursor-pointer"
-        >
-          Reset
-        </button>
+      {/* STATUS OVERLAY */}
+      <div className="absolute top-4 left-4 z-20 pointer-events-auto">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-tertiary)]/90 backdrop-blur-sm border border-[var(--border-color)] rounded-btn text-[9px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
+          <span>{currentGraphData.nodes.length} NODES</span>
+          <span className="text-[var(--border-color)]">/</span>
+          <span>{currentGraphData.links.length} EDGES</span>
+          <span className="ml-2 text-[var(--text-disabled)]">CLICK NODE &rarr; DOSSIER &bull; EDGE &rarr; LINK</span>
+          {hasHighlight && (
+            <span className="ml-2 inline-flex items-center gap-1 text-cyan-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse" />
+              CONNECTION PATH
+            </span>
+          )}
+        </div>
       </div>
 
       {/* GRAPH VIEWPORT */}
@@ -307,23 +294,62 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
               height={dimensions.height}
               backgroundColor={canvasBg}
               showNavInfo={false}
-              nodeLabel="name"
+              nodeLabel={(node) => `<div style="font-family:monospace;font-size:10px;line-height:1.4;pointer-events:none">
+                <b style="color:#e8edf5">${node.name}</b><br />
+                <span style="color:${getNodeColor(node.category)}">${(node.category || 'entity').toUpperCase()}</span>
+                <span style="color:#94a3b8"> &bull; risk ${node.riskScore ?? 0}% &bull; ${node.casesCount ?? 0} linked cases</span>
+                ${node.district ? `<br /><span style="color:#94a3b8">district ${node.district}</span>` : ''}
+              </div>`}
               nodeColor={node => {
                 if (node.id === selectedNodeId) return '#FFFFFF';
+                if (hasHighlight && isPathNode(node)) return '#22D3EE';
+                if (hasHighlight) return isLight ? '#93A1B5' : '#3E4C63';
                 return getNodeColor(node.category);
               }}
               nodeOpacity={selectedNodeId ? 0.35 : 1}
               nodeVal={node => {
                 const deg = degreeMap[node.id] || 0;
-                return node.category === 'suspect' ? 18 + Math.min(deg * 3, 20) : 12 + Math.min(deg * 2, 14);
+                const base = node.category === 'suspect' ? 18 + Math.min(deg * 3, 20) : 12 + Math.min(deg * 2, 14);
+                return hasHighlight && (isPathNode(node) || node.id === selectedNodeId) ? base + 7 : base;
               }}
               nodeResolution={24}
               nodeRelSize={8}
-              linkColor={link => getLinkColor(link as GraphLink)}
-              linkDirectionalParticles={link => ((link as GraphLink).verification_status === 'POTENTIAL' ? 3 : 1.5)}
-              linkDirectionalParticleSpeed={0.012}
+              linkLabel={(link) => {
+                const l = link as GraphLink;
+                const provenance = l.provenance || 'DIRECT_DATABASE';
+                const status = l.verification_status || 'VERIFIED';
+                return `<div style="font-family:monospace;font-size:10px;line-height:1.4;pointer-events:none">
+                  <b style="color:#e8edf5">${l.relationship || 'RELATIONSHIP'}</b><br />
+                  <span style="color:${getLinkColor(l)}">${provenance.replace(/_/g, ' ')} &bull; ${status.replace(/_/g, ' ')}</span>
+                  ${l.weight !== undefined && l.weight !== null ? `<br /><span style="color:#94a3b8">strength ${l.weight}</span>` : ''}
+                </div>`;
+              }}
+              linkColor={link => {
+                const l = link as GraphLink;
+                if (hasHighlight) {
+                  if (isPathLink(l)) return '#22D3EE';
+                  return isLight ? 'rgba(100, 116, 139, 0.10)' : 'rgba(148, 163, 184, 0.10)';
+                }
+                return getLinkColor(l);
+              }}
+              linkDirectionalParticles={link => {
+                const l = link as GraphLink;
+                if (hasHighlight) {
+                  if (isPathLink(l)) return 4;
+                  return 0;
+                }
+                return l.verification_status === 'POTENTIAL' ? 3 : 1.5;
+              }}
+              linkDirectionalParticleSpeed={0.018}
               linkDirectionalParticleWidth={2.5}
-              linkWidth={link => ((link as GraphLink).verification_status === 'VERIFIED' ? 3.5 : 2.5)}
+              linkWidth={link => {
+                const l = link as GraphLink;
+                if (hasHighlight) {
+                  if (isPathLink(l)) return 5;
+                  return 1.2;
+                }
+                return l.verification_status === 'VERIFIED' ? 3.5 : 2.5;
+              }}
               d3AlphaDecay={0.015}
               d3VelocityDecay={0.35}
               d3AlphaMin={0.0005}
@@ -340,6 +366,9 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
             />
           </ErrorBoundary>
         )}
+
+        {/* Permanent labels for selection + highlighted connection path (Issue #230) */}
+        <NodePinOverlay fgRef={fgRef} nodes={labeledNodes} />
 
         {/* Provenance & Node Legend overlay (Issue #159) — collapsible */}
         <div
@@ -449,6 +478,64 @@ export const CriminalGraph3D: React.FC<CriminalGraph3DProps> = ({ onNodeSelect, 
         </div>
       </div>
 
+    </div>
+  );
+};
+
+// Issue #230: HTML label layer that tracks selected/path nodes in screen space on
+// every animation frame. Only mounts while at least one node needs a permanent
+// label, so normal browsing keeps the canvas completely unlabeled.
+const NodePinOverlay = ({ fgRef, nodes }: { fgRef: RefObject<any>; nodes: GraphNode[] }) => {
+  const elRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+
+  useEffect(() => {
+    const el = elRefs.current;
+    let raf = 0;
+    const loop = () => {
+      const inst = fgRef.current;
+      if (inst && inst.graphData && nodesRef.current.length > 0) {
+        try {
+          const graph = inst.graphData();
+          const toScreen = inst.graph2ScreenCoords.bind(inst);
+          for (const n of graph.nodes) {
+            const nodeEl = el[n.id];
+            if (nodeEl && n.x !== undefined && n.y !== undefined && n.z !== undefined) {
+              const pt = toScreen(n.x, n.y, n.z);
+              nodeEl.style.transform = `translate3d(${pt.x}px, ${pt.y}px, 0) translate(-50%, -230%)`;
+            }
+          }
+        } catch {
+          // Camera or graph not ready yet — try again next frame.
+        }
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [fgRef]);
+
+  if (nodes.length === 0) return null;
+
+  return (
+    <div className="absolute inset-0 top-0 left-0 z-10 pointer-events-none overflow-hidden">
+      {nodes.map((n) => (
+        <div
+          key={n.id}
+          ref={(el) => { elRefs.current[n.id] = el; }}
+          className="absolute left-0 top-0 px-1.5 py-0.5 rounded border text-[8px] font-mono leading-tight whitespace-nowrap"
+          style={{
+            background: 'rgba(8,14,27,0.85)',
+            borderColor: 'rgba(34,211,238,0.5)',
+            color: '#E8EDF5',
+            opacity: 0.95,
+            textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+          }}
+        >
+          {n.name}
+        </div>
+      ))}
     </div>
   );
 };

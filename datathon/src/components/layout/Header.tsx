@@ -29,6 +29,7 @@ const pageLabels: Record<string, string> = {
   dashboard: 'Analytics Dashboard',
   command_center: 'Command Center',
   intelligence: 'Investigation Hub',
+  identity: 'Identity Resolution & Data Integrity',
   fir: 'FIR Registry',
   hotspot: 'Hotspot Map',
   network: 'Network Graph',

@@ -14,6 +14,7 @@ export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
   '/admin':         { allowedRoles: ['ADMIN'], moduleName: 'System Security Control Center' },
   '/crime-cases':   { allowedRoles: ALL_UI_ROLES, moduleName: 'Crime Case Management' },
   '/intelligence':  { allowedRoles: ALL_UI_ROLES, moduleName: 'Investigation Hub' },
+  '/identity-resolution': { allowedRoles: ['ADMIN', 'SCRB', 'IO', 'SP'], moduleName: 'Identity Resolution & Data Integrity' },
   '/firs':          { allowedRoles: ALL_UI_ROLES, moduleName: 'FIR Lifecycle Management' },
   '/offenders':     { allowedRoles: ALL_UI_ROLES, moduleName: 'Offender Registry' },
   '/officers':      { allowedRoles: ['ADMIN', 'SCRB', 'IO', 'SP'], moduleName: 'Officer Management' },

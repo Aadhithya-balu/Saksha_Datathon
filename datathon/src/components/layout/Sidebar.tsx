@@ -29,6 +29,7 @@ import {
   ChevronRight,
   Fingerprint,
   Crosshair,
+  FileWarning,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -76,6 +77,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'hotspot', label: 'Hotspot Map', path: '/hotspots', icon: <Map className="w-[18px] h-[18px]" /> },
       { id: 'network', label: 'Network Graph', path: '/network', icon: <Network className="w-[18px] h-[18px]" /> },
+      { id: 'identity', label: 'Identity Resolution', path: '/identity-resolution', icon: <FileWarning className="w-[18px] h-[18px]" /> },
       { id: 'predictive', label: 'Predictive AI', path: '/predictions', icon: <Brain className="w-[18px] h-[18px]" /> },
       { id: 'sociological', label: 'Socio Intel', path: '/sociological', icon: <Globe2 className="w-[18px] h-[18px]" /> },
       { id: 'reports', label: 'Reports', path: '/reports', icon: <BarChart3 className="w-[18px] h-[18px]" /> },

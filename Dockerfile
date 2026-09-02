@@ -24,7 +24,7 @@ ENV PYTHONUNBUFFERED=1
 
 # Install nginx
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends nginx && \
+    apt-get install -y --no-install-recommends nginx libgomp1 && \
     rm -f /etc/nginx/sites-enabled/default && \
     rm -f /etc/nginx/sites-available/default && \
     rm -rf /var/lib/apt/lists/*
@@ -59,7 +59,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 COPY start.sh /start.sh
 
-RUN chmod +x /start.sh
+RUN tr -d '\r' < /start.sh > /start.sh.tmp && mv /start.sh.tmp /start.sh && chmod +x /start.sh
 
 EXPOSE 80
 

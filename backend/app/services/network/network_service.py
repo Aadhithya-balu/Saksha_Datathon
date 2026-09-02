@@ -14,14 +14,16 @@ visually separate seeded demo content from live intelligence.
 """
 
 from collections import Counter, defaultdict, deque
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
 from app.models.crime import CrimeCase
+from app.models.crime_category import CrimeCategory
 from app.models.criminal import Criminal
+from app.models.location import Location
 from app.models.officer import Officer
 from app.models.victim import Victim
 from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
@@ -35,6 +37,9 @@ from app.models.network import (
     NetworkGraphResponse,
     NetworkNode,
     NetworkNodeCategory,
+    NetworkPathNode,
+    NetworkPathRelationship,
+    NetworkPathResponse,
     ShortestPathResponse,
 )
 from app.services.neo4j.client import fetch_full_graph_neo4j, is_neo4j_available, query_shortest_path_neo4j
@@ -99,19 +104,178 @@ def _criminal_risk(criminal: Criminal) -> float:
     return min(100.0, 45.0 + len(criminal.fir_links) * 10)
 
 
-def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: float = 0.0) -> tuple[list[NetworkNode], list[NetworkEdge]]:
-    """Construct complete graph from PostgreSQL database relations with full provenance tracking."""
+def _parse_multi_values(value: str | None) -> list[str]:
+    """Split a comma-separated filter value into cleaned terms (OR semantics)."""
+    if not value:
+        return []
+    return [v.strip() for v in value.split(",") if v.strip()]
+
+
+def _filter_fir_ids(
+    db: Session,
+    criminal_name: str | None = None,
+    crime_type: str | None = None,
+    district: str | None = None,
+    police_station: str | None = None,
+    fir_number: str | None = None,
+    victim_name: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+) -> set[Any]:
+    """Return the set of FIR ids matching the supplied case filters (issue #226).
+
+    Semantics are deterministic and documented in the API contract:
+      * AND across different parameters — every supplied filter must match.
+      * OR within a parameter — a comma-separated value matches any term
+        (``crime_type=Theft,Robbery`` matches theft OR robbery incidents).
+      * Substring (case-insensitive) matching for free-text parameters such as
+        criminal/victim names and FIR/case numbers so partial user input works.
+
+    All matching happens database-side through parameterized SQLAlchemy
+    expressions; no raw SQL is interpolated.
+    """
+    query = db.query(FIR.id)
+
+    if criminal_name:
+        pattern = f"%{criminal_name.strip()}%"
+        query = query.join(FIRCriminalLink, FIR.id == FIRCriminalLink.fir_id)
+        query = query.join(Criminal, FIRCriminalLink.criminal_id == Criminal.id)
+        query = query.filter(
+            or_(Criminal.full_name.ilike(pattern), Criminal.aliases.ilike(pattern))
+        )
+
+    if victim_name:
+        pattern = f"%{victim_name.strip()}%"
+        query = query.join(FIRVictimLink, FIR.id == FIRVictimLink.fir_id)
+        query = query.join(Victim, FIRVictimLink.victim_id == Victim.id)
+        query = query.filter(Victim.full_name.ilike(pattern))
+
+    if crime_type or district or police_station or fir_number:
+        query = query.join(CrimeCase, FIR.crime_case_id == CrimeCase.id)
+
+    if crime_type:
+        values = _parse_multi_values(crime_type)
+        if values:
+            query = query.join(CrimeCategory, CrimeCase.category_id == CrimeCategory.id)
+            type_conds: list[Any] = []
+            for v in values:
+                p = f"%{v}%"
+                type_conds.append(CrimeCategory.name.ilike(p))
+                type_conds.append(CrimeCase.mo_tags.ilike(p))
+            query = query.filter(or_(*type_conds))
+
+    if district:
+        values = _parse_multi_values(district)
+        if values:
+            query = query.join(Location, CrimeCase.location_id == Location.id)
+            query = query.filter(
+                or_(*[Location.district.ilike(f"%{v}%") for v in values])
+            )
+
+    if police_station:
+        values = _parse_multi_values(police_station)
+        if values:
+            query = query.join(Location, CrimeCase.location_id == Location.id)
+            query = query.filter(
+                or_(*[Location.station.ilike(f"%{v}%") for v in values])
+            )
+
+    if fir_number:
+        values = _parse_multi_values(fir_number)
+        if values:
+            query = query.filter(
+                or_(
+                    *[FIR.fir_number.ilike(f"%{v}%") for v in values],
+                    *[CrimeCase.case_number.ilike(f"%{v}%") for v in values],
+                )
+            )
+
+    if date_from is not None:
+        query = query.filter(FIR.filed_at >= date_from)
+    if date_to is not None:
+        query = query.filter(FIR.filed_at <= date_to)
+
+    return {row[0] for row in query.distinct().all()}
+
+
+def _has_case_filters(
+    criminal_name: str | None,
+    crime_type: str | None,
+    district: str | None,
+    police_station: str | None,
+    fir_number: str | None,
+    victim_name: str | None,
+    date_from: datetime | None,
+    date_to: datetime | None,
+) -> bool:
+    """True when any multi-parameter case filter is active."""
+    return any((
+        criminal_name,
+        crime_type,
+        district,
+        police_station,
+        fir_number,
+        victim_name,
+        date_from is not None,
+        date_to is not None,
+    ))
+
+
+def _build_sql_graph(
+    db: Session,
+    category_filter: str | None = None,
+    min_risk: float = 0.0,
+    criminal_name: str | None = None,
+    crime_type: str | None = None,
+    district: str | None = None,
+    police_station: str | None = None,
+    fir_number: str | None = None,
+    victim_name: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+) -> tuple[list[NetworkNode], list[NetworkEdge]]:
+    """Construct complete graph from PostgreSQL database relations with full provenance tracking.
+
+    Issue #226: when any multi-parameter case filter is supplied the matching FIRs
+    are resolved database-side *first*, and every node/edge is then derived only
+    from those FIRs. Unrelated cases/relationships are never loaded into the graph.
+    """
     _, seed_criminal_names, seed_victim_names = _seed_identity_sets()
-    firs = (
+
+    filtered_fir_ids: set[Any] | None = None
+    if _has_case_filters(
+        criminal_name,
+        crime_type,
+        district,
+        police_station,
+        fir_number,
+        victim_name,
+        date_from,
+        date_to,
+    ):
+        filtered_fir_ids = _filter_fir_ids(
+            db,
+            criminal_name=criminal_name,
+            crime_type=crime_type,
+            district=district,
+            police_station=police_station,
+            fir_number=fir_number,
+            victim_name=victim_name,
+            date_from=date_from,
+            date_to=date_to,
+        )
+
+    query = (
         db.query(FIR)
         .options(
             joinedload(FIR.crime_case).joinedload(CrimeCase.location),
             joinedload(FIR.criminal_links).joinedload(FIRCriminalLink.criminal),
             joinedload(FIR.victim_links).joinedload(FIRVictimLink.victim),
         )
-        .order_by(FIR.filed_at.desc())
-        .all()
     )
+    if filtered_fir_ids is not None:
+        query = query.filter(FIR.id.in_(filtered_fir_ids))
+    firs = query.order_by(FIR.filed_at.desc()).all()
 
     nodes_map: dict[str, NetworkNode] = {}
     edges_list: list[NetworkEdge] = []
@@ -387,8 +551,20 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
                             operational_warning="Syndicate affiliation analytical inference. Intelligence lead for investigative corroboration.",
                         ))
 
-    # Also load all officers and criminals to ensure every registered entity has a graph node
-    all_officers = db.query(Officer).all()
+    # Issue #226: when case filters are active, only enrich with entities that are
+    # actually connected to the filtered FIR set so unrelated registered officers /
+    # criminals never appear in the filtered network. Subqueries keep this to a
+    # single DB round-trip (no per-row lazy loads).
+    if filtered_fir_ids is not None:
+        from sqlalchemy import select
+        involved_officer_ids = (
+            select(FIR.investigating_officer_id)
+            .where(FIR.investigating_officer_id.isnot(None), FIR.id.in_(filtered_fir_ids))
+            .distinct()
+        )
+        all_officers = db.query(Officer).filter(Officer.id.in_(involved_officer_ids)).all()
+    else:
+        all_officers = db.query(Officer).all()
     for o in all_officers:
         o_id = f"officer-{o.id}"
         if o_id not in nodes_map:
@@ -403,7 +579,16 @@ def _build_sql_graph(db: Session, category_filter: str | None = None, min_risk: 
                 isSeed=False,
             )
 
-    all_criminals = db.query(Criminal).all()
+    if filtered_fir_ids is not None:
+        from sqlalchemy import select
+        linked_criminal_ids = (
+            select(FIRCriminalLink.criminal_id)
+            .where(FIRCriminalLink.fir_id.in_(filtered_fir_ids))
+            .distinct()
+        )
+        all_criminals = db.query(Criminal).filter(Criminal.id.in_(linked_criminal_ids)).all()
+    else:
+        all_criminals = db.query(Criminal).all()
     for c in all_criminals:
         c_id = f"criminal-{c.id}"
         if c_id not in nodes_map:
@@ -531,9 +716,36 @@ def get_full_network_graph(
     provenance_filter: str | None = None,
     exclude_demo: bool = False,
     limit: int = 500,
+    criminal_name: str | None = None,
+    crime_type: str | None = None,
+    district: str | None = None,
+    police_station: str | None = None,
+    fir_number: str | None = None,
+    victim_name: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
 ) -> NetworkGraphResponse:
-    """Fetch complete or filtered relationship network (Neo4j-first, SQL fallback)."""
-    neo4j_data = fetch_full_graph_neo4j() if is_neo4j_available() else None
+    """Fetch complete or filtered relationship network (Neo4j-first, SQL fallback).
+
+    Issue #226: multi-parameter case filters are always resolved against the
+    PostgreSQL source of truth, so when any of them is active the Neo4j fast path
+    is bypassed (Neo4j stores only a coarse graph projection and cannot honour
+    crime-type/district/date predicates). Unfiltered queries keep the existing
+    Neo4j-first behaviour.
+    """
+    has_case_filters = _has_case_filters(
+        criminal_name,
+        crime_type,
+        district,
+        police_station,
+        fir_number,
+        victim_name,
+        date_from,
+        date_to,
+    )
+    neo4j_data = None
+    if is_neo4j_available() and not has_case_filters:
+        neo4j_data = fetch_full_graph_neo4j()
     if neo4j_data:
         nodes = [NetworkNode(**n) for n in neo4j_data["nodes"]]
         edges = [NetworkEdge(**e) for e in neo4j_data["edges"]]
@@ -552,7 +764,19 @@ def get_full_network_graph(
             exclude_demo=exclude_demo,
         )
 
-    nodes, edges = _build_sql_graph(db, category_filter=category_filter, min_risk=min_risk)
+    nodes, edges = _build_sql_graph(
+        db,
+        category_filter=category_filter,
+        min_risk=min_risk,
+        criminal_name=criminal_name,
+        crime_type=crime_type,
+        district=district,
+        police_station=police_station,
+        fir_number=fir_number,
+        victim_name=victim_name,
+        date_from=date_from,
+        date_to=date_to,
+    )
     limited_nodes = nodes[:limit]
     limited_ids = {n.id for n in limited_nodes}
     limited_edges = [e for e in edges if e.source in limited_ids and e.target in limited_ids]
@@ -863,6 +1087,362 @@ def find_shortest_path(db: Session, source_id: str, target_id: str, max_depth: i
         path_nodes=path_nodes,
         path_edges=path_edges,
         explanation=f"Found {len(path_edges)}-hop connection chain: {' -> '.join([n.name for n in path_nodes])}.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Investigative Path Finder (issue #230)
+# ---------------------------------------------------------------------------
+# The Path Finder deliberately works on a *person-condensed* view of the network:
+# entities are criminals, victims and investigating officers; an undirected edge
+# exists between any two distinct people who are named on the same FIR (the same
+# semantics that drive the existing SHARED_CASE analytical inference). Every edge
+# carries its supporting FIR/case context so the UI can explain *why* two people
+# are connected without further API calls.
+
+_PATH_PERSON_KINDS = frozenset({"criminal", "victim", "officer"})
+
+
+def _person_role(node_id: str) -> str:
+    kind = node_id.split("-", 1)[0]
+    if kind == "victim":
+        return "victim"
+    if kind == "officer":
+        return "investigating officer"
+    return "accused"
+
+
+def _resolve_person_id(raw_id: str, people: dict[str, dict[str, Any]]) -> str | None:
+    """Resolve a user-supplied entity reference to a person node id in ``people``.
+
+    Accepts canonical graph ids (``criminal-<id>``), bare primary keys, or an
+    exact display name. Resolution is confined to entities that actually exist
+    inside the current filtered network, so nothing is revealed about records
+    excluded by the active filters.
+    """
+    if not raw_id:
+        return None
+    trimmed = raw_id.strip()
+    if trimmed in people:
+        return trimmed
+    key = trimmed.lower()
+    if not key:
+        return None
+    if key in people:
+        return key
+    if key.startswith(("criminal-", "victim-", "officer-")):
+        return None
+    # Bare primary-key fallback (ids are UUIDs in production, uuids in tests).
+    suffix = f"-{key}"
+    for node_id in people:
+        if node_id.lower().endswith(suffix):
+            return node_id
+    # Exact display-name fallback.
+    for node_id, info in people.items():
+        if info["name"].strip().lower() == key:
+            return node_id
+    return None
+
+
+def _path_node(node_id: str, people: dict[str, dict[str, Any]], fir_counts: dict[str, int]) -> NetworkPathNode:
+    info = people[node_id]
+    return NetworkPathNode(
+        id=node_id,
+        name=info["name"],
+        category=info["category"],
+        riskScore=info["riskScore"],
+        casesCount=fir_counts.get(node_id, info["casesCount"]),
+        district=info["district"],
+        status=info["status"],
+        isSeed=info["isSeed"],
+    )
+
+
+def _no_path_response(
+    message: str,
+    *,
+    source: NetworkPathNode | None = None,
+    target: NetworkPathNode | None = None,
+    max_hops: int | None = None,
+) -> NetworkPathResponse:
+    explanation = message
+    if source and target and max_hops is not None:
+        explanation = (
+            f"{source.name} and {target.name} are not connected within {max_hops} "
+            "hop(s) in the current filtered network."
+        )
+    return NetworkPathResponse(
+        found=False,
+        distance=0,
+        source=source,
+        target=target,
+        message=message,
+        explanation=explanation,
+    )
+
+
+def find_connection_path(
+    db: Session,
+    source_id: str,
+    target_id: str,
+    max_hops: int = 3,
+    criminal_name: str | None = None,
+    crime_type: str | None = None,
+    district: str | None = None,
+    police_station: str | None = None,
+    fir_number: str | None = None,
+    victim_name: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+) -> NetworkPathResponse:
+    """Find the shortest person-to-person connection path via shared FIRs.
+
+    The person-condensed graph is derived *exclusively* from the filtered FIR set
+    (issue #226 semantics), so a path can never leak a relationship that the
+    active search filters already excluded. Traversal is deterministic BFS
+    (unweighted, undirected, cycle-safe) bounded by ``max_hops``; neighbours are
+    visited in descending shared-FIR count so the most corroborated connection is
+    preferred for tie-breaks.
+    """
+    # 1. The matching FIR set is ALWAYS resolved through the shared filter
+    #    primitive — an unfiltered search means "every FIR", never Neo4j.
+    filtered_fir_ids = _filter_fir_ids(
+        db,
+        criminal_name=criminal_name,
+        crime_type=crime_type,
+        district=district,
+        police_station=police_station,
+        fir_number=fir_number,
+        victim_name=victim_name,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+    if not filtered_fir_ids:
+        return _no_path_response("No network relationships found for the selected filters.")
+
+    _, seed_criminal_names, seed_victim_names = _seed_identity_sets()
+
+    # 2. Load the filtered FIRs in a single round-trip (no per-row lazy loads).
+    firs = (
+        db.query(FIR)
+        .options(
+            joinedload(FIR.crime_case).joinedload(CrimeCase.location),
+            joinedload(FIR.crime_case).joinedload(CrimeCase.category),
+            joinedload(FIR.criminal_links).joinedload(FIRCriminalLink.criminal),
+            joinedload(FIR.victim_links).joinedload(FIRVictimLink.victim),
+        )
+        .filter(FIR.id.in_(filtered_fir_ids))
+        .order_by(FIR.filed_at.asc())
+        .all()
+    )
+
+    # 3. Build the person registry and shared-FIR adjacency with evidence.
+    people: dict[str, dict[str, Any]] = {}
+    fir_counts: dict[str, int] = defaultdict(int)
+    edge_evidence: dict[tuple[str, str], dict[str, Any]] = {}
+
+    for fir in firs:
+        case = fir.crime_case
+        participants: list[str] = []
+
+        for link in fir.criminal_links:
+            criminal = link.criminal
+            if criminal is None:
+                continue
+            node_id = f"criminal-{criminal.id}"
+            if node_id not in people:
+                people[node_id] = {
+                    "name": criminal.full_name,
+                    "category": NetworkNodeCategory.SUSPECT if criminal.status == "at_large" else NetworkNodeCategory.OFFENDER,
+                    "riskScore": _criminal_risk(criminal),
+                    "casesCount": 0,
+                    "district": case.location.district if case and case.location else None,
+                    "status": criminal.status,
+                    "isSeed": criminal.full_name in seed_criminal_names,
+                }
+            participants.append(node_id)
+
+        for vlink in fir.victim_links:
+            victim = vlink.victim
+            node_id = f"victim-{victim.id}"
+            if node_id not in people:
+                people[node_id] = {
+                    "name": victim.full_name,
+                    "category": NetworkNodeCategory.VICTIM,
+                    "riskScore": 15.0,
+                    "casesCount": 0,
+                    "district": case.location.district if case and case.location else None,
+                    "status": "victim",
+                    "isSeed": victim.full_name in seed_victim_names,
+                }
+            participants.append(node_id)
+
+        if fir.investigating_officer:
+            officer = fir.investigating_officer
+            node_id = f"officer-{officer.id}"
+            if node_id not in people:
+                people[node_id] = {
+                    "name": officer.name,
+                    "category": NetworkNodeCategory.OFFICER,
+                    "riskScore": 10.0,
+                    "casesCount": 0,
+                    "district": officer.district,
+                    "status": officer.status,
+                    "isSeed": False,
+                }
+            participants.append(node_id)
+
+        # Dedup safety (a person cannot be listed twice on one FIR, but be robust).
+        participants = list(dict.fromkeys(participants))
+        for participant in participants:
+            fir_counts[participant] += 1
+
+        evidence_row = {
+            "fir_number": fir.fir_number,
+            "case_number": case.case_number if case else None,
+            "crime_type": (
+                case.category.name
+                if case and case.category
+                else (case.mo_tags if case and case.mo_tags else None)
+            ),
+            "district": case.location.district if case and case.location else None,
+            "station": case.location.station if case and case.location else None,
+            "date": fir.filed_at.isoformat() if fir.filed_at else None,
+        }
+
+        for i in range(len(participants)):
+            for j in range(i + 1, len(participants)):
+                u, v = participants[i], participants[j]
+                key = (u, v) if u < v else (v, u)
+                slot = edge_evidence.setdefault(key, {"rows": [], "roles": {}})
+                slot["rows"].append(evidence_row)
+                slot["roles"][u] = _person_role(u)
+                slot["roles"][v] = _person_role(v)
+
+    adjacency: dict[str, list[tuple[str, int]]] = defaultdict(list)
+    for (u, v), slot in edge_evidence.items():
+        shared_count = len(slot["rows"])
+        adjacency[u].append((v, shared_count))
+        adjacency[v].append((u, shared_count))
+    # Deterministic BFS order: most corroborated edge first, then name (stable).
+    for node_id in adjacency:
+        adjacency[node_id].sort(key=lambda pair: (-pair[1], people[pair[0]]["name"].lower()))
+
+    # 4. Resolve the requested source / target inside the current filtered network.
+    src = _resolve_person_id(source_id, people)
+    tgt = _resolve_person_id(target_id, people)
+
+    if src is None or tgt is None:
+        return _no_path_response(
+            "Selected entity is not part of the current filtered network. Adjust the search filters and try again."
+        )
+
+    source_node = _path_node(src, people, fir_counts)
+    target_node = _path_node(tgt, people, fir_counts)
+
+    # 5. BFS shortest path bounded by max_hops.
+    if src == tgt:
+        return _no_path_response("Please select two different entities.", source=source_node, target=target_node)
+
+    prev: dict[str, str | None] = {src: None}
+    frontier = [src]
+    hops = 0
+    found: str | None = None
+
+    while frontier and hops < max_hops:
+        next_frontier: list[str] = []
+        for node_id in frontier:
+            for neighbor, _ in adjacency.get(node_id, ()):
+                if neighbor in prev:
+                    continue
+                prev[neighbor] = node_id
+                if neighbor == tgt:
+                    found = neighbor
+                    break
+                next_frontier.append(neighbor)
+            if found:
+                break
+        if found:
+            break
+        frontier = next_frontier
+        hops += 1
+
+    if not found:
+        return _no_path_response(
+            f"No connection found within {max_hops} hops.",
+            source=source_node,
+            target=target_node,
+            max_hops=max_hops,
+        )
+
+    # 6. Reconstruct the path and its evidence-backed relationships.
+    path_ids: list[str] = []
+    cur: str | None = found
+    while cur is not None:
+        path_ids.append(cur)
+        cur = prev[cur]
+    path_ids.reverse()
+
+    path_nodes = [_path_node(nid, people, fir_counts) for nid in path_ids]
+    relationships: list[NetworkPathRelationship] = []
+    supporting_firs: set[str] = set()
+    crime_types: set[str] = set()
+    districts: set[str] = set()
+
+    for i in range(len(path_ids) - 1):
+        u, v = path_ids[i], path_ids[i + 1]
+        key = (u, v) if u < v else (v, u)
+        slot = edge_evidence[key]
+        rows = slot["rows"]
+        evidence_items = [r for r in rows]
+        fir_numbers = sorted({r["fir_number"] for r in evidence_items})
+        case_numbers = sorted({r["case_number"] for r in evidence_items if r["case_number"]})
+        edge_crime_types = sorted({r["crime_type"] for r in evidence_items if r["crime_type"]})
+        edge_districts = sorted({r["district"] for r in evidence_items if r["district"]})
+        edge_stations = sorted({r["station"] for r in evidence_items if r["station"]})
+        edge_dates = sorted({r["date"] for r in evidence_items if r["date"]})
+
+        supporting_firs.update(fir_numbers)
+        crime_types.update(edge_crime_types)
+        districts.update(edge_districts)
+
+        relationships.append(NetworkPathRelationship(
+            source_id=u,
+            target_id=v,
+            relationship_type="shared_fir",
+            relationship="Shared FIR participation",
+            fir_numbers=fir_numbers,
+            case_numbers=case_numbers,
+            crime_types=edge_crime_types,
+            districts=edge_districts,
+            stations=edge_stations,
+            dates=edge_dates,
+            roles={pid: slot["roles"].get(pid, _person_role(pid)) for pid in (u, v)},
+        ))
+
+    distance = len(path_ids) - 1
+    return NetworkPathResponse(
+        found=True,
+        distance=distance,
+        source=source_node,
+        target=target_node,
+        nodes=path_nodes,
+        relationships=relationships,
+        message=f"Connection found — {distance} hop{'s' if distance != 1 else ''}",
+        explanation=(
+            f"{source_node.name} and {target_node.name} are connected through a "
+            f"{distance}-hop chain supported by {len(supporting_firs)} FIR record(s). "
+            "All relationships reflect shared FIR participation and do not by "
+            "themselves establish a confirmed association."
+        ),
+        summary={
+            "entities": len(path_nodes),
+            "hops": distance,
+            "supporting_firs": len(supporting_firs),
+            "crime_types": len(crime_types),
+            "districts": len(districts),
+        },
     )
 
 

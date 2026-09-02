@@ -1,6 +1,6 @@
 import React from 'react';
 import type { GraphNode, GraphLink } from './CriminalGraph3D';
-import { User, ShieldAlert, Phone, MapPin, Briefcase, X, Database, FileText, Share2 } from 'lucide-react';
+import { User, ShieldAlert, Phone, MapPin, Briefcase, X, Database, FileText, Share2, Waypoints, Focus } from 'lucide-react';
 import { downloadSecureDossier } from '../../utils/downloader';
 import { useAuditStore } from '../../store/auditStore';
 import { useAuthStore } from '../../store/authStore';
@@ -12,6 +12,14 @@ interface NodeDetailPanelProps {
   onClose: () => void;
   onSelectNode?: (node: GraphNode) => void;
   onSelectLink?: (link: GraphLink) => void;
+  /** Issue #230: investigative actions — set as path-finder endpoint or focus
+   *  the graph around this entity. Optional so other views keep working. */
+  onSetPathSource?: (node: GraphNode) => void;
+  onSetPathTarget?: (node: GraphNode) => void;
+  onFocusNode?: (node: GraphNode, hops: number) => void;
+  onClearFocus?: () => void;
+  isFocused?: boolean;
+  focusHops?: number;
 }
 
 export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ 
@@ -20,7 +28,13 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({
   nodes = [], 
   onClose,
   onSelectNode,
-  onSelectLink
+  onSelectLink,
+  onSetPathSource,
+  onSetPathTarget,
+  onFocusNode,
+  onClearFocus,
+  isFocused = false,
+  focusHops = 2,
 }) => {
   const { user } = useAuthStore();
   const { addLog } = useAuditStore();
@@ -202,6 +216,80 @@ export const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({
 
       {/* Footer */}
       <div className="p-3 border-t border-border-color shrink-0 space-y-1.5">
+        {/* Issue #230: investigative actions (only rendered when wired up) */}
+        {(onSetPathSource || onSetPathTarget || onFocusNode || onClearFocus) && (
+          <div className="space-y-1.5 pb-1">
+            <p className="text-[9px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Investigation Actions</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {onSetPathSource && (
+                <button
+                  onClick={() => onSetPathSource(node)}
+                  className="py-1.5 px-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] uppercase rounded-lg font-bold cursor-pointer flex items-center justify-center gap-1 transition-colors"
+                  title="Use this entity as the starting point of a connection-path search"
+                >
+                  <Waypoints className="w-3 h-3" />
+                  Set as Source
+                </button>
+              )}
+              {onSetPathTarget && (
+                <button
+                  onClick={() => onSetPathTarget(node)}
+                  className="py-1.5 px-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] uppercase rounded-lg font-bold cursor-pointer flex items-center justify-center gap-1 transition-colors"
+                  title="Use this entity as the destination of a connection-path search"
+                >
+                  <Waypoints className="w-3 h-3" />
+                  Set as Target
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              {onFocusNode && (
+                <>
+                  <button
+                    onClick={() => onFocusNode(node, 1)}
+                    className={`py-1 px-2 text-[9px] uppercase rounded-lg font-bold border cursor-pointer transition-colors ${
+                      isFocused && focusHops === 1
+                        ? 'bg-[var(--accent-blue)] text-[var(--text-primary)] border-[var(--accent-blue)]'
+                        : 'bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/20 text-[var(--text-secondary)] border-[var(--border-color)]'
+                    }`}
+                  >
+                    1 hop
+                  </button>
+                  <button
+                    onClick={() => onFocusNode(node, 2)}
+                    className={`py-1 px-2 text-[9px] uppercase rounded-lg font-bold border cursor-pointer transition-colors ${
+                      isFocused && focusHops === 2
+                        ? 'bg-[var(--accent-blue)] text-[var(--text-primary)] border-[var(--accent-blue)]'
+                        : 'bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/20 text-[var(--text-secondary)] border-[var(--border-color)]'
+                    }`}
+                  >
+                    2 hops
+                  </button>
+                  <button
+                    onClick={() => onFocusNode(node, 3)}
+                    className={`py-1 px-2 text-[9px] uppercase rounded-lg font-bold border cursor-pointer transition-colors ${
+                      isFocused && focusHops === 3
+                        ? 'bg-[var(--accent-blue)] text-[var(--text-primary)] border-[var(--accent-blue)]'
+                        : 'bg-[var(--bg-tertiary)] hover:bg-[var(--accent-blue)]/20 text-[var(--text-secondary)] border-[var(--border-color)]'
+                    }`}
+                  >
+                    3 hops
+                  </button>
+                </>
+              )}
+              {onClearFocus && isFocused && (
+                <button
+                  onClick={onClearFocus}
+                  className="ml-auto py-1 px-2 bg-[var(--bg-tertiary)] hover:bg-[var(--accent-coral)]/20 text-[var(--text-secondary)] hover:text-[var(--accent-coral)] border border-[var(--border-color)] text-[9px] uppercase rounded-lg font-bold cursor-pointer flex items-center gap-1 transition-colors"
+                >
+                  <Focus className="w-3 h-3" />
+                  Exit
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <button
           onClick={() => {
             const dossierData: Record<string, any> = {

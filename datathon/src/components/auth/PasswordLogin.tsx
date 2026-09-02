@@ -4,12 +4,13 @@ import {
   KeyRound,
   Loader2,
   AlertCircle,
+  AlertTriangle,
   LogIn,
   ShieldCheck,
   Eye,
   EyeOff,
 } from 'lucide-react';
-import { useAuthStore } from '../../store/authStore';
+import { useAuthStore, classifyAuthError } from '../../store/authStore';
 import { showSecureEntry } from './SecureEntryOverlay';
 
 interface PasswordLoginProps {
@@ -28,24 +29,17 @@ const CLEARANCE_LABELS: Record<string, string> = {
   VIEWER: 'OBSERVER ACCESS',
 };
 
-/** Translate raw backend/store failures into calm, human language. */
-const sanitizeAuthError = (raw: string | null): string => {
-  const msg = (raw || '').toLowerCase();
-  if (!msg) return 'Authentication failed. Please try again.';
-  if (
-    msg.includes('temporarily unavailable') ||
-    msg.includes('offline') ||
-    msg.includes('failed to fetch') ||
-    msg.includes('networkerror') ||
-    msg.includes('load failed') ||
-    msg.includes('aborted')
-  ) {
-    return 'The secure authentication service is temporarily unavailable. Please try again shortly.';
-  }
-  if (msg.includes('session expired')) {
-    return 'Your session could not be restored. Please authenticate again.';
-  }
-  return 'Username or password was not recognized. Verify your credentials and try again.';
+const ERROR_BOX_STYLES: Record<string, { background: string; borderColor: string; color: string }> = {
+  error: {
+    background: 'var(--lp-red-soft)',
+    borderColor: 'rgba(224, 96, 85, 0.35)',
+    color: 'var(--lp-red)',
+  },
+  warning: {
+    background: 'var(--lp-amber-soft)',
+    borderColor: 'rgba(223, 162, 63, 0.4)',
+    color: 'var(--lp-amber)',
+  },
 };
 
 export const PasswordLogin: React.FC<PasswordLoginProps> = ({ onSuccess }) => {
@@ -101,7 +95,7 @@ export const PasswordLogin: React.FC<PasswordLoginProps> = ({ onSuccess }) => {
     } else {
       setStatus('idle');
       setPassword('');
-      setError(sanitizeAuthError(useAuthStore.getState().loginError));
+      setError(useAuthStore.getState().loginError);
       passwordRef.current?.focus();
     }
   }, [username, password, login, onSuccess]);
@@ -111,6 +105,8 @@ export const PasswordLogin: React.FC<PasswordLoginProps> = ({ onSuccess }) => {
   }, []);
 
   const busy = status !== 'idle';
+
+  const authError = error ? classifyAuthError(error) : null;
 
   return (
     <form
@@ -122,17 +118,17 @@ export const PasswordLogin: React.FC<PasswordLoginProps> = ({ onSuccess }) => {
     >
       {/* Live region for validation / auth errors */}
       <div aria-live="polite" className="flex min-h-[18px] items-start">
-        {error && (
+        {authError && (
           <div
             className="lp-shake flex w-full items-start gap-2 rounded-lg border px-3 py-2 text-[11.5px] leading-snug"
-            style={{
-              background: 'var(--lp-red-soft)',
-              borderColor: 'rgba(224, 96, 85, 0.35)',
-              color: 'var(--lp-red)',
-            }}
+            style={ERROR_BOX_STYLES[authError.tone]}
           >
-            <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" />
-            <span>{error}</span>
+            {authError.tone === 'warning' ? (
+              <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" />
+            )}
+            <span>{authError.message}</span>
           </div>
         )}
       </div>

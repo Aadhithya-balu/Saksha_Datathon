@@ -20,6 +20,7 @@ from app.auth.rbac import ROLE_ADMIN, require_roles
 from app.core.config import settings
 from app.core.exceptions import AppException
 from app.core.logging_config import logger
+from app.core.rate_limit import resolve_client_ip
 from app.database.postgres import get_db
 from app.models.user import User
 from app.schemas.auth import ChangePasswordRequest, LoginRequest, LogoutRequest, RefreshRequest, TokenResponse, UpdateProfileRequest
@@ -52,7 +53,8 @@ def _rate_limit(ip: str, max_attempts: int, window: int, store: dict) -> None:
 
 
 def _client_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
+    # Use the real client IP even behind the nginx proxy (see rate_limit.py).
+    return resolve_client_ip(request)
 
 
 @router.post("/login", response_model=TokenResponse)

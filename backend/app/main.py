@@ -291,7 +291,7 @@ def _prewarm_models() -> None:
                 ("hotspot",  "app.ai.inference.hotspot",  ["_load_model", "_load_feature_columns", "_load_metadata"]),
                 ("risk",     "app.ai.inference.risk",      ["_load_risk_model", "_load_forecast_model", "_load_metadata"]),
                 ("criminal", "app.ai.inference.criminal",  ["_load_models"]),
-                ("anomaly",  "app.ai.inference.anomaly",   ["_load_model"]),
+                ("anomaly",  "app.ai.inference.anomaly",   ["_load_default_model"]),
             ]
             import importlib
             for key, module_path, fn_names in loaders:
@@ -301,13 +301,65 @@ def _prewarm_models() -> None:
                         fn = getattr(mod, fn_name, None)
                         if callable(fn):
                             fn()
-                    logger.info("[prewarm] %s model loaded", key)
+                        else:
+                            logger.warning("[prewarm] %s has no callable %s — add it so the domain prewarms", key, fn_name)
+                    logger.info(f"[prewarm] {key} model loaded")
                 except Exception as exc:
                     logger.warning("[prewarm] %s skipped: %s", key, exc)
         except Exception as exc:
             logger.error("[prewarm] Background model prewarm thread crashed: %s", exc, exc_info=True)
 
     threading.Thread(target=_load, name="saksha-prewarm", daemon=True).start()
+
+
+def _prewarm_mo_profiles():
+    """Warm the MO profile cache in a background thread.
+
+    MO matching extracts a normalized profile for every crime case and every
+    criminal in the database (~40s on real data). With this warm-up, the first
+    criminal-detail / investigation lookup the operator performs is already
+    fast because the profiles are cached. Best-effort: any failure is logged
+    and left for the on-demand path.
+    """
+    import threading
+
+    def _warm():
+        try:
+            from app.database.postgres import SessionLocal
+            from sqlalchemy.orm import joinedload
+
+            from app.models.crime import CrimeCase
+            from app.models.criminal import Criminal
+            from app.services.mo_matching_service import (
+                extract_case_mo_profile,
+                extract_criminal_mo_profile,
+            )
+
+            db = SessionLocal()
+            try:
+                cases = (
+                    db.query(CrimeCase)
+                    .options(joinedload(CrimeCase.category), joinedload(CrimeCase.location))
+                    .all()
+                )
+                for case in cases:
+                    extract_case_mo_profile(db, case)
+                criminals = (
+                    db.query(Criminal)
+                    .options(joinedload(Criminal.fir_links))
+                    .all()
+                )
+                for criminal in criminals:
+                    extract_criminal_mo_profile(db, criminal)
+                logger.info(
+                    f"[prewarm] MO profiles cached: {len(cases)} cases, {len(criminals)} criminals"
+                )
+            finally:
+                db.close()
+        except Exception as exc:
+            logger.warning("[prewarm] MO profile warm-up skipped: %s", exc)
+
+    threading.Thread(target=_warm, name="saksha-prewarm-mo", daemon=True).start()
 
 
 _bg_refresh_stop = False
@@ -395,15 +447,18 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.error(f"PostgreSQL setup error: {exc}")
 
-    # Auto-seed demo data when running on SQLite (no real DB) and the
-    # users table is empty — gives operators a working login out of the box.
+    # Auto-seed demo data when the database has no users yet and demo fallback
+    # is permitted (never in production). This gives operators a working login —
+    # and the demo gang networks — out of the box on any fresh environment,
+    # including Supabase/PostgreSQL deploys with an empty database.
     try:
-        from app.database.postgres import SessionLocal, engine as _eng
-        if _eng.url.drivername.startswith("sqlite"):
+        from app.core import data_mode as _data_mode
+        from app.database.postgres import SessionLocal
+        if not _data_mode.is_production():
             with SessionLocal() as _db:
                 from app.models.user import User
                 if _db.query(User).count() == 0:
-                    logger.info("SQLite DB has no users — seeding demo data...")
+                    logger.info("Database has no users — seeding demo data...")
                     from app.database.seed_db import seed
                     seed()
                     logger.info("Demo data seeded successfully")
@@ -417,6 +472,11 @@ async def lifespan(app: FastAPI):
     # Pre-warm all ML models in a background thread so the first inference
     # request is fast. Runs concurrently with server startup.
     _prewarm_models()
+
+    # Pre-warm the MO profile cache in the background so criminal-detail /
+    # investigation lookups don't pay the ~40s one-time extraction cost on the
+    # user's first request. Best-effort and non-blocking.
+    _prewarm_mo_profiles()
 
     # Move staleness checks off the hot inference path — run every 5 min.
     _start_background_refresh()

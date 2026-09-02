@@ -7,11 +7,15 @@ evidence-grounded explainability factors.
 """
 from __future__ import annotations
 
+import logging
 import re
+import threading
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -91,7 +95,60 @@ def _infer_target_type(text: str) -> str | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Profile-level cache
+# ---------------------------------------------------------------------------
+# The dominant cold cost of matching is re-extracting the MO profile for every
+# case and every criminal in the database per cache miss (~40s+ on real data).
+# Cache the individual extracted profiles (keyed by entity id) so a later cold
+# match only recomputes the single *target* profile, not the whole table.
+_prof_cache: dict[str, tuple[float, str]] = {}
+_prof_cache_lock = threading.Lock()
+_PROF_CACHE_TTL = timedelta(minutes=10)
+
+
+def _profile_cached(key: str, compute) -> str:
+    """Return a cached serialized MO profile or compute+store a fresh one."""
+    now = datetime.now(timezone.utc)
+    with _prof_cache_lock:
+        entry = _prof_cache.get(key)
+        if entry is not None and entry[0] > now:
+            return entry[1]
+    value = compute()
+    import json as _json
+    serialized = _json.dumps(asdict(value), default=str, sort_keys=True)
+    with _prof_cache_lock:
+        _prof_cache[key] = (now + _PROF_CACHE_TTL, serialized)
+    return serialized
+
+
+def _profile_from_cache(key: str, build) -> MOProfile:
+    """Build (or load from cache) an MOProfile for a stable entity id."""
+    from dataclasses import fields as _fields
+
+    def _compute() -> MOProfile:
+        return build()
+
+    raw = _profile_cached(key, _compute)
+    import json as _json
+    try:
+        data = _json.loads(raw)
+        kwargs = {f.name: data.get(f.name) for f in _fields(MOProfile)}
+        kwargs["mo_tags"] = set(data.get("mo_tags") or [])
+        return MOProfile(**kwargs)
+    except Exception:
+        return build()
+
+
 def extract_case_mo_profile(db: Session, case: CrimeCase) -> MOProfile:
+    def _build() -> MOProfile:
+        return _extract_case_mo_profile_uncached(db, case)
+
+    key = f"case:{case.id}"
+    return _profile_from_cache(key, _build)
+
+
+def _extract_case_mo_profile_uncached(db: Session, case: CrimeCase) -> MOProfile:
     """Extract structured MO profile from a real CrimeCase record and linked FIRs."""
     tags = tags_for_case_text(case)
 
@@ -138,6 +195,14 @@ def extract_case_mo_profile(db: Session, case: CrimeCase) -> MOProfile:
 
 
 def extract_criminal_mo_profile(db: Session, criminal: Criminal) -> MOProfile:
+    def _build() -> MOProfile:
+        return _extract_criminal_mo_profile_uncached(db, criminal)
+
+    key = f"criminal:{criminal.id}"
+    return _profile_from_cache(key, _build)
+
+
+def _extract_criminal_mo_profile_uncached(db: Session, criminal: Criminal) -> MOProfile:
     """Extract structured MO profile from a real Criminal record and historical cases."""
     tags = tags_for_text(criminal.mo_summary)
 
@@ -415,6 +480,32 @@ def _is_confirmed_link(db: Session, case_id: uuid.UUID, criminal_id: uuid.UUID) 
     )
 
 
+_match_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+_match_cache_lock = threading.Lock()
+# MO matching is expensive (full-table profile extraction, ~40s+ on real data).
+# A 30s TTL forced a full recompute every half-minute; 5 minutes keeps repeat
+# lookups fast while still self-healing against slow data changes.
+_MATCH_CACHE_TTL = timedelta(seconds=300)
+
+
+def _cached_match(key: str) -> dict[str, Any] | None:
+    """Return a fresh-enough cached MO match, or None if missing/expired."""
+    with _match_cache_lock:
+        entry = _match_cache.get(key)
+        if entry is None:
+            return None
+        expires_at, payload = entry
+        if datetime.now(timezone.utc) > expires_at:
+            _match_cache.pop(key, None)
+            return None
+        return payload
+
+
+def _store_match(key: str, payload: dict[str, Any]) -> None:
+    with _match_cache_lock:
+        _match_cache[key] = (datetime.now(timezone.utc) + _MATCH_CACHE_TTL, payload)
+
+
 def match_case_against_db(
     db: Session,
     case_id: uuid.UUID,
@@ -422,6 +513,11 @@ def match_case_against_db(
     min_similarity: float = 0.30,
 ) -> dict[str, Any]:
     """Find other real cases and real suspects matching a case's MO pattern."""
+    cache_key = f"case:{case_id}:{min_similarity}:{top_k}"
+    cached = _cached_match(cache_key)
+    if cached is not None:
+        return cached
+
     ensure_synced(db)
 
     target_case = (
@@ -472,6 +568,12 @@ def match_case_against_db(
 
     # 2. Compare against real Criminals in the DB
     matching_suspects = []
+    confirmed_criminal_ids = {
+        link.criminal_id
+        for fir in (target_case.firs or [])
+        for link in (fir.criminal_links or [])
+        if link.criminal_id is not None
+    }
     for criminal in (
         db.query(Criminal)
         .options(joinedload(Criminal.fir_links).joinedload(FIRCriminalLink.fir))
@@ -480,7 +582,7 @@ def match_case_against_db(
         crim_profile = extract_criminal_mo_profile(db, criminal)
         eval_res = calculate_mo_similarity(target_profile, crim_profile)
 
-        is_confirmed = _is_confirmed_link(db, case_id, criminal.id)
+        is_confirmed = criminal.id in confirmed_criminal_ids
 
         if eval_res.score >= min_similarity or is_confirmed:
             matching_suspects.append({
@@ -502,7 +604,7 @@ def match_case_against_db(
 
     matching_suspects.sort(key=lambda x: (-int(x["is_confirmed_relationship"]), -x["similarity_score"]))
 
-    return {
+    result = {
         "target_case": {
             "case_id": str(target_case.id),
             "case_number": target_case.case_number,
@@ -516,6 +618,8 @@ def match_case_against_db(
         "total_criminals_evaluated": db.query(Criminal).count(),
         "evaluated_at": datetime.now(timezone.utc).isoformat(),
     }
+    _store_match(cache_key, result)
+    return result
 
 
 def match_criminal_against_db(
@@ -525,6 +629,11 @@ def match_criminal_against_db(
     min_similarity: float = 0.30,
 ) -> dict[str, Any]:
     """Find real unsolved/open cases and similar offenders matching a criminal's MO."""
+    cache_key = f"criminal:{criminal_id}:{min_similarity}:{top_k}"
+    cached = _cached_match(cache_key)
+    if cached is not None:
+        return cached
+
     ensure_synced(db)
 
     target_criminal = (
@@ -539,6 +648,14 @@ def match_criminal_against_db(
 
     target_profile = extract_criminal_mo_profile(db, target_criminal)
 
+    # Precompute the case ids this criminal is formally linked to (via its
+    # FIRs) so we avoid an N+1 DB query per case inside the comparison loop.
+    confirmed_case_ids = {
+        link.fir.crime_case_id
+        for link in (target_criminal.fir_links or [])
+        if link.fir is not None and link.fir.crime_case_id is not None
+    }
+
     # 1. Compare against all real CrimeCases in DB
     matching_cases = []
     for case in (
@@ -549,7 +666,7 @@ def match_criminal_against_db(
         case_profile = extract_case_mo_profile(db, case)
         eval_res = calculate_mo_similarity(target_profile, case_profile)
 
-        is_confirmed = _is_confirmed_link(db, case.id, criminal_id)
+        is_confirmed = case.id in confirmed_case_ids
 
         if eval_res.score >= min_similarity or is_confirmed:
             matching_cases.append({
@@ -602,7 +719,7 @@ def match_criminal_against_db(
 
     similar_criminals.sort(key=lambda x: -x["similarity_score"])
 
-    return {
+    result = {
         "target_criminal": {
             "criminal_id": str(target_criminal.id),
             "full_name": target_criminal.full_name,
@@ -615,6 +732,8 @@ def match_criminal_against_db(
         "total_criminals_evaluated": db.query(Criminal).count(),
         "evaluated_at": datetime.now(timezone.utc).isoformat(),
     }
+    _store_match(cache_key, result)
+    return result
 
 
 def compare_two_entities(

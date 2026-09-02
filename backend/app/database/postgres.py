@@ -26,11 +26,11 @@ def _engine_options(url) -> dict:
         connect_args["options"] = "-c statement_timeout=30000"
 
     return {
-        "pool_size": 3,
-        "max_overflow": 7,
+        "pool_size": 10,
+        "max_overflow": 20,
         "pool_pre_ping": True,
         "pool_recycle": 120,
-        "pool_timeout": 15,
+        "pool_timeout": 8,
         "connect_args": connect_args,
         "echo": settings.debug_enabled,
     }

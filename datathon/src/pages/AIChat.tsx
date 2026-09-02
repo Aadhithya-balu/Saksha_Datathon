@@ -109,6 +109,7 @@ export const AIChat: React.FC = () => {
   const [searching, setSearching] = useState(false);
 
   const [threads, setThreads] = useState<Record<string, Thread>>({});
+  const threadsRef = useRef<Record<string, Thread>>({});
   const [activeKey, setActiveKey] = useState<string | null>(null);
 
   const [loadingConv, setLoadingConv] = useState(false);
@@ -164,7 +165,12 @@ export const AIChat: React.FC = () => {
   }, [search]);
 
   const patchThread = (key: string, fn: (t: Thread) => Thread) => {
-    setThreads(prev => (prev[key] ? { ...prev, [key]: fn(prev[key]) } : prev));
+    setThreads(prev => {
+      if (!prev[key]) return prev;
+      const updated = fn(prev[key]);
+      threadsRef.current = { ...prev, [key]: updated };
+      return { ...prev, [key]: updated };
+    });
   };
 
   const openConversation = async (id: string) => {
@@ -183,7 +189,11 @@ export const AIChat: React.FC = () => {
         classification: m.classification ?? undefined,
         followUpSuggestions: m.classification ? FOLLOW_UPS[m.classification] : undefined,
       }));
-      setThreads(p => ({ ...p, [d.id]: { key: d.id, serverId: d.id, title: d.title, messages: msgs, temporary: false, streaming: false } }));
+      setThreads(p => {
+        const thread: Thread = { key: d.id, serverId: d.id, title: d.title, messages: msgs, temporary: false, streaming: false };
+        threadsRef.current = { ...threadsRef.current, [d.id]: thread };
+        return { ...p, [d.id]: thread };
+      });
       setLoadedTotals(p => ({ ...p, [d.id]: d.total_messages }));
       setActiveKey(d.id);
       localStorage.setItem(LAST_CONV_KEY, d.id);
@@ -218,19 +228,30 @@ export const AIChat: React.FC = () => {
 
   const startChat = (temporary: boolean) => {
     const key = `d-${Date.now()}`;
-    setThreads(p => ({ ...p, [key]: { key, serverId: null, title: 'New Chat', messages: [], temporary, streaming: false } }));
+    const thread: Thread = { key, serverId: null, title: 'New Chat', messages: [], temporary, streaming: false };
+    setThreads(p => {
+      threadsRef.current = { ...threadsRef.current, [key]: thread };
+      return { ...p, [key]: thread };
+    });
     setActiveKey(key);
     setBanner(null); setInput(''); setSideOpen(false);
   };
 
   const dismissThread = (key: string) => {
     setThreads(p => { const n = { ...p }; delete n[key]; return n; });
+    const r = { ...threadsRef.current }; delete r[key]; threadsRef.current = r;
     if (activeKey === key) setActiveKey(null);
   };
 
   const streamExchange = async (key: string, msg: string) => {
-    const thread = threads[key];
-    if (!thread) return;
+    const thread = threadsRef.current[key] || {
+      key,
+      serverId: null,
+      title: 'New Chat',
+      messages: [],
+      temporary: false,
+      streaming: false,
+    };
     const aid = `a-${Date.now()}`;
     patchThread(key, t => ({ ...t, streaming: true }));
     setStatus('Understanding your query...');
@@ -312,11 +333,12 @@ export const AIChat: React.FC = () => {
     if (!msg || loading) return;
 
     let key = activeKey;
-    let thread = key ? threads[key] : undefined;
+    let thread = key ? threadsRef.current[key] : undefined;
     if (!thread) {
       key = `d-${Date.now()}`;
       thread = { key, serverId: null, title: deriveTitle(msg), messages: [], temporary: false, streaming: false };
       setThreads(p => ({ ...p, [key as string]: thread as Thread }));
+      threadsRef.current = { ...threadsRef.current, [key as string]: thread as Thread };
       setActiveKey(key);
     } else if (thread.title === 'New Chat' && thread.messages.length === 0 && !thread.serverId) {
       patchThread(thread.key, t => ({ ...t, title: deriveTitle(msg) }));

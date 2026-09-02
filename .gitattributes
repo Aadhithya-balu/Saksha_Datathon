@@ -1,0 +1,5 @@
+# Normalize line endings
+* text=auto
+
+# Shell scripts must always be LF (shebang breaks with CRLF)
+*.sh text eol=lf

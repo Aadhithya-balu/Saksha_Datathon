@@ -341,3 +341,18 @@ Visualization & Conversational AI Platform
 # Conclusion
 
 Saksha transforms traditional crime records into a comprehensive intelligence platform by combining geospatial analytics, criminological network analysis, machine learning, predictive intelligence, anomaly detection, and conversational AI. The solution enables Karnataka State Police to move beyond manual reporting and fragmented records, creating a proactive, intelligence-driven policing ecosystem focused on prevention, investigation, and strategic decision-making.
+
+---
+# Demo values
+- **Admin** - 564738
+- **SP-0088** - 123456
+- **IO-3921** - 123456
+- **SCRB-7740** - 123456
+
+# Operational Documentation
+
+- **[Production Operations Runbook](docs/operations/runbook.md)** — deploy, start, monitor, troubleshoot, recover, and maintain every component (backend, database, Neo4j, frontend, AI/ML, storage, security) without reading source code.
+- **[Predictive Models](docs/ai/predictive_models.md)** — AI/ML model architecture, features, and metrics.
+- **[Network Intelligence & Provenance](docs/network/provenance_intelligence.md)** — Neo4j graph intelligence and dataset provenance.
+- **[Testing](TESTING.md)** — test commands and coverage.
+- **[Environment Template](backend/.env.example)** and **[Frontend Environment Template](datathon/.env.example)** — required configuration with placeholders only.

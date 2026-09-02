@@ -331,6 +331,87 @@ export interface ShortestPathResult {
   explanation: string;
 }
 
+export type NetworkPathEntityCategory =
+  | 'suspect'
+  | 'offender'
+  | 'victim'
+  | 'officer';
+export type NetworkPathEntityCategoryRaw =
+  | NetworkPathEntityCategory
+  | NetworkNodeCategory
+  | 'case'
+  | 'location'
+  | 'gang'
+  | 'vehicle'
+  | 'weapon';
+
+export interface NetworkPathNodeRecord {
+  id: string;
+  name: string;
+  category: NetworkPathEntityCategoryRaw;
+  riskScore?: number;
+  casesCount?: number;
+  district?: string | null;
+  status?: string | null;
+  isSeed?: boolean;
+}
+
+export interface NetworkPathRelationshipRecord {
+  source_id: string;
+  target_id: string;
+  relationship_type: string;
+  relationship: string;
+  fir_numbers: string[];
+  case_numbers: string[];
+  crime_types: string[];
+  districts: string[];
+  stations: string[];
+  dates: string[];
+  roles: Record<string, string>;
+}
+
+export interface NetworkPathResponse {
+  found: boolean;
+  distance: number;
+  source?: NetworkPathNodeRecord | null;
+  target?: NetworkPathNodeRecord | null;
+  nodes: NetworkPathNodeRecord[];
+  relationships: NetworkPathRelationshipRecord[];
+  message: string;
+  explanation?: string;
+  summary?: {
+    entities: number;
+    hops: number;
+    supporting_firs: number;
+    crime_types: number;
+    districts: number;
+  };
+}
+
+export async function findNetworkPath(
+  sourceId: string,
+  targetId: string,
+  maxHops: number,
+  filters?: NetworkFilterParams
+): Promise<NetworkPathResponse> {
+  const params: Record<string, string | number> = {
+    source_id: sourceId,
+    target_id: targetId,
+    max_hops: maxHops,
+  };
+  if (filters) {
+    if (filters.criminalName) params.criminal_name = filters.criminalName;
+    if (filters.crimeTypes?.length) params.crime_type = filters.crimeTypes.join(',');
+    if (filters.districts?.length) params.district = filters.districts.join(',');
+    if (filters.policeStations?.length) params.police_station = filters.policeStations.join(',');
+    if (filters.firNumbers?.length) params.fir_number = filters.firNumbers.join(',');
+    if (filters.victimName) params.victim_name = filters.victimName;
+    if (filters.dateFrom) params.date_from = filters.dateFrom;
+    if (filters.dateTo) params.date_to = filters.dateTo;
+  }
+  return apiRequest<NetworkPathResponse>(`/network/path${buildQueryString(params)}`);
+}
+
 export interface CentralityMetric {
   node_id: string;
   node_name: string;
@@ -837,11 +918,23 @@ export async function getNetworkCase(
   );
 }
 
+export interface NetworkFilterParams {
+  criminalName?: string;
+  crimeTypes?: string[];
+  districts?: string[];
+  policeStations?: string[];
+  firNumbers?: string[];
+  victimName?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 export async function getFullNetworkGraph(
   categoryFilter?: string,
   minRisk?: number,
   provenanceFilter?: string,
-  excludeDemo?: boolean
+  excludeDemo?: boolean,
+  filters?: NetworkFilterParams
 ) {
   return apiRequest<NetworkGraphResponse>(
     `/network/graph${buildQueryString({
@@ -849,6 +942,14 @@ export async function getFullNetworkGraph(
       min_risk: minRisk,
       provenance_filter: provenanceFilter,
       exclude_demo: excludeDemo,
+      criminal_name: filters?.criminalName,
+      crime_type: filters?.crimeTypes?.length ? filters.crimeTypes.join(',') : undefined,
+      district: filters?.districts?.length ? filters.districts.join(',') : undefined,
+      police_station: filters?.policeStations?.length ? filters.policeStations.join(',') : undefined,
+      fir_number: filters?.firNumbers?.length ? filters.firNumbers.join(',') : undefined,
+      victim_name: filters?.victimName,
+      date_from: filters?.dateFrom,
+      date_to: filters?.dateTo,
     })}`
   );
 }
@@ -1029,6 +1130,13 @@ export async function listCrimes(page = 1, pageSize = 100) {
 
 export async function listCriminals(q?: string, page = 1, pageSize = 100) {
   return apiRequest<PaginatedResponse<CriminalRecord>>(`/criminals${buildQueryString({ q, page, page_size: pageSize })}`);
+}
+
+export async function createCriminal(payload: Partial<CriminalRecord>) {
+  return apiRequest<CriminalRecord>('/criminals', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function getCriminal(criminalId: string) {
@@ -2170,8 +2278,8 @@ export async function getDailySummary() {
 
 export interface VictimologyOverview {
   total_victims: number;
-  victims_with_firs: number;
-  repeat_victim_count: number;
+  victims_with_linked_firs: number;
+  repeat_victims: number;
   repeat_victimization_rate: number | null;
   average_age: number | null;
   gender_distribution: Array<{ gender: string; count: number }>;
@@ -2203,13 +2311,20 @@ export async function getVictimologyOverview() {
 }
 
 export async function getRepeatVictims(minFirCount = 2) {
-  return apiRequest<{ count: number; repeat_victims: RepeatVictim[] }>(
-    `/victimology/repeat-victims?min_fir_count=${minFirCount}`
-  );
+  const raw = await apiRequest<{
+    total_victims: number;
+    repeat_victims: number;
+    results: RepeatVictim[];
+  }>(`/victimology/repeat-victims?min_fir_count=${minFirCount}`);
+  return { count: raw.repeat_victims, repeat_victims: raw.results };
 }
 
 export async function getVulnerabilityIndex() {
-  return apiRequest<{ count: number; entries: VulnerabilityEntry[] }>('/victimology/vulnerability-index');
+  const raw = await apiRequest<{
+    total_assessed: number;
+    results: VulnerabilityEntry[];
+  }>('/victimology/vulnerability-index');
+  return { count: raw.total_assessed, entries: raw.results };
 }
 
 // ── Interventions (issue #139 M7) ───────────────────────────────────────────
@@ -2736,5 +2851,251 @@ export async function searchInvestigationImage() {
   return apiRequest<InvestigationImageSearchResponse>('/investigation-hub/image-search', {
     method: 'POST',
   });
+}
+
+// --- Issue #225: Data Security / Identity Resolution ----------------------
+// Fake/duplicate record detection: duplicate-identity leads, proxy patterns,
+// integrity alerts, and an entity↔identity graph. All raw values are hashed /
+// masked server-side; review decisions are audited.
+
+export interface IdentityDashboardResponse {
+  records_analyzed: number;
+  possible_duplicates: number;
+  identity_conflicts: number;
+  identifier_reuse_alerts: number;
+  possible_aliases: number;
+  possible_proxy_relationships: number;
+  critical_reviews: number;
+  open_reviews: number;
+  assessment_counts: Record<string, number>;
+  proxy_pattern_counts: Record<string, number>;
+}
+
+export interface IdentityRelationship {
+  id: string;
+  source_entity_type: string;
+  source_entity_id: string;
+  target_entity_type: string;
+  target_entity_id: string;
+  source_name: string | null;
+  target_name: string | null;
+  relationship_type: string;
+  assessment: string;
+  confidence: number;
+  confidence_breakdown: Record<string, unknown> | null;
+  evidence_summary: { supporting_count: number; counter_count: number; groups: string[] } | null;
+  status: string;
+  reviewed_by_id: string | null;
+  reviewed_at: string | null;
+  review_decision: string | null;
+  review_note: string | null;
+  created_at: string | null;
+}
+
+export interface IdentityRelationshipDetail extends Omit<IdentityRelationship, 'source_name' | 'target_name'> {
+  source: { entity_type: string; entity_id: string; name: string | null };
+  target: { entity_type: string; entity_id: string; name: string | null };
+  evidence: Array<{
+    id: string;
+    evidence_group: string;
+    signal_type: string;
+    weight_delta: number;
+    confidence: number;
+    severity: string;
+    source_label: string | null;
+  }>;
+  conflicts: Array<Record<string, unknown>>;
+}
+
+export interface IntegrityAlertRecord {
+  id: string;
+  alert_type: string;
+  severity: string;
+  entity_a_type: string | null;
+  entity_a_id: string | null;
+  entity_b_type: string | null;
+  entity_b_id: string | null;
+  identifier_type: string | null;
+  value_hash: string | null;
+  display_value: string | null;
+  confidence: number;
+  description: string;
+  observation_count: number;
+  status: string;
+  source_summary: Record<string, unknown> | null;
+  created_at: string | null;
+}
+
+export interface ProxyPatternRecord {
+  id: string;
+  rule_id: string;
+  rule_version: string;
+  pattern: string;
+  severity: string;
+  confidence: number;
+  assessment: string;
+  entities: Array<{ entity_type: string; entity_id: string; name: string }>;
+  evidence: Array<{ description: string; rule_id: string }>;
+  counter_evidence: string[];
+  time_window: string | null;
+  explanation: string;
+  possible_explanations: string[];
+  observation_count: number;
+  status: string;
+  reviewed_by_id: string | null;
+  reviewed_at: string | null;
+  review_decision: string | null;
+  review_note: string | null;
+  created_at: string | null;
+}
+
+export interface IdentityGraphNode {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  name: string;
+  aliases: string[];
+  identifiers: Array<{ type: string; display: string }>;
+}
+
+export interface IdentityGraphEdge {
+  source: string;
+  target: string;
+  relationship_type: string;
+  relationship_id: string;
+  confidence: number;
+  assessment: string;
+  evidence_count: number;
+  status: string;
+}
+
+export interface IdentityGraphResponse {
+  nodes: IdentityGraphNode[];
+  edges: IdentityGraphEdge[];
+}
+
+export interface IdentitySearchItem {
+  entity_type: string;
+  entity_id: string;
+  name: string;
+  aliases: string[];
+  identifiers: string[];
+  match_type: string;
+  confidence: number;
+}
+
+export interface IdentitySearchResponse {
+  exact: IdentitySearchItem[];
+  probable: IdentitySearchItem[];
+  possible: IdentitySearchItem[];
+}
+
+export interface IdentityRunSummary {
+  profiles_analyzed: number;
+  candidates_generated: number;
+  relationships_proposed: number;
+  identifier_links_written: number;
+  identifier_reuse_alerts: number;
+  proxy_patterns_detected: number;
+}
+
+export interface IdentityListResponse<T> {
+  total: number | null;
+  results: T[];
+}
+
+export async function getIdentityDashboard(): Promise<IdentityDashboardResponse> {
+  return apiRequest<IdentityDashboardResponse>('/identity/dashboard');
+}
+
+export async function listIdentityRelationships(params?: {
+  status?: string;
+  assessment?: string;
+  limit?: number;
+}): Promise<IdentityListResponse<IdentityRelationship>> {
+  return apiRequest<IdentityListResponse<IdentityRelationship>>(`/identity/relationships${buildQueryString(params)}`);
+}
+
+export async function getIdentityRelationship(id: string): Promise<IdentityRelationshipDetail> {
+  return apiRequest<IdentityRelationshipDetail>(`/identity/relationships/${encodeURIComponent(id)}`);
+}
+
+export async function reviewIdentityRelationship(
+  id: string,
+  decision: string,
+  note?: string,
+): Promise<IdentityRelationship> {
+  return apiRequest<IdentityRelationship>(`/identity/relationships/${encodeURIComponent(id)}/review${buildQueryString({ decision, note })}`, {
+    method: 'POST',
+  });
+}
+
+export async function listIdentityAlerts(params?: {
+  status?: string;
+  alert_type?: string;
+  limit?: number;
+}): Promise<IdentityListResponse<IntegrityAlertRecord>> {
+  return apiRequest<IdentityListResponse<IntegrityAlertRecord>>(`/identity/alerts${buildQueryString(params)}`);
+}
+
+export async function reviewIdentityAlert(id: string, decision: string, note?: string): Promise<IntegrityAlertRecord> {
+  return apiRequest<IntegrityAlertRecord>(`/identity/alerts/${encodeURIComponent(id)}/review${buildQueryString({ decision, note })}`, {
+    method: 'POST',
+  });
+}
+
+export async function listIdentifierReuse(params?: { status?: string; limit?: number }): Promise<IdentityListResponse<IntegrityAlertRecord>> {
+  return apiRequest<IdentityListResponse<IntegrityAlertRecord>>(`/identity/identifiers/reuse${buildQueryString(params)}`);
+}
+
+export async function listIdentityAliases(params?: { entity_type?: string; entity_id?: string; limit?: number }) {
+  return apiRequest<IdentityListResponse<Record<string, unknown>>>(`/identity/aliases${buildQueryString(params)}`);
+}
+
+export async function listIdentityIdentifiers(params?: {
+  entity_type?: string;
+  entity_id?: string;
+  identifier_type?: string;
+  limit?: number;
+}) {
+  return apiRequest<IdentityListResponse<Record<string, unknown>>>(`/identity/identifiers${buildQueryString(params)}`);
+}
+
+export async function getIdentityGraph(): Promise<IdentityGraphResponse> {
+  return apiRequest<IdentityGraphResponse>('/identity/graph');
+}
+
+export async function searchIdentity(q: string): Promise<IdentitySearchResponse> {
+  return apiRequest<IdentitySearchResponse>(`/identity/search${buildQueryString({ q })}`);
+}
+
+export async function getProxyRules() {
+  return apiRequest<{ rules: Array<Record<string, unknown>>; thresholds: Record<string, unknown> }>('/identity/proxy/rules');
+}
+
+export async function listProxyPatterns(params?: {
+  status?: string;
+  severity?: string;
+  limit?: number;
+}): Promise<IdentityListResponse<ProxyPatternRecord>> {
+  return apiRequest<IdentityListResponse<ProxyPatternRecord>>(`/identity/proxy${buildQueryString(params)}`);
+}
+
+export async function getProxyPattern(id: string): Promise<ProxyPatternRecord> {
+  return apiRequest<ProxyPatternRecord>(`/identity/proxy/${encodeURIComponent(id)}`);
+}
+
+export async function reviewProxyPattern(id: string, decision: string, note?: string): Promise<ProxyPatternRecord> {
+  return apiRequest<ProxyPatternRecord>(`/identity/proxy/${encodeURIComponent(id)}/review${buildQueryString({ decision, note })}`, {
+    method: 'POST',
+  });
+}
+
+export async function runIdentityResolution(): Promise<IdentityRunSummary> {
+  return apiRequest<IdentityRunSummary>('/identity/run', { method: 'POST' });
+}
+
+export async function runProxyDetection(): Promise<{ patterns_detected: number; patterns: ProxyPatternRecord[] }> {
+  return apiRequest<{ patterns_detected: number; patterns: ProxyPatternRecord[] }>('/identity/proxy/run', { method: 'POST' });
 }
 

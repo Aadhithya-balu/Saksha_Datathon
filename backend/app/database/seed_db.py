@@ -342,6 +342,43 @@ CRIMINALS = [
     ("Nasir Shaikh", "Nasir", date(1989, 8, 14), "Male", "Short, heavy build", "Fish export smuggling", "at_large"),
 ]
 
+# Demo syndicate rosters (issue #53 gang view). Members are drawn from CRIMINALS;
+# the Network gang hierarchy service derives Kingpin/Lieutenant/Operative roles
+# from FIR-link count + risk, and flags every roster here as DEMO_SEED derived.
+CRIMINAL_GANG_MAP = {
+    "Ramu Swamy": "Whitefield Chain Snatchers",
+    "Mohammed Ali": "Whitefield Chain Snatchers",
+    "Ravi Shankar Bhat": "Whitefield Chain Snatchers",
+    "Manjunath Holla": "Whitefield Chain Snatchers",
+    "Rohit Shetty K": "Whitefield Chain Snatchers",
+    "Vijay Kumar S": "Whitefield Chain Snatchers",
+    "Vasanth Kumar": "Whitefield Chain Snatchers",
+    "Ashok Kamble": "Whitefield Chain Snatchers",
+    "Sayed Ibrahim": "Konkan Narcotics Cartel",
+    "Imran Khan Pathan": "Konkan Narcotics Cartel",
+    "Khalid Mehmood": "Konkan Narcotics Cartel",
+    "Zaheer Ahmed": "Konkan Narcotics Cartel",
+    "Irfan Hassan": "Konkan Narcotics Cartel",
+    "Rahul Deshpande": "Konkan Narcotics Cartel",
+    "Hafeez Rehman": "Konkan Narcotics Cartel",
+    "Vikram Yadav": "Digital Extortion Syndicate",
+    "Prasad Shenoy": "Digital Extortion Syndicate",
+    "Naveen Reddy": "Digital Extortion Syndicate",
+    "Deepak Sharma": "Digital Extortion Syndicate",
+    "Farhan Ahmed": "Digital Extortion Syndicate",
+    "Sunil Khot": "Digital Extortion Syndicate",
+    "Pavan Kalyan R": "Digital Extortion Syndicate",
+    "Karthik Gowda": "Deccan Land Grabbing Network",
+    "Suresh Babu": "Deccan Land Grabbing Network",
+    "Mahesh Jain": "Deccan Land Grabbing Network",
+    "Rakesh Tiwari": "Deccan Land Grabbing Network",
+    "Satish Mudiraj": "Deccan Land Grabbing Network",
+    "Javed Sheikh": "Deccan Land Grabbing Network",
+    "Tariq Hussain": "Deccan Land Grabbing Network",
+    "Zubair Sheikh": "Deccan Land Grabbing Network",
+    "Mohsin Pasha": "Deccan Land Grabbing Network",
+}
+
 # ---------------------------------------------------------------------------
 # VICTIMS — Profiles across all regions
 # ---------------------------------------------------------------------------
@@ -618,7 +655,53 @@ def _generate_comprehensive_cases():
     return cases
 
 
-ALL_CASES = HANDCRAFTED_CASES + _generate_comprehensive_cases()
+# ---------------------------------------------------------------------------
+# RECENT_CASES — 24 forward-dated cases (>=2 per day) spanning Aug 31 - Sep 9,
+# 2026. Positive day offsets relative to seed time keep the demo valuation
+# window dense so time-series charts, forecasts, and rankings have fresh input.
+# ---------------------------------------------------------------------------
+RECENT_CASES = [
+    # Aug 31 (day +1)
+    ("CR-2026-NXT-001", "Cyber Crime & Online Fraud", "Koramangala Police Station", 1, "investigating", "phishing bank-login clone targeting festival shoppers, OTP interception", ["Prasad Shenoy"], ["Sunita Devi"], "FIR-NXT-001/2026", "IPC 420, IT Act 66D", "high", 35),
+    ("CR-2026-NXT-002", "Theft & Burglaries", "Devaraja Police Station", 1, "open", "night shop break-in, cash register targeted, crowbar entry", ["Vijay Kumar S"], ["Mohan Krishna"], "FIR-NXT-002/2026", "IPC 379, 457", "medium", 15),
+    ("CR-2026-NXT-003", "Narcotics Smuggling Services", "Pandeshwar Police Station", 1, "investigating", "coastal courier parcel flagged for synthetic MDMA, harbor concealment", ["Sayed Ibrahim"], [], "FIR-NXT-003/2026", "NDPS 21, 22", "critical", 40),
+    # Sep 1 (day +2)
+    ("CR-2026-NXT-004", "Illegal Mining Violations", "Chitradurga Town Police Station", 2, "open", "night iron ore truck convoy, forged e-challan transit slips", ["Mohsin Pasha"], [], "FIR-NXT-004/2026", "MMDR Act 21", "high", 20),
+    ("CR-2026-NXT-005", "Assault", "Nazarbad Police Station", 2, "investigating", "market place altercation escalated, weapon seized, witness threats", ["Anil Kumar J"], ["Chitra K"], "FIR-NXT-005/2026", "IPC 323, 324, 506", "medium", 30),
+    ("CR-2026-NXT-006", "Smuggling & Excise Violations", "Camp Police Station", 2, "open", "illicit liquor stock raid at godown, unbranded bottles seized", ["Lokesh Biradar"], [], "FIR-NXT-006/2026", "Excise Act 32", "medium", 25),
+    # Sep 2 (day +3)
+    ("CR-2026-NXT-007", "Cyber Crime & Online Fraud", "HSR Layout Police Station", 3, "open", "cryptocurrency investment fraud via social media, fake KYC wallet", ["Farhan Ahmed"], ["Ayesha Parveen"], "FIR-NXT-007/2026", "IPC 420, IT Act 66D", "critical", 10),
+    ("CR-2026-NXT-008", "Domestic Violence", "Mandya Town Police Station", 3, "investigating", "repeat domestic complaint, protective order sought", [], ["Shashikala Devi"], "FIR-NXT-008/2026", "DV Act, IPC 498A", "medium", 45),
+    ("CR-2026-NXT-009", "Theft & Burglaries", "Kolar Town Police Station", 3, "open", "gold chain snatching near temple complex, getaway bike", ["Mohammed Ali"], ["Chandrakala Devi"], "FIR-NXT-009/2026", "IPC 392, 356", "high", 15),
+    # Sep 3 (day +4)
+    ("CR-2026-NXT-010", "Narcotics Smuggling Services", "Hubli City Police Station", 4, "investigating", "interstate drug courier via bus terminal, concealed false compartment", ["Zaheer Ahmed"], [], "FIR-NXT-010/2026", "NDPS 21, 22", "critical", 50),
+    ("CR-2026-NXT-011", "Assault", "Gadag Town Police Station", 4, "open", "road rage assault near bus stand, public CCTV captured", ["Anil Kumar J"], ["Sarojini Bhat"], "FIR-NXT-011/2026", "IPC 323, 324", "medium", 15),
+    ("CR-2026-NXT-012", "Property Disputes", "Ramanagara Town Police Station", 4, "investigating", "encroachment with fabricated title documents, intimidation calls", ["Mahesh Jain"], [], "FIR-NXT-012/2026", "IPC 447, 468, 506", "medium", 40),
+    # Sep 4 (day +5)
+    ("CR-2026-NXT-013", "Cyber Crime & Online Fraud", "Chowk Police Station", 5, "open", "UPI payment fraud via fake QR codes at commercial outlet", ["Naveen Reddy"], [], "FIR-NXT-013/2026", "IPC 420, IT Act 66D", "high", 20),
+    ("CR-2026-NXT-014", "Theft & Burglaries", "Udupi Town Police Station", 5, "open", "residential burglary, smart lock bypass, jewellery targeted", ["Ramu Swamy"], ["Sunanda Poojary"], "FIR-NXT-014/2026", "IPC 380, 457", "high", 25),
+    ("CR-2026-NXT-015", "Illegal Mining Violations", "Hospet Town Police Station", 5, "investigating", "weighbridge tampering on iron ore convoy, forged manifests", ["Mohsin Pasha", "Tariq Hussain"], [], "FIR-NXT-015/2026", "MMDR Act 21", "high", 45),
+    # Sep 5 (day +6)
+    ("CR-2026-NXT-016", "Domestic Violence", "Haveri Town Police Station", 6, "open", "new domestic assault complaint, prior FIRs on record", [], ["Kavita Banakar"], "FIR-NXT-016/2026", "DV Act, IPC 498A", "medium", 15),
+    ("CR-2026-NXT-017", "Smuggling & Excise Violations", "Sirsi Police Station", 6, "investigating", "forest fringe arrack distillation bust, midnight raid", ["Lokesh Biradar"], [], "FIR-NXT-017/2026", "Excise Act 32", "medium", 35),
+    ("CR-2026-NXT-018", "Cyber Crime & Online Fraud", "Mantralayam Road Police Station", 6, "open", "temple donation fraud portal, cloned helpline number", ["Sunil Khot"], ["Rajendra Prasad"], "FIR-NXT-018/2026", "IPC 420, IT Act 66D", "medium", 10),
+    # Sep 6 (day +7)
+    ("CR-2026-NXT-019", "Narcotics Smuggling Services", "Bidar Town Police Station", 7, "investigating", "cannabis supply consignment from inter-state border", ["Imran Khan Pathan"], [], "FIR-NXT-019/2026", "NDPS 20, 21", "critical", 55),
+    ("CR-2026-NXT-020", "Theft & Burglaries", "Shimoga Town Police Station", 7, "open", "bike theft spree near commercial hub, stripped for parts", ["Rohit Shetty K"], ["Arun Kumar"], "FIR-NXT-020/2026", "IPC 379", "medium", 20),
+    ("CR-2026-NXT-021", "Illegal Mining Violations", "Hoskote Police Station", 7, "investigating", "granite slab heist from quarry depot, marked lorries", ["Satish Mudiraj"], [], "FIR-NXT-021/2026", "MMDR Act 21", "high", 40),
+    # Sep 7 (day +8)
+    ("CR-2026-NXT-022", "Cyber Crime & Online Fraud", "Whitefield Police Station", 8, "open", "corporate phishing email leads to invoice fraud", ["Vikram Yadav"], ["Vijaya Kumari"], "FIR-NXT-022/2026", "IPC 419, IT Act 66C, 66D", "high", 15),
+    ("CR-2026-NXT-023", "Theft & Burglaries", "Davanagere Town Police Station", 8, "investigating", "textile godown break-in, goods worth 8L stolen", ["Rohit Shetty K"], [], "FIR-NXT-023/2026", "IPC 379, 457", "high", 50),
+    # Sep 8 (day +9)
+    ("CR-2026-NXT-024", "Assault", "Karwar Town Police Station", 9, "open", "coastal parking dispute turned violent, bystander injured", [], ["Rajesh Kharvi"], "FIR-NXT-024/2026", "IPC 323, 324", "medium", 12),
+    ("CR-2026-NXT-025", "Smuggling & Excise Violations", "Puttur Police Station", 9, "investigating", "coastal electronics smuggling via fishing boat", ["Irfan Hassan", "Nasir Shaikh"], [], "FIR-NXT-025/2026", "Excise Act, Customs Act", "high", 35),
+    # Sep 9 (day +10)
+    ("CR-2026-NXT-026", "Narcotics Smuggling Services", "Vani Vilas Mohalla Police Station", 10, "open", "dead-drop MDMA parcel intercepted near college zone", ["Rahul Deshpande"], [], "FIR-NXT-026/2026", "NDPS 21, 22", "critical", 18),
+    ("CR-2026-NXT-027", "Theft & Burglaries", "Jayanagar Police Station", 10, "investigating", "apartment block chain-snatching, multi-floor entry", ["Mohammed Ali"], ["Anupama Sharma"], "FIR-NXT-027/2026", "IPC 392, 380", "high", 42),
+    ("CR-2026-NXT-028", "Cyber Crime & Online Fraud", "Afzalpur Road Police Station", 10, "open", "loan-app extortion ring operating via cloned numbers", ["Prasad Shenoy", "Naveen Reddy"], [], "FIR-NXT-028/2026", "IPC 420, IT Act 66D", "high", 10),
+]
+
+ALL_CASES = HANDCRAFTED_CASES + _generate_comprehensive_cases() + RECENT_CASES
 
 
 DEMO_NOTIFICATIONS = [
@@ -662,6 +745,7 @@ def seed() -> None:
         victim_objs = _seed_victims(db)
         _seed_cases_and_firs(db, category_objs, location_objs, criminal_objs, victim_objs, officer_objs)
         _seed_notifications(db, user_objs)
+        _seed_identity_demo(db)
         db.commit()
 
         # Sync MO tags for pattern discovery
@@ -810,6 +894,7 @@ def _seed_criminals(db):
     criminals = {}
     existing_criminals = {c.full_name: c for c in db.query(Criminal).all()}
     for full_name, aliases, dob, gender, marks, mo, status in CRIMINALS:
+        gang = CRIMINAL_GANG_MAP.get(full_name)
         criminal = existing_criminals.get(full_name)
         if not criminal:
             criminal = Criminal(
@@ -820,6 +905,7 @@ def _seed_criminals(db):
                 identifying_marks=marks,
                 mo_summary=mo,
                 status=status,
+                gang_affiliation=gang,
                 dataset_provenance=_SEED_PROVENANCE,
             )
             db.add(criminal)
@@ -827,6 +913,10 @@ def _seed_criminals(db):
         elif getattr(criminal, "dataset_provenance", None) in (None, "live", "unknown", ""):
             criminal.dataset_provenance = _SEED_PROVENANCE
             criminal.status = status
+        # Backfill demo syndicate rosters idempotently so an already-seeded
+        # database gains the gang affiliations on the next seed run.
+        if gang:
+            criminal.gang_affiliation = gang
         criminals[full_name] = criminal
     db.flush()
     return criminals
@@ -1150,6 +1240,172 @@ def _seed_notifications(db, user_objs):
             db.add(inv)
         db.flush()
         print(f"Seeded {len(interventions_data)} demo interventions")
+
+
+def _seed_identity_demo(db):
+    """Issue #225 demo scenario (identically reproducible for acceptance):
+
+    * Ramu Kumar / Balu Swamy  — identical DOB + identical address with no name
+      overlap: probable duplicate identity, proposed (never auto-merged).
+    * Balu Swamy / Kumar Swamy — share phone 9845012345 and vehicle
+      KA-01-MQ-4321 but different DOB/address: proxy / association pair.
+    * Ramu Kumar / Ramar       — linked only through a shared FIR.
+    """
+    from app.services.identity_service import (
+        run_identity_resolution,
+        sync_identity_identifiers,
+    )
+    from app.services.proxy_pattern_service import detect_proxy_patterns
+
+    category = db.query(CrimeCategory).filter(CrimeCategory.name.like("%Theft%")).first()
+    whitefield = db.query(Location).filter(Location.address == "Whitefield Cyber Cell Beat").first()
+    mysuru = db.query(Location).filter(Location.address == "Devaraja Market Zone").first()
+    if not (category and whitefield and mysuru):
+        print("Identity demo skipped: missing category/location seed rows")
+        return
+
+    known_criminals = {cr.full_name: cr for cr in db.query(Criminal).all()}
+
+    def _criminal(name, **kwargs):
+        if name in known_criminals:
+            return known_criminals[name]
+        cr = Criminal(full_name=name, dataset_provenance=_SEED_PROVENANCE, **kwargs)
+        db.add(cr)
+        db.flush()
+        known_criminals[name] = cr
+        return cr
+
+    ramu = _criminal(
+        "Ramu Kumar",
+        aliases="RK",
+        date_of_birth=date(1992, 6, 11),
+        gender="Male",
+        address="14, 5th Main, Whitefield, Bengaluru",
+        mo_summary="Low-profile conduit for stolen electronics; keeps a bench in Whitefield.",
+        status="at_large",
+    )
+    balu = _criminal(
+        "Balu Swamy",
+        aliases="Balu",
+        date_of_birth=date(1992, 6, 11),
+        gender="Male",
+        address="14, 5th Main, Whitefield, Bengaluru",
+        mo_summary="Reported using contact 9845012345 for call forwarding; two-wheeler KA-01-MQ-4321 seen near premises.",
+        status="at_large",
+    )
+    kumar = _criminal(
+        "Kumar Swamy",
+        aliases="Kumar",
+        date_of_birth=date(1985, 3, 22),
+        gender="Male",
+        address="88, MG Road, Mysuru",
+        mo_summary="Associate shares contact 9845012345; moves consignments on KA-01-MQ-4321.",
+        status="at_large",
+    )
+    ramar = _criminal(
+        "Ramar",
+        aliases="",
+        date_of_birth=None,
+        gender="Male",
+        address="2, Sadar Bazar, Mysuru",
+        mo_summary="Junior facilitator seen accompanying accused during field meetings.",
+        status="at_large",
+    )
+
+    demo_victim = db.query(Victim).filter(Victim.full_name == "Meena Ramu").first()
+    if not demo_victim:
+        demo_victim = Victim(
+            full_name="Meena Ramu",
+            contact_number="8123456789",
+            address="14, 5th Main, Whitefield, Bengaluru",
+            gender="Female",
+            age=44,
+            statement="Dispute over family property records among relatives.",
+            dataset_provenance=_SEED_PROVENANCE,
+        )
+        db.add(demo_victim)
+        db.flush()
+
+    existing_cases = {c.case_number: c for c in db.query(CrimeCase).all()}
+    existing_firs = {f.fir_number: f for f in db.query(FIR).all()}
+    existing_fir_criminal_links = {
+        (link.fir_id, link.criminal_id) for link in db.query(FIRCriminalLink).all()
+    }
+    existing_fir_victim_links = {
+        (link.fir_id, link.victim_id) for link in db.query(FIRVictimLink).all()
+    }
+
+    def _fir_case(case_number, fir_number, location, criminals, victims, narrative, category=category):
+        case = existing_cases.get(case_number)
+        now = datetime.now()
+        if not case:
+            case = CrimeCase(
+                case_number=case_number,
+                category_id=category.id,
+                location_id=location.id,
+                occurred_at=now - timedelta(days=28),
+                reported_at=now - timedelta(days=27, hours=3),
+                description=f"Identity demo — {narrative[:60]}",
+                mo_tags="identity_review",
+                status="investigating",
+                priority="medium",
+                progress=40,
+                dataset_provenance=_SEED_PROVENANCE,
+            )
+            db.add(case)
+            db.flush()
+            existing_cases[case_number] = case
+        fir = existing_firs.get(fir_number)
+        if not fir:
+            fir = FIR(
+                fir_number=fir_number,
+                crime_case_id=case.id,
+                complainant_name=victims[0].full_name if victims else "State Complainant",
+                complainant_contact=victims[0].contact_number if victims else None,
+                sections="IPC 420/379",
+                status="registered",
+                filed_at=now - timedelta(days=27),
+                narrative=narrative,
+                dataset_provenance=_SEED_PROVENANCE,
+            )
+            db.add(fir)
+            db.flush()
+            existing_firs[fir_number] = fir
+        for cr in criminals:
+            if (fir.id, cr.id) not in existing_fir_criminal_links:
+                db.add(FIRCriminalLink(fir_id=fir.id, criminal_id=cr.id, role="accused"))
+                existing_fir_criminal_links.add((fir.id, cr.id))
+        for vi in victims:
+            if (fir.id, vi.id) not in existing_fir_victim_links:
+                db.add(FIRVictimLink(fir_id=fir.id, victim_id=vi.id))
+                existing_fir_victim_links.add((fir.id, vi.id))
+
+    _fir_case(
+        "IDR-2026-001", "IDR-FIR 104/2026", whitefield,
+        [ramu, balu], [demo_victim],
+        "Complainant reports recurring burglary attempts; suspects Balu Swamy and Ramu Kumar for coordinated entry attempts.",
+    )
+    _fir_case(
+        "IDR-2026-002", "IDR-FIR 205/2026", mysuru,
+        [kumar, ramar], [],
+        "Two-wheeler KA-01-MQ-4321 observed parked repeatedly near a transit godown operated by Kumar Swamy.",
+    )
+    db.flush()
+
+    print("Identity demo: syncing identifiers, resolving candidates, detecting proxy patterns...")
+    sync_identity_identifiers(db)
+    rel_stats = run_identity_resolution(db, persist=True)
+    print(
+        "  resolution: "
+        f"{rel_stats.get('profiles_analyzed', 0)} profiles, "
+        f"{rel_stats.get('candidates_generated', 0)} candidates, "
+        f"{rel_stats.get('relationships_proposed', 0)} relationships proposed"
+    )
+    try:
+        proxy_patterns = detect_proxy_patterns(db, persist=True)
+        print(f"  proxy patterns: {len(proxy_patterns)}")
+    except Exception as exc:  # pragma: no cover
+        print(f"  proxy detection failed: {exc}")
 
 
 if __name__ == "__main__":

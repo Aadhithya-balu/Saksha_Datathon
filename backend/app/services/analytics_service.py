@@ -526,7 +526,11 @@ def _build_hotspots(db: Session, district_id: str | None = None, hour: int | Non
 def anomalies(db: Session) -> dict[str, Any]:
     firs = (
         db.query(FIR)
-        .options(joinedload(FIR.crime_case).joinedload(CrimeCase.category), joinedload(FIR.crime_case).joinedload(CrimeCase.location))
+        .options(
+            joinedload(FIR.crime_case).joinedload(CrimeCase.category),
+            joinedload(FIR.crime_case).joinedload(CrimeCase.location),
+            joinedload(FIR.criminal_links),
+        )
         .order_by(FIR.filed_at.desc())
         .limit(30)
         .all()
@@ -572,7 +576,24 @@ def anomalies(db: Session) -> dict[str, Any]:
 
 
 def offender_dossiers(db: Session) -> list[dict[str, Any]]:
-    criminals = db.query(Criminal).options(joinedload(Criminal.fir_links).joinedload(FIRCriminalLink.fir)).all()
+    # Eager-load the full FIR -> CrimeCase -> Location/Category chain in one
+    # query. Without it each dossier row lazy-loads every linked FIR's case,
+    # location and category over one round trip apiece — tens of seconds
+    # against a remote database at scale.
+    criminals = (
+        db.query(Criminal)
+        .options(
+            joinedload(Criminal.fir_links)
+            .joinedload(FIRCriminalLink.fir)
+            .joinedload(FIR.crime_case)
+            .joinedload(CrimeCase.location),
+            joinedload(Criminal.fir_links)
+            .joinedload(FIRCriminalLink.fir)
+            .joinedload(FIR.crime_case)
+            .joinedload(CrimeCase.category),
+        )
+        .all()
+    )
     rows = []
     for criminal in criminals:
         firs = [link.fir for link in criminal.fir_links if link.fir]

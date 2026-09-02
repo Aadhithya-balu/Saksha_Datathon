@@ -130,17 +130,23 @@ export const Hotspots: React.FC = () => {
     void getEmergingTrends().then(trendsData => {
       if (isMounted && Array.isArray(trendsData)) {
         setEmergingTrends(trendsData);
-        // Dispatch spike notifications once per session (dedup via sessionStorage)
+        // Dispatch critical spike notifications once per session (dedup via sessionStorage).
+        // The backend also dedups identical broadcasts for a configurable window, so
+        // reloads/tabs cannot flood the notification center. Only genuinely critical
+        // surges (>= 100% change i.e. doubled volume, and meaningful recent volume)
+        // are broadcast — the bell is reserved for critical/important alerts.
         const alreadySent = sessionStorage.getItem('spike_notifications_sent');
         if (!alreadySent) {
-          const surges = trendsData.filter((t: any) => t.direction === 'increasing' && t.change_percentage > 10);
+          const surges = trendsData.filter(
+            (t: any) => t.direction === 'increasing' && t.change_percentage >= 100 && (t.recent_count ?? 0) >= 3,
+          );
           if (surges.length > 0) {
             sessionStorage.setItem('spike_notifications_sent', '1');
             surges.slice(0, 2).forEach((surge: any) => {
               void useNotificationStore.getState().sendNotification({
-                subject: `CRIME SURGE ALERT: ${surge.category}`,
-                title: `Trend Spike in ${surge.category}`,
-                message: `Telemetry detected a +${surge.change_percentage}% spike (${surge.recent_count} recent vs ${surge.historical_count} baseline). Red-zone map monitoring activated.`,
+                subject: `CRITICAL CRIME SURGE: ${surge.category}`,
+                title: `Critical Crime Surge in ${surge.category}`,
+                message: `Crime volume in ${surge.category} has doubled or worse (+${surge.change_percentage}%: ${surge.recent_count} recent vs ${surge.historical_count} baseline). Immediate review recommended.`,
                 category: 'SPIKE_ALERT',
                 priority: 'urgent',
                 severity: 'critical',

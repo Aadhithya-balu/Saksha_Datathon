@@ -49,8 +49,12 @@ const InvestigationPage: React.FC = () => {
     }
   };
 
+  // Debounce search so we don't fire a query (and hammer the DB pool) per keystroke.
   useEffect(() => {
-    loadCases();
+    const timer = window.setTimeout(() => {
+      loadCases();
+    }, 400);
+    return () => window.clearTimeout(timer);
   }, [searchQuery, statusFilter]);
 
   // Fetch investigation detail
@@ -134,37 +138,52 @@ const InvestigationPage: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {cases.map((caseItem) => (
-                <button
-                  key={caseItem.id}
-                  onClick={() => loadInvestigation(caseItem.id)}
-                  className="p-4 bg-secondary-bg border border-border-color rounded-card text-left hover:border-[#1E6FD9]/30 hover:bg-[#1E6FD9]/5 transition-all cursor-pointer group"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-[11px] font-bold text-[var(--text-primary)] uppercase group-hover:text-[#1E6FD9] transition-colors">
-                      {caseItem.case_number}
-                    </span>
-                    <span className={`px-1.5 py-0.5 text-[7.5px] rounded font-bold uppercase ${
-                      caseItem.priority === 'critical' ? 'bg-red-950/40 text-red-400 border border-red-900/40' :
-                      caseItem.priority === 'high' ? 'bg-orange-950/40 text-orange-400 border border-orange-900/40' :
-                      caseItem.priority === 'medium' ? 'bg-yellow-950/40 text-yellow-400 border border-yellow-900/40' :
-                      'bg-green-950/40 text-green-400 border border-green-900/40'
-                    }`}>
-                      {caseItem.priority}
-                    </span>
-                  </div>
-                  <p className="text-[9px] text-[var(--text-secondary)] line-clamp-2 leading-relaxed mb-2">
-                    {caseItem.description || 'No description'}
-                  </p>
-                  <div className="flex items-center justify-between text-[8px] text-[var(--text-muted)]">
-                    <span className="flex items-center gap-1">
-                      <Activity className="w-3 h-3" />
-                      {caseItem.status.replace(/_/g, ' ')}
-                    </span>
-                    <span>{caseItem.progress}% complete</span>
-                  </div>
-                </button>
-              ))}
+              {cases.map((caseItem) => {
+                const isOpening = loadingDetail && selectedCaseId === caseItem.id;
+                return (
+                  <button
+                    key={caseItem.id}
+                    onClick={() => loadInvestigation(caseItem.id)}
+                    disabled={loadingDetail}
+                    className={`p-4 bg-secondary-bg border border-border-color rounded-card text-left transition-all cursor-pointer group ${
+                      isOpening
+                        ? 'border-[#1E6FD9]/60 shadow-glow-blue/10'
+                        : 'hover:border-[#1E6FD9]/30 hover:bg-[#1E6FD9]/5'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[11px] font-bold text-[var(--text-primary)] uppercase group-hover:text-[#1E6FD9] transition-colors">
+                        {caseItem.case_number}
+                      </span>
+                      <span className={`px-1.5 py-0.5 text-[7.5px] rounded font-bold uppercase ${
+                        caseItem.priority === 'critical' ? 'bg-red-950/40 text-red-400 border border-red-900/40' :
+                        caseItem.priority === 'high' ? 'bg-orange-950/40 text-orange-400 border border-orange-900/40' :
+                        caseItem.priority === 'medium' ? 'bg-yellow-950/40 text-yellow-400 border border-yellow-900/40' :
+                        'bg-green-950/40 text-green-400 border border-green-900/40'
+                      }`}>
+                        {caseItem.priority}
+                      </span>
+                    </div>
+                    <p className="text-[9px] text-[var(--text-secondary)] line-clamp-2 leading-relaxed mb-2">
+                      {caseItem.description || 'No description'}
+                    </p>
+                    <div className="flex items-center justify-between text-[8px] text-[var(--text-muted)]">
+                      <span className="flex items-center gap-1">
+                        <Activity className="w-3 h-3" />
+                        {isOpening ? (
+                          <span className="flex items-center gap-1.5 text-[#1E6FD9]">
+                            <span className="w-2.5 h-2.5 rounded-full border border-[#1E6FD9] border-t-transparent animate-spin inline-block" />
+                            Loading dossier...
+                          </span>
+                        ) : (
+                          caseItem.status.replace(/_/g, ' ')
+                        )}
+                      </span>
+                      <span>{caseItem.progress}% complete</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -176,9 +195,30 @@ const InvestigationPage: React.FC = () => {
   if (loadingDetail || !investigationData) {
     return (
       <div className="min-h-[84vh] space-y-6 p-1 md:p-3">
-        <div className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-xs uppercase font-bold">
+        <button
+          onClick={handleBack}
+          className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-xs uppercase font-bold cursor-pointer"
+        >
           <ArrowLeft className="w-4 h-4" /> Back to Case List
+        </button>
+
+        {/* Clear, labeled loading state */}
+        <div className="p-6 bg-secondary-bg border border-border-color rounded-card flex flex-col items-center justify-center gap-4 text-center">
+          <div className="w-10 h-10 rounded-full border-2 border-[#1E6FD9] border-t-transparent animate-spin" />
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] font-bold text-[var(--text-primary)]">
+              Loading Investigation Dossier
+            </p>
+            <p className="text-[10px] text-[var(--text-muted)] mt-1 uppercase">
+              Aggregating case, FIRs, criminals, evidence, timelime & AI intelligence...
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-[9px] text-[var(--text-muted)] uppercase">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#1E6FD9] animate-pulse" />
+            Securing unified investigation context
+          </div>
         </div>
+
         <div className="space-y-4">
           <CardSkeleton />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
