@@ -1153,23 +1153,6 @@ export async function getCriminal(criminalId: string) {
   }>(`/criminals/${criminalId}`);
 }
 
-export async function createCriminal(payload: {
-  full_name: string;
-  status?: string;
-  aliases?: string | null;
-  gender?: string | null;
-  date_of_birth?: string | null;
-  address?: string | null;
-  identifying_marks?: string | null;
-  mo_summary?: string | null;
-  gang_affiliation?: string | null;
-}) {
-  return apiRequest<CriminalRecord>('/criminals', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
 export async function updateCriminal(
   criminalId: string,
   payload: {
