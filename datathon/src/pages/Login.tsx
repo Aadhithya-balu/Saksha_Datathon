@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from '../i18n';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Lock, UserCheck, BadgeCheck, KeyRound } from 'lucide-react';
 import SecureBackdrop from '../components/auth/SecureBackdrop';
@@ -15,6 +16,7 @@ const formatIstClock = (): string =>
   }).format(new Date())} IST`;
 
 export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
+  const t = useTranslation();
   const [clock, setClock] = useState(formatIstClock);
   const [method, setMethod] = useState<'badge' | 'password'>('badge');
 
@@ -165,7 +167,7 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
                   className="mt-2 font-mono uppercase tracking-[0.32em]"
                   style={{ fontSize: 'clamp(8px, 1.1vw, 10px)', color: 'var(--lp-teal)' }}
                 >
-                  Crime Intelligence Platform
+                  {t.login_subtitle}
                 </p>
                 <span
                   className="mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] font-mono text-[8px] tracking-[0.22em]"
@@ -175,7 +177,7 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
                     color: 'var(--lp-text-2)',
                   }}
                 >
-                  Karnataka State Police · Est. 2026
+                  {t.footer_version}
                 </span>
               </div>
             </div>

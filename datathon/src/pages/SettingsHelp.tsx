@@ -6,8 +6,9 @@ import { updateProfile, changePassword } from '../services/api';
 import {
   Settings, Info, Search, Phone, Save, LifeBuoy,
   User, Lock, Shield, CheckCircle, AlertCircle,
-  Eye, EyeOff, BadgeCheck,
+  Eye, EyeOff, BadgeCheck, Globe,
 } from 'lucide-react';
+import { useTranslation, useLanguage, useSetLanguage, type Language } from '../i18n';
 
 // ── IPC reference ────────────────────────────────────────────────────────────
 
@@ -478,12 +479,91 @@ const HelpTab: React.FC = () => {
   );
 };
 
+// ── Language Tab ─────────────────────────────────────────────────────────────
+
+const LanguageTab: React.FC = () => {
+  const t = useTranslation();
+  const currentLang = useLanguage();
+  const setLang = useSetLanguage();
+
+  const languages: { value: Language; label: string; nativeLabel: string; description: string }[] = [
+    { value: 'en', label: 'English', nativeLabel: 'English', description: 'Interface in English' },
+    { value: 'kn', label: 'Kannada', nativeLabel: 'ಕನ್ನಡ', description: 'Interface in Kannada script' },
+    { value: 'kn-en', label: 'Kanglish', nativeLabel: 'Kanglish', description: 'Kannada in Roman characters' },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="p-4 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b border-[var(--border-primary)]">
+          <Globe className="w-4 h-4 text-[var(--accent-blue)]" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-primary)]">
+            {t.settings_language_preference}
+          </span>
+        </div>
+
+        <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+          {t.settings_language_hint}
+        </p>
+
+        <div className="space-y-2">
+          {languages.map((lang) => (
+            <label
+              key={lang.value}
+              onClick={() => setLang(lang.value)}
+              className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
+                currentLang === lang.value
+                  ? 'border-[var(--accent-blue)]/60 bg-[var(--accent-blue)]/5 shadow-sm'
+                  : 'border-[var(--border-primary)] bg-[var(--bg-primary)]/50 hover:border-[var(--accent-blue)]/30'
+              }`}
+            >
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                currentLang === lang.value
+                  ? 'border-[var(--accent-blue)] bg-[var(--accent-blue)]'
+                  : 'border-[var(--border-primary)]'
+              }`}>
+                {currentLang === lang.value && (
+                  <div className="w-2 h-2 rounded-full bg-white" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-semibold text-[var(--text-primary)]">
+                    {lang.nativeLabel}
+                  </span>
+                  <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                    ({lang.label})
+                  </span>
+                </div>
+                <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{lang.description}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        <div className="flex items-start gap-3 p-3 bg-[var(--bg-primary)]/50 border border-[var(--accent-blue)]/15 rounded-lg">
+          <Info className="w-4 h-4 text-[var(--accent-blue)] shrink-0 mt-0.5" />
+          <div>
+            <p className="text-[10px] font-bold uppercase text-[var(--text-primary)] mb-0.5">
+              {t.settings_ai_language_note}
+            </p>
+            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+              Your AI assistant language is independent of the UI language. You can communicate with the AI in English, Kannada, Kanglish, or any other supported language regardless of your UI setting.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── Main page ────────────────────────────────────────────────────────────────
 
-type Tab = 'profile' | 'system' | 'help';
+type Tab = 'profile' | 'language' | 'system' | 'help';
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" /> },
+  { id: 'language', label: 'Language', icon: <Globe className="w-4 h-4" /> },
   { id: 'system',  label: 'System',  icon: <Settings className="w-4 h-4" /> },
   { id: 'help',    label: 'Help',    icon: <LifeBuoy className="w-4 h-4" /> },
 ];
@@ -528,9 +608,10 @@ export const SettingsHelp: React.FC = () => {
       </div>
 
       {/* Tab content */}
-      {active === 'profile' && <ProfileTab />}
-      {active === 'system'  && isAdmin && <SystemTab />}
-      {active === 'help'    && <HelpTab />}
+      {active === 'profile'  && <ProfileTab />}
+      {active === 'language' && <LanguageTab />}
+      {active === 'system'   && isAdmin && <SystemTab />}
+      {active === 'help'     && <HelpTab />}
     </div>
   );
 };

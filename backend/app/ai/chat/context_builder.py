@@ -11,9 +11,11 @@ from typing import Any
 
 from app.ai.chat.backend_fetcher import BackendResult
 from app.ai.chat.entity_extractor import ExtractedEntities
+from app.ai.prompts.chat import build_multilingual_answer_prompt
 
 
-SYSTEM_PROMPT = """You are SAKSHA AI, an enterprise-grade Crime Intelligence Assistant for the Karnataka State Police.
+SYSTEM_PROMPT = f"""{build_multilingual_answer_prompt()}
+You are SAKSHA AI, an enterprise-grade Crime Intelligence Assistant for the Karnataka State Police.
 
 CRITICAL RULES:
 - For crime/case/FIR/criminal/officer queries: Answer ONLY using the supplied context data from the Saksha database.
