@@ -14,11 +14,48 @@ const getRiskColor = (score: number) => {
 };
 
 const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'at_large': return 'text-red-400';
-    case 'arrested': return 'text-amber-400';
-    case 'convicted': return 'text-purple-400';
-    default: return 'text-gray-400';
+  switch ((status || '').toLowerCase()) {
+    case 'at_large':
+    case 'searching':
+    case 'wanted':
+      return 'text-[#C94A2A]';
+    case 'arrested':
+      return 'text-[#D4820A]';
+    case 'on_bail':
+      return 'text-[#0E9E78]';
+    case 'under_trial':
+      return 'text-[#00BCD4]';
+    case 'convicted':
+      return 'text-[#1E6FD9]';
+    case 'acquitted':
+      return 'text-[#8B5CF6]';
+    default:
+      return 'text-[var(--text-muted)]';
+  }
+};
+
+const formatStatus = (status: string) => {
+  switch ((status || '').toLowerCase()) {
+    case 'at_large':
+      return 'SEARCHING / WANTED';
+    case 'searching':
+      return 'SEARCHING';
+    case 'wanted':
+      return 'WANTED';
+    case 'arrested':
+      return 'ARRESTED';
+    case 'on_bail':
+      return 'ON BAIL';
+    case 'under_trial':
+      return 'UNDER TRIAL';
+    case 'convicted':
+      return 'CONVICTED';
+    case 'acquitted':
+      return 'ACQUITTED';
+    case 'deceased':
+      return 'DECEASED';
+    default:
+      return status ? status.replace(/_/g, ' ').toUpperCase() : 'UNKNOWN';
   }
 };
 
@@ -52,7 +89,7 @@ const LinkedCriminals: React.FC<Props> = ({ criminals }) => {
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-bold text-[var(--text-primary)] uppercase">{criminal.full_name}</span>
                   <span className={`text-[8px] uppercase font-bold ${getStatusColor(criminal.status)}`}>
-                    [{criminal.status.replace(/_/g, ' ')}]
+                    [{formatStatus(criminal.status)}]
                   </span>
                 </div>
                 {criminal.aliases && (

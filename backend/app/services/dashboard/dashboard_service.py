@@ -1,6 +1,7 @@
 """Database-backed dashboard services with dynamic filter options."""
 from __future__ import annotations
 
+import uuid
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from typing import Any
@@ -22,8 +23,8 @@ def _apply_case_filters(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     district: str | None = None,
-    category_id: str | None = None,
-    officer_id: str | None = None,
+    category_id: str | uuid.UUID | None = None,
+    officer_id: str | uuid.UUID | None = None,
     priority: str | None = None,
     status: str | None = None,
 ):
@@ -36,8 +37,18 @@ def _apply_case_filters(
             query = query.join(Location, CrimeCase.location_id == Location.id)
         query = query.filter(Location.district == district)
     if category_id:
+        if isinstance(category_id, str):
+            try:
+                category_id = uuid.UUID(category_id)
+            except (ValueError, TypeError):
+                pass
         query = query.filter(CrimeCase.category_id == category_id)
     if officer_id:
+        if isinstance(officer_id, str):
+            try:
+                officer_id = uuid.UUID(officer_id)
+            except (ValueError, TypeError):
+                pass
         query = query.filter(CrimeCase.assigned_officer_id == officer_id)
     if priority:
         query = query.filter(CrimeCase.priority == priority)

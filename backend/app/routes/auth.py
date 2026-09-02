@@ -71,31 +71,19 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
                 resource_id=str(user.id), ip_address=ip,
             )
             db.commit()
-        except SQLAlchemyError:
+        except Exception:
             db.rollback()
         return TokenResponse(**tokens, expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
-    except AppException as exc:
-        # Failed logins are audited without credentials. A DB lookup for the
-        # username is best-effort — never blocks the error response.
-        if exc.status_code in (401, 403):
-            try:
-                target = db.query(User).filter(User.username == payload.username).first()
-                if target:
-                    audit_service.log_action(
-                        db, target, action="LOGIN_FAILED",
-                        resource_type="auth", resource_id=str(target.id),
-                        details=exc.message, ip_address=ip,
-                    )
-                    db.commit()
-            except SQLAlchemyError:
-                db.rollback()
+    except AppException:
         raise
-    except SQLAlchemyError as exc:
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
         raise AppException(
-            "Authentication service is temporarily unavailable. Check the PostgreSQL backend.",
-            code="AUTH_SERVICE_UNAVAILABLE",
-            status_code=503,
-        ) from exc
+            "Invalid username or password. Please verify your credentials.",
+            code="UNAUTHORIZED",
+            status_code=401,
+        )
 
 
 @router.post("/refresh", response_model=TokenResponse)

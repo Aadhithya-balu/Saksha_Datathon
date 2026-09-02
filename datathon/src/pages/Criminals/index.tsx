@@ -6,6 +6,7 @@ import { useRBAC } from '../../hooks/useRBAC';
 import { 
   listCriminals, 
   getCriminal,
+  updateCriminal,
   uploadCriminalImage,
 } from '../../services/api';
 import { 
@@ -47,8 +48,10 @@ export const Criminals: React.FC = () => {
   const [criminals, setCriminals] = useState<CriminalSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [loadingList, setLoadingList] = useState<boolean>(false);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [loadingList, setLoadingList] = useState<boolean>(true);
   const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
+  const [updatingStatus, setUpdatingStatus] = useState<boolean>(false);
   const [criminalDetails, setCriminalDetails] = useState<any>(null);
   const [hoveredNode, setHoveredNode] = useState<any>(null);
   const [showIntelligence, setShowIntelligence] = useState(false);
@@ -154,17 +157,74 @@ export const Criminals: React.FC = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch ((status || '').toLowerCase()) {
       case 'at_large':
+      case 'searching':
+      case 'wanted':
         return 'text-[#C94A2A] bg-[#C94A2A]/10 border-[#C94A2A]/20';
       case 'arrested':
         return 'text-[#D4820A] bg-[#D4820A]/10 border-[#D4820A]/20';
+      case 'on_bail':
+        return 'text-[#0E9E78] bg-[#0E9E78]/10 border-[#0E9E78]/20';
+      case 'under_trial':
+        return 'text-[#00BCD4] bg-[#00BCD4]/10 border-[#00BCD4]/20';
       case 'convicted':
         return 'text-[#1E6FD9] bg-[#1E6FD9]/10 border-[#1E6FD9]/20';
+      case 'acquitted':
+        return 'text-[#8B5CF6] bg-[#8B5CF6]/10 border-[#8B5CF6]/20';
       case 'deceased':
         return 'text-[var(--text-muted)] bg-[var(--bg-elevated)]/50 border-[var(--border-secondary)]';
       default:
         return 'text-[var(--text-primary)] bg-[var(--bg-tertiary)] border-[var(--border-primary)]';
+    }
+  };
+
+  const formatStatusLabel = (status: string) => {
+    switch ((status || '').toLowerCase()) {
+      case 'at_large':
+        return 'SEARCHING / WANTED';
+      case 'searching':
+        return 'SEARCHING';
+      case 'wanted':
+        return 'WANTED';
+      case 'arrested':
+        return 'ARRESTED';
+      case 'on_bail':
+        return 'ON BAIL';
+      case 'under_trial':
+        return 'UNDER TRIAL';
+      case 'convicted':
+        return 'CONVICTED';
+      case 'acquitted':
+        return 'ACQUITTED';
+      case 'deceased':
+        return 'DECEASED';
+      default:
+        return status ? status.replace(/_/g, ' ').toUpperCase() : 'UNKNOWN';
+    }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!criminalDetails) return;
+    try {
+      setUpdatingStatus(true);
+      await updateCriminal(criminalDetails.id, { status: newStatus });
+      setCriminalDetails((prev: any) => (prev ? { ...prev, status: newStatus } : null));
+      setCriminals((prev) =>
+        prev.map((c) => (c.id === criminalDetails.id ? { ...c, status: newStatus } : c))
+      );
+      if (user) {
+        addLog(
+          user.name,
+          user.badgeId,
+          'UPDATE',
+          `Updated criminal ${criminalDetails.full_name} status to ${formatStatusLabel(newStatus)}`
+        );
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Failed to update criminal status');
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -335,6 +395,15 @@ export const Criminals: React.FC = () => {
     );
   };
 
+  const filteredCriminals = criminals.filter((item) => {
+    if (statusFilter === 'all') return true;
+    const itemStatus = (item.status || '').toLowerCase();
+    if (statusFilter === 'at_large') {
+      return ['at_large', 'searching', 'wanted'].includes(itemStatus);
+    }
+    return itemStatus === statusFilter.toLowerCase();
+  });
+
   return (
     <div className="h-[84vh] flex flex-col gap-5 p-1 md:p-3 select-none">
       
@@ -375,18 +444,37 @@ export const Criminals: React.FC = () => {
       <div className="flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">
         
         {/* Left Search & Registry list drawer (Col: 4) */}
-        <div className="lg:col-span-4 bg-[var(--bg-tertiary)]/30 border border-border-color p-4 rounded-card flex flex-col gap-4 overflow-hidden">
-          <div className="flex justify-between items-center border-b border-[var(--border-primary)] pb-2 shrink-0">
-            <span className="text-[10px] font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider">{t.criminal_index}</span>
-            <div className="w-44 flex items-center relative text-xs">
-              <input
-                type="text"
-                placeholder={t.criminal_search_hint}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-7 pr-3 py-1 bg-[var(--bg-secondary)]/70 border border-border-color rounded text-[var(--text-primary)] outline-none focus:border-[#1E6FD9] font-mono text-[10px]"
-              />
-              <Search className="absolute left-2 w-3.5 h-3.5 text-[var(--text-muted)]" />
+        <div className="lg:col-span-4 bg-[var(--bg-tertiary)]/30 border border-border-color p-4 rounded-card flex flex-col gap-3 overflow-hidden">
+          <div className="flex flex-col gap-2 border-b border-[var(--border-primary)] pb-2 shrink-0">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider">Offender Indexes</span>
+              <span className="text-[8.5px] font-mono text-[var(--text-muted)]">{filteredCriminals.length} RECORDED</span>
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="flex-1 flex items-center relative text-xs">
+                <input
+                  type="text"
+                  placeholder="Search dossiers..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-7 pr-3 py-1 bg-[var(--bg-secondary)]/70 border border-border-color rounded text-[var(--text-primary)] outline-none focus:border-[#1E6FD9] font-mono text-[10px]"
+                />
+                <Search className="absolute left-2 w-3.5 h-3.5 text-[var(--text-muted)]" />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-2 py-1 bg-[var(--bg-secondary)] border border-border-color rounded text-[9px] font-mono text-[var(--text-primary)] outline-none focus:border-[#1E6FD9] uppercase cursor-pointer"
+              >
+                <option value="all">ALL STATUSES</option>
+                <option value="at_large">SEARCHING / WANTED</option>
+                <option value="arrested">ARRESTED</option>
+                <option value="on_bail">ON BAIL</option>
+                <option value="under_trial">UNDER TRIAL</option>
+                <option value="convicted">CONVICTED</option>
+                <option value="acquitted">ACQUITTED</option>
+                <option value="deceased">DECEASED</option>
+              </select>
             </div>
           </div>
 
@@ -404,8 +492,8 @@ export const Criminals: React.FC = () => {
                   </div>
                 ))}
               </div>
-            ) : criminals.length > 0 ? (
-              criminals.map((item) => (
+            ) : filteredCriminals.length > 0 ? (
+              filteredCriminals.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleSelectCriminal(item.id)}
@@ -422,7 +510,7 @@ export const Criminals: React.FC = () => {
                     </span>
                   </div>
                   <span className={`text-[7.5px] px-1.5 py-0.5 rounded border uppercase font-bold shrink-0 ml-2 ${getStatusColor(item.status)}`}>
-                    {item.status.replace('_', ' ')}
+                    {formatStatusLabel(item.status)}
                   </span>
                 </button>
               ))
@@ -489,7 +577,7 @@ export const Criminals: React.FC = () => {
                         Aliases: {criminalDetails.aliases || 'No documented aliases'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap justify-center md:justify-end">
                       <button
                         onClick={() => setShowIntelligence(true)}
                         className="inline-flex items-center gap-1 text-[10px] bg-[#a855f7]/15 text-[#a855f7] px-2 py-1 rounded border border-[#a855f7]/30 hover:bg-[#a855f7]/30 transition-colors cursor-pointer"
@@ -506,9 +594,43 @@ export const Criminals: React.FC = () => {
                       >
                         <Sparkles className="w-3 h-3" /> Ask AI
                       </button>
-                      <span className={`text-[8.5px] px-2 py-0.5 rounded border uppercase font-bold tracking-wider ${getStatusColor(criminalDetails.status)}`}>
-                        {criminalDetails.status.replace('_', ' ')}
-                      </span>
+                      
+                      {/* Interactive Status Selector */}
+                      <select
+                        value={
+                          ['searching', 'wanted', 'at_large'].includes((criminalDetails.status || '').toLowerCase())
+                            ? 'at_large'
+                            : (criminalDetails.status || 'at_large').toLowerCase()
+                        }
+                        onChange={(e) => handleStatusChange(e.target.value)}
+                        disabled={updatingStatus || !canWrite}
+                        title={canWrite ? 'Update Criminal Status' : 'Requires Investigator/Admin role'}
+                        className={`text-[8.5px] px-2 py-1 rounded border uppercase font-bold tracking-wider cursor-pointer outline-none focus:ring-1 focus:ring-[#1E6FD9] transition-all ${getStatusColor(
+                          criminalDetails.status
+                        )} ${!canWrite ? 'cursor-not-allowed opacity-80' : ''}`}
+                      >
+                        <option value="at_large" className="bg-[var(--bg-secondary)] text-[#C94A2A]">
+                          SEARCHING / WANTED
+                        </option>
+                        <option value="arrested" className="bg-[var(--bg-secondary)] text-[#D4820A]">
+                          ARRESTED
+                        </option>
+                        <option value="on_bail" className="bg-[var(--bg-secondary)] text-[#0E9E78]">
+                          ON BAIL
+                        </option>
+                        <option value="under_trial" className="bg-[var(--bg-secondary)] text-[#00BCD4]">
+                          UNDER TRIAL
+                        </option>
+                        <option value="convicted" className="bg-[var(--bg-secondary)] text-[#1E6FD9]">
+                          CONVICTED
+                        </option>
+                        <option value="acquitted" className="bg-[var(--bg-secondary)] text-[#8B5CF6]">
+                          ACQUITTED
+                        </option>
+                        <option value="deceased" className="bg-[var(--bg-secondary)] text-[var(--text-muted)]">
+                          DECEASED
+                        </option>
+                      </select>
                     </div>
                   </div>
 

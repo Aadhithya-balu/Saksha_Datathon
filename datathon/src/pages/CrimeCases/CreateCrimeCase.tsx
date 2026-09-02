@@ -1,7 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { createCrimeCase, createCriminal, createFIR, listCriminals, getCrimeCategories, getLocationsList } from '../../services/api';
+import { 
+  createCrimeCase, 
+  createCriminal, 
+  createFIR, 
+  listCriminals, 
+  getCrimeCategories, 
+  getLocationsList, 
+  getUnassignedOfficers, 
+  type OfficerWithUserRecord 
+} from '../../services/api';
 import type { CrimeCategoryRecord, LocationSimpleRecord } from '../../services/api';
-import { ArrowLeft, Save, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Save, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 interface CreateCrimeCaseProps {
   onCancel: () => void;
@@ -14,6 +23,7 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
 }) => {
   const [categories, setCategories] = useState<CrimeCategoryRecord[]>([]);
   const [locations, setLocations] = useState<LocationSimpleRecord[]>([]);
+  const [officers, setOfficers] = useState<OfficerWithUserRecord[]>([]);
 
   // Form Fields
   const [caseNumber, setCaseNumber] = useState('');
@@ -23,6 +33,8 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
   const [description, setDescription] = useState('');
   const [moTags, setMoTags] = useState('');
   const [status, setStatus] = useState('open');
+  const [foundByPolice, setFoundByPolice] = useState(false);
+  const [assignedOfficerId, setAssignedOfficerId] = useState('');
 
   // Optional accused / criminal linkage fields
   const [accusedNames, setAccusedNames] = useState('');
@@ -37,17 +49,18 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
     const year = new Date().getFullYear();
     setCaseNumber(`CR-${year}-BLR-${randomNum}`);
 
-    // Load category and location lists
-    Promise.all([getCrimeCategories(), getLocationsList()])
-      .then(([cats, locs]) => {
+    // Load category, location, and officer lists
+    Promise.all([getCrimeCategories(), getLocationsList(), getUnassignedOfficers()])
+      .then(([cats, locs, offs]) => {
         setCategories(cats);
         setLocations(locs);
+        setOfficers(offs || []);
         if (cats.length > 0) setCategoryId(cats[0].id);
         if (locs.length > 0) setLocationId(locs[0].id);
       })
       .catch((err) => {
         console.error('Error loading dropdown data:', err);
-        setError('Failed to fetch categories or locations from backend.');
+        setError('Failed to fetch categories, locations, or officers from backend.');
       });
   }, []);
 
@@ -55,6 +68,11 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
     e.preventDefault();
     if (!caseNumber.trim() || !categoryId || !locationId || !occurredAt) {
       setError('PLEASE SPECIFY ALL MANDATORY CLASSIFICATION FIELDS.');
+      return;
+    }
+
+    if (foundByPolice && !assignedOfficerId) {
+      setError('Officer is required when the crime is found by police.');
       return;
     }
 
@@ -78,7 +96,9 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
         occurred_at: occurredAt,
         description: description || null,
         mo_tags: moTags || null,
-        status: status
+        status: status,
+        assigned_officer_id: assignedOfficerId || null,
+        found_by_police: foundByPolice,
       };
 
       const created = await createCrimeCase(payload as any);
@@ -109,6 +129,8 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
           narrative: description || null,
           status: 'registered',
           criminal_ids: criminalIds,
+          investigating_officer_id: assignedOfficerId || null,
+          found_by_police: foundByPolice,
         });
       }
 
@@ -198,6 +220,56 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+
+        {/* Crime Discovery & Officer Attribution */}
+        <div className="p-4 bg-[var(--bg-tertiary)]/40 border border-border-color rounded space-y-3">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="foundByPolice"
+              checked={foundByPolice}
+              onChange={(e) => {
+                setFoundByPolice(e.target.checked);
+                if (!e.target.checked) setError(null);
+              }}
+              className="w-4 h-4 text-[#1E6FD9] rounded border-border-color bg-[var(--bg-secondary)] cursor-pointer"
+            />
+            <label htmlFor="foundByPolice" className="uppercase text-[10px] text-[var(--text-primary)] font-bold cursor-pointer select-none flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#1E6FD9]" />
+              Crime Found / Identified by Police (Suo Motu Discovery)
+            </label>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold flex items-center justify-between">
+              <span>Responsible / Investigating Officer {foundByPolice ? <span className="text-red-500">* (Mandatory)</span> : <span className="text-[var(--text-muted)] font-normal">(Optional)</span>}</span>
+            </label>
+            <select
+              value={assignedOfficerId}
+              onChange={(e) => {
+                setAssignedOfficerId(e.target.value);
+                if (e.target.value) setError(null);
+              }}
+              className={`px-3.5 py-2 bg-[var(--bg-secondary)] border rounded text-xs text-[var(--text-primary)] cursor-pointer focus:outline-none ${
+                foundByPolice && !assignedOfficerId
+                  ? 'border-red-500/70 focus:border-red-500'
+                  : 'border-border-color focus:border-[#1E6FD9]/60'
+              }`}
+            >
+              <option value="">{foundByPolice ? '-- Select Responsible Police Officer (Required) --' : '-- Unassigned (Assign Officer Later) --'}</option>
+              {officers.map((off) => (
+                <option key={off.id} value={off.id}>
+                  {off.badge_number} - {off.full_name} ({off.rank || 'Officer'}, {off.station})
+                </option>
+              ))}
+            </select>
+            {foundByPolice && !assignedOfficerId && (
+              <span className="text-[9.5px] text-red-400 font-mono">
+                Officer is required when the crime is found by police.
+              </span>
+            )}
           </div>
         </div>
 
