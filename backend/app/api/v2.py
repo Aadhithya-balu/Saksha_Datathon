@@ -60,6 +60,9 @@ from app.routes import system
 # Issue #200: officer-centric investigation hub
 from app.routes import investigation_hub
 
+# Issue #225: identity resolution + proxy detection + data integrity engine
+from app.routes import identity
+
 
 api_router = APIRouter()
 
@@ -110,3 +113,6 @@ api_router.include_router(system.router)
 
 # Issue #200: officer-centric investigation hub
 api_router.include_router(investigation_hub.router)
+
+# Issue #225: identity resolution + proxy detection + data integrity engine
+api_router.include_router(identity.router)
