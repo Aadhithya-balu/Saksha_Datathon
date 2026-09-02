@@ -22,6 +22,7 @@ import {
   BookOpen,
   ArrowRight,
   CornerDownLeft,
+  Fingerprint,
 } from 'lucide-react';
 
 interface CommandItem {
@@ -41,6 +42,7 @@ const commands: CommandItem[] = [
   { id: 'fir', label: 'FIR Registry', description: 'First Information Reports', icon: <FileText className="w-4 h-4" />, tab: 'fir', category: 'Navigation', keywords: ['fir', 'report', 'information'] },
   { id: 'hotspot', label: 'Hotspot Map', description: 'Crime hotspot spatial analysis', icon: <Map className="w-4 h-4" />, tab: 'hotspot', category: 'Navigation', keywords: ['hotspot', 'map', 'spatial', 'location'] },
   { id: 'network', label: 'Network Graph', description: 'Criminal network visualization', icon: <Network className="w-4 h-4" />, tab: 'network', category: 'Navigation', keywords: ['network', 'graph', 'connections', 'links'] },
+  { id: 'identity', label: 'Identity Resolution', description: 'Fake/duplicate record detection and review', icon: <Fingerprint className="w-4 h-4" />, tab: 'identity', category: 'Navigation', keywords: ['identity', 'duplicate', 'fake', 'integrity', 'data', 'security'] },
   { id: 'predictive', label: 'Predictive AI', description: 'AI-powered crime predictions', icon: <Brain className="w-4 h-4" />, tab: 'predictive', category: 'Navigation', keywords: ['predict', 'ai', 'forecast', 'risk'] },
   { id: 'sociological', label: 'Sociological Intelligence', description: 'Demographic and socio-economic crime analysis', icon: <BarChart3 className="w-4 h-4" />, tab: 'sociological', category: 'Navigation', keywords: ['sociological', 'demographic', 'population', 'urban', 'rural', 'socio', 'economic'] },
   { id: 'strategic', label: 'Strategic Intelligence', description: 'Command-level intelligence briefing', icon: <ShieldAlert className="w-4 h-4" />, tab: 'strategic', category: 'Navigation', keywords: ['strategic', 'command', 'briefing', 'deployment', 'risk', 'intelligence'] },

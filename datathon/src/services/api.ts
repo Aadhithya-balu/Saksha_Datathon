@@ -2810,3 +2810,249 @@ export async function searchInvestigationImage() {
   });
 }
 
+// --- Issue #225: Data Security / Identity Resolution ----------------------
+// Fake/duplicate record detection: duplicate-identity leads, proxy patterns,
+// integrity alerts, and an entity↔identity graph. All raw values are hashed /
+// masked server-side; review decisions are audited.
+
+export interface IdentityDashboardResponse {
+  records_analyzed: number;
+  possible_duplicates: number;
+  identity_conflicts: number;
+  identifier_reuse_alerts: number;
+  possible_aliases: number;
+  possible_proxy_relationships: number;
+  critical_reviews: number;
+  open_reviews: number;
+  assessment_counts: Record<string, number>;
+  proxy_pattern_counts: Record<string, number>;
+}
+
+export interface IdentityRelationship {
+  id: string;
+  source_entity_type: string;
+  source_entity_id: string;
+  target_entity_type: string;
+  target_entity_id: string;
+  source_name: string | null;
+  target_name: string | null;
+  relationship_type: string;
+  assessment: string;
+  confidence: number;
+  confidence_breakdown: Record<string, unknown> | null;
+  evidence_summary: { supporting_count: number; counter_count: number; groups: string[] } | null;
+  status: string;
+  reviewed_by_id: string | null;
+  reviewed_at: string | null;
+  review_decision: string | null;
+  review_note: string | null;
+  created_at: string | null;
+}
+
+export interface IdentityRelationshipDetail extends Omit<IdentityRelationship, 'source_name' | 'target_name'> {
+  source: { entity_type: string; entity_id: string; name: string | null };
+  target: { entity_type: string; entity_id: string; name: string | null };
+  evidence: Array<{
+    id: string;
+    evidence_group: string;
+    signal_type: string;
+    weight_delta: number;
+    confidence: number;
+    severity: string;
+    source_label: string | null;
+  }>;
+  conflicts: Array<Record<string, unknown>>;
+}
+
+export interface IntegrityAlertRecord {
+  id: string;
+  alert_type: string;
+  severity: string;
+  entity_a_type: string | null;
+  entity_a_id: string | null;
+  entity_b_type: string | null;
+  entity_b_id: string | null;
+  identifier_type: string | null;
+  value_hash: string | null;
+  display_value: string | null;
+  confidence: number;
+  description: string;
+  observation_count: number;
+  status: string;
+  source_summary: Record<string, unknown> | null;
+  created_at: string | null;
+}
+
+export interface ProxyPatternRecord {
+  id: string;
+  rule_id: string;
+  rule_version: string;
+  pattern: string;
+  severity: string;
+  confidence: number;
+  assessment: string;
+  entities: Array<{ entity_type: string; entity_id: string; name: string }>;
+  evidence: Array<{ description: string; rule_id: string }>;
+  counter_evidence: string[];
+  time_window: string | null;
+  explanation: string;
+  possible_explanations: string[];
+  observation_count: number;
+  status: string;
+  reviewed_by_id: string | null;
+  reviewed_at: string | null;
+  review_decision: string | null;
+  review_note: string | null;
+  created_at: string | null;
+}
+
+export interface IdentityGraphNode {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  name: string;
+  aliases: string[];
+  identifiers: Array<{ type: string; display: string }>;
+}
+
+export interface IdentityGraphEdge {
+  source: string;
+  target: string;
+  relationship_type: string;
+  relationship_id: string;
+  confidence: number;
+  assessment: string;
+  evidence_count: number;
+  status: string;
+}
+
+export interface IdentityGraphResponse {
+  nodes: IdentityGraphNode[];
+  edges: IdentityGraphEdge[];
+}
+
+export interface IdentitySearchItem {
+  entity_type: string;
+  entity_id: string;
+  name: string;
+  aliases: string[];
+  identifiers: string[];
+  match_type: string;
+  confidence: number;
+}
+
+export interface IdentitySearchResponse {
+  exact: IdentitySearchItem[];
+  probable: IdentitySearchItem[];
+  possible: IdentitySearchItem[];
+}
+
+export interface IdentityRunSummary {
+  profiles_analyzed: number;
+  candidates_generated: number;
+  relationships_proposed: number;
+  identifier_links_written: number;
+  identifier_reuse_alerts: number;
+  proxy_patterns_detected: number;
+}
+
+export interface IdentityListResponse<T> {
+  total: number | null;
+  results: T[];
+}
+
+export async function getIdentityDashboard(): Promise<IdentityDashboardResponse> {
+  return apiRequest<IdentityDashboardResponse>('/identity/dashboard');
+}
+
+export async function listIdentityRelationships(params?: {
+  status?: string;
+  assessment?: string;
+  limit?: number;
+}): Promise<IdentityListResponse<IdentityRelationship>> {
+  return apiRequest<IdentityListResponse<IdentityRelationship>>(`/identity/relationships${buildQueryString(params)}`);
+}
+
+export async function getIdentityRelationship(id: string): Promise<IdentityRelationshipDetail> {
+  return apiRequest<IdentityRelationshipDetail>(`/identity/relationships/${encodeURIComponent(id)}`);
+}
+
+export async function reviewIdentityRelationship(
+  id: string,
+  decision: string,
+  note?: string,
+): Promise<IdentityRelationship> {
+  return apiRequest<IdentityRelationship>(`/identity/relationships/${encodeURIComponent(id)}/review${buildQueryString({ decision, note })}`, {
+    method: 'POST',
+  });
+}
+
+export async function listIdentityAlerts(params?: {
+  status?: string;
+  alert_type?: string;
+  limit?: number;
+}): Promise<IdentityListResponse<IntegrityAlertRecord>> {
+  return apiRequest<IdentityListResponse<IntegrityAlertRecord>>(`/identity/alerts${buildQueryString(params)}`);
+}
+
+export async function reviewIdentityAlert(id: string, decision: string, note?: string): Promise<IntegrityAlertRecord> {
+  return apiRequest<IntegrityAlertRecord>(`/identity/alerts/${encodeURIComponent(id)}/review${buildQueryString({ decision, note })}`, {
+    method: 'POST',
+  });
+}
+
+export async function listIdentifierReuse(params?: { status?: string; limit?: number }): Promise<IdentityListResponse<IntegrityAlertRecord>> {
+  return apiRequest<IdentityListResponse<IntegrityAlertRecord>>(`/identity/identifiers/reuse${buildQueryString(params)}`);
+}
+
+export async function listIdentityAliases(params?: { entity_type?: string; entity_id?: string; limit?: number }) {
+  return apiRequest<IdentityListResponse<Record<string, unknown>>>(`/identity/aliases${buildQueryString(params)}`);
+}
+
+export async function listIdentityIdentifiers(params?: {
+  entity_type?: string;
+  entity_id?: string;
+  identifier_type?: string;
+  limit?: number;
+}) {
+  return apiRequest<IdentityListResponse<Record<string, unknown>>>(`/identity/identifiers${buildQueryString(params)}`);
+}
+
+export async function getIdentityGraph(): Promise<IdentityGraphResponse> {
+  return apiRequest<IdentityGraphResponse>('/identity/graph');
+}
+
+export async function searchIdentity(q: string): Promise<IdentitySearchResponse> {
+  return apiRequest<IdentitySearchResponse>(`/identity/search${buildQueryString({ q })}`);
+}
+
+export async function getProxyRules() {
+  return apiRequest<{ rules: Array<Record<string, unknown>>; thresholds: Record<string, unknown> }>('/identity/proxy/rules');
+}
+
+export async function listProxyPatterns(params?: {
+  status?: string;
+  severity?: string;
+  limit?: number;
+}): Promise<IdentityListResponse<ProxyPatternRecord>> {
+  return apiRequest<IdentityListResponse<ProxyPatternRecord>>(`/identity/proxy${buildQueryString(params)}`);
+}
+
+export async function getProxyPattern(id: string): Promise<ProxyPatternRecord> {
+  return apiRequest<ProxyPatternRecord>(`/identity/proxy/${encodeURIComponent(id)}`);
+}
+
+export async function reviewProxyPattern(id: string, decision: string, note?: string): Promise<ProxyPatternRecord> {
+  return apiRequest<ProxyPatternRecord>(`/identity/proxy/${encodeURIComponent(id)}/review${buildQueryString({ decision, note })}`, {
+    method: 'POST',
+  });
+}
+
+export async function runIdentityResolution(): Promise<IdentityRunSummary> {
+  return apiRequest<IdentityRunSummary>('/identity/run', { method: 'POST' });
+}
+
+export async function runProxyDetection(): Promise<{ patterns_detected: number; patterns: ProxyPatternRecord[] }> {
+  return apiRequest<{ patterns_detected: number; patterns: ProxyPatternRecord[] }>('/identity/proxy/run', { method: 'POST' });
+}
+

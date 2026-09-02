@@ -33,12 +33,14 @@ import GlobalAIAssistant from './components/ai/GlobalAIAssistant';
 import DocsPage from './pages/Docs';
 import SettingsHelp from './pages/SettingsHelp';
 import Admin from './pages/Admin';
+import IdentityResolution from './pages/IdentityResolution';
 import NotFound from './pages/NotFound';
 
 const routeEntries = [
   ['dashboard', '/dashboard'],
   ['command_center', '/command-center'],
   ['intelligence', '/intelligence'],
+  ['identity', '/identity-resolution'],
   ['fir', '/firs'],
   ['hotspot', '/hotspots'],
   ['network', '/network'],
@@ -160,6 +162,7 @@ function App() {
       dashboard: 'Analytics Dashboard',
       command_center: 'Command Center',
       intelligence: 'Investigation Hub',
+      identity: 'Identity Resolution & Data Integrity',
       fir: 'FIR Registry',
       hotspot: 'Hotspot Map',
       network: 'Network Graph',
@@ -254,6 +257,7 @@ function App() {
       case 'dashboard': return <RoleGuard path="/dashboard"><Overview /></RoleGuard>;
       case 'command_center': return <RoleGuard path="/command-center"><CommandCenter /></RoleGuard>;
       case 'intelligence': return <RoleGuard path="/intelligence"><IntelligenceHub /></RoleGuard>;
+      case 'identity': return <RoleGuard path="/identity-resolution"><IdentityResolution /></RoleGuard>;
       case 'fir': return <RoleGuard path="/firs"><FIRPage /></RoleGuard>;
       case 'hotspot': return <RoleGuard path="/hotspots"><Hotspots /></RoleGuard>;
       case 'network': return <RoleGuard path="/network"><Network /></RoleGuard>;
