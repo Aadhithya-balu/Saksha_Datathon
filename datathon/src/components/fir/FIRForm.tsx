@@ -15,6 +15,7 @@ export const FIRForm: React.FC<FIRFormProps> = ({ fir, onSubmit, onCancel }) => 
   const [firNumber, setFirNumber] = useState(fir?.fir_number || '');
   const [crimeCaseId, setCrimeCaseId] = useState(fir?.crime_case_id || '');
   const [officerId, setOfficerId] = useState(fir?.investigating_officer_id || '');
+  const [foundByPolice, setFoundByPolice] = useState(false);
   const [complainantName, setComplainantName] = useState(fir?.complainant_name || '');
   const [complainantContact, setComplainantContact] = useState(fir?.complainant_contact || '');
   const [sections, setSections] = useState(fir?.sections || '');
@@ -82,6 +83,10 @@ export const FIRForm: React.FC<FIRFormProps> = ({ fir, onSubmit, onCancel }) => 
       }
     }
 
+    if (foundByPolice && !officerId) {
+      errors.investigating_officer_id = 'Officer is required when the crime is found by police.';
+    }
+
     if (!complainantName.trim()) {
       errors.complainant_name = 'Complainant name is required';
     } else if (complainantName.trim().length < 3) {
@@ -119,6 +124,7 @@ export const FIRForm: React.FC<FIRFormProps> = ({ fir, onSubmit, onCancel }) => 
       status,
       criminal_ids: selectedCriminals,
       victim_ids: selectedVictims,
+      found_by_police: foundByPolice,
     };
 
     if (!isEdit) {
@@ -220,6 +226,31 @@ export const FIRForm: React.FC<FIRFormProps> = ({ fir, onSubmit, onCancel }) => 
           )}
         </div>
 
+        {/* Crime Discovery Toggle */}
+        <div className="md:col-span-2 p-3 bg-[var(--bg-secondary)]/50 border border-border-color rounded flex items-center gap-2.5">
+          <input
+            type="checkbox"
+            id="firFoundByPolice"
+            checked={foundByPolice}
+            onChange={e => {
+              setFoundByPolice(e.target.checked);
+              if (e.target.checked && !complainantName.trim()) {
+                setComplainantName('State / Police (Suo Motu Discovery)');
+              }
+              if (!e.target.checked && validationErrors.investigating_officer_id) {
+                setValidationErrors(prev => {
+                  const { investigating_officer_id, ...rest } = prev;
+                  return rest;
+                });
+              }
+            }}
+            className="w-4 h-4 text-[var(--accent-blue)] rounded border-border-color bg-[var(--bg-secondary)] cursor-pointer"
+          />
+          <label htmlFor="firFoundByPolice" className="text-xs text-[var(--text-primary)] font-semibold cursor-pointer select-none">
+            Crime Found / Identified by Police (Suo Motu / Patrol Discovery)
+          </label>
+        </div>
+
         {/* Complainant Name */}
         <div>
           <label className="block text-[10px] text-[var(--text-muted)] uppercase font-semibold mb-1">Complainant Name *</label>
@@ -252,19 +283,36 @@ export const FIRForm: React.FC<FIRFormProps> = ({ fir, onSubmit, onCancel }) => 
 
         {/* Investigating Officer */}
         <div>
-          <label className="block text-[10px] text-[var(--text-muted)] uppercase font-semibold mb-1">Investigating Officer</label>
+          <label className="block text-[10px] text-[var(--text-muted)] uppercase font-semibold mb-1">
+            Investigating Officer {foundByPolice ? <span className="text-red-400 font-bold">* (Mandatory)</span> : ''}
+          </label>
           <select
             value={officerId}
-            onChange={e => setOfficerId(e.target.value)}
-            className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-border-color rounded text-[var(--text-primary)] outline-none focus:border-[var(--accent-blue)]"
+            onChange={e => {
+              setOfficerId(e.target.value);
+              if (e.target.value && validationErrors.investigating_officer_id) {
+                setValidationErrors(prev => {
+                  const { investigating_officer_id, ...rest } = prev;
+                  return rest;
+                });
+              }
+            }}
+            className={`w-full px-3 py-2 bg-[var(--bg-secondary)] border rounded text-[var(--text-primary)] outline-none ${
+              validationErrors.investigating_officer_id
+                ? 'border-red-500/70 focus:border-red-500'
+                : 'border-border-color focus:border-[var(--accent-blue)]'
+            }`}
           >
-            <option value="">Unassigned (Assign Officer)</option>
+            <option value="">{foundByPolice ? '-- Select Responsible Police Officer (Required) --' : 'Unassigned (Assign Officer)'}</option>
             {officers.map(o => (
               <option key={o.id} value={o.id}>
-                {o.badge_number} - {o.rank || 'Officer'}
+                {o.badge_number} - {o.rank || 'Officer'} ({o.station})
               </option>
             ))}
           </select>
+          {validationErrors.investigating_officer_id && (
+            <span className="text-[9px] text-red-400 block mt-1">{validationErrors.investigating_officer_id}</span>
+          )}
         </div>
 
         {/* Status */}

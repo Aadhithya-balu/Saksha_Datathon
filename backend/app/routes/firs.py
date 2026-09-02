@@ -154,7 +154,7 @@ def linked_crimes(fir_id: uuid.UUID, db: Session = Depends(get_db), current_user
 
 @router.post("", response_model=FIROut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR))])
 def create_fir(payload: FIRCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    data = payload.model_dump(exclude={"criminal_ids", "victim_ids", "attachments"})
+    data = payload.model_dump(exclude={"criminal_ids", "victim_ids", "attachments", "found_by_police"})
     
     if payload.attachments:
         data["attachments"] = json.dumps(payload.attachments)

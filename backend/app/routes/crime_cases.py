@@ -448,7 +448,9 @@ def create_case(
     current_user: User = Depends(get_current_user),
 ):
     """Create a new crime case in PostgreSQL."""
-    case = crime_crud.create(db, payload.model_dump())
+    data = payload.model_dump()
+    data.pop("found_by_police", None)
+    case = crime_crud.create(db, data)
     audit_service.log_action(db, current_user, "CREATE", "CrimeCase", str(case.id))
 
     # Real-time push: refresh server defaults, then fan out to SSE subscribers.

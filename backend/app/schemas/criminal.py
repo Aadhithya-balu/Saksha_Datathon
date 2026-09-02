@@ -2,7 +2,19 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+VALID_CRIMINAL_STATUSES = {
+    "at_large",
+    "searching",
+    "wanted",
+    "arrested",
+    "on_bail",
+    "under_trial",
+    "convicted",
+    "acquitted",
+    "deceased",
+}
 
 
 class CriminalBase(BaseModel):
@@ -17,6 +29,18 @@ class CriminalBase(BaseModel):
     gang_affiliation: str | None = None
     image_url: str | None = None
 
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: str) -> str:
+        cleaned = v.strip().lower().replace(" ", "_") if v else "at_large"
+        if cleaned in ("searching", "wanted"):
+            cleaned = "at_large"
+        if cleaned not in VALID_CRIMINAL_STATUSES:
+            raise ValueError(
+                f"Invalid criminal status '{v}'. Allowed values: {sorted(list(VALID_CRIMINAL_STATUSES))}"
+            )
+        return cleaned
+
 
 class CriminalCreate(CriminalBase):
     pass
@@ -30,6 +54,20 @@ class CriminalUpdate(BaseModel):
     mo_summary: str | None = None
     status: str | None = None
     gang_affiliation: str | None = None
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        cleaned = v.strip().lower().replace(" ", "_")
+        if cleaned in ("searching", "wanted"):
+            cleaned = "at_large"
+        if cleaned not in VALID_CRIMINAL_STATUSES:
+            raise ValueError(
+                f"Invalid criminal status '{v}'. Allowed values: {sorted(list(VALID_CRIMINAL_STATUSES))}"
+            )
+        return cleaned
 
 
 class CriminalOut(CriminalBase):

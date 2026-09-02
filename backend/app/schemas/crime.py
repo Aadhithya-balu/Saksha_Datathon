@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class CrimeCaseBase(BaseModel):
@@ -15,6 +15,13 @@ class CrimeCaseBase(BaseModel):
     priority: str = "medium"
     progress: int = 10
     assigned_officer_id: uuid.UUID | None = None
+    found_by_police: bool = False
+
+    @model_validator(mode="after")
+    def validate_police_discovery(self) -> "CrimeCaseBase":
+        if self.found_by_police and not self.assigned_officer_id:
+            raise ValueError("Officer is required when the crime is found by police.")
+        return self
 
 
 class CrimeCaseCreate(CrimeCaseBase):

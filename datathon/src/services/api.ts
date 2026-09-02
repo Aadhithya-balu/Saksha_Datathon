@@ -1045,6 +1045,24 @@ export async function getCriminal(criminalId: string) {
   }>(`/criminals/${criminalId}`);
 }
 
+export async function updateCriminal(
+  criminalId: string,
+  payload: {
+    status?: string;
+    full_name?: string;
+    aliases?: string | null;
+    address?: string | null;
+    identifying_marks?: string | null;
+    mo_summary?: string | null;
+    gang_affiliation?: string | null;
+  },
+) {
+  return apiRequest<CriminalRecord>(`/criminals/${criminalId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function getOffenderDossiers() {
   return apiRequest<OffenderDossiersResponse>('/ai/offenders/dossiers');
 }
@@ -1328,7 +1346,14 @@ export async function getCrimeCase(caseId: string) {
   return apiRequest<CrimeCaseDetailRecord>(`/crime-cases/${caseId}`);
 }
 
-export async function createCrimeCase(payload: Omit<CrimeCaseRecord, 'id' | 'reported_at' | 'created_at'>) {
+export async function createCrimeCase(
+  payload: Omit<CrimeCaseRecord, 'id' | 'reported_at' | 'created_at'> & {
+    assigned_officer_id?: string | null;
+    priority?: string;
+    progress?: number;
+    found_by_police?: boolean;
+  },
+) {
   return apiRequest<CrimeCaseRecord>('/crime-cases', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -1368,6 +1393,7 @@ export async function createFIR(data: {
   criminal_ids?: string[];
   victim_ids?: string[];
   attachments?: Array<{ name: string; size: number }>;
+  found_by_police?: boolean;
 }) {
   return apiRequest<FIRRecord>('/firs', {
     method: 'POST',

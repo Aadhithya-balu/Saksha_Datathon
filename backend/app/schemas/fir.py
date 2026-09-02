@@ -3,7 +3,7 @@ import json
 import re
 import uuid
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from app.schemas.crime import CrimeCaseOut
 from app.schemas.officer import OfficerOut
@@ -21,6 +21,13 @@ class FIRBase(BaseModel):
     narrative: str | None = None
     status: str = "registered"
     attachments: list[dict] | None = None
+    found_by_police: bool = False
+
+    @model_validator(mode="after")
+    def validate_police_discovery(self) -> "FIRBase":
+        if self.found_by_police and not self.investigating_officer_id:
+            raise ValueError("Officer is required when the crime is found by police.")
+        return self
 
     @field_validator("attachments", mode="before")
     @classmethod
