@@ -264,13 +264,13 @@ function App() {
       case 'predictive': return <RoleGuard path="/predictions"><Predictions /></RoleGuard>;
       case 'anomaly': return <RoleGuard path="/anomalies"><Anomalies /></RoleGuard>;
       case 'offenders': return <RoleGuard path="/offenders"><Offenders /></RoleGuard>;
-      case 'criminals': return <RoleGuard path="/offenders"><Criminals /></RoleGuard>;
-      case 'victims': return <RoleGuard path="/offenders"><Victims /></RoleGuard>;
+      case 'criminals': return <RoleGuard path="/criminals"><Criminals /></RoleGuard>;
+      case 'victims': return <RoleGuard path="/victims"><Victims /></RoleGuard>;
       case 'reports': return <RoleGuard path="/reports"><Reports /></RoleGuard>;
       case 'settings_help': return <RoleGuard path="/settings"><SettingsHelp /></RoleGuard>;
       case 'admin': return <RoleGuard path="/admin"><Admin /></RoleGuard>;
       case 'crime_cases': return <RoleGuard path="/crime-cases"><CrimeCases /></RoleGuard>;
-      case 'investigation': return <RoleGuard path="/crime-cases"><InvestigationPage /></RoleGuard>;
+      case 'investigation': return <RoleGuard path="/investigation"><InvestigationPage /></RoleGuard>;
       case 'ai_chat': return <RoleGuard path="/ai-chat"><AIChat /></RoleGuard>;
       case 'officers': return <RoleGuard path="/officers"><OfficersPage /></RoleGuard>;
       case 'evidence': return <RoleGuard path="/evidence"><EvidencePage /></RoleGuard>;

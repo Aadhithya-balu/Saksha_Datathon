@@ -26,15 +26,18 @@ interface DemoProfile {
   tone: 'blue' | 'teal' | 'amber' | 'green';
 }
 
-/* Demo access profiles — always shown on the login card so reviewers can
-   sign in instantly with the seeded demo users (admin/564738, SP-0088/987654,
-   IO-3921/456789, SCRB-7740/123456). They work in any environment, including
-   deployed production builds, because the seed users are part of the app. */
+/* Demo access profiles â€” always shown on the login card so reviewers can
+   sign in instantly with the seeded demo users. They work in any environment,
+   including deployed production builds, because the seed users are part of
+   the app. */
 const DEMO_PROFILES: DemoProfile[] = [
   { badge: 'admin', pin: '564738', title: 'Administrator', rank: 'System Administration', initials: 'AD', tone: 'blue' },
-  { badge: 'SP-0088', pin: '987654', title: 'Superintendent', rank: 'District Command · SP', initials: 'SP', tone: 'amber' },
-  { badge: 'IO-3921', pin: '456789', title: 'Investigator', rank: 'Investigation Officer · DSP', initials: 'IO', tone: 'green' },
-  { badge: 'SCRB-7740', pin: '123456', title: 'Analyst', rank: 'Intelligence Analyst · SCRB', initials: 'AN', tone: 'teal' },
+  { badge: 'SP-0088', pin: '987654', title: 'Superintendent', rank: 'District Command Â· SP', initials: 'SP', tone: 'amber' },
+  { badge: 'IO-3921', pin: '456789', title: 'Investigator', rank: 'Investigation Officer Â· DSP', initials: 'IO', tone: 'green' },
+  { badge: 'SCRB-7740', pin: '123456', title: 'Analyst', rank: 'Intelligence Analyst Â· SCRB', initials: 'AN', tone: 'teal' },
+  { badge: 'INS-2110', pin: '112233', title: 'Inspector', rank: 'Field Inspector', initials: 'IN', tone: 'amber' },
+  { badge: 'FSL-9033', pin: '445566', title: 'Forensic', rank: 'Forensic Analysis', initials: 'FS', tone: 'green' },
+  { badge: 'VIEW-5522', pin: '778899', title: 'Viewer', rank: 'Observer Access', initials: 'VW', tone: 'blue' },
 ];
 
 const TONE_STYLES: Record<DemoProfile['tone'], { color: string; bg: string; border: string }> = {

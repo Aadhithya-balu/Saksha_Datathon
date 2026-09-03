@@ -19,14 +19,15 @@ interface MobileBottomBarProps {
 interface TabItem {
   id: string;
   label: string;
+  path: string;
   icon: React.ReactNode;
 }
 
 const primaryTabs: TabItem[] = [
-  { id: 'dashboard', label: 'Home', icon: <LayoutDashboard className="w-5 h-5" /> },
-  { id: 'hotspot', label: 'Hotspots', icon: <Map className="w-5 h-5" /> },
-  { id: 'fir', label: 'FIR', icon: <FileText className="w-5 h-5" /> },
-  { id: 'ai_chat', label: 'AI', icon: <MessageSquare className="w-5 h-5" /> },
+  { id: 'dashboard', label: 'Home', path: '/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+  { id: 'hotspot', label: 'Hotspots', path: '/hotspots', icon: <Map className="w-5 h-5" /> },
+  { id: 'fir', label: 'FIR', path: '/firs', icon: <FileText className="w-5 h-5" /> },
+  { id: 'ai_chat', label: 'AI', path: '/ai-chat', icon: <MessageSquare className="w-5 h-5" /> },
 ];
 
 export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
@@ -42,7 +43,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
     setActiveTab(id);
   };
 
-  const items = primaryTabs.filter((t) => checkPermission('/' + t.id) || t.id === 'ai_chat');
+  const items = primaryTabs.filter((t) => checkPermission(t.path));
 
   return (
     <nav

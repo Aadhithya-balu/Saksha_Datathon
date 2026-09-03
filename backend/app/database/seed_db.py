@@ -804,6 +804,14 @@ def _seed_users(db, role_objs):
             db.add(user)
             db.flush()
         else:
+            # Keep reruns authoritative so an existing demo account cannot
+            # retain a stale role after the demo profile definition changes.
+            user.email = payload["email"]
+            user.full_name = payload["full_name"]
+            user.role_id = role_objs[payload["role_name"]].id
+            user.district = payload.get("district")
+            user.station = payload.get("station")
+            user.is_active = True
             user.hashed_password = hash_password(payload["password"])
             db.flush()
         user_objs[payload["username"]] = user
@@ -1243,14 +1251,7 @@ def _seed_notifications(db, user_objs):
 
 
 def _seed_identity_demo(db):
-    """Issue #225 demo scenario (identically reproducible for acceptance):
-
-    * Ramu Kumar / Balu Swamy  — identical DOB + identical address with no name
-      overlap: probable duplicate identity, proposed (never auto-merged).
-    * Balu Swamy / Kumar Swamy — share phone 9845012345 and vehicle
-      KA-01-MQ-4321 but different DOB/address: proxy / association pair.
-    * Ramu Kumar / Ramar       — linked only through a shared FIR.
-    """
+    """Issue #225 demo scenario (reproducible identity-resolution cluster)."""
     from app.services.identity_service import (
         run_identity_resolution,
         sync_identity_identifiers,
@@ -1275,99 +1276,39 @@ def _seed_identity_demo(db):
         known_criminals[name] = cr
         return cr
 
-    ramu = _criminal(
-        "Ramu Kumar",
-        aliases="RK",
-        date_of_birth=date(1992, 6, 11),
-        gender="Male",
-        address="14, 5th Main, Whitefield, Bengaluru",
-        mo_summary="Low-profile conduit for stolen electronics; keeps a bench in Whitefield.",
-        status="at_large",
-    )
-    balu = _criminal(
-        "Balu Swamy",
-        aliases="Balu",
-        date_of_birth=date(1992, 6, 11),
-        gender="Male",
-        address="14, 5th Main, Whitefield, Bengaluru",
-        mo_summary="Reported using contact 9845012345 for call forwarding; two-wheeler KA-01-MQ-4321 seen near premises.",
-        status="at_large",
-    )
-    kumar = _criminal(
-        "Kumar Swamy",
-        aliases="Kumar",
-        date_of_birth=date(1985, 3, 22),
-        gender="Male",
-        address="88, MG Road, Mysuru",
-        mo_summary="Associate shares contact 9845012345; moves consignments on KA-01-MQ-4321.",
-        status="at_large",
-    )
-    ramar = _criminal(
-        "Ramar",
-        aliases="",
-        date_of_birth=None,
-        gender="Male",
-        address="2, Sadar Bazar, Mysuru",
-        mo_summary="Junior facilitator seen accompanying accused during field meetings.",
-        status="at_large",
-    )
+    ramu = _criminal("Ramu Kumar", aliases="RK, R. Kumar, Ramu K.", date_of_birth=date(1992, 6, 11), gender="Male", address="14, 5th Main, Whitefield, Bengaluru", mo_summary="Low-profile conduit for stolen electronics; keeps a bench in Whitefield. Reached on 98450 12345 and 98450 12346.", status="at_large")
+    balu = _criminal("Balu Swamy", aliases="Balu, Balaswamy, B. Swamy", date_of_birth=date(1992, 6, 11), gender="Male", address="14, 5th Main, Whitefield, Bengaluru", mo_summary="Reported using contact 9845012345 for call forwarding; two-wheeler KA-01-MQ-4321 seen near premises.", status="at_large")
+    kumar = _criminal("Kumar Swamy", aliases="Kumar, K. Swamy, Kumar S.", date_of_birth=date(1985, 3, 22), gender="Male", address="88, MG Road, Mysuru", mo_summary="Associate shares contact 9845012345; moves consignments on KA-01-MQ-4321.", status="at_large")
+    ramar = _criminal("Ramar", aliases="R. Amar", date_of_birth=None, gender="Male", address="2, Sadar Bazar, Mysuru", mo_summary="Junior facilitator seen accompanying accused during field meetings.", status="at_large")
+    rahul = _criminal("Rahul Naik", aliases="R. Naik, Rahul N.", date_of_birth=date(1990, 1, 19), gender="Male", address="2, Sadar Bazar, Mysuru", mo_summary="Driver-side facilitator seen with Kumar Swamy; alternate contact 98450 12346.", status="at_large")
 
     demo_victim = db.query(Victim).filter(Victim.full_name == "Meena Ramu").first()
     if not demo_victim:
-        demo_victim = Victim(
-            full_name="Meena Ramu",
-            contact_number="8123456789",
-            address="14, 5th Main, Whitefield, Bengaluru",
-            gender="Female",
-            age=44,
-            statement="Dispute over family property records among relatives.",
-            dataset_provenance=_SEED_PROVENANCE,
-        )
+        demo_victim = Victim(full_name="Meena Ramu", contact_number="8123456789", address="14, 5th Main, Whitefield, Bengaluru", gender="Female", age=44, statement="Dispute over family property records among relatives.", dataset_provenance=_SEED_PROVENANCE)
         db.add(demo_victim)
+        db.flush()
+    demo_victim_alt = db.query(Victim).filter(Victim.full_name == "Mina Ramu").first()
+    if not demo_victim_alt:
+        demo_victim_alt = Victim(full_name="Mina Ramu", contact_number="81234 56789", address="14, 5th Main, Whitefield", gender="Female", age=44, statement="Same family property dispute; alternate spelling in a station diary.", dataset_provenance=_SEED_PROVENANCE)
+        db.add(demo_victim_alt)
         db.flush()
 
     existing_cases = {c.case_number: c for c in db.query(CrimeCase).all()}
     existing_firs = {f.fir_number: f for f in db.query(FIR).all()}
-    existing_fir_criminal_links = {
-        (link.fir_id, link.criminal_id) for link in db.query(FIRCriminalLink).all()
-    }
-    existing_fir_victim_links = {
-        (link.fir_id, link.victim_id) for link in db.query(FIRVictimLink).all()
-    }
+    existing_fir_criminal_links = {(link.fir_id, link.criminal_id) for link in db.query(FIRCriminalLink).all()}
+    existing_fir_victim_links = {(link.fir_id, link.victim_id) for link in db.query(FIRVictimLink).all()}
 
     def _fir_case(case_number, fir_number, location, criminals, victims, narrative, category=category):
         case = existing_cases.get(case_number)
         now = datetime.now()
         if not case:
-            case = CrimeCase(
-                case_number=case_number,
-                category_id=category.id,
-                location_id=location.id,
-                occurred_at=now - timedelta(days=28),
-                reported_at=now - timedelta(days=27, hours=3),
-                description=f"Identity demo — {narrative[:60]}",
-                mo_tags="identity_review",
-                status="investigating",
-                priority="medium",
-                progress=40,
-                dataset_provenance=_SEED_PROVENANCE,
-            )
+            case = CrimeCase(case_number=case_number, category_id=category.id, location_id=location.id, occurred_at=now - timedelta(days=28), reported_at=now - timedelta(days=27, hours=3), description=f"Identity demo - {narrative[:60]}", mo_tags="identity_review", status="investigating", priority="medium", progress=40, dataset_provenance=_SEED_PROVENANCE)
             db.add(case)
             db.flush()
             existing_cases[case_number] = case
         fir = existing_firs.get(fir_number)
         if not fir:
-            fir = FIR(
-                fir_number=fir_number,
-                crime_case_id=case.id,
-                complainant_name=victims[0].full_name if victims else "State Complainant",
-                complainant_contact=victims[0].contact_number if victims else None,
-                sections="IPC 420/379",
-                status="registered",
-                filed_at=now - timedelta(days=27),
-                narrative=narrative,
-                dataset_provenance=_SEED_PROVENANCE,
-            )
+            fir = FIR(fir_number=fir_number, crime_case_id=case.id, complainant_name=victims[0].full_name if victims else "State Complainant", complainant_contact=victims[0].contact_number if victims else None, sections="IPC 420/379", status="registered", filed_at=now - timedelta(days=27), narrative=narrative, dataset_provenance=_SEED_PROVENANCE)
             db.add(fir)
             db.flush()
             existing_firs[fir_number] = fir
@@ -1380,21 +1321,23 @@ def _seed_identity_demo(db):
                 db.add(FIRVictimLink(fir_id=fir.id, victim_id=vi.id))
                 existing_fir_victim_links.add((fir.id, vi.id))
 
-    _fir_case(
-        "IDR-2026-001", "IDR-FIR 104/2026", whitefield,
-        [ramu, balu], [demo_victim],
-        "Complainant reports recurring burglary attempts; suspects Balu Swamy and Ramu Kumar for coordinated entry attempts.",
-    )
-    _fir_case(
-        "IDR-2026-002", "IDR-FIR 205/2026", mysuru,
-        [kumar, ramar], [],
-        "Two-wheeler KA-01-MQ-4321 observed parked repeatedly near a transit godown operated by Kumar Swamy.",
-    )
+    _fir_case("IDR-2026-001", "IDR-FIR 104/2026", whitefield, [ramu, balu], [demo_victim], "Complainant reports recurring burglary attempts; suspects Balu Swamy and Ramu Kumar for coordinated entry attempts.")
+    _fir_case("IDR-2026-002", "IDR-FIR 205/2026", mysuru, [kumar, ramar], [], "Two-wheeler KA-01-MQ-4321 observed parked repeatedly near a transit godown operated by Kumar Swamy.")
+    _fir_case("IDR-2026-003", "IDR-FIR 311/2026", whitefield, [ramu, rahul], [demo_victim_alt], "Alternate spelling complaint links Mina Ramu to the same property dispute and the same Whitefield address cluster.")
+    _fir_case("IDR-2026-004", "IDR-FIR 412/2026", mysuru, [balu, kumar, rahul], [], "Shared phone and vehicle references tie Balu Swamy, Kumar Swamy, and Rahul Naik to the same support network.")
     db.flush()
 
     print("Identity demo: syncing identifiers, resolving candidates, detecting proxy patterns...")
     sync_identity_identifiers(db)
-    rel_stats = run_identity_resolution(db, persist=True)
+    demo_scope = {
+        ("criminal", str(criminal.id))
+        for criminal in (ramu, balu, kumar, ramar, rahul)
+    }
+    demo_scope.update({
+        ("victim", str(victim.id))
+        for victim in (demo_victim, demo_victim_alt)
+    })
+    rel_stats = run_identity_resolution(db, persist=True, entity_scope=demo_scope)
     print(
         "  resolution: "
         f"{rel_stats.get('profiles_analyzed', 0)} profiles, "
@@ -1406,7 +1349,5 @@ def _seed_identity_demo(db):
         print(f"  proxy patterns: {len(proxy_patterns)}")
     except Exception as exc:  # pragma: no cover
         print(f"  proxy detection failed: {exc}")
-
-
 if __name__ == "__main__":
     seed()

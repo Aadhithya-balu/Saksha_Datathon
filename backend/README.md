@@ -45,7 +45,7 @@ cp .env.example .env
 # create tables
 python -m app.database.init_db
 
-# seed roles + a default admin user (admin / ChangeMe123!)
+# seed roles, demo users, linked crime records, and identity relationships
 python -m app.database.seed_db
 
 # run
@@ -83,7 +83,8 @@ docker compose exec neo4j cypher-shell -u neo4j -p <password> -f /neo4j/schema.c
 ## Auth & RBAC
 
 - JWT access tokens (60 min default) + refresh tokens (7 days default), both configurable in `.env`.
-- Roles: `admin`, `crime_analyst`, `investigator`, `policymaker` — seeded automatically by `seed_db.py`.
+- Roles: `admin`, `crime_analyst`, `investigator`, `policymaker`, `inspector`, `forensic`, and `viewer` — seeded automatically by `seed_db.py`.
+- Demo logins: `admin / 564738`, `SCRB-7740 / 123456`, `IO-3921 / 456789`, `SP-0088 / 987654`, `INS-2110 / 112233`, `FSL-9033 / 445566`, and `VIEW-5522 / 778899`.
 - Protect any route with:
   ```python
   from app.auth.rbac import require_roles, ROLE_ADMIN

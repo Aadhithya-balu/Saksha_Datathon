@@ -18,6 +18,7 @@ from app.models.crime import CrimeCase
 from app.models.crime_category import CrimeCategory
 from app.models.criminal import Criminal
 from app.models.fir import FIR, FIRCriminalLink
+from app.models.victim import Victim
 from app.models.identity import (
     IdentityConflict,
     IdentityEvidence,
@@ -33,6 +34,7 @@ from app.services.identity_service import (
     search_identity,
     sync_identity_identifiers,
 )
+from app.database.seed_db import _seed_identity_demo
 
 _MY_DOB = date(1992, 6, 11)
 _OTHER_DOB = date(1985, 3, 22)
@@ -240,5 +242,31 @@ def test_search_identity_returns_person_and_matches(db_session):
     hits = result.get("exact") or result.get("probable") or result.get("possible") or []
     assert hits, "search must surface the Ramu record"
     assert any(h["name"] == "Ramu Kumar" for h in hits), "search must surface the Ramu Kumar record"
+
+
+def test_identity_demo_seed_populates_interconnected_records(db_session):
+    category, location = _category_location(db_session)
+    whitefield = Location(district="Bengaluru Urban", station="Whitefield Cyber Cell Beat",
+                          address="Whitefield Cyber Cell Beat", latitude=12.9698, longitude=77.75)
+    mysuru = Location(district="Mysuru", station="Devaraja Market Zone",
+                      address="Devaraja Market Zone", latitude=12.2958, longitude=76.6394)
+    db_session.add_all([whitefield, mysuru])
+    db_session.flush()
+
+    _seed_identity_demo(db_session)
+    db_session.flush()
+
+    names = {row.full_name for row in db_session.query(Criminal).all()}
+    assert {"Ramu Kumar", "Balu Swamy", "Kumar Swamy", "Ramar", "Rahul Naik"} <= names
+
+    victims = {row.full_name for row in db_session.query(Victim).all()}
+    assert {"Meena Ramu", "Mina Ramu"} <= victims
+
+    sync_identity_identifiers(db_session)
+    summary = run_identity_resolution(db_session, persist=True)
+    db_session.flush()
+
+    assert summary["relationships_proposed"] >= 3
+    assert db_session.query(IdentityRelationship).count() >= 3
 
 
