@@ -1,7 +1,7 @@
 {
     "model_name": "SAKSHA Hotspot Predictor",
     "algorithm": "LightGBM",
-    "version": "20260827_112233",
+    "version": "20260903_144227",
     "h3_resolution": 7,
     "prediction_target": "Next Month Crime Count per H3 Cell",
     "features": [
@@ -39,20 +39,42 @@
     ],
     "feature_count": 31,
     "best_params": {
-        "algorithm": "RandomForest",
-        "n_estimators": 200,
-        "max_depth": 10,
-        "min_samples_leaf": 3,
-        "random_state": 42
+        "objective": "regression",
+        "random_state": 42,
+        "verbosity": -1,
+        "n_estimators": 100,
+        "learning_rate": 0.03,
+        "num_leaves": 15,
+        "min_child_samples": 5,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8
     },
-    "training_rows": 2000,
-    "training_period": "historical",
-    "validation_period": "test_split",
+    "training_rows": 671,
+    "training_period": "2025-09-03 to 2026-08-27",
+    "validation_period": "Chronological Holdout (20%)",
     "validation_status": "VALIDATED",
-    "rmse": 0.5315021209043743,
-    "mae": 0.43071610340121214,
-    "r2": 0.9727809401097121,
-    "ranking_metrics": {},
-    "baseline_comparison": {},
-    "trained_on": "2026-08-27T11:22:33.194875+00:00"
+    "rmse": 0.8523266871645597,
+    "mae": 0.549746581722752,
+    "r2": -0.7074732712953757,
+    "ranking_metrics": {
+        "precision_at_k": 0.0,
+        "hit_rate": 0.0,
+        "top_k_captured": 0,
+        "k": 10
+    },
+    "baseline_comparison": {
+        "model_metrics": {
+            "rmse": 0.8523266871645597,
+            "mae": 0.549746581722752,
+            "r2": -0.7074732712953757
+        },
+        "baseline_metrics": {
+            "rmse": 0.8461970117626565,
+            "mae": 0.5481481481481482,
+            "r2": -0.683002321382512
+        },
+        "rmse_improvement_pct": -0.72,
+        "outperforms_baseline": false
+    },
+    "trained_on": "2026-09-03T14:42:27.776240+00:00"
 }
