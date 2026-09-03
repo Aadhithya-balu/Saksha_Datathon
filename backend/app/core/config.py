@@ -34,14 +34,8 @@ class Settings(BaseSettings):
     # permissive mode that could silently present seed data as live).
     SAKSHA_DATA_MODE: str = "demo"
 
-    # --- PostgreSQL / Supabase PostgreSQL ---
+    # --- Supabase PostgreSQL ---
     DATABASE_URL: str | None = None
-    POSTGRES_USER: str | None = None
-    POSTGRES_PASSWORD: str | None = None
-    POSTGRES_DB: str | None = None
-    POSTGRES_HOST: str | None = None
-    POSTGRES_PORT: int = 5432
-    POSTGRES_SSLMODE: str | None = None
     SUPABASE_DB_HOST: str | None = None
     SUPABASE_DB_PORT: int = 5432
     SUPABASE_DB_NAME: str | None = None
@@ -223,24 +217,8 @@ class Settings(BaseSettings):
             )
             return self
 
-        if (
-            self.POSTGRES_HOST
-            and self.POSTGRES_USER
-            and self.POSTGRES_PASSWORD
-            and not self._is_placeholder(self.POSTGRES_HOST)
-            and not self._is_placeholder(self.POSTGRES_USER)
-            and not self._is_placeholder(self.POSTGRES_PASSWORD)
-        ):
-            user = quote_plus(self.POSTGRES_USER)
-            password = quote_plus(self.POSTGRES_PASSWORD)
-            db_name = quote_plus(self.POSTGRES_DB or "postgres")
-            query = f"?sslmode={quote_plus(self.POSTGRES_SSLMODE)}" if self.POSTGRES_SSLMODE else ""
-            self.DATABASE_URL = (
-                f"postgresql+psycopg2://{user}:{password}"
-                f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{db_name}{query}"
-            )
-            return self
-
+        # SQLite is reserved for the demo/test fallback. A configured Supabase
+        # connection above always wins and is the sole persistent data source.
         self.DATABASE_URL = "sqlite:///./saksha.db"
         return self
 
@@ -293,8 +271,6 @@ class Settings(BaseSettings):
         # through environment variables.
         if self.DATABASE_URL and "sqlite" in self.DATABASE_URL:
             errors.append("Production must use PostgreSQL; SQLite is not supported for sensitive production data.")
-        if self.POSTGRES_PASSWORD and self.POSTGRES_PASSWORD in ("postgres", "password", "admin", "123456"):
-            errors.append("POSTGRES_PASSWORD appears to be a default/common password. Use a strong password.")
         if self.SUPABASE_DB_PASSWORD and self.SUPABASE_DB_PASSWORD in ("postgres", "password", "admin", "123456"):
             errors.append("SUPABASE_DB_PASSWORD appears to be a default/common password. Use a strong password.")
 

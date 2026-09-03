@@ -100,9 +100,9 @@ class TestProductionConfigValidation:
                 NEO4J_PASSWORD="neo4j",
             )
 
-    def test_production_rejects_default_db_password(self):
+    def test_production_rejects_default_supabase_password(self):
         from app.core.config import Settings
-        with pytest.raises(ValidationError, match="POSTGRES_PASSWORD appears"):
+        with pytest.raises(ValidationError, match="SUPABASE_DB_PASSWORD appears"):
             Settings(
                 _env_file=None,
                 APP_ENV="production",
@@ -111,7 +111,7 @@ class TestProductionConfigValidation:
                 ALLOWED_ORIGINS="https://saksha.example.com",
                 APP_DEBUG=False,
                 DEBUG=False,
-                POSTGRES_PASSWORD="password",
+                SUPABASE_DB_PASSWORD="password",
                 NEO4J_PASSWORD="strong-neo4j-pass-123",
             )
 
