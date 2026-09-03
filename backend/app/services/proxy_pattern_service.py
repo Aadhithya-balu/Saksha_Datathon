@@ -444,17 +444,24 @@ def _money_mentions(db: Session, a, b) -> set[str]:
 
 
 def _text_for(db: Session, profile) -> list[str]:
+    cache = db.info.setdefault("proxy_text_for", {})
+    cache_key = (profile.entity_type, str(profile.entity_id))
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
     texts: list[str] = []
     if profile.entity_type == ENTITY_KIND_CRIMINAL:
         row = db.query(Criminal).get(profile.entity_id)
     else:
         row = db.query(Victim).get(profile.entity_id)
     if row is None:
+        cache[cache_key] = texts
         return texts
     for attr in ("mo_summary", "identifying_marks", "statement", "address"):
         value = getattr(row, attr, None)
         if value:
             texts.append(value)
+    cache[cache_key] = texts
     return texts
 
 
@@ -885,7 +892,12 @@ _RULE_FUNCTIONS = {
 # Identifier helpers used by temporal/anonymisation rules
 # ---------------------------------------------------------------------------
 def _identifiers_for(db: Session, profile) -> list[IdentityIdentifier]:
-    return (
+    cache = db.info.setdefault("proxy_identifiers_for", {})
+    cache_key = (profile.entity_type, str(profile.entity_id))
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    rows = (
         db.query(IdentityIdentifier)
         .filter(
             IdentityIdentifier.entity_type == profile.entity_type,
@@ -893,6 +905,8 @@ def _identifiers_for(db: Session, profile) -> list[IdentityIdentifier]:
         )
         .all()
     )
+    cache[cache_key] = rows
+    return rows
 
 
 def get_pattern_detail(db: Session, pattern_id):

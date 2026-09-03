@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { RoleGuard } from '../components/layout/RoleGuard';
+import BadgeLogin from '../components/auth/BadgeLogin';
 import { useAuthStore } from '../store/authStore';
 import { ROUTE_PERMISSIONS } from '../hooks/useRBAC';
 import type { UserRole } from '../store/authStore';
@@ -48,5 +49,10 @@ describe('RoleGuard access control', () => {
     loginAs('SCRB');
     render(<RoleGuard path="/ai-chat"><div>AI ASSISTANT</div></RoleGuard>);
     expect(screen.getByText('AI ASSISTANT')).toBeInTheDocument();
+  });
+
+  it('shows all seven seeded demo login profiles on the badge login card', () => {
+    render(<BadgeLogin onSuccess={() => undefined} />);
+    expect(screen.getAllByRole('button', { name: /use demo profile/i })).toHaveLength(7);
   });
 });

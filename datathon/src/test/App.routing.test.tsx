@@ -37,6 +37,7 @@ vi.mock('../services/api', () => ({
 }));
 
 vi.mock('../pages/Login', () => mockPage('LOGIN-MARKER'));
+vi.mock('../pages/Landing', () => mockPage('LANDING-MARKER'));
 vi.mock('../pages/Overview', () => mockPage('OVERVIEW-PAGE'));
 vi.mock('../pages/Hotspots', () => mockPage('HOTSPOTS-PAGE'));
 vi.mock('../pages/Network', () => mockPage('NETWORK-PAGE'));
@@ -79,7 +80,15 @@ beforeEach(() => {
 });
 
 describe('App routing shell', () => {
-  it('renders the Login page for unauthenticated visitors', async () => {
+  it('shows the Landing page first for unauthenticated visitors at /', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('LANDING-MARKER')).toBeInTheDocument());
+    expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument();
+    expect(screen.queryByText('LOGIN-MARKER')).not.toBeInTheDocument();
+  });
+
+  it('renders the Login page for unauthenticated visitors at /login', async () => {
+    window.history.pushState({}, '', '/login');
     render(<App />);
     await waitFor(() => expect(screen.getByText('LOGIN-MARKER')).toBeInTheDocument());
     expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument();

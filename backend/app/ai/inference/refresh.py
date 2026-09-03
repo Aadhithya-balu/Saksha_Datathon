@@ -504,50 +504,8 @@ def _worker(key: str, reason: str) -> None:
     session = SessionLocal()
     try:
         summary = refresh_model(session, key, reason=reason)
-        if summary.get("status") == "ok":
-            _notify_retrain_success(session, key, summary)
     finally:
         session.close()
-
-
-def _notify_retrain_success(db, key: str, summary: dict[str, Any]) -> None:
-    """Broadcast a system notification after an automatic retrain (gap 133.2).
-
-    The issue explicitly called out that CRUD writes never produced any AI
-    notification; this closes the loop for dashboard/notification-center
-    consumers. Best-effort: never raises.
-    """
-    try:
-        from app.models.notification import Notification
-
-        label = SPECS[key].label
-        db.add(
-            Notification(
-                user_id=None,
-                subject="AI model refreshed",
-                notification_type="model_retrained",
-                category="system_notification",
-                title=f"{label} retrained automatically",
-                message=(
-                    f"New crime data was detected and the {label} were retrained "
-                    f"(trigger: {summary.get('reason', 'auto')}). Predictions now "
-                    "reflect the latest records."
-                ),
-                severity="low",
-                priority="low",
-                status="unread",
-                resource_type="ai_model",
-                resource_id=key,
-                is_broadcast=True,
-            )
-        )
-        db.commit()
-    except Exception as exc:
-        try:
-            db.rollback()
-        except Exception:
-            pass
-        logger.debug("retrain notification failed for %s: %s", key, exc)
 
 
 def mark_data_changed(domain: str, db=None) -> list[str]:

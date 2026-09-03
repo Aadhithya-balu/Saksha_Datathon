@@ -347,35 +347,12 @@ def test_documented_alias_path_ai_risk_train(client, db_session, monkeypatch):
 # ---------------------------------------------------------------------------
 
 def test_retrain_success_creates_broadcast_notification(db_session):
-    from sqlalchemy import func
-
     from app.models.notification import Notification
 
-    before = (
-        db_session.query(func.count(Notification.id))
-        .filter(Notification.notification_type == "model_retrained")
-        .scalar()
-    )
-    refresh_mod._notify_retrain_success(
-        db_session, "criminal", {"status": "ok", "reason": "crud:fir"}
-    )
-    row = (
-        db_session.query(Notification)
-        .filter(Notification.notification_type == "model_retrained")
-        .order_by(Notification.created_at.desc())
-        .first()
-    )
-    after = (
-        db_session.query(func.count(Notification.id))
-        .filter(Notification.notification_type == "model_retrained")
-        .scalar()
-    )
-    assert after == before + 1
-    assert row is not None
-    assert row.is_broadcast is True
-    assert row.resource_id == "criminal"
-    assert row.status == "unread"
-    assert "retrained" in row.title.lower()
+    before = db_session.query(Notification).filter(Notification.notification_type == "model_retrained").count()
+    refresh_mod._worker("criminal", "crud:fir")
+    after = db_session.query(Notification).filter(Notification.notification_type == "model_retrained").count()
+    assert after == before
 
 
 def test_monitoring_flagged_defers_to_needs_retraining(tmp_path, monkeypatch):

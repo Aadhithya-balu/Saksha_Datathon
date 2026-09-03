@@ -738,13 +738,21 @@ def _entity_vehicles(profile: EntityProfile) -> list[str]:
 def _case_districts(db: Session, p: EntityProfile) -> set[str]:
     if not p.fir_ids:
         return set()
+    cache = db.info.setdefault("identity_case_districts", {})
+    cache_key = (p.entity_type, str(p.entity_id))
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
     firs = db.query(FIR).filter(FIR.id.in_(p.fir_ids)).all()
     loc_ids = {f.crime_case.location_id for f in firs if f.crime_case and f.crime_case.location_id}
     from app.models.location import Location
     if not loc_ids:
-        return set()
+        cache[cache_key] = set()
+        return cache[cache_key]
     locs = db.query(Location).filter(Location.id.in_(loc_ids)).all()
-    return {l.district for l in locs if l.district}
+    districts = {l.district for l in locs if l.district}
+    cache[cache_key] = districts
+    return districts
 
 
 def _network_overlap(db: Session, a: EntityProfile, b: EntityProfile) -> float:
@@ -760,15 +768,34 @@ def _network_overlap(db: Session, a: EntityProfile, b: EntityProfile) -> float:
 
 def _co_participants(db: Session, p: EntityProfile) -> set[str]:
     """Set of other FIR participants (criminals+victims) sharing any of p's FIRs."""
+    cache = db.info.setdefault("identity_co_participants", {})
+    cache_key = (p.entity_type, str(p.entity_id))
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     result: set[str] = set()
-    for fid in p.fir_ids:
-        for c in db.query(FIRCriminalLink).filter(FIRCriminalLink.fir_id == fid).all():
-            if (c.criminal_id, ENTITY_KIND_CRIMINAL) != (p.entity_id, p.entity_type):
-                result.add((ENTITY_KIND_CRIMINAL, str(c.criminal_id)))
-        for v in db.query(FIRVictimLink).filter(FIRVictimLink.fir_id == fid).all():
-            if (v.victim_id, ENTITY_KIND_VICTIM) != (p.entity_id, p.entity_type):
-                result.add((ENTITY_KIND_VICTIM, str(v.victim_id)))
-    return {f"{t}:{i}" for t, i in result}
+    if p.fir_ids:
+        fids = list(p.fir_ids)
+        # Batch per-profile (rather than per-FIR) so the identity scan stays fast
+        # on remote databases. Select only the foreign-key values needed for
+        # overlap scoring — avoids hydrating legacy link rows with unused columns
+        # and keeps the scan compatible with older deployments of these tables.
+        criminal_ids = db.query(FIRCriminalLink.criminal_id).filter(
+            FIRCriminalLink.fir_id.in_(fids)
+        ).all()
+        for (criminal_id,) in criminal_ids:
+            if (criminal_id, ENTITY_KIND_CRIMINAL) != (p.entity_id, p.entity_type):
+                result.add((ENTITY_KIND_CRIMINAL, str(criminal_id)))
+        victim_ids = db.query(FIRVictimLink.victim_id).filter(
+            FIRVictimLink.fir_id.in_(fids)
+        ).all()
+        for (victim_id,) in victim_ids:
+            if (victim_id, ENTITY_KIND_VICTIM) != (p.entity_id, p.entity_type):
+                result.add((ENTITY_KIND_VICTIM, str(victim_id)))
+    participants = {f"{t}:{i}" for t, i in result}
+    cache[cache_key] = participants
+    return participants
 
 
 def _strong_identity_mass(scored: _Scored, weights: dict[str, int] | None = None) -> float:
@@ -1113,6 +1140,7 @@ def run_identity_resolution(
     persist: bool = False,
     user=None,
     weights: dict[str, int] | None = None,
+    entity_scope: set[tuple[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Run the full identity-resolution scan and (optionally) persist results.
 
@@ -1121,6 +1149,11 @@ def run_identity_resolution(
     proposed match.
     """
     profiles = build_entity_profiles(db)
+    if entity_scope is not None:
+        profiles = [
+            profile for profile in profiles
+            if (profile.entity_type, str(profile.entity_id)) in entity_scope
+        ]
     candidates = generate_candidates(profiles)
 
     relationships: list[dict[str, Any]] = []
