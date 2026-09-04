@@ -418,6 +418,17 @@ class TestCrimeCasesUpdateAPI:
 
 
 class TestIsLockedField:
+    def test_legacy_unsolved_case_can_be_listed(self, admin_client, db_session):
+        case, _, _ = _seed_case(db_session, "unsolved")
+        db_session.commit()
+
+        r = admin_client.get(f"{CASES_URL}?page_size=100")
+
+        assert r.status_code == 200, r.text
+        listed_case = next(item for item in r.json()["results"] if item["id"] == str(case.id))
+        assert listed_case["status"] == "unsolved"
+        assert listed_case["is_locked"] is False
+
     def test_active_case_not_locked(self, admin_client, db_session):
         case, _, _ = _seed_case(db_session, STATUS_ACTIVE)
         db_session.commit()

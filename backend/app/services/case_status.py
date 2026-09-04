@@ -31,6 +31,7 @@ STATUS_CLOSED = "closed"
 # logic only — we never blindly overwrite them.
 _LEGACY_TO_CANONICAL: dict[str, str] = {
     "open": STATUS_ACTIVE,
+    "unsolved": STATUS_ACTIVE,
     "assigned": STATUS_ACTIVE,
     "investigating": STATUS_UNDER_INVESTIGATION,
     "evidence collected": STATUS_UNDER_INVESTIGATION,
