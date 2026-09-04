@@ -1902,6 +1902,43 @@ export interface ModelInfo {
   forecast_model_loaded: boolean;
 }
 
+export interface HotspotModelVersion {
+  model_version: string;
+  trained_at: string;
+  dataset_version: string | null;
+  training_records: number;
+  metrics: Record<string, any>;
+  status: string;
+  deployment_status: string;
+  previous_version: string | null;
+  reason?: string | null;
+}
+
+export interface HotspotModelStatus {
+  current: {
+    model_name: string;
+    model_version: string | null;
+    algorithm: string;
+    trained_at: string | null;
+    training_rows: number;
+    dataset_version: string | null;
+    feature_version: string;
+    previous_version: string | null;
+    status: string;
+    deployment_status: string;
+    metrics: Record<string, any>;
+    versions: HotspotModelVersion[];
+  };
+  versions: HotspotModelVersion[];
+  retrain_policy: {
+    min_new_cases: number;
+    min_dataset_change_pct: number;
+    min_rmse_improvement_pct: number;
+    scheduled_enabled: boolean;
+  };
+  active_job: Record<string, any> | null;
+}
+
 export async function getModelInfo() {
   return apiRequest<ModelInfo>('/ai/predictions/model-info');
 }
@@ -1912,6 +1949,119 @@ export async function trainRiskModels() {
     '/ai/predictions/train',
     { method: 'POST' },
   );
+}
+
+export async function getHotspotModelStatus() {
+  return apiRequest<HotspotModelStatus>('/ai/hotspot/current');
+}
+
+export async function getHotspotModelVersions() {
+  return apiRequest<{ results: HotspotModelVersion[] }>('/ai/hotspot/versions');
+}
+
+export async function retrainHotspotModel(reason?: string) {
+  return apiRequest<{ status: string; job_id: string; current_version: string | null }>(
+    '/ai/hotspot/retrain',
+    { method: 'POST', body: JSON.stringify({ reason, explicit: true }) },
+  );
+}
+
+// ── Unified Model Management (continuous retraining) ─────────────────────────
+
+export interface ModelDomainStatus {
+  model_name: string;
+  model_version: string | null;
+  algorithm: string;
+  trained_at: string | null;
+  training_rows: number;
+  dataset_version: string | null;
+  feature_version: string;
+  previous_version: string | null;
+  status: string;
+  deployment_status: string;
+  artifacts_present: boolean;
+  metrics: Record<string, any>;
+}
+
+export interface ModelDomainVersion {
+  model_version: string;
+  trained_at: string;
+  dataset_version: string | null;
+  training_records: number;
+  metrics: Record<string, any>;
+  status: string;
+  deployment_status: string;
+  previous_version: string | null;
+  reason?: string | null;
+  improvement_pct?: number;
+}
+
+export interface ModelDomainRetrainPolicy {
+  min_new_records: number;
+  min_dataset_change_pct: number;
+  min_improvement_pct: number;
+  scheduled_enabled: boolean;
+}
+
+export interface ModelDomainFullStatus {
+  current: ModelDomainStatus;
+  versions: ModelDomainVersion[];
+  retrain_policy: ModelDomainRetrainPolicy;
+  is_stale?: boolean | null;
+  trainer_available?: boolean;
+  staleness?: Record<string, any> | null;
+}
+
+export interface AllModelsStatus {
+  models: Record<string, ModelDomainFullStatus>;
+  auto_retrain_enabled: boolean;
+  min_interval_seconds: number;
+  refresh_status?: Record<string, any> | null;
+}
+
+export interface ModelRetrainJob {
+  id: string;
+  model_name: string;
+  trigger_type: string;
+  reason: string | null;
+  status: string;
+  previous_version: string | null;
+  new_version: string | null;
+  dataset_version: string | null;
+  training_records: number;
+  evaluation_metrics: Record<string, any> | null;
+  deployment_status: string | null;
+  error_message: string | null;
+  created_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export async function getAllModelsStatus() {
+  return apiRequest<AllModelsStatus>('/ai/models/status');
+}
+
+export async function getModelDomainStatus(domain: string) {
+  return apiRequest<ModelDomainFullStatus>(`/ai/models/${domain}/status`);
+}
+
+export async function getModelDomainVersions(domain: string) {
+  return apiRequest<{ domain: string; versions: ModelDomainVersion[] }>(`/ai/models/${domain}/versions`);
+}
+
+export async function retrainModelDomain(domain: string, reason?: string) {
+  return apiRequest<{ status: string; job_id: string; domain: string; current_version: string | null }>(
+    `/ai/models/${domain}/retrain`,
+    { method: 'POST', body: JSON.stringify({ reason, explicit: true }) },
+  );
+}
+
+export async function getModelRetrainJobs(limit = 20) {
+  return apiRequest<{ jobs: ModelRetrainJob[]; total: number }>(`/ai/models/jobs?limit=${limit}`);
+}
+
+export async function getModelRetrainJob(jobId: string) {
+  return apiRequest<ModelRetrainJob>(`/ai/models/jobs/${jobId}`);
 }
 
 // ── Season Breakdown ────────────────────────────────────────────────────────

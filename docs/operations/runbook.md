@@ -562,15 +562,87 @@ The app is a **client-side routed React SPA**. After a browser refresh on `/dash
 
 ---
 
-## 22. Model Deployment (artifacts)
+## 22. Model Deployment (artifacts) & Continuous Retraining
 
-- **Where artifacts are stored:** in-repo runtime path `backend/app/ai/models/**` (the versioned MLOps registry lives under `mlflow/` at the repo root).
+### 22.1 Where artifacts are stored
+- **Active artifacts:** in-repo runtime path `backend/app/ai/models/**` (hotspot, risk, criminal). The versioned MLOps registry lives under `mlflow/` at the repo root.
+- **Version history:** each model family persists a `model_versions.json` beside its active artifacts (e.g. `backend/app/ai/models/hotspot/model_versions.json`). This file records every candidate that was trained, whether it was accepted or rejected, and the metrics/improvement for each run.
 - **How they are loaded:** inference modules `joblib/pickle`-load the files at `models/<family>/*` with `lru_cache`; `invalidate_caches()` forces reload after promotion/retrain.
 - **Expected metadata:** `model_metadata.json` (name, algorithm, version, training/validation windows, row counts, feature count), `training_metrics.json` (RMSE/MAE/R² per family), `feature_columns.json` (hotspot). Do not store secrets in these files.
-- **Versioning:** `mlflow/` registry (`app/mlops/registry.py`) records `version` + `stage` + dataset snapshots and metrics paths; `deploy.py` handles promotion. The in-repo `models/**` files are the *active* artifacts the runtime loads.
-- **Training/refresh commands:**
-  - Scheduled MLOps cycle (CI or manually): `py -3.12 -m app.mlops` (from `backend/`) → JSON report of retrain per model, registry registration, monitoring snapshot, deployment to production stage.
-  - On-demand API: `POST /api/v2/ai/risk/train` (admin), `POST /api/v2/ai/criminal/…` (retrain endpoint, admin), plus `mlops` CLI (`app.mlops` / `app.mlops retrain`).
+
+### 22.2 Unified Model Management API
+
+The **/api/v2/ai/models/** router provides a single surface for all model domains:
+
+| Endpoint | Method | Access | Description |
+|---|---|---|---|
+| `/ai/models/status` | GET | Admin, crime_analyst | Unified status for all domains (hotspot, risk, criminal) + auto-refresh metadata |
+| `/ai/models/{domain}/status` | GET | Admin, crime_analyst | Single-domain status + staleness + trainer availability |
+| `/ai/models/{domain}/versions` | GET | Admin, crime_analyst | Version history for a domain |
+| `/ai/models/{domain}/retrain` | POST | **Admin only** | Trigger background retrain with acceptance evaluation |
+| `/ai/models/jobs` | GET | Admin, crime_analyst | Recent retrain jobs (QUEUED → TRAINING → EVALUATING → DEPLOYED/REJECTED/FAILED) |
+| `/ai/models/jobs/{job_id}` | GET | Admin, crime_analyst | Single job detail |
+| `/ai/models/refresh-status` | GET | All roles | Staleness/auto-refresh status (from `refresh.py`) |
+
+### 22.3 Retraining lifecycle (safe, non-destructive)
+
+When a retrain is triggered (admin API or background staleness job):
+
+1. **Detect** — new cases / dataset change / explicit admin action / drift flag.
+2. **Train candidate** — the pipeline trains against the current DB, staged to a dedicated version directory. The active model is **never touched during training**.
+3. **Evaluate** — compare candidate metrics (RMSE for hotspot/risk; criminal uses training-row sufficiency) against the currently active model.
+4. **Decision** — the candidate is accepted **only** if its improvement satisfies the configured threshold (`HOTSPOT_RETRAIN_MIN_RMSE_IMPROVEMENT_PCT`, `RISK_RETRAIN_MIN_IMPROVEMENT_PCT`). 
+5. **On accept** — version is recorded, the candidate is copied over the active artifacts, and inference caches are invalidated so the running API immediately serves new weights.
+6. **On reject/failure** — the previous active model remains untouched. The attempt is logged in the version history and the audit log.
+
+### 22.4 Retraining policy (environment-configurable)
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `HOTSPOT_RETRAIN_MIN_NEW_CASES` | 50 | Minimum new cases before auto-retrain triggers |
+| `HOTSPOT_RETRAIN_MIN_DATASET_CHANGE_PCT` | 5.0 | Minimum dataset change % before auto-retrain |
+| `HOTSPOT_RETRAIN_MIN_RMSE_IMPROVEMENT_PCT` | 0.0 | Minimum RMSE improvement to accept a candidate |
+| `RISK_RETRAIN_MIN_NEW_CASES` | 50 | Risk model auto-retrain threshold |
+| `RISK_RETRAIN_MIN_DATASET_CHANGE_PCT` | 5.0 | Risk dataset change threshold |
+| `RISK_RETRAIN_MIN_IMPROVEMENT_PCT` | 0.0 | Risk improvement threshold |
+| `CRIMINAL_RETRAIN_MIN_NEW_RECORDS` | 10 | Criminal auto-retrain threshold |
+| `CRIMINAL_RETRAIN_MIN_DATASET_CHANGE_PCT` | 10.0 | Criminal dataset change threshold |
+| `AUTO_RETRAIN_ENABLED` | `true` | Master switch for background auto-retrain |
+| `AUTO_RETRAIN_MIN_INTERVAL_SECONDS` | 300 | Cooldown between auto-retrains |
+
+### 22.5 Audit & version history
+
+Every retrain attempt records a `ModelUpdateJob` row in PostgreSQL (`model_update_jobs` table) with:
+- who/what triggered it + reason
+- start/end time
+- previous + new model version
+- evaluation metrics + accepted/rejected verdict
+- deployment status (deployed / kept-current / failed)
+- error message on failure
+
+The same event is written to the standard `audit_logs` table with action `MODEL_RETRAIN`.
+
+### 22.6 Deployment-compatible storage
+
+- **Active artifacts** are loaded from the persistent model directory (`backend/app/ai/models/**`) which survives process restarts.
+- **On a volume-backed deployment** (Docker volume, mounted disk), configure `HOTSPOT_MODEL_STORE_DIR` to point at the persistent location.
+- **On ephemeral-filesystem deployments** (serverless), the active artifacts must be rebuilt at boot from the MLOps registry (`mlflow/`) or a DB-backed snapshot. The `model_versions.json` history should also live on the persistent volume.
+
+### 22.7 GitHub synchronization (limitation)
+
+**No automatic GitHub push is implemented.** GitHub credentials are never exposed to the frontend. Instead:
+- Model artifacts persist to the local/volume-backed `models/` directory + MLOps registry.
+- The `mlops.yml` CI workflow runs the full MLOps cycle on schedule and on push, which retrains from DB, registers to `mlflow/`, and promotes to production.
+- If model artifacts are committed to the repo, they land via the normal PR + human-review process — never by an automated runtime push.
+
+### 22.8 Training/refresh commands
+
+- Scheduled MLOps cycle (CI or manually): `py -3.12 -m app.mlops` (from `backend/`) → JSON report of retrain per model, registry registration, monitoring snapshot, deployment to production stage.
+- On-demand API: `POST /api/v2/ai/models/{domain}/retrain` (admin) → returns `{status: "queued", job_id, domain}`; monitor via `GET /api/v2/ai/models/jobs`.
+- Legacy endpoints preserved: `POST /api/v2/ai/risk/train`, `POST /api/v2/ai/criminal/retrain`, `POST /api/v2/ai/hotspot/retrain`.
+
+### 22.9 Validation & rollback
+
 - **Validation:** use `model-validation` artifacts checks (e.g. pickle loadable, feature columns match, metrics present) before promoting; CI `ci.yml` runs model validation tests.
 - **Rollback:** keep the previous `models/<family>` files (or registry `stage`), swap the directory contents, and call `invalidate_caches()` / restart the backend to reload. See §31.
 

@@ -15,6 +15,7 @@ Responsibilities
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -24,6 +25,7 @@ from sqlalchemy import create_engine
 
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import lightgbm as lgb
 try:
@@ -172,7 +174,7 @@ def _make_objective(X: pd.DataFrame, y: pd.Series, tscv: TimeSeriesSplit):
 # Main entry point
 # ---------------------------------------------------------------------------
 
-def run_training() -> dict:
+def run_training(*, publish_active: bool = True, artifact_root: Path | None = None) -> dict:
     from app.ai.pipelines.hotspot.evaluate import (
         build_evaluation_report,
         compute_baseline_metrics,
@@ -249,22 +251,34 @@ def run_training() -> dict:
     date_max = str(pd.to_datetime(raw_df["IncidentFromDate"]).max())[:10] if not raw_df.empty else "N/A"
     training_period = f"{date_min} to {date_max}"
 
-    save_artifacts(
-        model=model,
-        metrics=metrics,
-        best_params=best_params,
-        feature_columns=feature_columns,
-        training_rows=len(monthly),
-        ranking_metrics=ranking_metrics,
-        baseline_comparison=baseline_comparison,
-        training_period=training_period,
-        validation_period="Chronological Holdout (20%)",
-    )
+    version_dir = None
+    temp_dir_ctx = TemporaryDirectory() if not publish_active else None
+    try:
+        if not publish_active:
+            root = artifact_root or Path(temp_dir_ctx.name)
+            version_dir = root / datetime.now().strftime("%Y%m%d_%H%M%S")
+        artifacts_dir = save_artifacts(
+            model=model,
+            metrics=metrics,
+            best_params=best_params,
+            feature_columns=feature_columns,
+            training_rows=len(monthly),
+            ranking_metrics=ranking_metrics,
+            baseline_comparison=baseline_comparison,
+            training_period=training_period,
+            validation_period="Chronological Holdout (20%)",
+            version_dir=version_dir,
+            publish_active=publish_active,
+        )
+    finally:
+        if temp_dir_ctx is not None:
+            temp_dir_ctx.cleanup()
     logger.info("Training complete.")
     return {
         "metrics": metrics,
         "ranking_metrics": ranking_metrics,
         "baseline_comparison": baseline_comparison,
+        "artifacts_dir": str(artifacts_dir),
     }
 
 

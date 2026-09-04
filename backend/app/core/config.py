@@ -116,6 +116,22 @@ class Settings(BaseSettings):
     # off a throttled background retrain when the data has moved forward.
     AUTO_RETRAIN_ENABLED: bool = True
     AUTO_RETRAIN_MIN_INTERVAL_SECONDS: int = 300
+    HOTSPOT_RETRAIN_MIN_NEW_CASES: int = 50
+    HOTSPOT_RETRAIN_MIN_DATASET_CHANGE_PCT: float = 5.0
+    HOTSPOT_RETRAIN_MIN_RMSE_IMPROVEMENT_PCT: float = 0.0
+    HOTSPOT_RETRAIN_ALLOW_SCHEDULED: bool = False
+    HOTSPOT_MODEL_STORE_DIR: str = ""
+
+    # --- Risk model retraining policy ---
+    RISK_RETRAIN_MIN_NEW_CASES: int = 50
+    RISK_RETRAIN_MIN_DATASET_CHANGE_PCT: float = 5.0
+    RISK_RETRAIN_MIN_IMPROVEMENT_PCT: float = 0.0
+    RISK_RETRAIN_ALLOW_SCHEDULED: bool = False
+
+    # --- Criminal model retraining policy ---
+    CRIMINAL_RETRAIN_MIN_NEW_RECORDS: int = 10
+    CRIMINAL_RETRAIN_MIN_DATASET_CHANGE_PCT: float = 10.0
+    CRIMINAL_RETRAIN_ALLOW_SCHEDULED: bool = False
 
     # --- File Storage ---
     # When SUPABASE_STORAGE_BUCKET is set, uploaded evidence files are stored in

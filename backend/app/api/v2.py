@@ -66,6 +66,9 @@ from app.routes import identity
 # Intelligence Engine: unified investigation intelligence builder
 from app.routes import intelligence
 
+# Unified model management (continuous retraining, versioning, status)
+from app.routes import model_management
+
 
 api_router = APIRouter()
 
@@ -122,3 +125,6 @@ api_router.include_router(identity.router)
 
 # Intelligence Engine: unified investigation intelligence builder
 api_router.include_router(intelligence.router)
+
+# Unified model management (continuous retraining, versioning, status)
+api_router.include_router(model_management.router)
