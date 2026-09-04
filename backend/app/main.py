@@ -478,6 +478,15 @@ async def lifespan(app: FastAPI):
     # user's first request. Best-effort and non-blocking.
     _prewarm_mo_profiles()
 
+    # Materialize the synthetic face-recognition DEMO dataset so the gallery
+    # images are available immediately when the Feature page is opened.
+    try:
+        from app.ai.face import synthetic as _face_synth
+        _face_synth.ensure_demo_dataset()
+        logger.info("Face-recognition demo dataset ready")
+    except Exception as exc:
+        logger.warning(f"Face-recognition demo dataset generation skipped: {exc}")
+
     # Move staleness checks off the hot inference path — run every 5 min.
     _start_background_refresh()
 

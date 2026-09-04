@@ -27,6 +27,7 @@ export interface TranslationSet {
   nav_admin: string;
   nav_docs: string;
   nav_identity: string;
+  nav_face_recognition: string;
 
   // Common actions
   action_search: string;
@@ -391,6 +392,7 @@ const en: TranslationSet = {
   nav_admin: 'Admin',
   nav_docs: 'Docs',
   nav_identity: 'Identity',
+  nav_face_recognition: 'Face ID',
 
   // Common actions
   action_search: 'Search',
@@ -755,6 +757,7 @@ const kn: TranslationSet = {
   nav_admin: 'ನಿರ್ವಾಹಕ',
   nav_docs: 'ದಸ್ತಾವೇಜುಗಳು',
   nav_identity: 'ಗುರುತು',
+  nav_face_recognition: 'ಮುಖ ಗುರುತಿಸುವಿಕೆ',
 
   // Common actions
   action_search: 'ಹುಡುಕು',
@@ -1119,6 +1122,7 @@ const kn_en: TranslationSet = {
   nav_admin: 'Nirvahaka',
   nav_docs: 'Dastavejgalu',
   nav_identity: 'Gurutu',
+  nav_face_recognition: 'Mukha Gurutisuvike',
 
   // Common actions
   action_search: 'Huduku',

@@ -9,6 +9,8 @@ live database rows, so results never go stale and tests stay isolated.
 from __future__ import annotations
 
 import re
+import threading
+import time
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -25,21 +27,35 @@ _MIN_SHARED_STEMS = 2
 # Validator-known identifier keys so IDs cited from retrieved documents are
 # treated as grounded by ResponseValidator.
 _ID_METADATA_KEYS = ("id", "fir_number", "case_number", "name")
+# Issue #246: building the RAG index scans + re-embeds every FIR/criminal/
+# evidence/case row from the database on EVERY chat message. Caching the
+# built, already-embedded index for a short TTL makes repeated queries
+# near-instant while bounding staleness, with NO change to answer logic.
+_INDEX_TTL_SECONDS = 120.0
 
 
 class RagRetriever:
-    """Retrieves database records relevant to a free-text question."""
+    """Retrieves database records relevant to a free-text question.
+
+    Issue #246: the RAG index (DB scan + SHA-256 embedding) was rebuilt from
+    scratch on every message, which is the primary source of the multi-minute
+    loading delay when the database is remote (Supabase).  The built vector
+    store is now cached for _INDEX_TTL_SECONDS so repeated chat queries are
+    near-instant.  The cache lives on the instance, so tests creating fresh
+    RagRetriever objects are unaffected.
+    """
+
+    def __init__(self) -> None:
+        self._index_cache: InMemoryVectorStore | None = None
+        self._index_cache_ts: float = 0.0
+        self._index_cache_lock = threading.Lock()
 
     def fetch(self, db: Session, message: str, *, top_k: int = _TOP_K) -> BackendResult | None:
         try:
-            from app.services.rag.rag_service import build_rag_documents
-
-            documents = build_rag_documents(db)
-            if not documents:
+            store = self._get_indexed_store(db)
+            if store is None:
                 return None
 
-            store = InMemoryVectorStore()
-            store.index(self._to_vector_documents(documents))
             # Over-fetch: cosine on hash embeddings is noisy, so genuine
             # matches must be filtered/ranked AFTER retrieval, not truncated
             # away by top_k beforehand.
@@ -72,6 +88,37 @@ class RagRetriever:
         except Exception:
             # Retrieval augmentation must never break the chat pipeline.
             return None
+
+    def _get_indexed_store(self, db: Session) -> InMemoryVectorStore | None:
+        """Returns the cached vector store, rebuilding it on cache miss.
+
+        Issue #246: the index is rebuilt once every _INDEX_TTL_SECONDS.
+        The lock prevents concurrent rebuilds from redundant requests while
+        keeping per-request latency identical to the uncached path when the
+        cache is warm.
+        """
+        now = time.monotonic()
+        with self._index_cache_lock:
+            if self._index_cache is not None and (now - self._index_cache_ts) < _INDEX_TTL_SECONDS:
+                return self._index_cache
+
+        # Cache miss or expired — rebuild outside the lock so other requests
+        # don't block while the slow SQL scan runs.  At worst we do one
+        # redundant rebuild when two concurrent cold requests race.
+        try:
+            from app.services.rag.rag_service import build_rag_documents
+            documents = build_rag_documents(db)
+            if not documents:
+                return None
+            store = InMemoryVectorStore()
+            store.index(self._to_vector_documents(documents))
+        except Exception:
+            return None
+
+        with self._index_cache_lock:
+            self._index_cache = store
+            self._index_cache_ts = time.monotonic()
+        return store
 
     @staticmethod
     def _to_vector_documents(documents: list[dict]) -> list[VectorDocument]:

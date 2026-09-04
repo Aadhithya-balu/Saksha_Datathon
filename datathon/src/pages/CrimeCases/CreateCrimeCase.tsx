@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { 
   createCrimeCase, 
   createCriminal, 
+  createVictim,
   createFIR, 
   listCriminals, 
   getCrimeCategories, 
@@ -10,7 +11,7 @@ import {
   type OfficerWithUserRecord 
 } from '../../services/api';
 import type { CrimeCategoryRecord, LocationSimpleRecord } from '../../services/api';
-import { ArrowLeft, Save, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Save, AlertTriangle, ShieldCheck, UserPlus } from 'lucide-react';
 
 interface CreateCrimeCaseProps {
   onCancel: () => void;
@@ -39,6 +40,14 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
   // Optional accused / criminal linkage fields
   const [accusedNames, setAccusedNames] = useState('');
   const [complainantName, setComplainantName] = useState('');
+
+  // Optional victim basic-details fields
+  const [victimName, setVictimName] = useState('');
+  const [victimGender, setVictimGender] = useState('');
+  const [victimAge, setVictimAge] = useState('');
+  const [victimContact, setVictimContact] = useState('');
+  const [victimAddress, setVictimAddress] = useState('');
+  const [victimStatement, setVictimStatement] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +126,24 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
           if (existing?.id) criminalIds.push(existing.id);
         }
 
+        // Optional: create & link the victim when basic details were provided
+        const victimIds: string[] = [];
+        let complainantNameValue = complainantName.trim();
+        if (victimName.trim()) {
+          const createdVictim = await createVictim({
+            full_name: victimName.trim(),
+            gender: victimGender || null,
+            age: victimAge ? Number(victimAge) : null,
+            contact_number: victimContact.trim() || null,
+            address: victimAddress.trim() || null,
+            statement: victimStatement.trim() || null,
+          }).catch(() => null);
+          if (createdVictim?.id) victimIds.push(createdVictim.id);
+          if (!complainantNameValue && !foundByPolice) {
+            complainantNameValue = victimName.trim();
+          }
+        }
+
         const year = new Date().getFullYear();
         const station = locationId ? (locations.find(l => l.id === locationId)?.station || 'PS') : 'PS';
         const firNumber = `FIR-${Math.floor(100 + Math.random() * 900)}/${station.replace(/[^A-Z0-9]/gi, '').slice(0, 10).toUpperCase()}/${year}`;
@@ -124,11 +151,43 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
         await createFIR({
           fir_number: firNumber,
           crime_case_id: created.id,
-          complainant_name: complainantName.trim(),
+          complainant_name: complainantNameValue,
           sections: moTags || null,
           narrative: description || null,
           status: 'registered',
           criminal_ids: criminalIds,
+          victim_ids: victimIds.length > 0 ? victimIds : undefined,
+          investigating_officer_id: assignedOfficerId || null,
+          found_by_police: foundByPolice,
+        });
+      } else if (victimName.trim() && created?.id) {
+        // No accused listed but a victim was provided — still register the FIR
+        const createdVictim = await createVictim({
+          full_name: victimName.trim(),
+          gender: victimGender || null,
+          age: victimAge ? Number(victimAge) : null,
+          contact_number: victimContact.trim() || null,
+          address: victimAddress.trim() || null,
+          statement: victimStatement.trim() || null,
+        }).catch(() => null);
+
+        const year = new Date().getFullYear();
+        const station = locationId ? (locations.find(l => l.id === locationId)?.station || 'PS') : 'PS';
+        const firNumber = `FIR-${Math.floor(100 + Math.random() * 900)}/${station.replace(/[^A-Z0-9]/gi, '').slice(0, 10).toUpperCase()}/${year}`;
+        let complainantNameValue = complainantName.trim();
+        if (!complainantNameValue && !foundByPolice) {
+          complainantNameValue = victimName.trim();
+        }
+
+        await createFIR({
+          fir_number: firNumber,
+          crime_case_id: created.id,
+          complainant_name: complainantNameValue,
+          sections: moTags || null,
+          narrative: description || null,
+          status: 'registered',
+          criminal_ids: undefined,
+          victim_ids: createdVictim?.id ? [createdVictim.id] : undefined,
           investigating_officer_id: assignedOfficerId || null,
           found_by_police: foundByPolice,
         });
@@ -338,6 +397,83 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
               />
             </div>
           )}
+        </div>
+
+        {/* Optional Victim Basic Details */}
+        <div className="border border-border-color/40 rounded p-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <UserPlus className="w-3.5 h-3.5 text-[var(--accent-teal)]" />
+            <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Victim Basic Details (Optional)</label>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Victim Full Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Meena Kumar"
+                value={victimName}
+                onChange={(e) => setVictimName(e.target.value)}
+                className="px-3.5 py-2 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] focus:border-[#1E6FD9]/60 focus:outline-none"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Gender</label>
+                <select
+                  value={victimGender}
+                  onChange={(e) => setVictimGender(e.target.value)}
+                  className="px-3.5 py-2 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] cursor-pointer focus:border-[#1E6FD9]/60 focus:outline-none"
+                >
+                  <option value="">Select</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Age</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="130"
+                  placeholder="e.g. 34"
+                  value={victimAge}
+                  onChange={(e) => setVictimAge(e.target.value)}
+                  className="px-3.5 py-2 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] focus:border-[#1E6FD9]/60 focus:outline-none"
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Contact Number</label>
+              <input
+                type="text"
+                placeholder="e.g. 9845012345"
+                value={victimContact}
+                onChange={(e) => setVictimContact(e.target.value)}
+                className="px-3.5 py-2 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] focus:border-[#1E6FD9]/60 focus:outline-none"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Address</label>
+              <input
+                type="text"
+                placeholder="e.g. 14, 5th Main, Whitefield, Bengaluru"
+                value={victimAddress}
+                onChange={(e) => setVictimAddress(e.target.value)}
+                className="px-3.5 py-2 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] focus:border-[#1E6FD9]/60 focus:outline-none"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <label className="uppercase text-[10px] text-[var(--text-muted)] font-bold">Victim Statement</label>
+              <textarea
+                placeholder="Optional statement or remarks from the victim..."
+                rows={2}
+                value={victimStatement}
+                onChange={(e) => setVictimStatement(e.target.value)}
+                className="w-full p-3.5 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] focus:border-[#1E6FD9]/60 focus:outline-none resize-none"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Submit Actions */}

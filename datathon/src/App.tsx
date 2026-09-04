@@ -34,6 +34,7 @@ import DocsPage from './pages/Docs';
 import SettingsHelp from './pages/SettingsHelp';
 import Admin from './pages/Admin';
 import IdentityResolution from './pages/IdentityResolution';
+import FaceRecognition from './pages/FaceRecognition';
 import NotFound from './pages/NotFound';
 
 const routeEntries = [
@@ -58,6 +59,7 @@ const routeEntries = [
   ['settings_help', '/settings'],
   ['admin', '/admin'],
   ['ai_chat', '/ai-chat'],
+  ['face_recognition', '/face-recognition'],
   ['officers', '/officers'],
   ['evidence', '/evidence'],
   ['docs', '/docs'],
@@ -180,6 +182,7 @@ function App() {
       settings_help: 'Settings',
       admin: 'Admin Panel',
       ai_chat: 'AI Assistant',
+      face_recognition: 'Face Recognition',
       officers: 'Officer Management',
       evidence: 'Evidence Handling',
       docs: 'Documentation',
@@ -272,6 +275,7 @@ function App() {
       case 'crime_cases': return <RoleGuard path="/crime-cases"><CrimeCases /></RoleGuard>;
       case 'investigation': return <RoleGuard path="/investigation"><InvestigationPage /></RoleGuard>;
       case 'ai_chat': return <RoleGuard path="/ai-chat"><AIChat /></RoleGuard>;
+      case 'face_recognition': return <RoleGuard path="/face-recognition"><FaceRecognition /></RoleGuard>;
       case 'officers': return <RoleGuard path="/officers"><OfficersPage /></RoleGuard>;
       case 'evidence': return <RoleGuard path="/evidence"><EvidencePage /></RoleGuard>;
       case 'notifications': return <RoleGuard path="/notifications"><NotificationsPage /></RoleGuard>;

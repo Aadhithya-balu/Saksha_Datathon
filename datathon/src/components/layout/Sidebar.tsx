@@ -29,6 +29,7 @@ import {
   FileWarning,
   ShieldCheck,
   Sparkles,
+  ScanFace,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -107,6 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'TOOLS',
       items: [
         { id: 'ai_chat', label: t.nav_ai_chat, path: '/ai-chat', icon: <MessageSquare className="w-[18px] h-[18px]" /> },
+        { id: 'face_recognition', label: t.nav_face_recognition, path: '/face-recognition', icon: <ScanFace className="w-[18px] h-[18px]" /> },
         { id: 'docs', label: t.nav_docs, path: '/docs', icon: <BookOpen className="w-[18px] h-[18px]" /> },
         { id: 'settings_help', label: t.nav_settings, path: '/settings', icon: <Settings className="w-[18px] h-[18px]" /> },
         { id: 'admin', label: t.nav_admin, path: '/admin', icon: <ShieldAlert className="w-[18px] h-[18px]" /> },

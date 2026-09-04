@@ -503,11 +503,85 @@ def delete_case(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete a crime case."""
-    crime_crud.delete(db, case_id)
-    audit_service.log_action(db, current_user, "DELETE", "CrimeCase", str(case_id))
-    mark_data_changed("crime_case", db=db)
-    return {"message": "Crime case deleted successfully"}
+    """Delete a crime case and all dependent records.
+
+    Explicitly removes children before the parent so we never depend on
+    ON DELETE CASCADE constraints that may be missing in the actual database.
+    Each child-table cleanup is guarded so a missing table in a partial
+    deployment never blocks the parent deletion.
+    """
+    from sqlalchemy import inspect as sa_inspect
+    from sqlalchemy import text as sa_text
+
+    try:
+        # Verify case exists first
+        case = db.query(CrimeCase).filter(CrimeCase.id == case_id).first()
+        if not case:
+            raise HTTPException(status_code=404, detail="Crime case not found")
+
+        # Discover which tables actually exist (some children may not be
+        # created in this deployment).
+        existing = set(sa_inspect(db.bind).get_table_names())
+        cid = str(case_id)
+
+        def exec_del(table: str, where_sql: str, params: dict) -> None:
+            """Run a DELETE if the target table exists, else skip."""
+            if table not in existing:
+                return
+            db.execute(sa_text(f"DELETE FROM {table} WHERE {where_sql}"), params)
+
+        def exec_any(sql: str, params: dict) -> None:
+            db.execute(sa_text(sql), params)
+
+        # 1. FIR child tables (links → FIRs)
+        fir_rows = db.execute(sa_text("SELECT id FROM firs WHERE crime_case_id = :cid"), {"cid": cid}).fetchall() if "firs" in existing else []
+        fir_ids = [str(r[0]) for r in fir_rows]
+        if fir_ids:
+            fid_list = ",".join(f"'{fid}'" for fid in fir_ids)
+            for tbl in ("fir_criminal_links", "fir_victim_links"):
+                if tbl in existing:
+                    exec_del(tbl, f"fir_id IN ({fid_list})", {})
+            exec_del("firs", "crime_case_id = :cid", {"cid": cid})
+
+        # 2. Evidence child tables → Evidence
+        ev_rows = db.execute(sa_text("SELECT id FROM evidence WHERE case_id = :cid"), {"cid": cid}).fetchall() if "evidence" in existing else []
+        ev_ids = [str(r[0]) for r in ev_rows]
+        if ev_ids:
+            eid_list = ",".join(f"'{eid}'" for eid in ev_ids)
+            for tbl in (
+                "evidence_metadata",
+                "evidence_timeline",
+                "evidence_assignments",
+                "chain_of_custody",
+                "evidence_ai_summary",
+                "report_evidence_links",
+            ):
+                if tbl in existing:
+                    exec_del(tbl, f"evidence_id IN ({eid_list})", {})
+            exec_del("evidence", "case_id = :cid", {"cid": cid})
+
+        # 3. Case MO tag links
+        exec_del("case_mo_tags", "case_id = :cid", {"cid": cid})
+
+        # 4. Investigation notes (ORM cascade target)
+        exec_del("investigation_notes", "case_id = :cid", {"cid": cid})
+
+        # 5. Reports → SET NULL case_id (reports are independent records)
+        if "reports" in existing:
+            exec_any("UPDATE reports SET case_id = NULL WHERE case_id = :cid", {"cid": cid})
+
+        # 6. Now safe to delete the case itself
+        db.delete(case)
+        db.flush()
+
+        audit_service.log_action(db, current_user, "DELETE", "CrimeCase", str(case_id))
+        mark_data_changed("crime_case", db=db)
+        return {"message": "Crime case deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete crime case: {exc}") from exc
 
 
 @router.post("/{case_id}/notes", dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR))])

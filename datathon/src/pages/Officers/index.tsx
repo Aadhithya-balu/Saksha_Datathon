@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRBAC } from '../../hooks/useRBAC';
+import { usePolling } from '../../hooks/usePolling';
 import { Search, Plus, Filter, ShieldCheck, Mail, Phone, Edit, Trash2 } from 'lucide-react';
 import { apiRequest } from '../../services/api';
 import { CardSkeleton } from '../../components/ui/Skeleton';
@@ -49,6 +50,15 @@ const OfficersPage: React.FC = () => {
   useEffect(() => {
     fetchOfficers();
   }, [search]);
+
+  // Background polling: silently refresh officer list every 30s
+  usePolling(async () => {
+    try {
+      const data = await apiRequest<{ results: Officer[] }>(`/officers?search=${search}`);
+      setOfficers(data.results || []);
+      setError(null);
+    } catch { /* silent */ }
+  }, 30000);
 
   const handleSave = async () => {
     if (!currentOfficer.name?.trim() || !currentOfficer.badge_number?.trim() || !currentOfficer.station?.trim()) {

@@ -142,6 +142,25 @@ class Settings(BaseSettings):
     # unavailable, e.g. during local development without a storage key).
     UPLOAD_DIR: str = ""
 
+    # --- Face Recognition (Issue #228, isolated enhancement) ---
+    # Master switch. When disabled the face-recognition routes report a safe
+    # "unavailable" state and the rest of the application is unaffected.
+    FACE_RECOGNITION_ENABLED: bool = True
+    # Handler priority: "zoho" | "local" | "auto". "auto" (default) prefers the
+    # Zoho Catalyst/Zia face-analytics SDK when importable, otherwise falls back
+    # to the bundled local engine so the demo always works offline.
+    FACE_RECOGNITION_PROVIDER: str = "auto"
+    # Similarity threshold (0..1) above which a DEMO identity is reported as a
+    # match. Below this the service returns "No confident match".
+    FACE_MATCH_THRESHOLD: float = 0.60
+    # Max uploaded bytes for a face-recognition query image (default 10 MB).
+    FACE_MAX_IMAGE_BYTES: int = 10 * 1024 * 1024
+    # Optional Zoho Catalyst project credentials (Client ID/Secret) for the SDK.
+    # Keep unset to run purely on the local demo engine.
+    ZOHO_CLIENT_ID: str | None = None
+    ZOHO_CLIENT_SECRET: str | None = None
+    ZOHO_PROJECT_ID: str | None = None
+
     # --- CORS ---
     ALLOWED_ORIGINS: str = "https://saksha-datathon-csbcweuf.onslate.in,http://localhost:3000,http://localhost:5173"
 
