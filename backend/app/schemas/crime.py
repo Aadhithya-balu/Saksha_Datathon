@@ -2,7 +2,9 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+
+from app.services.case_status import ALL_VALID_STATUSES, is_immutable
 
 
 class CrimeCaseBase(BaseModel):
@@ -11,11 +13,21 @@ class CrimeCaseBase(BaseModel):
     occurred_at: datetime
     description: str | None = None
     mo_tags: str | None = None
-    status: str = "open"
+    status: str = "active"
     priority: str = "medium"
     progress: int = 10
     assigned_officer_id: uuid.UUID | None = None
     found_by_police: bool = False
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: str) -> str:
+        if v.strip().lower() not in ALL_VALID_STATUSES:
+            raise ValueError(
+                f"'{v}' is not a valid case status. "
+                f"Valid values: {sorted(ALL_VALID_STATUSES)}"
+            )
+        return v.strip().lower()
 
     @model_validator(mode="after")
     def validate_police_discovery(self) -> "CrimeCaseBase":
@@ -36,6 +48,18 @@ class CrimeCaseUpdate(BaseModel):
     progress: int | None = None
     assigned_officer_id: uuid.UUID | None = None
 
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        if v.strip().lower() not in ALL_VALID_STATUSES:
+            raise ValueError(
+                f"'{v}' is not a valid case status. "
+                f"Valid values: {sorted(ALL_VALID_STATUSES)}"
+            )
+        return v.strip().lower()
+
 
 class CrimeCaseOut(CrimeCaseBase):
     model_config = ConfigDict(from_attributes=True)
@@ -43,6 +67,12 @@ class CrimeCaseOut(CrimeCaseBase):
     case_number: str
     reported_at: datetime
     created_at: datetime
+    is_locked: bool = False
+
+    @model_validator(mode="after")
+    def set_locked(self) -> "CrimeCaseOut":
+        self.is_locked = is_immutable(self.status)
+        return self
 
 
 class CrimeTimelineEvent(BaseModel):

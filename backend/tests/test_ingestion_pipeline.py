@@ -197,7 +197,7 @@ def test_existing_record_match_skipped_not_reinserted(analyst, db_session, refer
     _, user = analyst
     first = _run_cases_csv(db_session, user, [
         "case_number,category_name,district,station,occurred_at,status,priority",
-        "CR-PIPE-0030,Theft & Burglaries,Bengaluru Urban,KR Puram,2026-07-01 10:00,open,high",
+        "CR-PIPE-0030,Theft & Burglaries,Bengaluru Urban,KR Puram,2026-07-01 10:00,active,high",
     ])
     outcome = promote_import(db_session, first, user.id)
     assert outcome["promoted_rows"] == 1
@@ -205,7 +205,7 @@ def test_existing_record_match_skipped_not_reinserted(analyst, db_session, refer
 
     second = _run_cases_csv(db_session, user, [
         "case_number,category_name,district,station,occurred_at,status,priority",
-        "CR-PIPE-0030,Theft & Burglaries,Bengaluru Urban,KR Puram,2026-07-01 10:00,open,high",
+        "CR-PIPE-0030,Theft & Burglaries,Bengaluru Urban,KR Puram,2026-07-01 10:00,active,high",
     ])
     row = _staged(db_session, second)[0]
     assert row.reconciliation_status == "duplicate"
@@ -266,7 +266,7 @@ def test_conflict_preserves_trusted_record_and_records_both_values(analyst, db_s
     _, user = analyst
     job = _run_cases_csv(db_session, user, [
         "case_number,category_name,district,station,occurred_at,status,priority",
-        "CR-PIPE-0040,Theft & Burglaries,Bengaluru Urban,KR Puram,2026-07-01 10:00,open,high",
+        "CR-PIPE-0040,Theft & Burglaries,Bengaluru Urban,KR Puram,2026-07-01 10:00,active,high",
     ])
     assert promote_import(db_session, job, user.id)["promoted_rows"] == 1
     db_session.commit()
@@ -279,15 +279,15 @@ def test_conflict_preserves_trusted_record_and_records_both_values(analyst, db_s
     assert row.reconciliation_status == "conflict"
     assert row.trust_level == "review_required"
     details = json.loads(row.reconciliation_details)
-    assert details["field_conflicts"]["status"]["existing"] == "open"
+    assert details["field_conflicts"]["status"]["existing"] == "active"
     assert details["field_conflicts"]["status"]["imported"] == "closed"
 
     # Trusted record untouched; conflicts never promote, even with review override.
     trusted = db_session.query(CrimeCase).filter(CrimeCase.case_number == "CR-PIPE-0040").first()
-    assert trusted.status == "open"
+    assert trusted.status == "active"
     result = promote_import(db_session, conflict_job, user.id, include_review=True)
     db_session.refresh(trusted)
-    assert trusted.status == "open"
+    assert trusted.status == "active"
     assert result["skipped_conflicts"] == 1
 
 

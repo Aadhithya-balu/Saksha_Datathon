@@ -33,7 +33,7 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
   const [occurredAt, setOccurredAt] = useState('');
   const [description, setDescription] = useState('');
   const [moTags, setMoTags] = useState('');
-  const [status, setStatus] = useState('open');
+  const [status, setStatus] = useState('active');
   const [foundByPolice, setFoundByPolice] = useState(false);
   const [assignedOfficerId, setAssignedOfficerId] = useState('');
 
@@ -352,10 +352,12 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
             onChange={(e) => setStatus(e.target.value)}
             className="px-3.5 py-2 bg-[var(--bg-tertiary)] border border-border-color rounded text-xs text-[var(--text-primary)] cursor-pointer focus:border-[#1E6FD9]/60 focus:outline-none"
           >
-            <option value="open">OPEN</option>
-            <option value="assigned">ASSIGNED</option>
-            <option value="investigating">INVESTIGATING</option>
+            <option value="active">ACTIVE</option>
+            <option value="under_investigation">UNDER INVESTIGATION</option>
           </select>
+          <span className="text-[9.5px] text-[var(--text-muted)] font-mono">
+            ARRESTED / CONVICTED statuses cannot be set at creation time.
+          </span>
         </div>
 
         {/* Description Statement */}

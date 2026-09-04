@@ -24,7 +24,12 @@ from app.schemas.fir import FIROut
 from app.schemas.officer import OfficerOut
 from app.ai.inference.refresh import mark_data_changed
 from app.services import audit_service
-from app.services.crime_service import crime_crud
+from app.services.case_status import (
+    InvalidStatusTransitionError,
+    is_immutable,
+    validate_transition,
+)
+from app.services.crime_service import apply_status_transition, crime_crud
 from app.services.realtime.bus import realtime_bus
 
 router = APIRouter(prefix="/crime-cases", tags=["Crime Case Management"], dependencies=[Depends(require_roles(*ALL_ROLES))])
@@ -450,6 +455,12 @@ def create_case(
     """Create a new crime case in PostgreSQL."""
     data = payload.model_dump()
     data.pop("found_by_police", None)
+    # Validate initial status (creation path — no current status)
+    initial_status = data.get("status", "active")
+    try:
+        data["status"] = validate_transition(None, initial_status)
+    except InvalidStatusTransitionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message)
     case = crime_crud.create(db, data)
     audit_service.log_action(db, current_user, "CREATE", "CrimeCase", str(case.id))
 
@@ -491,8 +502,34 @@ def update_case(
     current_user: User = Depends(get_current_user),
 ):
     """Update a crime case with priority, progress, status, and assigned officer."""
-    case = crime_crud.update(db, case_id, payload.model_dump(exclude_unset=True))
-    audit_service.log_action(db, current_user, "UPDATE", "CrimeCase", str(case_id))
+    update_data = payload.model_dump(exclude_unset=True)
+    case = crime_crud.get(db, case_id)
+
+    if "status" in update_data:
+        new_status = update_data.pop("status")
+        try:
+            apply_status_transition(db, case, new_status, current_user)
+        except InvalidStatusTransitionError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message)
+
+    # Reject any non-status edits on a locked case
+    if is_immutable(case.status) and update_data:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Case '{case.case_number}' has status '{case.status}' which is locked. "
+                "No fields may be modified on a locked case."
+            ),
+        )
+
+    if update_data:
+        for field, value in update_data.items():
+            if value is not None:
+                setattr(case, field, value)
+        db.add(case)
+        db.flush()
+        audit_service.log_action(db, current_user, "UPDATE", "CrimeCase", str(case_id))
+
     mark_data_changed("crime_case", db=db)
     return case
 
