@@ -279,7 +279,7 @@ export const GlobalAIAssistant: React.FC = () => {
                   </div>
                   <div className="space-y-2 w-full max-w-xs">
                     {[
-                      "Show case CR-2026-BLR-9629",
+                      "Show case CR-2026-MYS-001",
                       "Crime statistics overview",
                       "Tell me about Ramu Swamy"
                     ].map((q, i) => (

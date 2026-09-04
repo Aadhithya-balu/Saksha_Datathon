@@ -6,8 +6,9 @@ import {
   getCrimeCategories,
   getLocationsList,
 } from '../../services/api';
+import { usePolling } from '../../hooks/usePolling';
 import type { CrimeCaseDetailRecord, CrimeCaseInsights } from '../../services/api';
-import { Search, Plus, Eye, Edit2, Trash2, ShieldAlert } from 'lucide-react';
+import { Search, Plus, Eye, Edit2, Trash2, ShieldAlert, X, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useRealtimeStore } from '../../store/realtimeStore';
 import CrimeInsightsBar from '../../components/crimeCases/CrimeInsightsBar';
@@ -38,6 +39,9 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
   const [priorityFilter, setPriorityFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<CrimeCaseDetailRecord | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [insights, setInsights] = useState<CrimeCaseInsights | null>(null);
 
   const fetchInsights = async () => {
@@ -91,6 +95,28 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
       .catch(() => {});
   }, []);
 
+  // Background polling: silently refresh cases and insights every 30s
+  usePolling(async () => {
+    try {
+      const response = await getCrimeCases(search || undefined, statusFilter || undefined, 1, 20, {
+        category_id: categoryFilter || undefined,
+        district: districtFilter || undefined,
+        priority: priorityFilter || undefined,
+      });
+      setCases(response.results);
+      setError(null);
+    } catch { /* silent */ }
+    try {
+      const result = await getCrimeCaseInsights({
+        status: statusFilter || undefined,
+        category_id: categoryFilter || undefined,
+        district: districtFilter || undefined,
+        priority: priorityFilter || undefined,
+      });
+      setInsights(result);
+    } catch { /* silent */ }
+  }, 30000);
+
   // Real-time feed: newly created cases appear at the top instantly.
   useEffect(() => {
     useRealtimeStore.getState().connect();
@@ -120,14 +146,24 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
     };
   }, [search, statusFilter]);
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this crime case?')) return;
+  const handleDeleteClick = (caseRecord: CrimeCaseDetailRecord) => {
+    setDeleteError(null);
+    setPendingDelete(caseRecord);
+  };
+
+  const handleDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
     try {
-      await deleteCrimeCase(id);
+      await deleteCrimeCase(pendingDelete.id);
+      setPendingDelete(null);
       fetchCases();
       fetchInsights();
     } catch (err: any) {
-      alert(err?.message || 'Failed to delete case');
+      setDeleteError(err?.message || 'Failed to delete case');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -373,7 +409,7 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
                         )}
                         {canDelete && (
                           <button
-                            onClick={() => handleDelete(c.id)}
+                            onClick={() => handleDeleteClick(c)}
                             title={t.cc_purge}
                             className="p-1.5 hover:bg-[#C94A2A]/15 border border-border-color rounded text-[var(--text-secondary)] hover:text-[#C94A2A] transition-colors cursor-pointer"
                           >
@@ -386,6 +422,89 @@ const CrimeCasesList: React.FC<CrimeCasesListProps> = ({
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {pendingDelete && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => !deleting && setPendingDelete(null)}
+          />
+          <div className="relative w-full max-w-md rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-primary)]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-red-950/30 border border-red-900/40 flex items-center justify-center">
+                  <AlertTriangle className="w-4 h-4 text-[#C94A2A]" />
+                </div>
+                <span className="text-[14px] font-bold text-[var(--text-primary)]">
+                  Confirm Deletion
+                </span>
+              </div>
+              <button
+                onClick={() => !deleting && setPendingDelete(null)}
+                className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="px-5 py-4 space-y-3">
+              <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
+                Are you sure you want to delete this crime case?
+              </p>
+              <div className="p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-primary)] space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-[11px] text-[var(--text-muted)]">Case Number</span>
+                  <span className="text-[12px] font-mono font-bold text-[var(--text-primary)]">{pendingDelete.case_number}</span>
+                </div>
+                {pendingDelete.status && (
+                  <div className="flex justify-between">
+                    <span className="text-[11px] text-[var(--text-muted)]">Status</span>
+                    <span className="text-[12px] font-mono text-[var(--text-primary)]">{pendingDelete.status}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-[11px] text-[var(--accent-coral)] flex items-start gap-1.5">
+                <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                This will permanently remove the case and all linked FIRs, evidence, notes, and associations. This action cannot be undone.
+              </p>
+              {deleteError && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-red-950/20 border border-red-900/30">
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                  <p className="text-[12px] text-red-400">{deleteError}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-[var(--border-primary)]">
+              <button
+                onClick={() => setPendingDelete(null)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)] text-[12px] font-semibold transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg bg-[#C94A2A] hover:bg-[#B43D22] text-white text-[12px] font-semibold transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete Case
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

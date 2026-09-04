@@ -3,6 +3,7 @@ import { useTranslation } from '../../i18n';
 import { useAuthStore } from "../../store/authStore";
 import { useAuditStore } from "../../store/auditStore";
 import { downloadSecureDossier } from "../../utils/downloader";
+import { usePolling } from "../../hooks/usePolling";
 import {
   listFIRs,
   getFIR,
@@ -117,6 +118,19 @@ export const FIRPage: React.FC = () => {
   useEffect(() => {
     void loadFIRList();
   }, [searchQuery, statusFilter, districtFilter]);
+
+  // Background polling: silently refresh FIR list every 30s
+  usePolling(async () => {
+    try {
+      const response = await listFIRs({
+        search: searchQuery || undefined,
+        status: statusFilter || undefined,
+        district: districtFilter || undefined,
+        page_size: 100,
+      });
+      setFirs(response.results || []);
+    } catch { /* silent */ }
+  }, 30000);
 
   // Fetch Single FIR Detail
   useEffect(() => {

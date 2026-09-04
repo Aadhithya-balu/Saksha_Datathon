@@ -1602,6 +1602,13 @@ export async function getVictim(victimId: string) {
   }>(`/victims/${victimId}`);
 }
 
+export async function createVictim(payload: Partial<Omit<VictimRecord, 'id' | 'created_at'>>) {
+  return apiRequest<VictimRecord>('/victims', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 // ── Unified Investigation Interface ──
 
 export interface InvestigationOfficer {
@@ -3393,5 +3400,105 @@ export async function deleteIntelligenceHistory(runId: string): Promise<{ delete
   return apiRequest<{ deleted: boolean }>(`/intelligence/history/${runId}`, {
     method: 'DELETE',
   });
+}
+
+// ── Face Recognition (Issue #228 — isolated DEMO enhancement) ──────────────
+
+export interface FaceRecognizeResult {
+  status: string;
+  faces_detected: number;
+  match_found: boolean;
+  matched_person: { id: string; name: string; dataset_type: string } | null;
+  confidence: number | null;
+  best_score: number | null;
+  message: string | null;
+  analysis: { faces: number; age: string | null; gender: string | null; emotion: string | null } | null;
+  analysis_source: string | null;
+  threshold: number | null;
+  queried_sample?: string;
+}
+
+export interface FaceIdentityInfo {
+  id: string;
+  name: string;
+  dataset_type: string;
+  image_count: number;
+  created_at: string | null;
+}
+
+export interface FaceSampleImage {
+  id: string;
+  name: string;
+  image_ref: string;
+  variation: string;
+}
+
+export interface FaceProviderInfo {
+  main: Record<string, unknown>;
+  zoho: Record<string, unknown>;
+  threshold: number;
+  enabled: boolean;
+}
+
+export interface FaceAIIdentifyResult {
+  answer: string;
+  engine: string;
+  recognition: FaceRecognizeResult;
+  question: string | null;
+}
+
+export async function recognizeFace(file: File): Promise<FaceRecognizeResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiRequest<FaceRecognizeResult>('/face-recognition/recognize', {
+    method: 'POST',
+    body: formData,
+    headers: {},
+  }, true);
+}
+
+export async function testSampleFace(imageRef: string): Promise<FaceRecognizeResult> {
+  const formData = new FormData();
+  formData.append('image_ref', imageRef);
+  return apiRequest<FaceRecognizeResult>(`/face-recognition/test-sample?image_ref=${encodeURIComponent(imageRef)}`, {
+    method: 'POST',
+    body: formData,
+    headers: {},
+  }, true);
+}
+
+export async function aiIdentifyFace(file: File, question?: string): Promise<FaceAIIdentifyResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (question) formData.append('question', question);
+  return apiRequest<FaceAIIdentifyResult>('/face-recognition/ai/identify', {
+    method: 'POST',
+    body: formData,
+    headers: {},
+  }, true);
+}
+
+export async function getFaceDemoInfo(): Promise<{ identities: { id: string; name: string; variations: string[]; prompt: string | null }[] }> {
+  return apiRequest('/face-recognition/demo-info');
+}
+
+export async function getFaceIdentities(): Promise<FaceIdentityInfo[]> {
+  return apiRequest<FaceIdentityInfo[]>('/face-recognition/identities');
+}
+
+export async function getFaceSamples(): Promise<FaceSampleImage[]> {
+  return apiRequest<FaceSampleImage[]>('/face-recognition/samples');
+}
+
+export function getFaceSampleImageUrl(imageRef: string): string {
+  return `${API_BASE_URL}/face-recognition/gallery/${encodeURIComponent(imageRef)}`;
+}
+
+export async function getFaceProviderInfo(): Promise<FaceProviderInfo> {
+  return apiRequest<FaceProviderInfo>('/face-recognition/provider');
+}
+
+export async function getFaceRecognitionStatus(): Promise<{ enabled: boolean; provider: string; threshold: number }> {
+  return apiRequest('/face-recognition/status');
 }
 

@@ -1007,10 +1007,14 @@ class LLMGenerator:
     def _record_kind(record: dict) -> str:
         """Classifies a parsed record as case/fir/criminal/victim/officer.
 
-        Ordering matters: an FIR exposes fields such as 'Sections' and the
-        'Accused/Suspects' link column, so it must be recognized as an FIR
-        before criminal detection sees the suspect keyword (issue #203 — FIRs
-        used to be counted as criminal records for 'how many' questions).
+        Ordering matters:
+        1. Leading _id is the strongest signal (CR- → case, FIR → fir).
+        2. Case-specific keys (Case/Priority/Category/Progress) must be
+           checked BEFORE criminal keys, because case records expose an
+           'Accused/Suspects' column whose key contains 'accused' — which
+           would incorrectly trigger criminal classification (issue #203).
+        3. FIR keys checked before criminal keys for the same reason
+           (FIR records expose 'Sections' and 'Accused/Suspects' columns).
         """
         _id = str(record.get("_id", "")).upper()
         if _id.startswith(("CR-", "CASE")):
@@ -1024,6 +1028,8 @@ class LLMGenerator:
             return "officer"
         if any("victim" in k or "complainant" in k for k in keys):
             return "victim"
+        if any(k.startswith("case_") or k in ("case", "priority", "category") or "progress" in k for k in keys):
+            return "case"
         if any(("criminal" in k or "offender" in k or "suspect" in k or "accused" in k) for k in keys):
             return "criminal"
         joined = " ".join(keys)
@@ -1031,8 +1037,6 @@ class LLMGenerator:
             k in ("name", "person_name", "full_name") for k in keys
         ):
             return "criminal"
-        if any(k.startswith("case_") or k in ("case", "priority", "category") or "progress" in k for k in keys):
-            return "case"
         return "record"
 
     @staticmethod
@@ -1274,8 +1278,16 @@ class LLMGenerator:
     def _query_target_kind(message: str) -> str | None:
         """Maps an entity word in the question to a record kind so answers focus
         on the requested entity type (issue #203: officer queries used to be
-        answered with whichever record merely mentioned the officer's name)."""
+        answered with whichever record merely mentioned the officer's name).
+
+        Explicit FIR/case number patterns override generic entity words like
+        'suspects' — if a user says 'Show me FIR-789/MYS/2026 details and
+        suspects' they want the FIR record, not a criminal profile."""
         lower = message.lower()
+        if re.search(r"\bFIR[-\s]?\d{2,4}[-/]", message, re.IGNORECASE):
+            return "fir"
+        if re.search(r"\bCR[-\s]?\d{4}[-/]", message, re.IGNORECASE):
+            return "case"
         if re.search(r"\b(?:officer|officers|police|badge|inspector|superintendent)\b", lower):
             return "officer"
         if re.search(r"\b(?:criminal|criminals|offender|offenders|suspect|suspects|accused)\b", lower):

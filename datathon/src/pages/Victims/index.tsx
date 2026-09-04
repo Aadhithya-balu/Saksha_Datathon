@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useAuditStore } from '../../store/auditStore';
+import { usePolling } from '../../hooks/usePolling';
 import { 
   listVictims, 
   getVictim 
@@ -74,6 +75,14 @@ export const Victims: React.FC = () => {
       isMounted = false;
     };
   }, [searchQuery]);
+
+  // Background polling: silently refresh victim list every 30s
+  usePolling(async () => {
+    try {
+      const res = await listVictims(searchQuery);
+      setVictims(res.results || []);
+    } catch { /* silent */ }
+  }, 30000);
 
   // Load victim details when selectedId changes
   useEffect(() => {

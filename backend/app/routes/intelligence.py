@@ -76,7 +76,14 @@ def _record_run(
     entity_id: str,
     report: dict[str, Any],
 ) -> None:
-    """Persist a compact record of the built report for the user's history."""
+    """Persist a compact record of the built report for the user's history.
+
+    Upserts on (entity_type, entity_id, created_by_id): if the user has already
+    analyzed this exact entity, the existing history row is updated in place
+    rather than inserting a duplicate.
+    """
+    from datetime import datetime, timezone
+
     from app.models.intelligence_report import IntelligenceReportRun
 
     info = report.get("entity_info") or {}
@@ -88,21 +95,44 @@ def _record_run(
     )
 
     cs = report.get("confidence_summary") or {}
-    run = IntelligenceReportRun(
-        entity_type=entity_type,
-        entity_id=entity_id,
-        entity_label=str(label)[:300],
-        summary=(report.get("summary") or "")[:2000],
-        connections=len(report.get("connections") or []),
-        leads=len(report.get("investigation_leads") or []),
-        threads=len(report.get("common_threads") or []),
-        timeline_events=len(report.get("timeline") or []),
-        confirmed=int(cs.get("confirmed", 0)),
-        probable=int(cs.get("probable", 0)),
-        possible=int(cs.get("possible", 0)),
-        created_by_id=user.id,
+
+    existing = (
+        db.query(IntelligenceReportRun)
+        .filter(
+            IntelligenceReportRun.entity_type == entity_type,
+            IntelligenceReportRun.entity_id == entity_id,
+            IntelligenceReportRun.created_by_id == user.id,
+        )
+        .first()
     )
-    db.add(run)
+
+    if existing:
+        existing.entity_label = str(label)[:300]
+        existing.summary = (report.get("summary") or "")[:2000]
+        existing.connections = len(report.get("connections") or [])
+        existing.leads = len(report.get("investigation_leads") or [])
+        existing.threads = len(report.get("common_threads") or [])
+        existing.timeline_events = len(report.get("timeline") or [])
+        existing.confirmed = int(cs.get("confirmed", 0))
+        existing.probable = int(cs.get("probable", 0))
+        existing.possible = int(cs.get("possible", 0))
+        existing.updated_at = datetime.now(timezone.utc)
+    else:
+        run = IntelligenceReportRun(
+            entity_type=entity_type,
+            entity_id=entity_id,
+            entity_label=str(label)[:300],
+            summary=(report.get("summary") or "")[:2000],
+            connections=len(report.get("connections") or []),
+            leads=len(report.get("investigation_leads") or []),
+            threads=len(report.get("common_threads") or []),
+            timeline_events=len(report.get("timeline") or []),
+            confirmed=int(cs.get("confirmed", 0)),
+            probable=int(cs.get("probable", 0)),
+            possible=int(cs.get("possible", 0)),
+            created_by_id=user.id,
+        )
+        db.add(run)
 
 
 @router.get("/history")

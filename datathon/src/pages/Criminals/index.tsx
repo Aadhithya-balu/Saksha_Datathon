@@ -3,6 +3,7 @@ import { useTranslation } from '../../i18n';
 import { useAuthStore } from '../../store/authStore';
 import { useAuditStore } from '../../store/auditStore';
 import { useRBAC } from '../../hooks/useRBAC';
+import { usePolling } from '../../hooks/usePolling';
 import { 
   listCriminals, 
   getCriminal,
@@ -92,6 +93,14 @@ export const Criminals: React.FC = () => {
       isMounted = false;
     };
   }, [searchQuery]);
+
+  // Background polling: silently refresh criminal list every 30s
+  usePolling(async () => {
+    try {
+      const res = await listCriminals(searchQuery);
+      setCriminals(res.results || []);
+    } catch { /* silent */ }
+  }, 30000);
 
   // Load criminal details when selectedId changes
   useEffect(() => {

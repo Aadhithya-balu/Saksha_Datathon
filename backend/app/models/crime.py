@@ -36,7 +36,7 @@ class CrimeCase(ImportProvenanceMixin, Base, UUIDPKMixin, TimestampMixin):
     assigned_officer_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("officers.id", ondelete="SET NULL"), nullable=True, index=True)
     assigned_officer: Mapped["Officer"] = relationship()
 
-    firs: Mapped[list["FIR"]] = relationship(back_populates="crime_case")
-    evidence: Mapped[list["Evidence"]] = relationship(back_populates="crime_case")
+    firs: Mapped[list["FIR"]] = relationship(back_populates="crime_case", passive_deletes=True)
+    evidence: Mapped[list["Evidence"]] = relationship(back_populates="crime_case", passive_deletes=True)
     notes: Mapped[list["InvestigationNote"]] = relationship(back_populates="crime_case", cascade="all, delete-orphan")
 

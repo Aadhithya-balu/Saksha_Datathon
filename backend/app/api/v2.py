@@ -63,6 +63,9 @@ from app.routes import investigation_hub
 # Issue #225: identity resolution + proxy detection + data integrity engine
 from app.routes import identity
 
+# Issue #228: isolated face recognition (DEMO enhancement)
+from app.routes import face_recognition
+
 # Intelligence Engine: unified investigation intelligence builder
 from app.routes import intelligence
 
@@ -122,6 +125,10 @@ api_router.include_router(investigation_hub.router)
 
 # Issue #225: identity resolution + proxy detection + data integrity engine
 api_router.include_router(identity.router)
+
+# Issue #228: isolated face recognition (DEMO enhancement)
+api_router.include_router(face_recognition.router)
+api_router.include_router(face_recognition._public_router)
 
 # Intelligence Engine: unified investigation intelligence builder
 api_router.include_router(intelligence.router)

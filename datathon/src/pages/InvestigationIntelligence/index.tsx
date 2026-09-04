@@ -20,6 +20,7 @@ import {
   Clock,
   Radar,
 } from 'lucide-react';
+import { usePolling } from '../../hooks/usePolling';
 import { searchIntelligenceEntities, getIntelligenceHistory, deleteIntelligenceHistory } from '../../services/api';
 import type { IntelligenceHistoryItem } from '../../services/api';
 import { IntelligenceWorkspace } from '../../components/intelligence/IntelligenceWorkspace';
@@ -78,7 +79,18 @@ const InvestigationIntelligence: React.FC = () => {
   const loadHistory = async () => {
     setHistoryLoading(true);
     try {
-      setHistory(await getIntelligenceHistory(20));
+      const raw = await getIntelligenceHistory(30);
+      const seen = new Map<string, IntelligenceHistoryItem>();
+      for (const h of raw) {
+        const key = `${h.entity_type}:${h.entity_id}`;
+        const existing = seen.get(key);
+        if (!existing || (h.created_at && existing.created_at && new Date(h.created_at) > new Date(existing.created_at))) {
+          seen.set(key, h);
+        }
+      }
+      setHistory(Array.from(seen.values()).sort((a, b) =>
+        (b.created_at || '').localeCompare(a.created_at || '')
+      ).slice(0, 20));
     } catch {
       setHistory([]);
     } finally {
@@ -89,6 +101,9 @@ const InvestigationIntelligence: React.FC = () => {
   useEffect(() => {
     loadHistory();
   }, []);
+
+  // Background polling: silently refresh intelligence history every 30s
+  usePolling(loadHistory, 30000);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query.trim()), 350);

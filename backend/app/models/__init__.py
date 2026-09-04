@@ -38,6 +38,7 @@ from app.models.identity import (
     ProxyPatternEvidence,
 )
 from app.models.model_update import ModelUpdateJob
+from app.models.face_identity import FaceIdentity
 
 __all__ = [
     "Role", "User", "Location", "CrimeCategory", "Officer", "Criminal",
@@ -52,5 +53,6 @@ __all__ = [
     "IdentityEvidence", "IdentityConflict", "IntegrityAlert",
     "ProxyPattern", "ProxyPatternEvidence",
     "ModelUpdateJob",
+    "FaceIdentity",
 ]
 

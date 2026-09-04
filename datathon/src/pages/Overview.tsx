@@ -11,6 +11,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { useAuthStore } from '../store/authStore';
 import { useAuditStore } from '../store/auditStore';
 import { useRealtimeStore } from '../store/realtimeStore';
+import { usePolling } from '../hooks/usePolling';
 import { downloadSecureDossier } from '../utils/downloader';
 import { ExportMenu } from '../components/reports';
 import {
@@ -66,26 +67,18 @@ import { PageSkeleton } from '../components/ui/Skeleton';
 
 const DEFAULT_RECENT_INCIDENTS: RecentIncidentType[] = [
   {
-    case_number: 'CR-2026-BLR-5773',
-    crime_type: 'Cyber Crime & Online Fraud',
-    location: 'Khade Bazar Station',
-    time: '2026-08-27T12:47:00',
-    status: 'open',
-    priority: 'medium',
-  },
-  {
-    case_number: 'CR-2026-BLR-2444',
-    crime_type: 'Cyber Crime & Online Fraud',
-    location: 'Khade Bazar Station',
-    time: '2026-08-27T06:40:00',
-    status: 'open',
-    priority: 'medium',
-  },
-  {
     case_number: 'CR-2026-BNG-001',
     crime_type: 'Cyber Crime & Online Fraud',
     location: 'Whitefield Police Station',
     time: '2026-08-24T13:30:00',
+    status: 'open',
+    priority: 'high',
+  },
+  {
+    case_number: 'CR-2026-MYS-001',
+    crime_type: 'Theft & Burglaries',
+    location: 'Devaraja Police Station',
+    time: '2026-08-26T02:00:00',
     status: 'open',
     priority: 'high',
   },
@@ -104,6 +97,14 @@ const DEFAULT_RECENT_INCIDENTS: RecentIncidentType[] = [
     time: '2026-08-23T09:45:00',
     status: 'open',
     priority: 'critical',
+  },
+  {
+    case_number: 'CR-2026-BLG-001',
+    crime_type: 'Smuggling & Excise Violations',
+    location: 'Khade Bazar Station',
+    time: '2026-08-22T12:47:00',
+    status: 'open',
+    priority: 'low',
   },
 ];
 
@@ -265,6 +266,70 @@ export const Overview: React.FC = () => {
       isMounted = false;
     };
   }, [selectedDistrict, selectedCategory, selectedOfficer, selectedPriority, selectedStatus, startDate, endDate]);
+
+  // Background polling: silently refresh dashboard data every 30s (no loading spinner)
+  usePolling(async () => {
+    try {
+      const filters = {
+        district: selectedDistrict || undefined,
+        category_id: selectedCategory || undefined,
+        officer_id: selectedOfficer || undefined,
+        priority: selectedPriority || undefined,
+        status: selectedStatus || undefined,
+        date_from: startDate ? new Date(startDate).toISOString() : undefined,
+        date_to: endDate ? new Date(endDate).toISOString() : undefined,
+      };
+
+      const [summaryResult, trendResult, categoryResult] = await Promise.all([
+        getDashboardSummary(filters),
+        getCrimeTrends(filters),
+        getCategoryBreakdown(filters),
+      ]);
+      setSummary(summaryResult);
+      setTrends(trendResult);
+      setCategories(categoryResult);
+
+      const [riskRes, hotspotRes, anomalyRes, officerRes, evidenceRes, recentRes, forecastRes, riskPredRes, casesRes] = await Promise.allSettled([
+        getRiskScores('next_7d', filters.district),
+        getHotspots(filters.district),
+        getAnomalies(),
+        getOfficerStats(),
+        getEvidenceStats(),
+        getRecentIncidents(),
+        getForecast(),
+        getRiskPrediction(),
+        getCrimeCases('', filters.status, 1, 8, {
+          district: filters.district,
+          category_id: filters.category_id,
+          priority: filters.priority,
+        }),
+      ]);
+
+      if (riskRes.status === 'fulfilled' && riskRes.value?.grid_predictions?.length) setRiskScores(riskRes.value);
+      if (hotspotRes.status === 'fulfilled' && hotspotRes.value?.hotspots?.length) setHotspots(hotspotRes.value.hotspots);
+      if (anomalyRes.status === 'fulfilled' && anomalyRes.value?.anomalies?.length) setAnomalies(anomalyRes.value.anomalies);
+      if (officerRes.status === 'fulfilled' && officerRes.value) setOfficerStats(officerRes.value);
+      if (evidenceRes.status === 'fulfilled' && evidenceRes.value) setEvidenceStats(evidenceRes.value);
+
+      let incidents: RecentIncidentType[] = [];
+      if (casesRes.status === 'fulfilled' && casesRes.value?.results?.length) {
+        incidents = casesRes.value.results.map((c) => ({
+          case_number: c.case_number,
+          crime_type: (c as any).crime_type || (c as any).category?.name || (c as any).category || 'Case Incident',
+          location: (c as any).location?.station || (c as any).location?.district || (c as any).location || 'Statewide Area',
+          time: c.occurred_at || (c as any).time || new Date().toISOString(),
+          status: c.status || 'open',
+          priority: (c as any).priority || 'medium',
+        }));
+      } else if (recentRes.status === 'fulfilled' && Array.isArray(recentRes.value) && recentRes.value.length > 0) {
+        incidents = recentRes.value;
+      }
+      setRecentIncidents(incidents);
+
+      if (forecastRes.status === 'fulfilled' && forecastRes.value) setForecastData(forecastRes.value);
+      if (riskPredRes.status === 'fulfilled' && riskPredRes.value) setRiskPrediction(riskPredRes.value);
+    } catch { /* silent */ }
+  }, 30000);
 
   // Real-time case feed — SSE stream appends newly created cases without any
   // page refresh. Optimistic local updates give sub-second feedback; a
