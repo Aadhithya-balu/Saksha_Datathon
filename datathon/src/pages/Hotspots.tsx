@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import KarnatakaMap, { type EmergingTrendItem } from '../components/map/KarnatakaMap';
+import KarnatakaDistrictMap from '../components/map/KarnatakaDistrictMap';
 import SpatiotemporalHeatmap from '../components/dashboard/SpatiotemporalHeatmap';
 import IntelligenceStatusBadges from '../components/ui/IntelligenceStatusBadges';
 import { 
   Compass, Download, Flame, TrendingUp,
-  BarChart3, Map as MapIcon, ChevronRight
+  BarChart3, Map as MapIcon, ChevronRight, Globe
 } from 'lucide-react';
 import { downloadSecureDossier } from '../utils/downloader';
 import { useAuditStore } from '../store/auditStore';
@@ -44,7 +45,7 @@ export const Hotspots: React.FC = () => {
   const [recentCases, setRecentCases] = useState<any[]>([]);
   const [socioEconomicData, setSocioEconomicData] = useState<any[]>([]);
   const [redZones, setRedZones] = useState<RedZone[]>([]);
-  const [viewMode, setViewMode] = useState<'map' | 'matrix'>('map');
+  const [viewMode, setViewMode] = useState<'map' | 'matrix' | 'karnataka'>('map');
   const [selectedCategoryFilter] = useState<string>('ALL');
 
   const [loading, setLoading] = useState(false);
@@ -373,6 +374,15 @@ export const Hotspots: React.FC = () => {
                 {t.page_hotspot_vector_map}
               </button>
               <button
+                onClick={() => setViewMode('karnataka')}
+                className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                  viewMode === 'karnataka' ? 'bg-[var(--accent-teal)] text-white shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                Karnataka Map
+              </button>
+              <button
                 onClick={() => setViewMode('matrix')}
                 className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
                   viewMode === 'matrix' ? 'bg-[var(--accent-blue)] text-white shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -433,16 +443,23 @@ export const Hotspots: React.FC = () => {
       )}
 
       {redZones.length > 0 && (
-        <div className="bg-red-950/30 border border-red-500/30 rounded-lg px-3 py-2 flex items-center gap-3 overflow-x-auto no-scrollbar font-mono text-[9px]">
-          <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 font-bold uppercase shrink-0">Red-zone spikes</span>
+        <div className="bg-red-950/40 border border-red-500/40 rounded-xl px-4 py-3 flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0 mr-1">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-[11px] font-bold uppercase tracking-widest text-red-400">Red-zone spikes</span>
+          </div>
+          <div className="w-px h-4 bg-red-500/30 shrink-0" />
           {redZones.slice(0, 4).map(zone => (
             <button
               key={`${zone.district}-${zone.category}`}
               onClick={() => { setSelectedDistrict(zone.district); setSelectedStation(null); }}
-              className="text-left text-red-200 hover:text-white shrink-0"
               title={`Focus ${zone.district} on the map`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 hover:bg-red-500/25 border border-red-500/30 hover:border-red-400/60 transition-all group"
             >
-              {zone.category} · {zone.district} <span className="text-red-400 font-bold">x{zone.spike_ratio}</span>
+              <span className="text-xs text-red-200 group-hover:text-white font-medium">{zone.category}</span>
+              <span className="text-[10px] text-red-400/70">·</span>
+              <span className="text-xs text-red-300/80 group-hover:text-red-200">{zone.district}</span>
+              <span className="text-xs font-bold text-red-400 group-hover:text-red-300">×{zone.spike_ratio}</span>
             </button>
           ))}
         </div>
@@ -492,19 +509,46 @@ export const Hotspots: React.FC = () => {
       </div>
 
       {/* MAIN VISUALIZATION VIEWPORT */}
-      <div className="w-full relative min-h-[620px] h-[680px]">
-        {viewMode === 'map' ? (
-          <KarnatakaMap 
-            hotspots={filteredHotspots} 
+      <div className={`w-full relative ${viewMode === 'karnataka' ? 'min-h-[700px] h-[760px]' : 'min-h-[620px] h-[680px]'}`}>
+        {viewMode === 'map' && (
+          <KarnatakaMap
+            hotspots={filteredHotspots}
             districtDataOverride={districtMetrics}
             emergingTrends={emergingTrends}
             crimeCases={recentCases}
             socioEconomicData={socioEconomicData}
           />
-        ) : (
+        )}
+
+        {viewMode === 'karnataka' && (
+          <div className="w-full h-full flex flex-col rounded-xl overflow-hidden border border-[var(--border-primary)]">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] shrink-0">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-[var(--accent-teal)]" />
+                <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide">Karnataka District Hotspot Map</span>
+                <span className="px-2 py-0.5 rounded-full bg-[var(--accent-teal)]/15 border border-[var(--accent-teal)]/30 text-[10px] font-mono text-[var(--accent-teal)] uppercase">
+                  {filteredHotspots.length} active hotspots
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-[10px] font-mono text-[var(--text-muted)]">
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />High Risk</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />Medium</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />Low</span>
+              </div>
+            </div>
+            <div className="flex-1 min-h-0">
+              <KarnatakaDistrictMap
+                hotspots={filteredHotspots}
+                districtDataOverride={districtMetrics}
+                emergingTrends={emergingTrends}
+              />
+            </div>
+          </div>
+        )}
+        {viewMode === 'matrix' && (
           <div className="w-full h-full">
-            <SpatiotemporalHeatmap 
-              selectedHour={timeOfDay} 
+            <SpatiotemporalHeatmap
+              selectedHour={timeOfDay}
               onCellClick={(_day, hour) => {
                 const h = parseInt(hour.split(':')[0], 10);
                 setTimeOfDay(h);
