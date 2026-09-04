@@ -60,7 +60,7 @@ ENTITY_SPECS: dict[str, dict[str, dict[str, Any]]] = {
         "occurred_at": _spec(required=True, ftype="datetime"),
         "description": _spec(),
         "mo_tags": _spec(),
-        "status": _spec(choices=["open", "under_investigation", "closed", "convicted"]),
+        "status": _spec(choices=["active", "open", "under_investigation", "arrested", "chargesheeted", "convicted", "closed"]),
         "priority": _spec(choices=["low", "medium", "high", "critical"]),
         "progress": _spec(ftype="integer"),
     },
@@ -528,7 +528,9 @@ def commit_import(
             full_report.append({"row_number": index, "errors": errors, "warnings": warnings})
             continue
         if entity_type == "crime_cases":
-            clean.setdefault("status", "open")
+            from app.services.case_status import _LEGACY_TO_CANONICAL, STATUS_ACTIVE
+            raw_status = clean.get("status") or "open"
+            clean["status"] = _LEGACY_TO_CANONICAL.get(raw_status.strip().lower(), STATUS_ACTIVE)
             clean.setdefault("priority", "medium")
             clean.setdefault("progress", 10)
             clean = {k: v for k, v in clean.items() if k not in _VIRTUAL_COLUMNS}
@@ -1261,7 +1263,9 @@ def promote_import(db: Session, job: ImportJob, promoted_by_id, include_review: 
             clean = json.loads(record.mapped_data) if record.mapped_data else {}
             fields = {k: v for k, v in clean.items() if k not in _VIRTUAL_COLUMNS}
             if job.entity_type == "crime_cases":
-                fields.setdefault("status", "open")
+                from app.services.case_status import _LEGACY_TO_CANONICAL, STATUS_ACTIVE
+                raw_status = fields.get("status") or "open"
+                fields["status"] = _LEGACY_TO_CANONICAL.get(raw_status.strip().lower(), STATUS_ACTIVE)
                 fields.setdefault("priority", "medium")
                 fields["progress"] = int(fields.get("progress") or 10)
                 # JSON staging round-trips dates/UUIDs as strings — restore types.
