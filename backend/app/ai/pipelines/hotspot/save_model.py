@@ -41,6 +41,7 @@ def save_artifacts(
     feature_columns: list[str],
     training_rows: int = 0,
     version_dir: Path | None = None,
+    publish_active: bool = True,
     ranking_metrics: dict[str, Any] | None = None,
     baseline_comparison: dict[str, Any] | None = None,
     training_period: str | None = None,
@@ -93,7 +94,12 @@ def save_artifacts(
             "baseline_comparison": baseline_comparison or {},
         }
 
-        for target_dir in ({version_dir} if version_dir else {AI_MODEL_DIR, APP_MODEL_DIR}):
+        target_dirs = []
+        if version_dir:
+            target_dirs.append(version_dir)
+        if publish_active:
+            target_dirs.extend([AI_MODEL_DIR, APP_MODEL_DIR])
+        for target_dir in target_dirs:
             target_dir.mkdir(parents=True, exist_ok=True)
             joblib.dump(model, target_dir / "hotspot_model.pkl")
             _write_json(target_dir / "feature_columns.json", feature_columns)

@@ -170,6 +170,7 @@ def run_training() -> dict:
         "forecast": forecast_metrics,
         "risk_baseline": risk_comparison,
         "forecast_baseline": forecast_comparison,
+        "training_rows": len(risk_df),
     }
 
 

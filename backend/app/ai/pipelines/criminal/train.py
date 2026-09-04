@@ -82,6 +82,7 @@ def run_training(db_session=None) -> dict[str, Any]:
     # ── Save combined metrics ─────────────────────────────────────────────────
     metrics: dict[str, Any] = {
         "trained_at": datetime.now(timezone.utc).isoformat(),
+        "training_rows": len(vectors),
         "n_criminals": len(vectors),
         "n_features": n_features,
         "feature_names": FEATURE_NAMES,
