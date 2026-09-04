@@ -90,15 +90,15 @@ const DISTRICT_POLICE_STATIONS: Record<string, HotspotPoint[]> = {
   ]
 };
 
-// Coordinates projection onto custom 800x600 SVG canvas
+// Coordinates projection onto custom 800x600 SVG canvas with safe margins
 const projectLonX = (lon: number) => {
-  // Lon 73.8 to 78.8
-  return 60 + ((lon - 73.8) / (78.8 - 73.8)) * 680;
+  // Lon 73.8 to 78.8 -> map to 70 to 670 (keeps labels from clipping on right)
+  return 70 + ((lon - 73.8) / (78.8 - 73.8)) * 600;
 };
 
 const projectLatY = (lat: number) => {
-  // Lat 11.5 is bottom, Lat 18.6 is top
-  return 540 - ((lat - 11.5) / (18.6 - 11.5)) * 480;
+  // Lat 11.5 is bottom, Lat 18.6 is top -> map to 510 to 85
+  return 510 - ((lat - 11.5) / (18.6 - 11.5)) * 425;
 };
 
 // District Boundary simplified paths for UI presentation
@@ -367,7 +367,8 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
   const activeStationInfo = useMemo(() => {
     if (!selectedStation) return null;
     const targetStation = selectedStation.toLowerCase();
-    const found = activeHotspots.find(h => (h.name || '').toLowerCase() === targetStation);
+    const found = renderedHotspots.find(h => (h.name || '').toLowerCase() === targetStation)
+      || activeHotspots.find(h => (h.name || '').toLowerCase() === targetStation);
     if (found) return found;
     return {
       name: selectedStation,
@@ -379,7 +380,16 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
       district_id: selectedDistrict || 'Karnataka',
       trend: 'stable' as const,
     };
-  }, [selectedStation, activeHotspots, selectedDistrict]);
+  }, [selectedStation, renderedHotspots, activeHotspots, selectedDistrict]);
+
+  // Focus targeted hotspot for on-canvas tactical badge (strictly on click/selection only)
+  const activeTargetHotspot = useMemo(() => {
+    if (selectedHotspot) return selectedHotspot;
+    if (selectedStation) {
+      return renderedHotspots.find((h: any) => (h.name || '').toLowerCase() === selectedStation.toLowerCase()) || null;
+    }
+    return null;
+  }, [selectedHotspot, selectedStation, renderedHotspots]);
 
   // Filter crime cases for current district or station
   const filteredCases = useMemo(() => {
@@ -399,6 +409,20 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
       if (directMatches.length > 0) {
         return directMatches;
       }
+
+      // If no direct station match, look for district sector matches
+      if (selectedDistrict) {
+        const districtLower = (selectedDistrict || '').toLowerCase();
+        const districtToken = districtLower.split(' ')[0].toLowerCase();
+        const districtMatches = crimeCases.filter((c: any) => {
+          const dist = (c.district || c.location || '').toLowerCase();
+          return dist.includes(districtLower) || districtLower.includes(dist) || (districtToken.length >= 3 && dist.includes(districtToken));
+        });
+        if (districtMatches.length > 0) {
+          return districtMatches;
+        }
+      }
+      return [];
     }
 
     if (selectedDistrict) {
@@ -415,6 +439,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
       if (districtMatches.length > 0) {
         return districtMatches;
       }
+      return [];
     }
 
     return crimeCases.slice(0, 8);
@@ -596,6 +621,35 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
           viewBox="0 0 800 600" 
           className="w-full h-full select-none"
         >
+          <defs>
+            <radialGradient id="hsGlowRed" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#EF4444" stopOpacity="0.55" />
+              <stop offset="50%" stopColor="#EF4444" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#EF4444" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="hsGlowAmber" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.55" />
+              <stop offset="50%" stopColor="#F59E0B" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#F59E0B" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="hsGlowTeal" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#10B981" stopOpacity="0.55" />
+              <stop offset="50%" stopColor="#10B981" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#10B981" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="hsGlowCyan" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#00F0FF" stopOpacity="0.65" />
+              <stop offset="50%" stopColor="#00F0FF" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#00F0FF" stopOpacity="0" />
+            </radialGradient>
+            <filter id="hsNeonGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="0" stdDeviation="2.5" floodColor="#EF4444" floodOpacity="0.75" />
+            </filter>
+            <filter id="hsCyanGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="0" stdDeviation="2.5" floodColor="#00F0FF" floodOpacity="0.85" />
+            </filter>
+          </defs>
+
           {/* Inner transformation group */}
           <g
             style={{
@@ -632,11 +686,11 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
               const isSelected = selectedDistrict === name;
               const info = resolvedDistrictData[name];
               const socio = socioEconomicMap[name];
-              const isSpikedDistrict = info?.weeklyTrend === 'up' || emergingTrends.some(t => t.direction === 'increasing' && t.change_percentage > 15 && info?.topCrimeType?.toLowerCase().includes(t.category.toLowerCase()));
+              const isSpikedDistrict = info?.weeklyTrend === 'up';
               
               // Color coding based on active layers & trend spikes
-              let fill = isSpikedDistrict ? 'rgba(239, 68, 68, 0.08)' : map.districtFill;
-              let stroke = isSpikedDistrict ? 'rgba(239, 68, 68, 0.45)' : map.boundary;
+              let fill = isSpikedDistrict ? 'rgba(239, 68, 68, 0.10)' : map.districtFill;
+              let stroke = isSpikedDistrict ? '#EF4444' : map.boundary;
               
               if (layers.socioEconomic && socio) {
                 const shade = socioDistrictShade(socio);
@@ -712,14 +766,22 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                     r={isSelected ? 4 : isSpiked ? 3 : 2.4}
                     fill={isSelected ? map.boundaryHover : isSpiked ? '#EF4444' : map.anchor}
                   />
-                  {/* District text tag — bg-stroked for legibility in both themes */}
+                  {/* District text tag with protective backdrop pill to avoid blending */}
+                  <rect
+                    x={x + 4}
+                    y={y - 7}
+                    width={name.length * 6.2 + (isSpiked ? 22 : 12)}
+                    height={14}
+                    rx={3}
+                    fill={map.bg}
+                    fillOpacity={0.75}
+                  />
                   <text
-                    x={x + 6.5}
+                    x={x + 7}
                     y={y + 3.5}
-                    className={`font-mono text-[9px] ${isSpiked ? 'font-bold' : 'font-semibold'}`}
-                    style={{ paintOrder: 'stroke', stroke: map.bg, strokeWidth: 3, strokeLinejoin: 'round' }}
+                    className={`font-mono text-[8.5px] ${isSpiked ? 'font-bold' : 'font-semibold'}`}
                     fill={isSpiked ? '#EF4444' : map.label}
-                    opacity={isSelected || isSpiked ? 1 : 0.9}
+                    opacity={isSelected || isSpiked ? 1 : 0.85}
                   >
                     {name} {isSpiked ? '⚠️' : ''} {layers.beatCoverage && info?.beatRatio != null ? `(${info.beatRatio}%)` : ''}
                   </text>
@@ -736,8 +798,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                 const y = projectLatY(hs.lat);
                 const isHigh = hs.weight >= 80;
                 const isStationSelected = selectedStation === hs.name;
-                const catLower = (hs.type || hs.category || '').toLowerCase();
-                const isSpikeTrend = hs.trend === 'up' || emergingTrends.some(t => t.direction === 'increasing' && t.change_percentage > 10 && catLower.includes(t.category.toLowerCase()));
+                const isSpikeTrend = hs.trend === 'up' || hs.weight >= 80;
                 
                 // Color mapping: Red Alert if spiked trend or threat score >= 80
                 const color = isSpikeTrend ? '#EF4444' : isHigh ? map.hotspotHigh : hs.weight >= 65 ? map.hotspotMedium : map.hotspotLow;
@@ -746,10 +807,13 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                 return (
                   <g 
                     key={index} 
-                    className="cursor-pointer pointer-events-auto" 
+                    className="cursor-pointer" 
                     onClick={(e) => { 
                       e.stopPropagation(); 
                       setSelectedHotspot(hs); 
+                      if (hs.district_id) setSelectedDistrict(hs.district_id);
+                      setSelectedStation(hs.name);
+                      setSelectedCrimeId(null);
                     }}
                   >
                     {/* RED-ZONE PULSING RINGS FOR ACTIVE TREND SPIKES */}
@@ -762,6 +826,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                           fill="#EF4444" 
                           opacity={0.25} 
                           className="animate-ping" 
+                          pointerEvents="none"
                           style={{ transformOrigin: `${x}px ${y}px`, animationDuration: '0.8s' }} 
                         />
                         <circle 
@@ -774,6 +839,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                           fill="none" 
                           opacity={0.35} 
                           className="animate-ping" 
+                          pointerEvents="none"
                           style={{ transformOrigin: `${x}px ${y}px`, animationDuration: '1.2s' }} 
                         />
                       </>
@@ -787,6 +853,7 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                       fill={color} 
                       opacity={map.haloOpacity} 
                       className="animate-ping" 
+                      pointerEvents="none"
                       style={{ transformOrigin: `${x}px ${y}px`, animationDuration: `${Math.max(1.0, 3 - hs.weight / 40)}s` }} 
                     />
                     <circle 
@@ -798,29 +865,68 @@ export const KarnatakaMap: React.FC<KarnatakaMapProps> = ({
                       fill="none" 
                       opacity={map.haloOpacity * 0.6} 
                       className="animate-ping" 
+                      pointerEvents="none"
                       style={{ transformOrigin: `${x}px ${y}px`, animationDuration: `${Math.max(1.8, 4.5 - hs.weight / 30)}s` }} 
                     />
                     
                     {/* Center Core dot */}
-                    <circle cx={x} cy={y} r={isSpikeTrend || isHigh || isSelected ? 8.5 : 7} fill={map.bg} />
-                    <circle cx={x} cy={y} r={isSpikeTrend || isHigh || isSelected ? 6 : 4.5} fill={isSelected ? '#00F0FF' : color} stroke={map.bg} strokeWidth="1.5" />
-                    <circle cx={x} cy={y} r={isSpikeTrend || isHigh || isSelected ? 9.5 : 8} stroke={isSelected ? '#00F0FF' : color} strokeWidth="1.25" fill="none" opacity={0.8} />
+                    <circle cx={x} cy={y} r={isSpikeTrend || isHigh || isSelected ? 8.5 : 7} fill={map.bg} pointerEvents="none" />
+                    <circle cx={x} cy={y} r={isSpikeTrend || isHigh || isSelected ? 6 : 4.5} fill={isSelected ? '#00F0FF' : color} stroke={map.bg} strokeWidth="1.5" pointerEvents="none" />
+                    <circle cx={x} cy={y} r={isSpikeTrend || isHigh || isSelected ? 9.5 : 8} stroke={isSelected ? '#00F0FF' : color} strokeWidth="1.25" fill="none" opacity={0.8} pointerEvents="none" />
 
-                    {/* Station Name Label - only show for stations belonging to the selected district or when active */}
-                    {(isSelected || (selectedDistrict && (hs.district_id || '').toLowerCase() === selectedDistrict.toLowerCase())) && (
-                      <text
-                        x={x}
-                        y={y + 13}
-                        textAnchor="middle"
-                        className={`font-mono text-[8px] font-bold pointer-events-none ${isSpikeTrend ? 'fill-red-400 font-extrabold' : 'fill-[var(--text-primary)]'}`}
-                        style={{ paintOrder: 'stroke', stroke: map.bg, strokeWidth: 3, strokeLinejoin: 'round' }}
-                      >
-                        {isSpikeTrend ? '🔥 ' : ''}{hs.name.replace(/police station/i, 'PS')}
-                      </text>
-                    )}
+                    {/* Dedicated crisp hit target circle - only this captures clicks */}
+                    <circle cx={x} cy={y} r={11} fill="transparent" />
                   </g>
                 );
               })}
+
+              {/* TOP-LEVEL TACTICAL CALLOUT BADGE (Strictly on top of all nodes to prevent collision/obscuring) */}
+              {activeTargetHotspot && (() => {
+                const tx = projectLonX(activeTargetHotspot.lng);
+                const ty = projectLatY(activeTargetHotspot.lat);
+                const isHigh = (activeTargetHotspot.weight || 0) >= 80;
+                const isSpike = activeTargetHotspot.trend === 'up' || isHigh;
+                const badgeColor = isSpike ? '#EF4444' : isHigh ? map.hotspotHigh : (activeTargetHotspot.weight || 0) >= 65 ? map.hotspotMedium : map.hotspotLow;
+                const rawName = activeTargetHotspot.name || 'Station';
+                const displayName = rawName.replace(/police station/i, 'PS');
+                const badgeWidth = Math.max(120, displayName.length * 6.8 + 44);
+
+                return (
+                  <g className="pointer-events-none select-none">
+                    {/* Vertical Reticle Line pointing to the node center */}
+                    <line 
+                      x1={tx} 
+                      y1={ty - 10} 
+                      x2={tx} 
+                      y2={ty - 22} 
+                      stroke={badgeColor} 
+                      strokeWidth="1.5" 
+                      strokeDasharray="2 2" 
+                    />
+                    {/* Glow Shadow & Background pill */}
+                    <rect
+                      x={tx - badgeWidth / 2}
+                      y={ty - 44}
+                      width={badgeWidth}
+                      height={22}
+                      rx={5}
+                      fill="rgba(11, 18, 32, 0.96)"
+                      stroke={badgeColor}
+                      strokeWidth="1.5"
+                      filter="drop-shadow(0 4px 12px rgba(0,0,0,0.7))"
+                    />
+                    {/* Badge Text */}
+                    <text
+                      x={tx}
+                      y={ty - 29.5}
+                      textAnchor="middle"
+                      className="font-mono text-[9px] font-bold fill-white"
+                    >
+                      {isSpike ? '🔥 ' : ''}{displayName} &bull; <tspan fill={badgeColor} fontWeight="bold">{activeTargetHotspot.weight}%</tspan>
+                    </text>
+                  </g>
+                );
+              })()}
             </g>
           )}
           </g>

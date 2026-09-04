@@ -219,7 +219,7 @@ def get_model_info() -> dict[str, Any]:
     return {
         "model_name": meta.get("model_name", "SAKSHA Hotspot Predictor"),
         "algorithm": meta.get("algorithm", "LightGBM"),
-        "version": meta.get("version", "untrained" if not is_ml else "trained"),
+        "version": meta.get("version", "trained") if is_ml else "untrained",
         "prediction_mode": "ML" if is_ml else "FALLBACK",
         "validation_status": meta.get("validation_status", "VALIDATED" if is_ml else "FALLBACK"),
         "h3_resolution": meta.get("h3_resolution", 7),

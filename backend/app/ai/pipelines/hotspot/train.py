@@ -26,7 +26,13 @@ import json
 from pathlib import Path
 
 import lightgbm as lgb
-import optuna
+try:
+    import optuna
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    HAS_OPTUNA = True
+except ImportError:
+    optuna = None
+    HAS_OPTUNA = False
 
 from app.ai.features.hotspot.feature_engineering import build_features
 from app.ai.pipelines.hotspot.evaluate import compute_metrics
@@ -39,32 +45,19 @@ _FEATURE_COLUMNS_PATH = (
 
 
 def _load_feature_columns() -> list[str]:
-    """Feature list used for training.
-
-    The checked-in feature_columns.json documents the artifact currently
-    deployed for inference. At training time the code-level FEATURE_COLUMNS
-    (which may include newer engineered features) is the source of truth;
-    save_artifacts() then writes a matching feature_columns.json alongside
-    the freshly trained model.
-    """
-    from app.ai.features.hotspot.feature_engineering import FEATURE_COLUMNS
+    """Feature list used for training matching feature_columns.json."""
+    from app.ai.features.hotspot.feature_engineering import LEGACY_FEATURE_COLUMNS
 
     if _FEATURE_COLUMNS_PATH.exists():
         try:
-            stored = json.loads(_FEATURE_COLUMNS_PATH.read_text())
-        except Exception:
-            stored = None
-        if isinstance(stored, list):
-            if stored == FEATURE_COLUMNS:
+            stored = json.loads(_FEATURE_COLUMNS_PATH.read_text(encoding="utf-8"))
+            if isinstance(stored, list) and len(stored) > 0:
                 return list(stored)
-            logger.warning(
-                "feature_columns.json has %d features but FEATURE_COLUMNS defines %d — "
-                "training with the current FEATURE_COLUMNS set.",
-                len(stored), len(FEATURE_COLUMNS),
-            )
-    return list(FEATURE_COLUMNS)
+        except Exception:
+            pass
+    return list(LEGACY_FEATURE_COLUMNS)
 
-optuna.logging.set_verbosity(optuna.logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -98,9 +91,14 @@ SELECT
     cc.occurred_at AS "IncidentFromDate",
     l.latitude AS "latitude",
     l.longitude AS "longitude",
-    1 AS "PoliceStationID",
-    1 AS "GravityOffenceID",
-    1 AS "CrimeMajorHeadID",
+    COALESCE(l.station, '1') AS "PoliceStationID",
+    CASE
+        WHEN cc.priority = 'critical' THEN 4
+        WHEN cc.priority = 'high' THEN 3
+        WHEN cc.priority = 'medium' THEN 2
+        ELSE 1
+    END AS "GravityOffenceID",
+    COALESCE(cc.category_id, '1') AS "CrimeMajorHeadID",
     1 AS "CrimeMinorHeadID",
     1 AS "CaseStatusID"
 FROM crime_cases cc
@@ -114,17 +112,27 @@ JOIN locations l ON cc.location_id = l.id
 
 def load_data() -> pd.DataFrame:
     """Load crime records from PostgreSQL (CaseMaster or crime_cases join) or SQLite fallback."""
-    for db_url in (settings.DATABASE_URL, "sqlite:///saksha_fallback.db", "sqlite:///backend/saksha_fallback.db"):
+    candidate_urls = [
+        settings.DATABASE_URL,
+        "sqlite:///saksha.db",
+        "sqlite:///./saksha.db",
+        "sqlite:///backend/saksha.db",
+        "sqlite:///saksha_fallback.db",
+        "sqlite:///backend/saksha_fallback.db",
+    ]
+    for db_url in candidate_urls:
+        if not db_url:
+            continue
         try:
             engine = create_engine(db_url)
             with engine.connect() as conn:
                 try:
                     df = pd.read_sql(QUERY_CASEMASTER, conn)
-                    logger.info("Loaded %d records from CaseMaster.", len(df))
+                    logger.info("Loaded %d records from CaseMaster (%s).", len(df), db_url)
                     return df
                 except Exception:
                     df = pd.read_sql(QUERY_CRIME_CASES, conn)
-                    logger.info("Loaded %d records from crime_cases join.", len(df))
+                    logger.info("Loaded %d records from crime_cases join (%s).", len(df), db_url)
                     return df
         except Exception:
             continue
@@ -197,16 +205,25 @@ def run_training() -> dict:
         len(X_train), len(X_test),
     )
 
-    # 3. Optuna hyperparameter search
-    if len(X_train) >= N_SPLITS * 2:
+    # 3. Hyperparameter selection (Optuna if available, robust configuration otherwise)
+    if HAS_OPTUNA and len(X_train) >= N_SPLITS * 2:
         tscv = TimeSeriesSplit(n_splits=min(N_SPLITS, max(2, len(X_train) // 4)))
         study = optuna.create_study(direction="minimize")
         study.optimize(_make_objective(X_train, y_train, tscv), n_trials=min(N_TRIALS, 10))
         best_params = {"objective": "regression", "random_state": RANDOM_STATE, "verbosity": -1,
                        **study.best_params}
     else:
-        best_params = {"objective": "regression", "random_state": RANDOM_STATE, "verbosity": -1,
-                       "n_estimators": 100, "learning_rate": 0.05, "num_leaves": 31}
+        best_params = {
+            "objective": "regression",
+            "random_state": RANDOM_STATE,
+            "verbosity": -1,
+            "n_estimators": 100,
+            "learning_rate": 0.03,
+            "num_leaves": 15,
+            "min_child_samples": 5,
+            "subsample": 0.8,
+            "colsample_bytree": 0.8,
+        }
 
     # 4. Train final model
     model = lgb.LGBMRegressor(**best_params)

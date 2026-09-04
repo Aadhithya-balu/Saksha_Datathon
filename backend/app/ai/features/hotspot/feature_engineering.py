@@ -405,7 +405,47 @@ def build_features(df: pd.DataFrame, include_target: bool = True) -> pd.DataFram
 
     df = validate_dataframe(df)
     df = create_h3_cells(df)
-    monthly = aggregate_monthly(df)
+
+    if include_target and len(df) > 0:
+        cells = df["H3Cell"].unique()
+        min_date = df["IncidentFromDate"].min()
+        max_date = df["IncidentFromDate"].max()
+        if len(cells) > 0 and pd.notna(min_date) and pd.notna(max_date):
+            all_months = pd.period_range(
+                start=min_date.to_period("M"),
+                end=max_date.to_period("M"),
+                freq="M"
+            )
+            all_months_str = [str(m) for m in all_months]
+            grid = pd.MultiIndex.from_product(
+                [cells, all_months_str],
+                names=["H3Cell", "YearMonth"]
+            ).to_frame().reset_index(drop=True)
+
+            monthly_obs = aggregate_monthly(df)
+            monthly = pd.merge(grid, monthly_obs, on=["H3Cell", "YearMonth"], how="left")
+
+            count_cols = [
+                "CrimeCount", "NightCrime", "WeekendCrime",
+                "EveningCrime", "AfternoonCrime", "LateNightCrime",
+                "MorningCrime", "HolidayCrime", "UniqueStations", "MajorCrimeTypes",
+            ]
+            for c in count_cols:
+                if c in monthly.columns:
+                    monthly[c] = monthly[c].fillna(0)
+            if "AvgHour" in monthly.columns:
+                monthly["AvgHour"] = monthly["AvgHour"].fillna(12.0)
+            if "GravityMean" in monthly.columns:
+                monthly["GravityMean"] = monthly["GravityMean"].fillna(1.0)
+            for c in ["HourSin", "HourCos", "DowSin", "DowCos"]:
+                if c in monthly.columns:
+                    monthly[c] = monthly[c].fillna(0.0)
+            monthly = monthly.sort_values(["H3Cell", "YearMonth"]).reset_index(drop=True)
+        else:
+            monthly = aggregate_monthly(df)
+    else:
+        monthly = aggregate_monthly(df)
+
     monthly = create_temporal_features(monthly)
     monthly = create_historical_features(monthly)
     monthly = create_neighbor_features(monthly)

@@ -37,55 +37,11 @@ SEPARATOR = "-" * 60
 # ---------------------------------------------------------------------------
 
 def train_hotspot() -> dict:
-    logger.info("HOTSPOT — attempting LightGBM pipeline from database …")
-    try:
-        import lightgbm  # noqa: F401 — verify dependency present
-        from app.ai.pipelines.hotspot.train import run_training
-        result = run_training()
-        logger.info("HOTSPOT ✓  metrics=%s", result.get("metrics", result))
-        return result
-    except Exception as exc:
-        logger.warning("HOTSPOT LightGBM pipeline failed (%s) — falling back to RandomForest.", exc)
-        return _train_hotspot_rf_fallback()
-
-
-def _train_hotspot_rf_fallback() -> dict:
-    import numpy as np
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-    from app.ai.pipelines.hotspot.save_model import save_artifacts
-
-    FEATURE_COLUMNS_PATH = (
-        Path(__file__).resolve().parents[1]
-        / "app" / "ai" / "models" / "hotspot" / "feature_columns.json"
-    )
-    feature_columns = json.loads(FEATURE_COLUMNS_PATH.read_text())
-
-    rng = np.random.default_rng(42)
-    N = 2_000
-    X = rng.uniform(0, 10, size=(N, len(feature_columns)))
-    y = np.clip(X[:, 0] * 1.1 + rng.normal(0, 0.5, N), 0, None)
-    split = int(N * 0.8)
-
-    model = RandomForestRegressor(n_estimators=200, max_depth=10, min_samples_leaf=3,
-                                  random_state=42, n_jobs=-1)
-    model.fit(X[:split], y[:split])
-    preds = model.predict(X[split:])
-    metrics = {
-        "rmse": float(np.sqrt(mean_squared_error(y[split:], preds))),
-        "mae":  float(mean_absolute_error(y[split:], preds)),
-        "r2":   float(r2_score(y[split:], preds)),
-    }
-    save_artifacts(
-        model=model,
-        metrics=metrics,
-        best_params={"algorithm": "RandomForest", "n_estimators": 200,
-                     "max_depth": 10, "min_samples_leaf": 3, "random_state": 42},
-        feature_columns=feature_columns,
-        training_rows=N,
-    )
-    logger.info("HOTSPOT RF fallback ✓  metrics=%s", metrics)
-    return {"metrics": metrics}
+    logger.info("HOTSPOT — training hotspot model from database …")
+    from app.ai.pipelines.hotspot.train import run_training
+    result = run_training()
+    logger.info("HOTSPOT ✓  metrics=%s", result.get("metrics", result))
+    return result
 
 
 # ---------------------------------------------------------------------------
