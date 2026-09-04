@@ -8,6 +8,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.auth.geo_scope import GeoScope, get_geo_scope
 from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
 from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
@@ -37,8 +38,11 @@ def list_firs(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     query = db.query(FIR)
+    # Apply geographic scope first — clamps any user-supplied district filter.
+    query = geo_scope.apply_to_firs(query)
     if search:
         query = query.filter(
             or_(
@@ -58,7 +62,9 @@ def list_firs(
         query = query.filter(FIR.filed_at >= start_date)
     if end_date:
         query = query.filter(FIR.filed_at <= end_date)
-    if district:
+    # district filter: only honoured for unrestricted roles; scoped users are
+    # already restricted to their own district by apply_to_firs above.
+    if district and geo_scope.is_unrestricted:
         query = query.join(CrimeCase).join(Location).filter(Location.district == district)
 
     total = query.count()
@@ -67,10 +73,20 @@ def list_firs(
 
 
 @router.get("/{fir_id}", response_model=FIRDetailOut)
-def get_fir(fir_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_fir(
+    fir_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
+):
     fir = db.query(FIR).filter(FIR.id == fir_id).first()
     if not fir:
         raise HTTPException(status_code=404, detail="FIR not found")
+    # Guard: verify the FIR's crime case location is within the user's scope.
+    if fir.crime_case and fir.crime_case.location:
+        geo_scope.check_location(fir.crime_case.location)
+    elif not geo_scope.is_unrestricted:
+        raise HTTPException(status_code=403, detail="Access denied: record is outside your geographic scope")
     
     crime_case = fir.crime_case
     officer = fir.investigating_officer
@@ -147,8 +163,18 @@ def get_fir(fir_id: uuid.UUID, db: Session = Depends(get_db), current_user: User
 
 
 @router.get("/{fir_id}/linked-crimes")
-def linked_crimes(fir_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def linked_crimes(
+    fir_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
+):
     fir = fir_crud.get(db, fir_id)
+    if fir.crime_case and fir.crime_case.location:
+        geo_scope.check_location(fir.crime_case.location)
+    elif not geo_scope.is_unrestricted:
+        from app.core.exceptions import ForbiddenException
+        raise ForbiddenException("Access denied: record is outside your geographic scope")
     return {"crime_case_id": fir.crime_case_id}
 
 

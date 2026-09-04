@@ -16,6 +16,11 @@ from app.models.location import Location
 from app.models.officer import Officer
 from app.models.evidence import Evidence
 
+# Import lazily to avoid circular imports at module load time.
+def _get_geo_scope_class():
+    from app.auth.geo_scope import GeoScope
+    return GeoScope
+
 
 def _apply_case_filters(
     query,
@@ -66,13 +71,23 @@ def get_filtered_summary(
     officer_id: str | None = None,
     priority: str | None = None,
     status: str | None = None,
+    geo_scope=None,
 ) -> dict[str, Any]:
     query = db.query(CrimeCase)
+    # Apply geographic scope BEFORE user-supplied filters so scoped users
+    # cannot override their district by passing a different district param.
+    if geo_scope is not None:
+        effective_district = geo_scope.clamp_district_filter(district)
+        query = geo_scope.apply_to_cases(query)
+    else:
+        effective_district = district
+
     query = _apply_case_filters(
         query,
+        has_location_joined=(geo_scope is not None and not geo_scope.is_unrestricted),
         date_from=date_from,
         date_to=date_to,
-        district=district,
+        district=effective_district if (geo_scope is None or geo_scope.is_unrestricted) else None,
         category_id=category_id,
         officer_id=officer_id,
         priority=priority,
@@ -83,16 +98,20 @@ def get_filtered_summary(
     open_crimes = query.filter(CrimeCase.status == "open").count()
     resolved = query.filter(CrimeCase.status == "closed").count()
 
-    # FIR filter counts
+    # FIR filter counts — scoped to same geographic restriction
     fir_query = db.query(FIR)
-    if date_from or date_to or district or category_id or officer_id or priority or status:
-        # Filter FIRs linked to matching cases
+    if geo_scope is not None:
+        fir_query = geo_scope.apply_to_firs(fir_query)
+    if date_from or date_to or effective_district or category_id or officer_id or priority or status:
         case_ids_query = db.query(CrimeCase.id)
+        if geo_scope is not None:
+            case_ids_query = geo_scope.apply_to_cases(case_ids_query)
         case_ids_query = _apply_case_filters(
             case_ids_query,
+            has_location_joined=(geo_scope is not None and not geo_scope.is_unrestricted),
             date_from=date_from,
             date_to=date_to,
-            district=district,
+            district=effective_district if (geo_scope is None or geo_scope.is_unrestricted) else None,
             category_id=category_id,
             officer_id=officer_id,
             priority=priority,
@@ -101,7 +120,12 @@ def get_filtered_summary(
         fir_query = fir_query.filter(FIR.crime_case_id.in_(case_ids_query.subquery()))
 
     total_firs = fir_query.count()
-    total_criminals = db.query(Criminal).count()
+
+    # Criminals are scoped transitively through FIRs
+    if geo_scope is not None:
+        total_criminals = geo_scope.apply_to_criminals(db.query(Criminal), db).count()
+    else:
+        total_criminals = db.query(Criminal).count()
 
     return {
         "total_crimes": total_crimes,
@@ -121,13 +145,20 @@ def get_filtered_trends(
     officer_id: str | None = None,
     priority: str | None = None,
     status: str | None = None,
+    geo_scope=None,
 ) -> list[dict[str, Any]]:
     query = db.query(CrimeCase.occurred_at)
+    if geo_scope is not None:
+        effective_district = geo_scope.clamp_district_filter(district)
+        query = geo_scope.apply_to_cases(query)
+    else:
+        effective_district = district
     query = _apply_case_filters(
         query,
+        has_location_joined=(geo_scope is not None and not geo_scope.is_unrestricted),
         date_from=date_from,
         date_to=date_to,
-        district=district,
+        district=effective_district if (geo_scope is None or geo_scope.is_unrestricted) else None,
         category_id=category_id,
         officer_id=officer_id,
         priority=priority,
@@ -151,13 +182,20 @@ def get_filtered_category_breakdown(
     officer_id: str | None = None,
     priority: str | None = None,
     status: str | None = None,
+    geo_scope=None,
 ) -> list[dict[str, Any]]:
     query = db.query(CrimeCategory.name, func.count(CrimeCase.id)).join(CrimeCase, CrimeCase.category_id == CrimeCategory.id)
+    if geo_scope is not None:
+        effective_district = geo_scope.clamp_district_filter(district)
+        query = geo_scope.apply_to_cases(query)
+    else:
+        effective_district = district
     query = _apply_case_filters(
         query,
+        has_location_joined=(geo_scope is not None and not geo_scope.is_unrestricted),
         date_from=date_from,
         date_to=date_to,
-        district=district,
+        district=effective_district if (geo_scope is None or geo_scope.is_unrestricted) else None,
         category_id=category_id,
         officer_id=officer_id,
         priority=priority,
@@ -176,14 +214,26 @@ def get_filtered_district_comparison(
     officer_id: str | None = None,
     priority: str | None = None,
     status: str | None = None,
+    geo_scope=None,
 ) -> list[dict[str, Any]]:
     query = db.query(Location.district, func.count(CrimeCase.id)).join(CrimeCase, CrimeCase.location_id == Location.id)
+    if geo_scope is not None:
+        effective_district = geo_scope.clamp_district_filter(district)
+        # Location already joined above; pass has_location_joined=True
+        if not geo_scope.is_unrestricted:
+            if geo_scope.district is None:
+                return []
+            query = query.filter(Location.district == geo_scope.district)
+            if geo_scope.station is not None:
+                query = query.filter(Location.station == geo_scope.station)
+    else:
+        effective_district = district
     query = _apply_case_filters(
         query,
         has_location_joined=True,
         date_from=date_from,
         date_to=date_to,
-        district=district,
+        district=effective_district if (geo_scope is None or geo_scope.is_unrestricted) else None,
         category_id=category_id,
         officer_id=officer_id,
         priority=priority,
@@ -193,11 +243,18 @@ def get_filtered_district_comparison(
     return [{"district": dist, "count": count} for dist, count in rows]
 
 
-def get_officer_stats(db: Session) -> dict[str, Any]:
-    total_officers = db.query(Officer).count()
-    active_officers = db.query(Officer).filter(Officer.status == "active").count()
+def get_officer_stats(db: Session, geo_scope=None) -> dict[str, Any]:
+    officers = db.query(Officer)
+    if geo_scope is not None and not geo_scope.is_unrestricted:
+        if geo_scope.district is None:
+            return {"total_officers": 0, "active_officers": 0, "on_duty": 0, "off_duty": 0, "investigating_officers": 0}
+        officers = officers.filter(Officer.district == geo_scope.district)
+        if geo_scope.station is not None:
+            officers = officers.filter(Officer.station == geo_scope.station)
+    total_officers = officers.count()
+    active_officers = officers.filter(Officer.status == "active").count()
     investigating_officers = (
-        db.query(Officer)
+        officers
         .join(CrimeCase, CrimeCase.assigned_officer_id == Officer.id)
         .filter(CrimeCase.status == "open")
         .distinct()
@@ -206,7 +263,7 @@ def get_officer_stats(db: Session) -> dict[str, Any]:
     
     # Enforce realistic allocations
     active_officers = max(active_officers, investigating_officers)
-    if total_officers == 0:
+    if total_officers == 0 and (geo_scope is None or geo_scope.is_unrestricted):
         return {
             "total_officers": 45,
             "active_officers": 42,
@@ -227,14 +284,18 @@ def get_officer_stats(db: Session) -> dict[str, Any]:
     }
 
 
-def get_evidence_stats(db: Session) -> dict[str, Any]:
-    collected = db.query(Evidence).filter(Evidence.status == "Collected").count()
-    pending = db.query(Evidence).filter(Evidence.status == "Pending").count()
-    verified = db.query(Evidence).filter(Evidence.status == "Verified").count()
-    rejected = db.query(Evidence).filter(Evidence.status == "Rejected").count()
+def get_evidence_stats(db: Session, geo_scope=None) -> dict[str, Any]:
+    evidence = db.query(Evidence)
+    if geo_scope is not None:
+        evidence = evidence.join(CrimeCase, Evidence.case_id == CrimeCase.id)
+        evidence = geo_scope.apply_to_cases(evidence)
+    collected = evidence.filter(Evidence.status == "Collected").count()
+    pending = evidence.filter(Evidence.status == "Pending").count()
+    verified = evidence.filter(Evidence.status == "Verified").count()
+    rejected = evidence.filter(Evidence.status == "Rejected").count()
 
     total_evidence = collected + pending + verified + rejected
-    if total_evidence == 0:
+    if total_evidence == 0 and (geo_scope is None or geo_scope.is_unrestricted):
         return {
             "collected": 34,
             "pending": 8,
@@ -250,14 +311,14 @@ def get_evidence_stats(db: Session) -> dict[str, Any]:
     }
 
 
-def get_recent_incidents(db: Session, limit: int = 5) -> list[dict[str, Any]]:
-    cases = (
+def get_recent_incidents(db: Session, limit: int = 5, geo_scope=None) -> list[dict[str, Any]]:
+    query = (
         db.query(CrimeCase)
         .options(joinedload(CrimeCase.category), joinedload(CrimeCase.location))
-        .order_by(CrimeCase.reported_at.desc())
-        .limit(limit)
-        .all()
     )
+    if geo_scope is not None:
+        query = geo_scope.apply_to_cases(query)
+    cases = query.order_by(CrimeCase.reported_at.desc()).limit(limit).all()
     return [
         {
             "case_number": case.case_number,
@@ -271,10 +332,13 @@ def get_recent_incidents(db: Session, limit: int = 5) -> list[dict[str, Any]]:
     ]
 
 
-def get_forecast_data(db: Session) -> dict[str, Any]:
-    total_crimes = db.query(CrimeCase).count()
-    last_week_crimes = db.query(CrimeCase).filter(CrimeCase.occurred_at >= datetime.now() - timedelta(days=7)).count()
-    prev_week_crimes = db.query(CrimeCase).filter(
+def get_forecast_data(db: Session, geo_scope=None) -> dict[str, Any]:
+    base_q = db.query(CrimeCase)
+    if geo_scope is not None:
+        base_q = geo_scope.apply_to_cases(base_q)
+    total_crimes = base_q.count()
+    last_week_crimes = base_q.filter(CrimeCase.occurred_at >= datetime.now() - timedelta(days=7)).count()
+    prev_week_crimes = base_q.filter(
         CrimeCase.occurred_at >= datetime.now() - timedelta(days=14),
         CrimeCase.occurred_at < datetime.now() - timedelta(days=7)
     ).count()
@@ -318,9 +382,12 @@ def get_forecast_data(db: Session) -> dict[str, Any]:
     }
 
 
-def get_risk_prediction(db: Session) -> dict[str, Any]:
-    total_crimes = db.query(CrimeCase).count()
-    open_crimes = db.query(CrimeCase).filter(CrimeCase.status == "open").count()
+def get_risk_prediction(db: Session, geo_scope=None) -> dict[str, Any]:
+    base_q = db.query(CrimeCase)
+    if geo_scope is not None:
+        base_q = geo_scope.apply_to_cases(base_q)
+    total_crimes = base_q.count()
+    open_crimes = base_q.filter(CrimeCase.status == "open").count()
     open_ratio = open_crimes / total_crimes if total_crimes > 0 else 0.5
     
     crime_risk_percent = round(35 + (open_ratio * 40) + (min(total_crimes, 50) / 50 * 15), 1)
@@ -356,11 +423,17 @@ SEASON_MAP = {
 SEASON_ORDER = ["Summer", "Monsoon", "Post-Monsoon", "Winter"]
 
 
-def get_season_breakdown(db: Session) -> dict[str, Any]:
-
-    rows = db.query(CrimeCase.occurred_at, Location.district).join(
+def get_season_breakdown(db: Session, geo_scope=None) -> dict[str, Any]:
+    query = db.query(CrimeCase.occurred_at, Location.district).join(
         Location, CrimeCase.location_id == Location.id
-    ).all()
+    )
+    if geo_scope is not None and not geo_scope.is_unrestricted:
+        if geo_scope.district is None:
+            return {"seasons": [], "total_cases": 0}
+        query = query.filter(Location.district == geo_scope.district)
+        if geo_scope.station is not None:
+            query = query.filter(Location.station == geo_scope.station)
+    rows = query.all()
 
     season_counts: dict[str, int] = {s: 0 for s in SEASON_ORDER}
     season_districts: dict[str, Counter[str]] = defaultdict(Counter)

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.auth.geo_scope import GeoScope, get_geo_scope
 from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
 from app.models.crime import CrimeCase
@@ -38,8 +39,12 @@ def list_crimes(
     sort_order: str = "desc",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     query = db.query(CrimeCase)
+    # Geographic scope is applied first; user-supplied location_id is still
+    # honoured but cannot widen the scope beyond the user's district/station.
+    query = geo_scope.apply_to_cases(query)
     if status:
         query = query.filter(CrimeCase.status == status)
     if category_id:
@@ -63,12 +68,26 @@ def list_crimes(
 
 
 @router.get("/{crime_id}", response_model=CrimeCaseOut)
-def get_crime(crime_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return crime_crud.get(db, crime_id)
+def get_crime(
+    crime_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
+):
+    crime = crime_crud.get(db, crime_id)
+    geo_scope.check_location(crime.location)
+    return crime
 
 
 @router.get("/{crime_id}/timeline", response_model=list[CrimeTimelineEvent])
-def crime_timeline(crime_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def crime_timeline(
+    crime_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
+):
+    crime = crime_crud.get(db, crime_id)
+    geo_scope.check_location(crime.location)
     return get_crime_timeline(db, crime_id)
 
 

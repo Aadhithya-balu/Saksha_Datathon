@@ -121,6 +121,7 @@ def _filter_fir_ids(
     victim_name: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    geo_scope: Any = None,
 ) -> set[Any]:
     """Return the set of FIR ids matching the supplied case filters (issue #226).
 
@@ -195,6 +196,11 @@ def _filter_fir_ids(
     if date_to is not None:
         query = query.filter(FIR.filed_at <= date_to)
 
+    if geo_scope is not None:
+        permitted_fir_ids = geo_scope.permitted_fir_ids(db)
+        if permitted_fir_ids is not None:
+            query = query.filter(FIR.id.in_(permitted_fir_ids))
+
     return {row[0] for row in query.distinct().all()}
 
 
@@ -223,6 +229,7 @@ def _has_case_filters(
 
 def _build_sql_graph(
     db: Session,
+    geo_scope=None,
     category_filter: str | None = None,
     min_risk: float = 0.0,
     criminal_name: str | None = None,
@@ -243,6 +250,8 @@ def _build_sql_graph(
     _, seed_criminal_names, seed_victim_names = _seed_identity_sets()
 
     filtered_fir_ids: set[Any] | None = None
+    if geo_scope is not None:
+        filtered_fir_ids = geo_scope.permitted_fir_ids(db)
     if _has_case_filters(
         criminal_name,
         crime_type,
@@ -253,7 +262,7 @@ def _build_sql_graph(
         date_from,
         date_to,
     ):
-        filtered_fir_ids = _filter_fir_ids(
+        requested_fir_ids = _filter_fir_ids(
             db,
             criminal_name=criminal_name,
             crime_type=crime_type,
@@ -264,6 +273,7 @@ def _build_sql_graph(
             date_from=date_from,
             date_to=date_to,
         )
+        filtered_fir_ids = requested_fir_ids if filtered_fir_ids is None else filtered_fir_ids & requested_fir_ids
 
     query = (
         db.query(FIR)
@@ -711,6 +721,7 @@ def _graph_response(
 
 def get_full_network_graph(
     db: Session,
+    geo_scope=None,
     category_filter: str | None = None,
     min_risk: float = 0.0,
     provenance_filter: str | None = None,
@@ -744,7 +755,7 @@ def get_full_network_graph(
         date_to,
     )
     neo4j_data = None
-    if is_neo4j_available() and not has_case_filters:
+    if is_neo4j_available() and not has_case_filters and geo_scope is None:
         neo4j_data = fetch_full_graph_neo4j()
     if neo4j_data:
         nodes = [NetworkNode(**n) for n in neo4j_data["nodes"]]
@@ -766,6 +777,7 @@ def get_full_network_graph(
 
     nodes, edges = _build_sql_graph(
         db,
+        geo_scope=geo_scope,
         category_filter=category_filter,
         min_risk=min_risk,
         criminal_name=criminal_name,
@@ -795,9 +807,10 @@ def get_person_network_graph(
     depth: int = 1,
     provenance_filter: str | None = None,
     exclude_demo: bool = False,
+    geo_scope=None,
 ) -> NetworkGraphResponse:
     """Fetch relationship graph centered on a specific person or node."""
-    nodes, edges = _build_sql_graph(db)
+    nodes, edges = _build_sql_graph(db, geo_scope=geo_scope)
 
     target_ids = set()
     pid_clean = person_id.strip()
@@ -907,6 +920,7 @@ def get_case_network_graph(
     case_id: str,
     provenance_filter: str | None = None,
     exclude_demo: bool = False,
+    geo_scope=None,
 ) -> NetworkGraphResponse:
     """Fetch case relationship graph."""
     normalized = case_id if case_id.startswith(("case-", "fir-")) else f"case-{case_id}"
@@ -916,16 +930,19 @@ def get_case_network_graph(
         depth=2,
         provenance_filter=provenance_filter,
         exclude_demo=exclude_demo,
+        geo_scope=geo_scope,
     )
 
 
-def get_organization_gang_networks(db: Session) -> list[GangNetworkSummary]:
+def get_organization_gang_networks(db: Session, geo_scope=None) -> list[GangNetworkSummary]:
     """Derive organized-crime gang hierarchies from criminal gang affiliations."""
-    criminals = (
+    criminals_query = (
         db.query(Criminal)
         .options(joinedload(Criminal.fir_links))
-        .all()
     )
+    if geo_scope is not None:
+        criminals_query = geo_scope.apply_to_criminals(criminals_query, db)
+    criminals = criminals_query.all()
 
     by_gang: dict[str, list[Criminal]] = defaultdict(list)
     for criminal in criminals:
@@ -997,9 +1014,9 @@ def _gang_slug(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-") or "unknown"
 
 
-def find_shortest_path(db: Session, source_id: str, target_id: str, max_depth: int = 5) -> ShortestPathResponse:
+def find_shortest_path(db: Session, source_id: str, target_id: str, max_depth: int = 5, geo_scope=None) -> ShortestPathResponse:
     """Find shortest path between two nodes using Neo4j or BFS on SQL graph."""
-    if is_neo4j_available():
+    if is_neo4j_available() and geo_scope is None:
         neo_res = query_shortest_path_neo4j(source_id, target_id, max_depth)
         if neo_res and neo_res["found"]:
             return ShortestPathResponse(
@@ -1010,7 +1027,7 @@ def find_shortest_path(db: Session, source_id: str, target_id: str, max_depth: i
                 explanation=f"Neo4j pathfinder identified {neo_res['distance']} degree separation.",
             )
 
-    nodes, edges = _build_sql_graph(db)
+    nodes, edges = _build_sql_graph(db, geo_scope=geo_scope)
     nodes_by_id = {n.id: n for n in nodes}
 
     if source_id not in nodes_by_id or target_id not in nodes_by_id:
@@ -1194,6 +1211,7 @@ def find_connection_path(
     victim_name: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    geo_scope: Any = None,
 ) -> NetworkPathResponse:
     """Find the shortest person-to-person connection path via shared FIRs.
 
@@ -1216,6 +1234,7 @@ def find_connection_path(
         victim_name=victim_name,
         date_from=date_from,
         date_to=date_to,
+        geo_scope=geo_scope,
     )
 
     if not filtered_fir_ids:
@@ -1446,9 +1465,9 @@ def find_connection_path(
     )
 
 
-def perform_link_analysis(db: Session) -> LinkAnalysisResponse:
+def perform_link_analysis(db: Session, geo_scope=None) -> LinkAnalysisResponse:
     """Compute network centrality, bridge nodes, broker scores, and graph density."""
-    nodes, edges = _build_sql_graph(db)
+    nodes, edges = _build_sql_graph(db, geo_scope=geo_scope)
     degree_counts = Counter()
     adjacency: dict[str, set[str]] = defaultdict(set)
     for e in edges:
@@ -1492,7 +1511,7 @@ def perform_link_analysis(db: Session) -> LinkAnalysisResponse:
     sorted_impact = sorted(centralities, key=lambda c: c.degree_centrality, reverse=True)
     bridges = [c for c in centralities if c.is_bridge_node]
 
-    gang_networks = get_organization_gang_networks(db)
+    gang_networks = get_organization_gang_networks(db, geo_scope=geo_scope)
 
     return LinkAnalysisResponse(
         graph_density=density,
@@ -1503,16 +1522,16 @@ def perform_link_analysis(db: Session) -> LinkAnalysisResponse:
     )
 
 
-def generate_ai_graph_insights(db: Session) -> list[AIGraphInsight]:
+def generate_ai_graph_insights(db: Session, geo_scope=None) -> list[AIGraphInsight]:
     """Derive criminal-network pattern insights from the live graph structure."""
-    nodes, edges = _build_sql_graph(db)
+    nodes, edges = _build_sql_graph(db, geo_scope=geo_scope)
     insights: list[AIGraphInsight] = []
 
     if not nodes:
         return insights
 
     nodes_by_id = {n.id: n for n in nodes}
-    link_analysis = perform_link_analysis(db)
+    link_analysis = perform_link_analysis(db, geo_scope=geo_scope)
     now_iso = datetime.now().isoformat()
 
     # Insight 1: highest-betweenness broker node (data-driven, no fabricated names)

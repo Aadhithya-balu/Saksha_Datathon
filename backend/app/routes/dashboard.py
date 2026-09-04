@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.auth.geo_scope import GeoScope, get_geo_scope
 from app.auth.rbac import ALL_ROLES, require_roles
 from app.database.postgres import get_db
 from app.models.user import User
@@ -24,6 +25,7 @@ def summary(
     status: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     return dashboard_service.get_filtered_summary(
         db,
@@ -34,6 +36,7 @@ def summary(
         officer_id=officer_id,
         priority=priority,
         status=status,
+        geo_scope=geo_scope,
     )
 
 
@@ -47,7 +50,8 @@ def crime_trends(
     priority: str | None = None,
     status: str | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     return dashboard_service.get_filtered_trends(
         db,
@@ -58,6 +62,7 @@ def crime_trends(
         officer_id=officer_id,
         priority=priority,
         status=status,
+        geo_scope=geo_scope,
     )
 
 
@@ -71,7 +76,8 @@ def category_breakdown(
     priority: str | None = None,
     status: str | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     return dashboard_service.get_filtered_category_breakdown(
         db,
@@ -82,6 +88,7 @@ def category_breakdown(
         officer_id=officer_id,
         priority=priority,
         status=status,
+        geo_scope=geo_scope,
     )
 
 
@@ -95,7 +102,8 @@ def district_comparison(
     priority: str | None = None,
     status: str | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     return dashboard_service.get_filtered_district_comparison(
         db,
@@ -106,53 +114,60 @@ def district_comparison(
         officer_id=officer_id,
         priority=priority,
         status=status,
+        geo_scope=geo_scope,
     )
 
 
 @router.get("/officer-stats")
 def officer_stats(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
-    return dashboard_service.get_officer_stats(db)
+    return dashboard_service.get_officer_stats(db, geo_scope=geo_scope)
 
 
 @router.get("/evidence-stats")
 def evidence_stats(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
-    return dashboard_service.get_evidence_stats(db)
+    return dashboard_service.get_evidence_stats(db, geo_scope=geo_scope)
 
 
 @router.get("/recent-incidents")
 def recent_incidents(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
-    return dashboard_service.get_recent_incidents(db)
+    return dashboard_service.get_recent_incidents(db, geo_scope=geo_scope)
 
 
 @router.get("/forecast")
 def forecast(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
-    return dashboard_service.get_forecast_data(db)
+    return dashboard_service.get_forecast_data(db, geo_scope=geo_scope)
 
 
 @router.get("/risk-prediction")
 def risk_prediction(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
-    return dashboard_service.get_risk_prediction(db)
+    return dashboard_service.get_risk_prediction(db, geo_scope=geo_scope)
 
 
 @router.get("/season-breakdown")
 def season_breakdown(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
-    return dashboard_service.get_season_breakdown(db)
+    return dashboard_service.get_season_breakdown(db, geo_scope=geo_scope)
 

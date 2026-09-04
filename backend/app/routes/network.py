@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from app.auth.dependencies import get_current_user
+from app.auth.geo_scope import GeoScope, get_geo_scope
 from app.auth.rbac import ALL_ROLES, require_roles
 from app.database.postgres import get_db
 from app.models.network import (
@@ -70,6 +71,7 @@ def get_full_graph(
     date_to: str | None = Query(None, description="Only incidents on/before this date (YYYY-MM-DD or ISO 8601)."),
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Retrieve full criminal relationship network graph.
 
@@ -79,6 +81,7 @@ def get_full_graph(
     """
     return network_service.get_full_network_graph(
         db,
+        geo_scope=geo_scope,
         category_filter=category_filter,
         min_risk=min_risk,
         provenance_filter=provenance_filter,
@@ -103,6 +106,7 @@ def get_person_network(
     exclude_demo: bool = Query(False, description="Exclude demo/seed records"),
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Retrieve relationship graph centered around a specific criminal, suspect, officer, or victim."""
     return network_service.get_person_network_graph(
@@ -111,6 +115,7 @@ def get_person_network(
         depth=depth,
         provenance_filter=provenance_filter,
         exclude_demo=exclude_demo,
+        geo_scope=geo_scope,
     )
 
 
@@ -120,6 +125,7 @@ def search_network_entities(
     limit: int = Query(20, ge=1, le=50),
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Search for criminals, victims, officers, FIRs, and cases by name/number/station/district."""
     from app.models.criminal import Criminal
@@ -132,7 +138,7 @@ def search_network_entities(
     pattern = f"%{q}%"
     results: list[dict[str, Any]] = []
 
-    criminals = db.query(Criminal).filter(
+    criminals = geo_scope.apply_to_criminals(db.query(Criminal), db).filter(
         or_(Criminal.full_name.ilike(pattern), Criminal.aliases.ilike(pattern))
     ).limit(limit).all()
     for c in criminals:
@@ -145,7 +151,7 @@ def search_network_entities(
             "risk_score": min(100.0, 45.0 + len(c.fir_links) * 10),
         })
 
-    victims = db.query(Victim).filter(Victim.full_name.ilike(pattern)).limit(limit).all()
+    victims = geo_scope.apply_to_victims(db.query(Victim), db).filter(Victim.full_name.ilike(pattern)).limit(limit).all()
     for v in victims:
         results.append({
             "id": f"victim-{v.id}",
@@ -167,7 +173,7 @@ def search_network_entities(
             "status": o.status,
         })
 
-    firs = db.query(FIR).filter(
+    firs = geo_scope.apply_to_firs(db.query(FIR)).filter(
         or_(FIR.fir_number.ilike(pattern), FIR.complainant_name.ilike(pattern))
     ).limit(limit).all()
     for f in firs:
@@ -179,7 +185,7 @@ def search_network_entities(
             "status": "filed",
         })
 
-    cases = db.query(CrimeCase).filter(
+    cases = geo_scope.apply_to_cases(db.query(CrimeCase)).filter(
         or_(CrimeCase.case_number.ilike(pattern), CrimeCase.description.ilike(pattern))
     ).limit(limit).all()
     for c in cases:
@@ -191,9 +197,17 @@ def search_network_entities(
             "status": c.status,
         })
 
-    locations = db.query(Location).filter(
+    locations_query = db.query(Location).filter(
         or_(Location.station.ilike(pattern), Location.district.ilike(pattern))
-    ).limit(limit).all()
+    )
+    if not geo_scope.is_unrestricted:
+        if geo_scope.district is None:
+            locations_query = locations_query.filter(False)
+        else:
+            locations_query = locations_query.filter(Location.district == geo_scope.district)
+            if geo_scope.station is not None:
+                locations_query = locations_query.filter(Location.station == geo_scope.station)
+    locations = locations_query.limit(limit).all()
     for loc in locations:
         results.append({
             "id": f"location-{loc.id}",
@@ -214,6 +228,7 @@ def get_case_network(
     exclude_demo: bool = Query(False, description="Exclude demo/seed records"),
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Retrieve relationship network associated with a specific crime case or FIR."""
     return network_service.get_case_network_graph(
@@ -221,6 +236,7 @@ def get_case_network(
         case_id=case_id,
         provenance_filter=provenance_filter,
         exclude_demo=exclude_demo,
+        geo_scope=geo_scope,
     )
 
 
@@ -228,9 +244,10 @@ def get_case_network(
 def list_gang_networks(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """List active criminal gangs, syndicates, hierarchy structures, and member networks."""
-    return network_service.get_organization_gang_networks(db)
+    return network_service.get_organization_gang_networks(db, geo_scope=geo_scope)
 
 
 @router.get("/gangs/{gang_id}", response_model=GangNetworkSummary)
@@ -238,9 +255,10 @@ def get_gang_network_detail(
     gang_id: str,
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Retrieve details and hierarchy tree for a specific criminal gang syndicate."""
-    gangs = network_service.get_organization_gang_networks(db)
+    gangs = network_service.get_organization_gang_networks(db, geo_scope=geo_scope)
     for g in gangs:
         if g.gang_id == gang_id:
             return g
@@ -252,9 +270,10 @@ def calculate_shortest_path(
     req: ShortestPathRequest,
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Calculate shortest relationship path and degree separation between two entities in the graph."""
-    return network_service.find_shortest_path(db, source_id=req.source_id, target_id=req.target_id, max_depth=req.max_depth)
+    return network_service.find_shortest_path(db, source_id=req.source_id, target_id=req.target_id, max_depth=req.max_depth, geo_scope=geo_scope)
 
 
 @router.get("/path", response_model=NetworkPathResponse)
@@ -272,6 +291,7 @@ def find_connection_path(
     date_to: str | None = Query(None, description="Only incidents on/before this date (YYYY-MM-DD or ISO 8601)."),
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Find the shortest evidence-backed person-to-person connection path.
 
@@ -298,6 +318,7 @@ def find_connection_path(
         victim_name=victim_name,
         date_from=_parse_network_date(date_from),
         date_to=_parse_network_date(date_to, end_of_day=True),
+        geo_scope=geo_scope,
     )
 
 
@@ -305,18 +326,20 @@ def find_connection_path(
 def perform_graph_link_analysis(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Perform network centrality calculations, identify key broker nodes, and bridge connections."""
-    return network_service.perform_link_analysis(db)
+    return network_service.perform_link_analysis(db, geo_scope=geo_scope)
 
 
 @router.get("/insights", response_model=list[AIGraphInsight])
 def get_ai_graph_insights(
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Generate AI graph intelligence threat alerts, broker node detection, and investigation recommendations."""
-    return network_service.generate_ai_graph_insights(db)
+    return network_service.generate_ai_graph_insights(db, geo_scope=geo_scope)
 
 
 @router.post("/sync-neo4j", dependencies=[Depends(require_roles("admin", "crime_analyst"))])

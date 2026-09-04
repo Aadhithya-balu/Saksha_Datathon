@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.auth.geo_scope import GeoScope, get_geo_scope
 from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
 from app.models.criminal import Criminal
@@ -27,9 +28,11 @@ def list_criminals(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     from sqlalchemy import or_
     query = db.query(Criminal)
+    query = geo_scope.apply_to_criminals(query, db)
     if status:
         query = query.filter(Criminal.status == status)
     if q:
@@ -40,7 +43,7 @@ def list_criminals(
                 Criminal.mo_summary.ilike(f"%{q}%"),
             )
         )
-    
+
     total = query.count()
     query = query.order_by(Criminal.created_at.desc())
     results = query.offset((page - 1) * page_size).limit(page_size).all()
@@ -48,22 +51,22 @@ def list_criminals(
 
 
 @router.get("/repeat-offenders", response_model=list[CriminalOut])
-def repeat_offenders(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """
-    Flags criminals linked to 3+ FIRs. Simple SQL heuristic for the datathon;
-    swap for the ML-scored repeat-offender output once that model is ready.
-    """
+def repeat_offenders(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
+):
     from sqlalchemy import func
     from app.models.fir import FIRCriminalLink
 
-    rows = (
+    query = (
         db.query(Criminal)
         .join(FIRCriminalLink, FIRCriminalLink.criminal_id == Criminal.id)
         .group_by(Criminal.id)
         .having(func.count(FIRCriminalLink.id) >= 3)
-        .all()
     )
-    return rows
+    query = geo_scope.apply_to_criminals(query, db)
+    return query.all()
 
 
 def _load_criminal_network(criminal_id: str) -> dict:
@@ -220,8 +223,19 @@ def _recommendations_worker(criminal_id: str) -> list:
 
 
 @router.get("/{criminal_id}")
-def get_criminal(criminal_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_criminal(
+    criminal_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
+):
     criminal = criminal_crud.get(db, criminal_id)
+    # Guard: criminal must have at least one FIR in the user's scope.
+    if not geo_scope.is_unrestricted:
+        scoped_ids = geo_scope.apply_to_criminals(db.query(Criminal), db)
+        if not scoped_ids.filter(Criminal.id == criminal_id).first():
+            from app.core.exceptions import ForbiddenException
+            raise ForbiddenException("Access denied: record is outside your geographic scope")
 
     # Retrieve linked FIRs
     linked_firs = []
@@ -317,8 +331,18 @@ def get_criminal(criminal_id: uuid.UUID, db: Session = Depends(get_db), current_
 
 
 @router.get("/{criminal_id}/mo-profile", response_model=MOProfile)
-def mo_profile(criminal_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def mo_profile(
+    criminal_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
+):
     criminal = criminal_crud.get(db, criminal_id)
+    if not geo_scope.is_unrestricted:
+        scoped_ids = geo_scope.apply_to_criminals(db.query(Criminal), db)
+        if not scoped_ids.filter(Criminal.id == criminal_id).first():
+            from app.core.exceptions import ForbiddenException
+            raise ForbiddenException("Access denied: record is outside your geographic scope")
     from app.services.mo_semantic_service import build_criminal_mo_profile
     profile = build_criminal_mo_profile(db, criminal.id)
     return MOProfile(

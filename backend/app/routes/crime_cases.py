@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session, joinedload
 
 from app.auth.dependencies import get_current_user
+from app.auth.geo_scope import GeoScope, get_geo_scope
 from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
 from app.models.crime import CrimeCase
@@ -123,6 +124,7 @@ def list_cases(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """List crime cases from PostgreSQL with complete detail attributes.
 
@@ -137,13 +139,14 @@ def list_cases(
         )
         .order_by(CrimeCase.reported_at.desc())
     )
+    query = geo_scope.apply_to_cases(query)
     if status:
         query = query.filter(CrimeCase.status == status)
     if category_id:
         query = query.filter(CrimeCase.category_id == category_id)
     if priority:
         query = query.filter(CrimeCase.priority == priority)
-    if district:
+    if district and geo_scope.is_unrestricted:
         query = query.join(Location, CrimeCase.location_id == Location.id).filter(
             (Location.district == district) | (Location.station == district)
         )
@@ -216,6 +219,7 @@ def list_cases(
 def list_unassigned_officers(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Return all officer profiles with full names for assignment dropdowns."""
     officers = db.query(Officer).join(User).all()
@@ -243,7 +247,7 @@ def list_unlinked_firs(
     current_user: User = Depends(get_current_user),
 ):
     """Return all FIRs so they can be selected for linking to cases."""
-    firs = db.query(FIR).all()
+    firs = geo_scope.apply_to_firs(db.query(FIR)).all()
     return [FIROut.model_validate(fir) for fir in firs]
 
 
@@ -251,6 +255,7 @@ def list_unlinked_firs(
 def list_crime_categories(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Return list of all categories."""
     categories = db.query(CrimeCategory).all()
@@ -263,7 +268,14 @@ def list_locations(
     current_user: User = Depends(get_current_user),
 ):
     """Return list of all locations."""
-    locations = db.query(Location).all()
+    locations = db.query(Location)
+    if not geo_scope.is_unrestricted:
+        if geo_scope.district is None:
+            return []
+        locations = locations.filter(Location.district == geo_scope.district)
+        if geo_scope.station is not None:
+            locations = locations.filter(Location.station == geo_scope.station)
+    locations = locations.all()
     return [LocationSimpleOut.model_validate(loc) for loc in locations]
 
 
@@ -275,20 +287,21 @@ def crime_case_insights(
     priority: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Aggregated crime case analytics computed directly from the database.
 
     Mirrors the filters used by the case list so the telemetry ribbon reflects
     the full filtered dataset rather than a single (paginated) page of rows.
     """
-    base = db.query(CrimeCase)
+    base = geo_scope.apply_to_cases(db.query(CrimeCase))
     if status:
         base = base.filter(CrimeCase.status == status)
     if category_id:
         base = base.filter(CrimeCase.category_id == category_id)
     if priority:
         base = base.filter(CrimeCase.priority == priority)
-    if district:
+    if district and geo_scope.is_unrestricted:
         base = base.join(Location, CrimeCase.location_id == Location.id).filter(
             (Location.district == district) | (Location.station == district)
         )
@@ -331,6 +344,7 @@ def get_case(
     case_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Retrieve full details of a crime case, including linked FIRs, timeline and persisted investigation notes."""
     case = (
@@ -344,6 +358,7 @@ def get_case(
     )
     if not case:
         raise HTTPException(status_code=404, detail="Crime case not found")
+    geo_scope.check_location(case.location)
 
     # 1. Fetch linked FIRs from existing table
     firs_list = db.query(FIR).filter(FIR.crime_case_id == case.id).all()
@@ -500,10 +515,12 @@ def update_case(
     payload: CrimeCaseUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Update a crime case with priority, progress, status, and assigned officer."""
     update_data = payload.model_dump(exclude_unset=True)
     case = crime_crud.get(db, case_id)
+    geo_scope.check_location(case.location)
 
     if "status" in update_data:
         new_status = update_data.pop("status")
@@ -539,6 +556,7 @@ def delete_case(
     case_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Delete a crime case and all dependent records.
 
@@ -555,6 +573,7 @@ def delete_case(
         case = db.query(CrimeCase).filter(CrimeCase.id == case_id).first()
         if not case:
             raise HTTPException(status_code=404, detail="Crime case not found")
+        geo_scope.check_location(case.location)
 
         # Discover which tables actually exist (some children may not be
         # created in this deployment).

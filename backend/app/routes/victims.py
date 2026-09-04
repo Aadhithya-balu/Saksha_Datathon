@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.auth.geo_scope import GeoScope, get_geo_scope
 from app.auth.rbac import ALL_ROLES, ROLE_ADMIN, ROLE_INVESTIGATOR, require_roles
 from app.database.postgres import get_db
 from app.models.victim import Victim
@@ -26,9 +27,11 @@ def list_victims(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     from sqlalchemy import or_
     query = db.query(Victim)
+    query = geo_scope.apply_to_victims(query, db)
     if q:
         query = query.filter(
             or_(
@@ -45,8 +48,18 @@ def list_victims(
 
 
 @router.get("/{victim_id}")
-def get_victim(victim_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_victim(
+    victim_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
+):
     victim = victim_crud.get(db, victim_id)
+    if not geo_scope.is_unrestricted and not geo_scope.apply_to_victims(
+        db.query(Victim), db
+    ).filter(Victim.id == victim_id).first():
+        from app.core.exceptions import ForbiddenException
+        raise ForbiddenException("Access denied: record is outside your geographic scope")
     
     # Retrieve linked FIRs
     linked_firs = []

@@ -304,7 +304,7 @@ def _build_timeline(case: CrimeCase, firs: list[FIR], evidence: list[Evidence], 
 
 
 
-def get_investigation(db: Session, case_id: uuid.UUID) -> InvestigationData:
+def get_investigation(db: Session, case_id: uuid.UUID, geo_scope=None) -> InvestigationData:
     """Compile full investigation data for a given crime case."""
     # Load case with all relationships
     case = (
@@ -327,6 +327,9 @@ def get_investigation(db: Session, case_id: uuid.UUID) -> InvestigationData:
 
     if not case:
         raise ValueError(f"Crime case {case_id} not found")
+
+    if geo_scope is not None:
+        geo_scope.check_location(case.location)
 
     # ── Assigned Officer ──
     assigned_officer = None

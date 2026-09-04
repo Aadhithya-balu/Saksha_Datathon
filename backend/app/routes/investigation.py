@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.auth.geo_scope import GeoScope, get_geo_scope
 from app.auth.rbac import ALL_ROLES, require_roles
 from app.database.postgres import get_db
 from app.models.user import User
@@ -142,10 +143,11 @@ def get_investigation_dashboard(
     case_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Retrieve the full unified investigation interface for a crime case."""
     try:
-        data = get_investigation(db, case_id)
+        data = get_investigation(db, case_id, geo_scope)
     except ValueError:
         raise HTTPException(status_code=404, detail="Crime case not found.")
 
@@ -169,10 +171,11 @@ def get_investigation_timeline(
     case_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Retrieve the investigation timeline for a crime case."""
     try:
-        data = get_investigation(db, case_id)
+        data = get_investigation(db, case_id, geo_scope)
     except ValueError:
         raise HTTPException(status_code=404, detail="Crime case not found.")
 
@@ -184,10 +187,11 @@ def get_investigation_history(
     case_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """Retrieve the audit history for a crime case investigation."""
     try:
-        data = get_investigation(db, case_id)
+        data = get_investigation(db, case_id, geo_scope)
     except ValueError:
         raise HTTPException(status_code=404, detail="Crime case not found.")
 
@@ -199,13 +203,14 @@ async def investigation_chat(
     payload: InvestigationChatRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    geo_scope: GeoScope = Depends(get_geo_scope),
 ):
     """
     Ask an AI question about a specific investigation case.
     The response is contextualized with the investigation data.
     """
     try:
-        data = get_investigation(db, payload.case_id)
+        data = get_investigation(db, payload.case_id, geo_scope)
     except ValueError:
         raise HTTPException(status_code=404, detail="Crime case not found.")
 
