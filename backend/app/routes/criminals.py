@@ -14,9 +14,23 @@ from app.schemas.criminal import CriminalCreate, CriminalOut, CriminalUpdate, MO
 from app.ai.inference.refresh import mark_data_changed
 from app.services import audit_service
 from app.services.base_service import BaseCRUDService
+from app.services.ttl_cache import invalidate_ttl_cache_prefix
 
 router = APIRouter(prefix="/criminals", tags=["Criminals"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 criminal_crud = BaseCRUDService(Criminal)
+
+
+def _invalidate_criminal_derived() -> None:
+    """Drop cached results derived from criminal records.
+
+    The criminal relationship network is TTL-cached for 300s (see
+    ``_load_criminal_network``); after any write we must drop it so the dossier
+    never shows a stale graph/risk snapshot across tabs or reloads.
+    """
+    try:
+        invalidate_ttl_cache_prefix("criminal_network")
+    except Exception:  # pragma: no cover - defensive; caching is best-effort
+        pass
 
 
 @router.get("", response_model=PaginatedResponse[CriminalOut])
@@ -335,6 +349,7 @@ def mo_profile(criminal_id: uuid.UUID, db: Session = Depends(get_db), current_us
 def create_criminal(payload: CriminalCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     criminal = criminal_crud.create(db, payload.model_dump())
     audit_service.log_action(db, current_user, "CREATE", "Criminal", str(criminal.id))
+    _invalidate_criminal_derived()
     mark_data_changed("criminal", db=db)
     return criminal
 
@@ -353,6 +368,7 @@ def update_criminal(criminal_id: uuid.UUID, payload: CriminalUpdate, db: Session
         db.flush()
     criminal = criminal_crud.update(db, criminal_id, data)
     audit_service.log_action(db, current_user, "UPDATE", "Criminal", str(criminal_id))
+    _invalidate_criminal_derived()
     mark_data_changed("criminal", db=db)
     return criminal
 
@@ -379,6 +395,7 @@ def upload_criminal_image(
     db.add(criminal)
     db.commit()
     audit_service.log_action(db, current_user, "IMAGE_UPLOAD", "Criminal", str(criminal_id))
+    _invalidate_criminal_derived()
     return {"image_url": image_url}
 
 
@@ -392,4 +409,6 @@ def remove_criminal_image(
     criminal.image_url = None
     db.add(criminal)
     db.commit()
+    audit_service.log_action(db, current_user, "REMOVE_IMAGE", "Criminal", str(criminal_id))
+    _invalidate_criminal_derived()
     return {"message": "Image removed"}

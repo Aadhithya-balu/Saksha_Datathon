@@ -1375,6 +1375,7 @@ export interface VictimRecord {
   gender: string | null;
   age: number | null;
   statement: string | null;
+  image_url: string | null;
   created_at: string;
 }
 
@@ -1608,6 +1609,13 @@ export async function getVictim(victimId: string) {
 export async function createVictim(payload: Partial<Omit<VictimRecord, 'id' | 'created_at'>>) {
   return apiRequest<VictimRecord>('/victims', {
     method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateVictim(victimId: string, payload: Partial<VictimRecord>) {
+  return apiRequest<VictimRecord>(`/victims/${victimId}`, {
+    method: 'PUT',
     body: JSON.stringify(payload),
   });
 }
@@ -3014,6 +3022,7 @@ export interface InvestigationSearchItem {
 export interface InvestigationGroupedSearchResponse {
   query: string;
   persons: InvestigationSearchItem[];
+  victims: InvestigationSearchItem[];
   cases: InvestigationSearchItem[];
   firs: InvestigationSearchItem[];
   locations: InvestigationSearchItem[];

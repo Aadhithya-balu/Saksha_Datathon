@@ -27,10 +27,6 @@ interface AppState {
   // Breadcrumbs
   breadcrumbs: Array<{ label: string; tab?: string }>;
   setBreadcrumbs: (crumbs: Array<{ label: string; tab?: string }>) => void;
-
-  // Language
-  language: 'en' | 'kn' | 'kn-en';
-  setLanguage: (lang: 'en' | 'kn' | 'kn-en') => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -76,11 +72,4 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Breadcrumbs
   breadcrumbs: [],
   setBreadcrumbs: (crumbs) => set({ breadcrumbs: crumbs }),
-
-  // Language
-  language: (localStorage.getItem('saksha_language') as 'en' | 'kn' | 'kn-en') || 'en',
-  setLanguage: (lang) => {
-    localStorage.setItem('saksha_language', lang);
-    set({ language: lang });
-  },
 }));

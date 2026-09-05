@@ -225,3 +225,70 @@ def test_shows_any_number_of_cases_not_false_person_refusal():
     low = out.lower()
     assert "could not find any records for" not in low
     assert "**20**" in out
+
+
+def test_ask_ai_case_prompt_returns_details_not_key_word():
+    # Exact Crime-Case page "Ask AI" prompt: the trailing "…and key details?"
+    # used to be parsed as a person named "key", hijacking the lookup.
+    out = _local("Tell me about case CR-2026-BLR-002. What is the status, priority, and key details?")
+    low = out.lower()
+    assert "records for" not in low
+    assert "CR-2026-BLR-002" in out
+    assert "Open" in out
+
+
+def test_unknown_case_number_states_missing_record_not_key_word():
+    out = _local(
+        "Tell me about case CR-2026-BLR-9999. What is the status, priority, and key details?",
+        context=_SAMPLE_STATS,
+    )
+    low = out.lower()
+    assert "records for" not in low
+    assert "CR-2026-BLR-9999" in out
+    assert "could not find" in low
+    # Must not dump a keyword-similar but different case as the answer.
+    assert "Under Investigation" not in out
+
+
+def test_fir_number_lookup_with_key_word_not_person_gate():
+    out = _local(
+        "Show me FIR 2026/104 details. Who is the complainant, status, and key facts?",
+        context=_SAMPLE_STATS,
+    )
+    low = out.lower()
+    assert "records for" not in low
+    assert "2026/104" in out
+    assert "Open" in out
+    assert "could not find" not in low
+
+
+def test_person_gate_still_fires_without_record_id():
+    out = _local("Ramesh crime records?", context=_SAMPLE_STATS)
+    low = out.lower()
+    assert "could not find any records for" in low
+    assert "rames" in low
+    assert "Total crimes" not in out
+
+
+def test_ask_ai_prompt_returns_full_dossier_not_lone_status_field():
+    # "Tell me about case X. What is the status, priority, and key details?"
+    # used to collapse into a single Status field; the full dossier must win.
+    out = _local(
+        "Tell me about case CR-2026-MYS-001. What is the status, priority, and key details?",
+        context=_SAMPLE_STATS,
+    )
+    low = out.lower()
+    assert "records for" not in low
+    assert "CR-2026-MYS-001" in out
+    assert "Status" in out
+    assert "Under Investigation" in out
+    assert "Priority" in out
+    assert "High" in out
+    assert "Theft & Burglaries" in out
+
+
+def test_single_field_status_question_stays_terse():
+    # A plain single-field lookup must NOT balloon into a full dossier.
+    out = _local("What is the status of case CR-2026-MYS-001?", context=_SAMPLE_STATS)
+    assert "Under Investigation" in out
+    assert "Priority" not in out

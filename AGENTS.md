@@ -1,0 +1,88 @@
+# SAKSHA — Working Knowledge (AGENTS)
+
+Full product/architecture context lives in `CONTEXT.md` (read it first). This
+file records conventions, commands, and known constraints that agents must
+respect when working in this repo.
+
+## Commands
+
+- Start everything: `npm run dev:all` (backend :8000, frontend :5173).
+- Backend tests (Windows): `cd backend && py -3.12 -m pytest tests/... -q`
+- Frontend typecheck: `cd datathon && npx tsc -p tsconfig.app.json --noEmit`
+- Frontend lint one file: `cd datathon && npx eslint <path>`
+- Frontend build: `cd datathon && npm run build`
+- MLOps cycle: `cd backend && py -3.12 -m app.mlops`
+
+## Bare-Metal Rules
+
+- Never auto-confirm identities / never auto-accuse: identity-resolution
+  results are proposed leads; every finding requires a human review decision.
+  Same for proxy patterns and vulnerability scoring.
+- Do NOT hardcode AI chat answers. Deterministic rule answers are fine (they
+  are explicitly "rule-based"), hosted-LLM answers must come from extraction +
+  retrieval + backend fetchers, never fabricated.
+- Never expose internal storage paths; serve demo face images via logical refs.
+- Audit actions via `audit_service.log_action(...)` (backend) or
+  `addLog(...)` in `useAuditStore` (frontend) for CREATE/UPDATE/DELETE/EXPORT.
+- RBAC: route-level via `require_roles(...)`, UI-level via `useRBAC`.
+- Frontend → backend calls go through `datathon/src/services/api.ts`
+  (`apiRequest`, Bearer token interceptor, Vite proxy `/api` → :8000).
+
+## Conventions
+
+- Backend: FastAPI routers under `backend/app/routes/`, services under
+  `backend/app/services/`, Pydantic v2 schemas under `backend/app/schemas/`,
+  SQLAlchemy 2.0 models under `backend/app/models/`.
+- Frontend: pages under `datathon/src/pages/`, components under
+  `datathon/src/components/`, Zustand stores under `datathon/src/store/`.
+- Cross-tab navigation uses `window.dispatchEvent(new CustomEvent('navigate-tab',
+  { detail: { tab, targetId } }))`; `App.tsx` handles it downstream and stores
+  `targetId` in `sessionStorage['selected_entity_id']`.
+- Internal IDs are UUIDs; user-facing inputs (badges, names, FIR numbers) may
+  be strings — services resolve them (see evidence `_resolve_assignee`).
+
+## Constraints / Gotchas
+
+- `tests/conftest.py`: in-memory SQLite, `APP_ENV=test`, no seed data. Smoke
+  tests must build their own rows. `users.email` and `users.role_id` are NOT
+  NULL; `Officer` columns are NOT NULL — create a Role + Officer first.
+- Avoid large multi-file pytest batches; some suites hang >120s. Run small
+  targeted sets (e.g. one file at a time) with a generous timeout.
+- Multi-worker endpoints that open their own sessions (criminal AI workers,
+  face network, MO matching) must NOT share the request session. Use
+  `SessionLocal()` in a worker / `ThreadPoolExecutor`.
+- DB pool: `pool_size=5, max_overflow=5, pool_pre_ping=True, pool_recycle=120`.
+  Release pooled sessions (`db.close()`) before heavy CPU/network work.
+- Heavy analytics that is expensive to recompute may use `ttl_cached`
+  (`backend/app/services/ttl_cache.py`). Invalidate targeted prefix keys via
+  `invalidate_ttl_cache_prefix("criminal_network")` after writes (see
+  `backend/app/routes/criminals.py::_invalidate_criminal_derived`).
+- Face recognition pipeline is DB-independent after seeding: references come
+  from disk and are cached per-process (`_cached_references`). Do not re-add
+  DB dependencies to the matching path.
+- Timezone: store/compare as naive UTC (`datetime.utcnow()`, or convert aware
+  times with `.astimezone(timezone.utc).replace(tzinfo=None)`).
+- FIR/hub/case search returns "victim"/"person" groups with only real ORM
+  columns (e.g. `Victim.full_name`, `contact_number`, `address`).
+
+## Pre-existing frontend lint/tsc noise
+
+- `SentinelAlertCard.tsx` / `SentinelWorkflowModal.tsx` previously had TS6133
+  unused-import errors and a `period` type error; these were cleaned up in the
+  last pass so `npm run build` is green again. Keep an eye on them (large,
+  previously untouched files) during future edits.
+- `App.css` holds unused Vite boilerplate; unused by design.
+
+## Recent sessions summary (13-issue hardening pass)
+
+Completed: AI-chat extraction/intent/FIR retrieval fixes; intervention
+timezone normalization; chat "no-dump" retrieval ordering; hub federated
+search w/ victims group + Investigation page UI; investigation N+1
+(selectinload + batched custody); evidence assignment by UUID/badge/name;
+victim edit-dossier (schema + api + Victims modal); face-recognition session
+release + embedding cache (pool exhaustion) incl. "Analyzing" UI; identity
+resolution status-based review filter (Pending/Resolved/All); dossier TTL
+cache invalidation after criminal writes; removed dead `language`/`setLanguage`
+from `appStore` (i18n store is single source); Notifications page connects
+realtime SSE on mount/disconnect on unmount + SystemHealth "Standby" for idle
+streams.

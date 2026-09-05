@@ -22,7 +22,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.auth.dependencies import get_current_user
 from app.auth.rbac import (
@@ -414,6 +414,7 @@ class SearchItem(BaseModel):
 class GroupedSearchResult(BaseModel):
     query: str
     persons: list[SearchItem] = []
+    victims: list[SearchItem] = []
     cases: list[SearchItem] = []
     firs: list[SearchItem] = []
     locations: list[SearchItem] = []
@@ -445,7 +446,9 @@ def investigation_search(
     result.provenance = "LIVE"
 
     # ── Persons (criminals) ──
-    persons = db.query(Criminal).filter(
+    persons = db.query(Criminal).options(
+        selectinload(Criminal.fir_links)
+    ).filter(
         or_(
             Criminal.full_name.ilike(pattern),
             Criminal.aliases.ilike(pattern),
@@ -464,7 +467,26 @@ def investigation_search(
             meta={"criminal_id": str(c.id), "case_count": case_count, "gang": c.gang_affiliation},
         ))
 
-    # ── Cases ──
+    # ── Victims / witnesses ──
+    victims = db.query(Victim).filter(
+        or_(
+            Victim.full_name.ilike(pattern),
+            Victim.contact_number.ilike(pattern),
+            Victim.address.ilike(pattern),
+        )
+    ).limit(limit).all()
+    for v in victims:
+        result.victims.append(SearchItem(
+            id=f"victim-{v.id}",
+            type="victim",
+            name=v.full_name,
+            detail=f"Victim/Witness | {v.gender or 'Gender N/A'} | Age {v.age or 'N/A'}",
+            status="active",
+            subtitle=(v.contact_number and f"Contact: {v.contact_number}") or (v.address or "No address"),
+            meta={"victim_id": str(v.id)},
+        ))
+
+    # ── Cases (locations batch-loaded to avoid N+1) ──
     cases = db.query(CrimeCase).filter(
         or_(
             CrimeCase.case_number.ilike(pattern),
@@ -472,8 +494,13 @@ def investigation_search(
             CrimeCase.mo_tags.ilike(pattern),
         )
     ).limit(limit).all()
+    location_ids = [c.location_id for c in cases if c.location_id is not None]
+    location_map: dict[str, Location] = {}
+    if location_ids:
+        for loc in db.query(Location).filter(Location.id.in_(location_ids)).all():
+            location_map[str(loc.id)] = loc
     for c in cases:
-        location = db.query(Location).filter(Location.id == c.location_id).first()
+        location = location_map.get(str(c.location_id)) if c.location_id else None
         district = location.district if location else None
         result.cases.append(SearchItem(
             id=f"case-{c.id}",
@@ -574,7 +601,7 @@ def investigation_search(
             result.mo_matches = []
 
     result.total = (
-        len(result.persons) + len(result.cases) + len(result.firs) +
+        len(result.persons) + len(result.victims) + len(result.cases) + len(result.firs) +
         len(result.locations) + len(result.stations) + len(result.mo_matches)
     )
     return result

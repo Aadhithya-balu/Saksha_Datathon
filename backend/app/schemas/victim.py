@@ -13,7 +13,6 @@ class VictimBase(BaseModel):
     age: int | None = None
     statement: str | None = None
     image_url: str | None = None
-    image_url: str | None = None
 
 
 class VictimCreate(VictimBase):
@@ -21,9 +20,13 @@ class VictimCreate(VictimBase):
 
 
 class VictimUpdate(BaseModel):
+    full_name: str | None = None
     contact_number: str | None = None
     address: str | None = None
+    gender: str | None = None
+    age: int | None = None
     statement: str | None = None
+    image_url: str | None = None
 
 
 class VictimOut(VictimBase):
