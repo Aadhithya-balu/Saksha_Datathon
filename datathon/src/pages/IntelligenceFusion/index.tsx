@@ -102,17 +102,52 @@ const StatCard: React.FC<{ label: string; value: string; hint?: string; accent?:
 );
 
 const IntelligenceFusion: React.FC = () => {
-  const [patterns, setPatterns] = useState<UnifiedIntelligenceResult[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [patterns, setPatterns] = useState<UnifiedIntelligenceResult[]>(() => {
+    try {
+      const saved = sessionStorage.getItem('saksha_fusion_patterns');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      /* ignore */
+    }
+    return [];
+  });
+
+  const [total, setTotal] = useState<number>(() => {
+    try {
+      const saved = sessionStorage.getItem('saksha_fusion_total');
+      if (saved) return Number(saved);
+    } catch {
+      /* ignore */
+    }
+    return 0;
+  });
+
+  const [loading, setLoading] = useState<boolean>(() => {
+    try {
+      const saved = sessionStorage.getItem('saksha_fusion_patterns');
+      if (saved && JSON.parse(saved).length > 0) return false;
+    } catch {
+      /* ignore */
+    }
+    return true;
+  });
+
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(() => {
+    return sessionStorage.getItem('saksha_fusion_generated_at');
+  });
 
-  const [district, setDistrict] = useState('');
-  const [category, setCategory] = useState('');
-  const [timeWindow, setTimeWindow] = useState(30);
-  const [sensitivity, setSensitivity] = useState<SensitivityKey>('balanced');
+  const [district, setDistrict] = useState<string>(() => sessionStorage.getItem('saksha_fusion_district') || '');
+  const [category, setCategory] = useState<string>(() => sessionStorage.getItem('saksha_fusion_category') || '');
+  const [timeWindow, setTimeWindow] = useState<number>(() => Number(sessionStorage.getItem('saksha_fusion_timewindow')) || 30);
+  const [sensitivity, setSensitivity] = useState<SensitivityKey>(() => {
+    const s = sessionStorage.getItem('saksha_fusion_sensitivity');
+    return s === 'broad' || s === 'strict' || s === 'balanced' ? s : 'balanced';
+  });
   const [categories, setCategories] = useState<string[]>(CATEGORIES_FALLBACK);
 
   const [runs, setRuns] = useState<IntelligenceHistoryItem[]>([]);
@@ -145,7 +180,8 @@ const IntelligenceFusion: React.FC = () => {
   }, []);
 
   const loadPatterns = useCallback(async () => {
-    setLoading(true);
+    // Only show full loading spinner if we don't already have patterns in memory/cache
+    setLoading((prev) => (patterns.length === 0 ? true : prev));
     setError(null);
     try {
       const res = await getEmergingPatterns({
@@ -156,22 +192,69 @@ const IntelligenceFusion: React.FC = () => {
         min_risk: sens.min_risk,
         min_confidence: sens.min_confidence,
       });
-      setPatterns(res.patterns || []);
-      setTotal(res.total ?? 0);
-      setGeneratedAt(res.generated_at || null);
+      const newPatterns = res.patterns || [];
+      if (newPatterns.length > 0) {
+        setPatterns(newPatterns);
+        setTotal(res.total ?? newPatterns.length);
+        setGeneratedAt(res.generated_at || null);
+        try {
+          sessionStorage.setItem('saksha_fusion_patterns', JSON.stringify(newPatterns));
+          sessionStorage.setItem('saksha_fusion_total', String(res.total ?? newPatterns.length));
+          if (res.generated_at) sessionStorage.setItem('saksha_fusion_generated_at', res.generated_at);
+        } catch {
+          /* ignore */
+        }
+      } else if (patterns.length === 0) {
+        setPatterns([]);
+        setTotal(0);
+      }
     } catch (e: any) {
-      setError(e?.message || 'Failed to detect emerging patterns');
-      setPatterns([]);
-      setTotal(0);
+      // Don't wipe out existing cached patterns on transient error
+      if (patterns.length === 0) {
+        setError(e?.message || 'Failed to detect emerging patterns');
+      }
     } finally {
       setLoading(false);
     }
   }, [district, category, timeWindow, sens.min_signals, sens.min_risk, sens.min_confidence]);
 
+  // On mount: hydrate from cache if available, only fetch if cache is empty
   useEffect(() => {
-    loadPatterns();
+    const saved = sessionStorage.getItem('saksha_fusion_patterns');
+    let hasValidCache = false;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          hasValidCache = true;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!hasValidCache) {
+      loadPatterns();
+    }
     loadRuns();
-  }, [loadPatterns, loadRuns]);
+  }, []);
+
+  // Filter change observer: save to sessionStorage and reload patterns
+  const isInitialFilterMount = React.useRef(true);
+  useEffect(() => {
+    if (isInitialFilterMount.current) {
+      isInitialFilterMount.current = false;
+      return;
+    }
+    try {
+      sessionStorage.setItem('saksha_fusion_district', district);
+      sessionStorage.setItem('saksha_fusion_category', category);
+      sessionStorage.setItem('saksha_fusion_timewindow', String(timeWindow));
+      sessionStorage.setItem('saksha_fusion_sensitivity', sensitivity);
+    } catch {
+      /* ignore */
+    }
+    loadPatterns();
+  }, [district, category, timeWindow, sensitivity, loadPatterns]);
 
   const runFusion = async () => {
     setRunning(true);
@@ -187,9 +270,17 @@ const IntelligenceFusion: React.FC = () => {
           current_window_days: timeWindow,
         },
       });
-      setPatterns(res.patterns || []);
+      const newPatterns = res.patterns || [];
+      setPatterns(newPatterns);
       setTotal(res.total ?? 0);
       setGeneratedAt(res.generated_at || null);
+      try {
+        sessionStorage.setItem('saksha_fusion_patterns', JSON.stringify(newPatterns));
+        sessionStorage.setItem('saksha_fusion_total', String(res.total ?? 0));
+        if (res.generated_at) sessionStorage.setItem('saksha_fusion_generated_at', res.generated_at);
+      } catch {
+        /* ignore */
+      }
       await loadRuns();
     } catch (e: any) {
       setError(e?.message || 'Fusion run failed');

@@ -247,7 +247,6 @@ def _migrate_report_lifecycle_columns():
     except Exception as exc:
         logger.warning(f"Report lifecycle migration skipped: {exc}")
 
-
 def _migrate_user_lockout_columns():
     """Round-2 security: brute-force lockout columns on users (idempotent DDL)."""
     try:
@@ -272,6 +271,46 @@ def _migrate_user_lockout_columns():
                     logger.info("Users table migration complete (lockout columns added)")
     except Exception as exc:
         logger.warning(f"Users lockout column migration skipped: {exc}")
+
+
+def _migrate_intervention_workflow_columns():
+    """Add workflow stage, recommendation, simulation, and outcome columns to interventions (idempotent DDL)."""
+    columns = [
+        ("workflow_stage", "VARCHAR(30) DEFAULT 'draft'"),
+        ("intelligence_id", "VARCHAR(100)"),
+        ("pattern_type", "VARCHAR(100)"),
+        ("affected_h3_cells", "TEXT"),
+        ("relevant_time_period", "VARCHAR(100)"),
+        ("reason", "TEXT"),
+        ("supporting_intelligence", "TEXT"),
+        ("estimated_coverage", "FLOAT"),
+        ("assumptions", "TEXT"),
+        ("simulation_data", "TEXT"),
+        ("supervisor_notes", "TEXT"),
+        ("subsequent_crime_count", "INTEGER"),
+        ("pattern_persisted", "VARCHAR(50)"),
+        ("observed_outcome", "TEXT"),
+        ("review_notes", "TEXT"),
+    ]
+    try:
+        with engine.connect() as conn:
+            inspector = inspect(conn)
+            tables = inspector.get_table_names()
+            if "interventions" in tables:
+                existing = {c["name"] for c in inspector.get_columns("interventions")}
+                changed = False
+                for col_name, col_type in columns:
+                    if col_name not in existing:
+                        conn.execute(text(f"ALTER TABLE interventions ADD COLUMN {col_name} {col_type}"))
+                        changed = True
+                if changed:
+                    conn.commit()
+                    logger.info("Interventions workflow columns migration complete")
+    except Exception as exc:
+        logger.warning(f"Interventions workflow migration skipped: {exc}")
+
+
+
 
 
 def _prewarm_models() -> None:
@@ -433,6 +472,7 @@ async def lifespan(app: FastAPI):
                 _ensure_realtime_indexes()
                 _migrate_user_lockout_columns()
                 _migrate_report_lifecycle_columns()
+                _migrate_intervention_workflow_columns()
                 with engine.connect():
                     logger.info("PostgreSQL connection OK")
                 _db_connected = True

@@ -2478,9 +2478,17 @@ export async function getVulnerabilityIndex() {
   return { count: raw.total_assessed, entries: raw.results };
 }
 
-// ── Interventions (issue #139 M7) ───────────────────────────────────────────
+// ── Interventions (issue #139 M7 & Sentinel Workflow) ──────────────────────
 
 export type InterventionStatus = 'planned' | 'active' | 'completed' | 'suspended';
+
+export type InterventionWorkflowStage =
+  | 'draft'
+  | 'supervisor_review'
+  | 'approved'
+  | 'deployed'
+  | 'outcome_review'
+  | 'completed';
 
 export interface InterventionRecord {
   id: string;
@@ -2491,9 +2499,24 @@ export interface InterventionRecord {
   started_at: string;
   ended_at: string | null;
   status: InterventionStatus;
-  target_category: string | null;
-  created_by_name: string | null;
-  notes: string | null;
+  workflow_stage?: InterventionWorkflowStage;
+  intelligence_id?: string | null;
+  pattern_type?: string | null;
+  affected_h3_cells?: string | null;
+  relevant_time_period?: string | null;
+  reason?: string | null;
+  supporting_intelligence?: string | null;
+  estimated_coverage?: number | null;
+  assumptions?: string | null;
+  simulation_data?: string | null;
+  supervisor_notes?: string | null;
+  subsequent_crime_count?: number | null;
+  pattern_persisted?: string | null;
+  observed_outcome?: string | null;
+  review_notes?: string | null;
+  target_category?: string | null;
+  created_by_name?: string | null;
+  notes?: string | null;
   created_at: string;
 }
 
@@ -2514,11 +2537,37 @@ export interface InterventionCreateInput {
   intervention_type: string;
   title: string;
   description?: string;
-  started_at: string;
+  started_at?: string;
   ended_at?: string;
   status?: InterventionStatus;
+  workflow_stage?: InterventionWorkflowStage;
+  intelligence_id?: string | null;
+  pattern_type?: string | null;
+  affected_h3_cells?: string | null;
+  relevant_time_period?: string | null;
+  reason?: string | null;
+  supporting_intelligence?: string | null;
+  estimated_coverage?: number | null;
+  assumptions?: string | null;
+  simulation_data?: string | null;
+  supervisor_notes?: string | null;
+  subsequent_crime_count?: number | null;
+  pattern_persisted?: string | null;
+  observed_outcome?: string | null;
+  review_notes?: string | null;
   target_category?: string;
   notes?: string;
+}
+
+export interface AdvanceStageInput {
+  target_stage: InterventionWorkflowStage;
+  notes?: string;
+  outcome_data?: {
+    subsequent_crime_count?: number;
+    pattern_persisted?: string;
+    observed_outcome?: string;
+    review_notes?: string;
+  };
 }
 
 export interface InterventionListResponse {
@@ -2530,10 +2579,17 @@ export interface InterventionListResponse {
   interventions?: InterventionRecord[];
 }
 
-export async function listInterventions(params: { district?: string; status?: string } = {}) {
+export async function listInterventions(params: {
+  district?: string;
+  status?: string;
+  workflow_stage?: string;
+  intelligence_id?: string;
+} = {}) {
   const search = new URLSearchParams();
   if (params.district) search.set('district', params.district);
   if (params.status) search.set('status', params.status);
+  if (params.workflow_stage) search.set('workflow_stage', params.workflow_stage);
+  if (params.intelligence_id) search.set('intelligence_id', params.intelligence_id);
   const qs = search.toString();
   return apiRequest<InterventionListResponse>(
     `/interventions${qs ? `?${qs}` : ''}`
@@ -2557,6 +2613,14 @@ export async function updateIntervention(id: string, patch: Partial<Intervention
     body: JSON.stringify(patch),
   });
 }
+
+export async function advanceInterventionStage(id: string, input: AdvanceStageInput) {
+  return apiRequest<InterventionRecord>(`/interventions/${id}/advance-stage`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 
 // ── Semantic MO Search + NER (issue #139 M6) ────────────────────────────────
 

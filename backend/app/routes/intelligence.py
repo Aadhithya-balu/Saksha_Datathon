@@ -471,6 +471,7 @@ def dispatch_intelligence_action(
     current_user: User = Depends(get_current_user),
 ):
     """Dispatch a recommended action from fused intelligence directly into the interventions prevention loop."""
+    import json
     from datetime import datetime, timezone
     from app.models.intervention import Intervention
 
@@ -487,13 +488,29 @@ def dispatch_intelligence_action(
     title = (payload.title if payload and payload.title else None) or sugg.get("title") or rec.get("title") or f"Action on {matching['pattern_type']}"
     description = (payload.description if payload and payload.description else None) or sugg.get("description") or rec.get("description")
 
+    # Recommendation formulation fields from intelligence
+    h3_cells = matching.get("affected_h3_cells") or []
+    c = matching.get("change_from_baseline") or {}
+    pct = c.get("change_percentage", 0)
+    reason = matching.get("explanation") or f"Detected {matching.get('pattern_type')} with {pct:+.1f}% change from historical baseline."
+    time_window = matching.get("time_window") or "Next 14-30 days"
+
     intervention = Intervention(
         district=district,
         intervention_type=intervention_type,
         title=title,
         description=description,
         started_at=datetime.now(timezone.utc),
-        status="active",
+        status="planned",
+        workflow_stage="draft",
+        intelligence_id=intelligence_id,
+        pattern_type=matching.get("pattern_type"),
+        affected_h3_cells=json.dumps(h3_cells) if h3_cells else None,
+        relevant_time_period=time_window,
+        reason=reason,
+        supporting_intelligence=json.dumps(matching.get("supporting_signals") or []),
+        estimated_coverage=80.0,
+        assumptions="Operational deployment assumes standard sector squad availability and typical reporting fidelity.",
         created_by_id=current_user.id,
     )
     db.add(intervention)
@@ -502,8 +519,8 @@ def dispatch_intelligence_action(
     log_action(
         db, current_user, "INTELLIGENCE_ACTION_DISPATCH", "Intervention",
         resource_id=str(intervention.id),
-        details=f"Dispatched intervention '{title}' from intelligence {intelligence_id}",
-        metadata_json=f'{{"intelligence_id":"{intelligence_id}","intervention_id":"{intervention.id}"}}',
+        details=f"Created draft intervention '{title}' from intelligence {intelligence_id} (pending human approval)",
+        metadata_json=f'{{"intelligence_id":"{intelligence_id}","intervention_id":"{intervention.id}","workflow_stage":"draft"}}',
     )
     db.commit()
     db.refresh(intervention)
@@ -516,6 +533,7 @@ def dispatch_intelligence_action(
         "intervention_type": intervention.intervention_type,
         "title": intervention.title,
         "status": intervention.status,
+        "workflow_stage": intervention.workflow_stage,
     }
 
 
