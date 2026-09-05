@@ -1741,6 +1741,20 @@ def detect_emerging_patterns(
         else:
             baseline_cases[key].append(case)
 
+    # Precompute shared dataset-level analytics once across clusters
+    from app.services import analytics_service, mo_pattern_service
+    shared_anomalies: dict[str, Any] | None = None
+    try:
+        shared_anomalies = analytics_service.anomalies(db)
+    except Exception:
+        shared_anomalies = None
+
+    shared_mo_patterns: dict[str, Any] | None = None
+    try:
+        shared_mo_patterns = mo_pattern_service.detect_recurring_mo_patterns(db, min_support=2, max_patterns=10)
+    except Exception:
+        shared_mo_patterns = None
+
     results: list[dict[str, Any]] = []
 
     # Evaluate each active cluster
@@ -1759,6 +1773,8 @@ def detect_emerging_patterns(
             baseline_cases=base_list,
             thresholds=thresholds,
             now=now,
+            cached_anomalies=shared_anomalies,
+            cached_mo_patterns=shared_mo_patterns,
         )
         if pattern_result is not None:
             results.append(pattern_result)
@@ -1777,6 +1793,8 @@ def fuse_emerging_intelligence(
     baseline_cases: list[CrimeCase],
     thresholds: FusionThresholds,
     now: datetime,
+    cached_anomalies: dict[str, Any] | None = None,
+    cached_mo_patterns: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Fuse multi-source evidence for a specific (district, category) cluster into a unified intelligence result."""
     from app.services import analytics_service, mo_pattern_service
@@ -1822,7 +1840,7 @@ def fuse_emerging_intelligence(
     anomaly_reasons: list[str] = []
     anomaly_cases: list[str] = []
     try:
-        anom_res = analytics_service.anomalies(db)
+        anom_res = cached_anomalies if cached_anomalies is not None else analytics_service.anomalies(db)
         cur_case_uuids = {str(c.id) for c in current_cases}
         cur_fir_numbers = {
             fir.fir_number
@@ -1967,7 +1985,7 @@ def fuse_emerging_intelligence(
                 tag_counter[t] += 1
         shared_mo_tags = {t for t, cnt in tag_counter.items() if cnt >= 2}
 
-        mo_patterns_data = mo_pattern_service.detect_recurring_mo_patterns(db, min_support=2, max_patterns=10)
+        mo_patterns_data = cached_mo_patterns if cached_mo_patterns is not None else mo_pattern_service.detect_recurring_mo_patterns(db, min_support=2, max_patterns=10)
         matching_mo = [
             p for p in mo_patterns_data.get("patterns", [])
             if district in p.get("districts", []) or category == p.get("dominant_category")
