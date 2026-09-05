@@ -259,7 +259,7 @@ export interface NetworkEdge {
   first_seen?: string | null;
   last_seen?: string | null;
   provenance?: 'DIRECT_DATABASE' | 'ANALYTICAL_INFERENCE' | 'DEMO_SEED' | 'MIXED' | 'UNKNOWN' | string;
-  verification_status?: 'VERIFIED' | 'POTENTIAL' | 'UNVERIFIED' | 'DEMO' | string;
+  verification_status?: 'VERIFIED' | 'POTENTIAL' | 'UNVERIFIED' | 'DEMO' | 'RESTRICTED' | string;
   relationship_type?: string;
   evidence?: RelationshipEvidenceItem[];
   confidence?: number | null;
@@ -1283,6 +1283,7 @@ export interface AIRecommendation {
 export interface CrimeCaseDetailRecord extends CrimeCaseRecord {
   priority: string;
   progress: number;
+  is_locked: boolean;
   assigned_officer_id: string | null;
   assigned_officer?: {
     id: string;
@@ -3621,6 +3622,154 @@ export async function dispatchIntelligenceAction(
     method: 'POST',
     body: JSON.stringify(payload || {}),
   });
+}
+
+// ── Pattern-to-Network Investigation & Evidence Intelligence (issue #250) ───
+
+export type VerificationState = 'VERIFIED' | 'POTENTIAL' | 'DEMO' | 'RESTRICTED' | 'UNVERIFIED';
+
+export interface IntelligenceInvestigationFIR {
+  id: string;
+  fir_number: string;
+  complainant_name: string;
+  complainant_contact?: string | null;
+  sections?: string | null;
+  status: string;
+  filed_at?: string | null;
+  narrative?: string | null;
+  case_id?: string | null;
+  case_number?: string | null;
+  verification_status: VerificationState;
+  provenance?: string;
+  is_demo_derived: boolean;
+  is_restricted: boolean;
+  evidence_count: number;
+}
+
+export interface IntelligenceInvestigationCase {
+  id: string;
+  case_number: string;
+  category?: string | null;
+  district?: string | null;
+  station?: string | null;
+  status: string;
+  priority?: string | null;
+  progress?: number | null;
+  occurred_at?: string | null;
+  description?: string | null;
+  mo_tags?: string | null;
+  fir_count: number;
+  evidence_count: number;
+  verification_status: VerificationState;
+  provenance?: string;
+  is_demo_derived: boolean;
+  is_restricted: boolean;
+}
+
+export interface IntelligenceInvestigationEntity {
+  id: string;
+  node_id: string;
+  entity_type: 'criminal' | 'victim';
+  name: string;
+  role?: string | null;
+  status?: string | null;
+  aliases?: string | null;
+  mo_summary?: string | null;
+  gang_affiliation?: string | null;
+  is_demo_derived: boolean;
+  provenance?: string;
+  verification_status: VerificationState;
+}
+
+export interface IntelligenceInvestigationMOMatch {
+  criminal_id?: string;
+  case_id?: string;
+  full_name?: string;
+  case_number?: string;
+  status?: string;
+  similarity_score: number;
+  similarity_percent: number;
+  match_level?: string;
+  confidence?: number | null;
+  is_confirmed_relationship?: boolean;
+  relationship_label?: string;
+  verification_status: VerificationState;
+  matching_factors?: string[];
+  divergent_factors?: string[];
+}
+
+export interface IntelligenceInvestigationMoMatches {
+  shared_tags: string[];
+  reference_case_id?: string | null;
+  suspects: IntelligenceInvestigationMOMatch[];
+  matching_cases: IntelligenceInvestigationMOMatch[];
+  method: string;
+}
+
+export interface IntelligenceInvestigationEvidence {
+  id: string;
+  title: string;
+  description?: string | null;
+  evidence_type: string;
+  status: string;
+  case_id: string;
+  case_number?: string | null;
+  fir_number?: string | null;
+  verification_status: VerificationState;
+  provenance?: string;
+  is_demo_derived: boolean;
+  is_restricted: boolean;
+  masked?: boolean;
+}
+
+export interface WhyThisInsight {
+  summary: string;
+  signals: Array<{ signal_type: string; description: string; status: string }>;
+  methodology: {
+    ml_status: string;
+    model_name: string;
+    model_version: string;
+    analytics_available: Record<string, string>;
+  };
+  data_sources: string[];
+  limitations: string[];
+  safety_note: string;
+}
+
+export interface IntelligenceInvestigationResponse {
+  intelligence_id: string;
+  pattern_type: string;
+  location: {
+    district?: string | null;
+    stations: string[];
+    latitude?: number | null;
+    longitude?: number | null;
+  };
+  risk_score?: number | null;
+  confidence?: number | null;
+  generated_at?: string | null;
+  firs: IntelligenceInvestigationFIR[];
+  cases: IntelligenceInvestigationCase[];
+  entities: IntelligenceInvestigationEntity[];
+  mo_matches: IntelligenceInvestigationMoMatches;
+  network: NetworkResponse;
+  evidence: IntelligenceInvestigationEvidence[];
+  why_this_insight: WhyThisInsight;
+  verification_summary: Record<VerificationState, number> | Record<string, number>;
+  access: { has_restricted_access: boolean };
+}
+
+export async function investigateIntelligencePattern(
+  intelligenceId: string,
+  pattern: UnifiedIntelligenceResult
+): Promise<IntelligenceInvestigationResponse> {
+  return apiRequest<IntelligenceInvestigationResponse>(
+    `/intelligence/emerging-patterns/${intelligenceId}/investigate`,
+    {
+      method: 'POST',
+      body: JSON.stringify(pattern),
+    }
+  );
 }
 
 // ── Face Recognition (Issue #228 — isolated DEMO enhancement) ──────────────

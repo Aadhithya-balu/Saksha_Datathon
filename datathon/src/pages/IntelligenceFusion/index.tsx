@@ -22,6 +22,7 @@ import {
   type UnifiedIntelligenceResult,
 } from '../../services/api';
 import IntelligencePatternsFeed from '../../components/intelligence/IntelligencePatternsFeed';
+import IntelligenceInvestigationDrawer from '../../components/intelligence/IntelligenceInvestigationDrawer';
 
 const KARNATAKA_DISTRICTS = [
   'Bengaluru Urban',
@@ -150,6 +151,7 @@ const IntelligenceFusion: React.FC = () => {
   const [categories, setCategories] = useState<string[]>(CATEGORIES_FALLBACK);
 
   const [runs, setRuns] = useState<IntelligenceHistoryItem[]>([]);
+  const [investigatePattern, setInvestigatePattern] = useState<UnifiedIntelligenceResult | null>(null);
 
   const sens = SENSITIVITY[sensitivity];
 
@@ -433,6 +435,7 @@ const IntelligenceFusion: React.FC = () => {
             running={running}
             error={error}
             onRunFusion={runFusion}
+            onInvestigate={setInvestigatePattern}
           />
         </div>
 
@@ -545,6 +548,12 @@ const IntelligenceFusion: React.FC = () => {
           <ShieldAlert className="w-3.5 h-3.5 shrink-0" /> {error}
         </div>
       )}
+
+      <IntelligenceInvestigationDrawer
+        open={investigatePattern !== null}
+        pattern={investigatePattern}
+        onClose={() => setInvestigatePattern(null)}
+      />
     </div>
   );
 };

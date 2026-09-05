@@ -537,6 +537,57 @@ def dispatch_intelligence_action(
     }
 
 
+@router.post(
+    "/emerging-patterns/{intelligence_id}/investigate",
+    dependencies=[Depends(require_roles(*ALL_ROLES))],
+)
+def investigate_intelligence_pattern(
+    intelligence_id: str,
+    payload: UnifiedIntelligenceResult,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Compose a provenance-aware investigation view for a fused intelligence pattern.
+
+    Wire: Intelligence Alert -> Related FIRs -> MO/Pattern Matches -> Network Graph
+    -> Evidence Drawer -> Why This Insight? (#250).
+
+    The client-supplied ``UnifiedIntelligenceResult`` is treated as the (already
+    verified) #249 contract and its ``related_fir_ids`` (FIR numbers) and
+    ``related_entity_ids`` are resolved against the operational database.
+    Verification states reuse the shared vocabulary — VERIFIED (solid),
+    POTENTIAL (dashed), DEMO (dotted), RESTRICTED (locked) — and RESTRICTED
+    evidence is masked for non-reviewer roles server-side.
+    """
+    if payload.intelligence_id != intelligence_id:
+        raise HTTPException(
+            status_code=400,
+            detail="intelligence_id in path must match the intelligence payload",
+        )
+
+    from app.services.intelligence_investigation_service import build_intelligence_investigation
+
+    try:
+        view = build_intelligence_investigation(
+            db, payload.model_dump(mode="json"), current_user
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Investigation composition error: {exc}")
+
+    log_action(
+        db, current_user, "INTELLIGENCE_INVESTIGATE", "IntelligenceInvestigation",
+        resource_id=intelligence_id,
+        details=f"Investigation view composed for {payload.pattern_type} ({payload.location.get('district')})",
+        metadata_json=(
+            f'{{"intelligence_id":"{intelligence_id}",'
+            f'"related_firs":{len(view.get("firs", []))},'
+            f'"evidence":{len(view.get("evidence", []))}}}'
+        ),
+    )
+    db.commit()
+    return view
+
+
 def _record_fusion_run(
     db: Session,
     user: User,
