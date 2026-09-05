@@ -14,7 +14,14 @@ from app.ai.face import repository as face_repo
 from app.ai.face import zoho_adapter
 from app.ai.face import synthetic as face_synthetic
 from app.auth.dependencies import get_current_user
-from app.auth.rbac import ALL_ROLES, require_roles
+from app.auth.rbac import (
+    ROLE_ADMIN,
+    ROLE_CRIME_ANALYST,
+    ROLE_FORENSIC,
+    ROLE_INSPECTOR,
+    ROLE_INVESTIGATOR,
+    require_roles,
+)
 from app.core.config import settings
 from app.database.postgres import get_db
 from app.models.user import User
@@ -28,10 +35,14 @@ from app.schemas.face_recognition import (
 from app.services import face_recognition_service
 from app.services.face_recognition_service import feature_enabled
 
+# Face identification of persons of interest is an operational/forensic action
+# (least privilege): analysts, investigators, inspectors and forensic staff may
+# run it. A pure VIEWER observing dashboards cannot scan faces. The demo gallery
+# (synthetic images only) is served separately, unauthenticated.
 router = APIRouter(
     prefix="/face-recognition",
-    tags=["Face Recognition (Demo)"],
-    dependencies=[Depends(require_roles(*ALL_ROLES))],
+    tags=["Face Recognition"],
+    dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_CRIME_ANALYST, ROLE_INVESTIGATOR, ROLE_INSPECTOR, ROLE_FORENSIC))],
 )
 
 
@@ -59,6 +70,11 @@ async def recognize(
         face_repo.ensure_seeded(db)
     except face_repo.FaceRepositoryError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    # Release the pooled DB connection before the heavy detection/analysis work
+    # (Zoho network call, image decoding, embedding math). The recognition
+    # pipeline itself is DB-independent — matching runs off the on-disk DEMO
+    # dataset — so holding a pool slot here would starve other requests.
+    db.close()
     try:
         return face_recognition_service.recognize(file)
     except face_recognition_service.FaceProcessingError as exc:
@@ -80,6 +96,7 @@ async def recognize_sample(
     data = face_recognition_service.sample_bytes(image_ref)
     if data is None:
         raise HTTPException(status_code=404, detail="Sample image not found.")
+    db.close()
     result = face_recognition_service.recognize_bytes(data)
     result["queried_sample"] = image_ref
     return result
@@ -103,6 +120,7 @@ async def ai_identify(
         face_repo.ensure_seeded(db)
     except face_repo.FaceRepositoryError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    db.close()
     try:
         result = face_recognition_service.recognize(file)
     except face_recognition_service.FaceProcessingError as exc:

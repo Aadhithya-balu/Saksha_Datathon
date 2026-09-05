@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Search, ArrowLeft, Layers, Activity } from 'lucide-react';
-import { getInvestigation, getCrimeCases } from '../../services/api';
-import type { InvestigationData, CrimeCaseDetailRecord } from '../../services/api';
+import { Search, ArrowLeft, Layers, Activity, Users, Shield, Briefcase, FileText, Brain } from 'lucide-react';
+import { getInvestigation, getCrimeCases, searchInvestigation } from '../../services/api';
+import type {
+  InvestigationData,
+  CrimeCaseDetailRecord,
+  InvestigationGroupedSearchResponse,
+  InvestigationSearchItem,
+} from '../../services/api';
 import InvestigationDashboard from '../../components/investigation/InvestigationDashboard';
 import CaseProgress from '../../components/investigation/CaseProgress';
 import InvestigationTimeline from '../../components/investigation/InvestigationTimeline';
@@ -15,6 +20,21 @@ import { CardSkeleton } from '../../components/ui/Skeleton';
 
 type ViewState = 'list' | 'detail';
 
+const SEARCH_GROUPS: { key: keyof Pick<InvestigationGroupedSearchResponse, 'persons' | 'victims' | 'cases' | 'firs' | 'mo_matches'>; label: string; icon: React.ReactNode; tone: string }[] = [
+  { key: 'persons', label: 'Criminals / Suspects', icon: <Users className="w-3.5 h-3.5" />, tone: '#1E6FD9' },
+  { key: 'victims', label: 'Victims / Witnesses', icon: <Shield className="w-3.5 h-3.5" />, tone: '#22c55e' },
+  { key: 'cases', label: 'Cases', icon: <Briefcase className="w-3.5 h-3.5" />, tone: '#7c5cff' },
+  { key: 'firs', label: 'FIRs', icon: <FileText className="w-3.5 h-3.5" />, tone: '#14b8a6' },
+  { key: 'mo_matches', label: 'MO Matches', icon: <Brain className="w-3.5 h-3.5" />, tone: '#a855f7' },
+];
+
+const navigateTo = (tab: string, targetId?: string) => {
+  window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab, targetId } }));
+};
+
+const isUuidish = (v?: string | null): v is string =>
+  !!v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
 const InvestigationPage: React.FC = () => {
   const [viewState, setViewState] = useState<ViewState>('list');
   const [cases, setCases] = useState<CrimeCaseDetailRecord[]>([]);
@@ -25,6 +45,9 @@ const InvestigationPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [fedResults, setFedResults] = useState<InvestigationGroupedSearchResponse | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   // Check if returning from Criminals / other tab with a target case ID
   useEffect(() => {
@@ -52,7 +75,19 @@ const InvestigationPage: React.FC = () => {
   // Debounce search so we don't fire a query (and hammer the DB pool) per keystroke.
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      loadCases();
+      const term = searchQuery.trim();
+      if (term) {
+        setSearching(true);
+        setFedResults(null);
+        setSearchError(null);
+        searchInvestigation(term, 15)
+          .then((res) => setFedResults(res))
+          .catch((err: any) => setSearchError(err?.message || 'Failed to search records'))
+          .finally(() => setSearching(false));
+      } else {
+        setFedResults(null);
+        loadCases();
+      }
     }, 400);
     return () => window.clearTimeout(timer);
   }, [searchQuery, statusFilter]);
@@ -79,6 +114,95 @@ const InvestigationPage: React.FC = () => {
     setSelectedCaseId(null);
   };
 
+  const openFederatedItem = (item: InvestigationSearchItem) => {
+    if (item.type === 'case') {
+      const caseId = item.meta?.case_id || item.id.replace('case-', '');
+      if (isUuidish(caseId)) loadInvestigation(caseId);
+    } else if (item.type === 'fir') {
+      const caseId = item.meta?.case_id;
+      if (isUuidish(caseId)) loadInvestigation(caseId);
+      else navigateTo('fir');
+    } else if (item.type === 'person') {
+      const id = item.meta?.criminal_id || item.id.replace('criminal-', '');
+      navigateTo('criminals', id);
+    } else if (item.type === 'victim') {
+      const id = item.meta?.victim_id || item.id.replace('victim-', '');
+      navigateTo('victims', id);
+    } else if (item.type === 'mo') {
+      const docId = String(item.meta?.doc_id || item.id || '').replace(/^(criminal|crime_case|fir)-/, '');
+      if (item.status === 'criminal') navigateTo('criminals', docId);
+      else if (item.status === 'crime_case' && isUuidish(docId)) loadInvestigation(docId);
+      else if (item.status === 'fir') navigateTo('fir');
+    }
+  };
+
+  const renderFederatedResults = () => {
+    if (searching) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}
+        </div>
+      );
+    }
+    if (searchError) {
+      return (
+        <div className="p-10 text-center text-[10px] text-amber-400 uppercase border border-dashed border-amber-500/30 rounded-lg">
+          {searchError}
+        </div>
+      );
+    }
+    if (!fedResults || fedResults.total === 0) {
+      return (
+        <div className="p-12 text-center text-[10px] text-[var(--text-muted)] uppercase border border-dashed border-[var(--border-primary)] rounded-lg">
+          No records found for &ldquo;{searchQuery.trim()}&rdquo;
+          <div className="mt-1 text-[9px] normal-case">Try a person/victim name, FIR, case number or MO description.</div>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        {!fedResults.mo_intelligence && (
+          <div className="px-3 py-2 rounded border border-amber-500/30 bg-amber-500/5 text-[9px] font-mono text-amber-300">
+            MO semantic matches are filtered for your clearance level.
+          </div>
+        )}
+        {SEARCH_GROUPS.map((group) => {
+          const items = fedResults[group.key];
+          if (!items || items.length === 0) return null;
+          return (
+            <div key={group.key} className="rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)]/40 overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[var(--border-primary)]">
+                <span style={{ color: group.tone }}>{group.icon}</span>
+                <span className="text-[8.5px] font-mono font-bold uppercase tracking-wider text-[var(--text-primary)]">{group.label}</span>
+                <span className="ml-auto text-[8px] font-mono text-[var(--text-muted)]">{items.length}</span>
+              </div>
+              <div className="divide-y divide-[var(--border-primary)]/50">
+                {items.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => openFederatedItem(item)}
+                    className="w-full text-left px-3 py-2 hover:bg-[var(--bg-elevated)]/40 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-semibold text-[var(--text-primary)] truncate">{item.name}</span>
+                      {item.status && (
+                        <span className="px-1.5 py-0.5 rounded text-[7px] font-mono uppercase bg-[var(--bg-elevated)] border border-[var(--border-primary)] text-[var(--text-muted)] shrink-0">
+                          {item.status.replace(/_/g, ' ')}
+                        </span>
+                      )}
+                    </div>
+                    {item.subtitle && <div className="text-[8.5px] font-mono text-[var(--text-muted)] truncate">{item.subtitle}</div>}
+                    {item.detail && <div className="text-[9px] text-[var(--text-secondary)] line-clamp-1">{item.detail}</div>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // ── List View ──
   if (viewState === 'list') {
     return (
@@ -102,31 +226,35 @@ const InvestigationPage: React.FC = () => {
           <div className="flex items-center relative flex-1 max-w-md">
             <input
               type="text"
-              placeholder="Search cases by number, description..."
+              placeholder="Search by person, victim, FIR, case number, MO keywords…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-8 pr-3 py-1.5 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] rounded text-[var(--text-primary)] outline-none focus:border-[#1E6FD9] text-[10.5px]"
             />
             <Search className="absolute left-2.5 w-3.5 h-3.5 text-[var(--text-muted)]" />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-1.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-[var(--text-secondary)] outline-none focus:border-[#1E6FD9] cursor-pointer"
-          >
-            <option value="">All Statuses</option>
-            <option value="open">OPEN</option>
-            <option value="assigned">ASSIGNED</option>
-            <option value="investigating">INVESTIGATING</option>
-            <option value="evidence collected">EVIDENCE COLLECTED</option>
-            <option value="charge sheet filed">CHARGE SHEET FILED</option>
-            <option value="closed">CLOSED</option>
-          </select>
+          {!searchQuery.trim() && (
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-1.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-[var(--text-secondary)] outline-none focus:border-[#1E6FD9] cursor-pointer"
+            >
+              <option value="">All Statuses</option>
+              <option value="open">OPEN</option>
+              <option value="assigned">ASSIGNED</option>
+              <option value="investigating">INVESTIGATING</option>
+              <option value="evidence collected">EVIDENCE COLLECTED</option>
+              <option value="charge sheet filed">CHARGE SHEET FILED</option>
+              <option value="closed">CLOSED</option>
+            </select>
+          )}
         </div>
 
         {/* Case List */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {loading ? (
+          {searchQuery.trim() ? (
+            renderFederatedResults()
+          ) : loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <CardSkeleton key={i} />

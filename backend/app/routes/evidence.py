@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Query, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from fpdf import FPDF
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -20,6 +20,7 @@ from app.models.evidence_timeline import EvidenceTimeline
 from app.models.evidence_assignment import EvidenceAssignment
 from app.models.chain_of_custody import ChainOfCustody
 from app.models.evidence_ai_summary import EvidenceAISummary
+from app.models.officer import Officer
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.evidence import (
@@ -64,6 +65,56 @@ def _add_custody_record(
         location="System",
         remarks=remarks,
     ))
+
+
+def _resolve_assignee(db: Session, value: str) -> User | None:
+    """Resolve an assignment target from a UUID, badge number, or officer/user
+    name so officers can assign evidence without memorizing UUIDs.  The value
+    is always matched against the real, authorized user registry before use."""
+    v = (value or "").strip()
+    if not v:
+        return None
+
+    # 1) Direct user UUID (the earlier, low-level form).
+    try:
+        uid = uuid.UUID(v)
+        user = db.query(User).filter(User.id == uid, User.is_active == True).first()
+        if user:
+            return user
+    except (ValueError, AttributeError, TypeError):
+        pass
+
+    # 2) Login username (badge-style, e.g. IO-3921).
+    user = db.query(User).filter(User.username.ilike(v), User.is_active == True).first()
+    if user:
+        return user
+
+    # 3) Officer badge number mapped to its login user.
+    officer = db.query(Officer).filter(func.lower(Officer.badge_number) == v.lower()).first()
+    if officer and officer.user_id:
+        user = db.query(User).filter(User.id == officer.user_id, User.is_active == True).first()
+        if user:
+            return user
+
+    # 4) Full name — exact first, then partial (User then Officer).
+    user = db.query(User).filter(func.lower(User.full_name) == v.lower(), User.is_active == True).first()
+    if user:
+        return user
+    user = db.query(User).filter(User.full_name.ilike(f"%{v}%"), User.is_active == True).first()
+    if user:
+        return user
+    officer = db.query(Officer).filter(func.lower(Officer.name) == v.lower()).first()
+    if officer and officer.user_id:
+        user = db.query(User).filter(User.id == officer.user_id, User.is_active == True).first()
+        if user:
+            return user
+    officer = db.query(Officer).filter(Officer.name.ilike(f"%{v}%")).first()
+    if officer and officer.user_id:
+        user = db.query(User).filter(User.id == officer.user_id, User.is_active == True).first()
+        if user:
+            return user
+
+    return None
 
 @router.get("", response_model=PaginatedResponse[EvidenceOut])
 def list_evidence(
@@ -415,33 +466,42 @@ def download_evidence_file(
 
 @router.post("/{evidence_id}/assign", response_model=EvidenceAssignmentOut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR, ROLE_INSPECTOR, ROLE_CRIME_ANALYST))])
 def assign_evidence(
-    evidence_id: uuid.UUID, 
-    assigned_to: uuid.UUID = Query(...), 
-    db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_user)
+    evidence_id: uuid.UUID,
+    assigned_to: str = Query(..., min_length=1, max_length=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    """Assign evidence to an officer.  ``assigned_to`` may be a user UUID, a
+    badge/username (e.g. ``IO-3921``), or an officer/user name — the system
+    resolves it to the real User internally."""
     evidence = evidence_crud.get(db, evidence_id)
-    assignee = db.query(User).filter(User.id == assigned_to, User.is_active == True).first()
+    assignee = _resolve_assignee(db, assigned_to)
     if not assignee:
-        raise HTTPException(status_code=404, detail="Assigned user not found or inactive.")
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "No active officer/user found for that value. Try a badge number "
+                "(e.g. IO-3921), user UUID, or full name."
+            ),
+        )
     
     assignment = EvidenceAssignment(
         evidence_id=evidence_id,
         assigned_by=current_user.id,
-        assigned_to=assigned_to
+        assigned_to=assignee.id
     )
     db.add(assignment)
     
     custody = ChainOfCustody(
         evidence_id=evidence_id,
         from_user=current_user.id,
-        to_user=assigned_to,
+        to_user=assignee.id,
         action="Assigned to Forensic/Investigator",
         location="System"
     )
     db.add(custody)
     
-    evidence.assigned_to = assigned_to
+    evidence.assigned_to = assignee.id
     evidence.status = "Assigned"
     
     db.commit()

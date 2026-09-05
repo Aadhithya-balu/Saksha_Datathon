@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  AlertTriangle,
   ArrowUpRight,
   ChevronDown,
   Clock,
@@ -8,7 +7,6 @@ import {
   FileSearch,
   HelpCircle,
   Hexagon,
-  Layers,
   MapPin,
   ShieldAlert,
   Sparkles,
@@ -80,7 +78,7 @@ export const SentinelAlertCard: React.FC<SentinelAlertCardProps> = ({
         : pattern.forecast.trend === 'decreasing'
         ? 'Decreasing'
         : 'Steady';
-    const periodWord = pattern.forecast.period ? pattern.forecast.period.replace(/_/g, ' ') : 'next 14 days';
+    const periodWord = 'next 14 days';
     forecastDisplay = `${trendWord} — ${periodWord}`;
   } else if (riskNum >= 70) {
     forecastDisplay = 'Elevated — next 14 days';

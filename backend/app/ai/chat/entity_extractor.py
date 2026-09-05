@@ -72,11 +72,72 @@ def _fuzzy_match(text: str, candidates: list[str]) -> str | None:
     return None
 
 
+# Tokens that must never form part of an extracted person name.  Stopping at
+# these prevents question tails ("What is his status?") or lead-in fillers
+# ("the criminal") from polluting the captured name.
+_NAME_STOP_WORDS = {
+    "the", "a", "an", "of", "for", "on", "in", "at", "to", "with", "about",
+    "who", "what", "when", "where", "how", "which", "why",
+    "is", "are", "was", "were", "does", "do", "did", "has", "have", "had",
+    "this", "that", "these", "those", "his", "her", "their", "its", "your", "our",
+    "criminal", "criminals", "suspect", "suspects", "accused", "victim", "victims",
+    "officer", "offender", "offenders", "case", "fir", "record", "records",
+    "status", "detail", "details", "profile", "history", "background", "crime", "crimes",
+    "connected", "linked", "involved", "involving", "regarding", "named", "called",
+    "tell", "me", "show", "find", "search", "get", "list", "any", "all",
+}
+
+
+def _clean_candidate_name(raw: str) -> str | None:
+    """Normalise a raw captured name fragment into a clean person name.
+
+    Drops lead-in fillers, cuts at wh-question/verb tails and IDs, requires
+    alphabetic name-like tokens, and caps the length at 3 words.
+    """
+    if not raw:
+        return None
+    kept: list[str] = []
+    for token in re.split(r"\s+", raw.strip()):
+        clean = token.rstrip(".,;:!?")
+        if not clean:
+            continue
+        if re.match(r"CR-\d{4}-", clean, re.I) or clean.startswith("FIR"):
+            continue
+        if re.match(r"^\d", clean):
+            continue
+        if clean.lower() in _NAME_STOP_WORDS:
+            if kept:
+                break
+            continue
+        if not re.match(r"^[A-Za-z][A-Za-z.'\-]*$", clean):
+            if kept:
+                break
+            continue
+        if clean.endswith("'s") or clean.endswith("'S"):
+            clean = clean[:-2]
+        kept.append(clean)
+        if len(kept) >= 3:
+            break
+    if not kept:
+        return None
+    return " ".join(kept)
+
+
 class EntityExtractor:
     """Extracts structured entities from natural language crime queries."""
 
     _CASE_RE = re.compile(r"CR-\d{4}-[A-Z]{2,4}-\d+", re.I)
-    _FIR_RE = re.compile(r"(?:FIR[-\s]*)?(\d{3,4}/[A-Z]{0,4}/?\d{3,4})", re.I)
+    # FIR identifiers come in several real formats in the Saksha database:
+    #   FIR-045/BNG/2026    FIR-411/RANEBENNUR/2026   FIR-NXT-001/2026
+    #   FIR 204/BLG/2026    FIR-789/MYS/2026         FIR 2026/104 (year/ordinal)
+    _FIR_RE = re.compile(
+        r"(?:FIR[-\s]*:?\s*)?"
+        r"("
+        r"[A-Z0-9]{1,16}(?:-[A-Z0-9]+)?"
+        r"(?:/[A-Z0-9]{1,20}){1,2}"
+        r")",
+        re.I,
+    )
     _FIR_PREFIX_RE = re.compile(r"\bFIR\b", re.I)
     _FIR_ORDINAL_RE = re.compile(
         r"\b(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\.?\s+fir\b", re.I,
@@ -86,8 +147,9 @@ class EntityExtractor:
     _DATE_DMY_RE = re.compile(r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b")
     _DATE_YMD_RE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
     _NAME_AFTER_RE = re.compile(
-        r"(?:of|named|accused|suspect|victim|officer|connected\s+to|who\s+is|about|for)\s+"
-        r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})",
+        r"(?:of|named|accused|suspect|victim|officer|criminal|offender|"
+        r"connected\s+to|who\s+is|about|for|regarding)\s+"
+        r"([A-Z][A-Za-z.'-]*(?:\s+(?:[A-Z][A-Za-z.'-]*)){0,4})",
     )
     _RISK_RE = re.compile(
         r"\b(very\s+high|high\s+risk|medium\s+risk|low\s+risk|critical)\b", re.I,
@@ -114,8 +176,8 @@ class EntityExtractor:
 
         name_match = self._NAME_AFTER_RE.search(message)
         if name_match:
-            entities.person_name = name_match.group(1)
-        else:
+            entities.person_name = _clean_candidate_name(name_match.group(1))
+        if not entities.person_name:
             entities.person_name = self._extract_name_heuristic(message)
 
         entities.district = _fuzzy_match(message, _KARNATAKA_DISTRICTS)
@@ -151,22 +213,15 @@ class EntityExtractor:
 
     def _extract_name_heuristic(self, message: str) -> str | None:
         lower = message.lower()
-        for keyword in ["who is ", "about ", "tell me about ", "details of "]:
+        for keyword in [
+            "who is ", "tell me about ", "details of ", "criminal ",
+            "suspect ", "accused ", "victim ", "offender ", "named ",
+            "regarding ", "about ", "of ",
+        ]:
             idx = lower.find(keyword)
             if idx != -1:
                 after = message[idx + len(keyword):].strip()
-                words = after.split()
-                name_words = []
-                for w in words:
-                    if w and w[0].isupper() and len(w) > 1:
-                        name_words.append(w)
-                    elif name_words:
-                        break
-                if name_words:
-                    candidate = " ".join(name_words[:4])
-                    if re.match(r"CR-\d{4}-", candidate, re.I):
-                        return None
-                    if re.match(r"FIR\s*\d", candidate, re.I):
-                        return None
+                candidate = _clean_candidate_name(after)
+                if candidate:
                     return candidate
         return None

@@ -6,28 +6,16 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
-  ChevronRight,
-  Clock,
   Compass,
-  Cpu,
   FileSearch,
-  FileText,
   Flame,
   HelpCircle,
-  Hexagon,
-  Info,
-  Layers,
-  MapPin,
-  RefreshCw,
   Send,
   ShieldAlert,
   ShieldCheck,
   Sliders,
   Sparkles,
-  TrendingDown,
-  TrendingUp,
   UserCheck,
-  Users,
   X,
 } from 'lucide-react';
 import {
@@ -37,7 +25,6 @@ import {
   updateIntervention,
   type InterventionRecord,
   type InterventionWorkflowStage,
-  type SupportingSignal,
   type UnifiedIntelligenceResult,
 } from '../../services/api';
 
@@ -68,7 +55,7 @@ export const SentinelWorkflowModal: React.FC<SentinelWorkflowModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<ModalTab>(initialTab);
   const [existingIntervention, setExistingIntervention] = useState<InterventionRecord | null>(null);
-  const [loadingRecord, setLoadingRecord] = useState(false);
+  const [, setLoadingRecord] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -79,7 +66,7 @@ export const SentinelWorkflowModal: React.FC<SentinelWorkflowModalProps> = ({
   const [recArea, setRecArea] = useState('');
   const [recTimePeriod, setRecTimePeriod] = useState('');
   const [recReason, setRecReason] = useState('');
-  const [recCoverage, setRecCoverage] = useState(82);
+  const [, setRecCoverage] = useState(82);
   const [recAssumptions, setRecAssumptions] = useState('');
 
   // Simulation parameters for Plan & Compare

@@ -9,10 +9,12 @@ Issue 160 hardening:
 """
 from __future__ import annotations
 
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.ai.chat.query_planner import BackendCall, QueryPlan
@@ -136,14 +138,22 @@ class BackendFetcher:
 
     def _pg_get_fir(self, db: Session, params: dict) -> BackendResult:
         from app.models.fir import FIR
-        fir_num = params.get("fir_number", "")
+        fir_num = (params.get("fir_number", "") or "").strip()
         if fir_num.startswith("ordinal:"):
             idx = int(fir_num.split(":", 1)[1]) - 1
             if idx < 0:
                 idx = 0
             fir = db.query(FIR).order_by(FIR.filed_at.desc()).offset(idx).first()
         else:
-            fir = db.query(FIR).filter(FIR.fir_number.ilike(f"%{fir_num}%")).first()
+            # Exact (case-insensitive) match first, then prefix, then a
+            # prefix-agnostic contains match so "FIR-045/BNG/2026" / "045/BNG/2026"
+            # both resolve to the same record.
+            normalized = re.sub(r"^FIR[\s-]*:?", "", fir_num, flags=re.I).strip()
+            fir = db.query(FIR).filter(func.lower(FIR.fir_number) == fir_num.lower()).first()
+            if not fir:
+                fir = db.query(FIR).filter(FIR.fir_number.ilike(f"{fir_num}%")).first()
+            if not fir and normalized != fir_num:
+                fir = db.query(FIR).filter(FIR.fir_number.ilike(f"%{normalized}%")).first()
         if not fir:
             return BackendResult(source="postgres", data_type="fir", content="No FIR found.", raw_data=None)
         content = self._format_fir(fir)
@@ -183,8 +193,16 @@ class BackendFetcher:
 
     def _pg_get_case(self, db: Session, params: dict) -> BackendResult:
         from app.models.crime import CrimeCase
-        case_num = params.get("case_number", "")
-        case = db.query(CrimeCase).filter(CrimeCase.case_number.ilike(f"%{case_num}%")).first()
+        case_num = (params.get("case_number", "") or "").strip().rstrip(".,;:!?")
+        if not case_num:
+            return BackendResult(source="postgres", data_type="case", content="No case number provided.")
+        # Exact match first so a precise identifier never falls back to noisier
+        # partial/contains matching (which can pull in unrelated records).
+        case = db.query(CrimeCase).filter(func.lower(CrimeCase.case_number) == case_num.lower()).first()
+        if not case:
+            case = db.query(CrimeCase).filter(CrimeCase.case_number.ilike(f"{case_num}%")).first()
+        if not case:
+            case = db.query(CrimeCase).filter(CrimeCase.case_number.ilike(f"%{case_num}%")).first()
         if not case:
             return BackendResult(source="postgres", data_type="case", content="No case found.")
         content = self._format_case(case)
@@ -233,10 +251,41 @@ class BackendFetcher:
 
     def _pg_get_criminal(self, db: Session, params: dict, redact_pii: bool = False) -> BackendResult:
         from app.models.criminal import Criminal
-        name = params.get("name", "")
-        criminals = db.query(Criminal).filter(Criminal.full_name.ilike(f"%{name}%")).all()
-        if not criminals:
-            criminals = db.query(Criminal).filter(Criminal.aliases.ilike(f"%{name}%")).all()
+        name = (params.get("name", "") or "").strip().rstrip(".,;:!?")
+        if not name:
+            return BackendResult(source="postgres", data_type="criminal", content="No criminal name provided.")
+
+        criminals: list = []
+        # 1) Exact full-name match (case-insensitive) — the only acceptable
+        #    result for a precise personal identifier.
+        exact = db.query(Criminal).filter(func.lower(Criminal.full_name) == name.lower()).limit(2).all()
+        if exact:
+            criminals = exact
+        else:
+            # 2) Name present as an exact comma-separated alias token.
+            for c in db.query(Criminal).filter(Criminal.aliases.ilike(f"%{name}%")).limit(10).all():
+                tokens = [t.strip() for t in (c.aliases or "").split(",")]
+                if any(t.lower() == name.lower() for t in tokens):
+                    criminals.append(c)
+            if not criminals:
+                # 3) Strongly selective prefix match (unique leading fragment).
+                partials = db.query(Criminal).filter(Criminal.full_name.ilike(f"{name}%")).limit(4).all()
+                if len(partials) == 1:
+                    criminals = partials
+                elif len(partials) > 1:
+                    criminals = partials[:2]
+                else:
+                    # 4) Contained name, then alias/partial — always kept tiny so
+                    #    fuzzy text never floods the answer with unrelated records.
+                    contains = db.query(Criminal).filter(Criminal.full_name.ilike(f"%{name}%")).limit(4).all()
+                    if len(contains) == 1:
+                        criminals = contains
+                    else:
+                        criminals = contains[:2]
+                if not criminals:
+                    alias_partial = db.query(Criminal).filter(Criminal.aliases.ilike(f"%{name}%")).limit(4).all()
+                    criminals = alias_partial[:2]
+
         if not criminals:
             return BackendResult(source="postgres", data_type="criminal", content="No criminal record found.")
         parts = [self._format_criminal(c, redact_pii=redact_pii) for c in criminals]
@@ -249,15 +298,53 @@ class BackendFetcher:
 
     def _pg_search_criminals(self, db: Session, params: dict, redact_pii: bool = False) -> BackendResult:
         from app.models.criminal import Criminal
-        query = params.get("query", "")
+        query = (params.get("query", "") or "").strip()
+        if not query:
+            return BackendResult(
+                source="postgres", data_type="criminals",
+                content="No criminal search query provided.",
+            )
         pattern = f"%{query}%"
-        criminals = db.query(Criminal).filter(
-            Criminal.full_name.ilike(pattern)
-            | Criminal.aliases.ilike(pattern)
-            | Criminal.address.ilike(pattern)
-            | Criminal.mo_summary.ilike(pattern)
-            | Criminal.identifying_marks.ilike(pattern)
-        ).limit(15).all()
+        looks_like_name = (
+            bool(re.match(r"^[A-Za-z][A-Za-z .'\u2019-]{1,50}$", query))
+            and query.count(" ") <= 3
+        )
+        if looks_like_name:
+            # Person look-up: match only name fields. Exact/prefix matches lead;
+            # free-text (MO/address) matches are excluded so a name search never
+            # dumps records that merely mention the queried name.
+            rows = db.query(Criminal).filter(
+                Criminal.full_name.ilike(pattern) | Criminal.aliases.ilike(pattern)
+            ).limit(10).all()
+
+            def _rank(c):
+                lower = c.full_name.lower()
+                if lower == query.lower():
+                    return 0
+                if lower.startswith(query.lower()):
+                    return 1
+                if query.lower() in lower:
+                    return 2
+                return 3
+            criminals = sorted(rows, key=_rank)[:6]
+        else:
+            # MO/keyword style search: name matches still outrank free-text ones.
+            rows = db.query(Criminal).filter(
+                Criminal.full_name.ilike(pattern)
+                | Criminal.aliases.ilike(pattern)
+                | Criminal.address.ilike(pattern)
+                | Criminal.mo_summary.ilike(pattern)
+                | Criminal.identifying_marks.ilike(pattern)
+            ).limit(15).all()
+
+            def _rank(c):
+                lower = c.full_name.lower()
+                if query.lower() in lower:
+                    return 0
+                if query.lower() in (c.aliases or "").lower():
+                    return 1
+                return 2
+            criminals = sorted(rows, key=_rank)[:8] if rows else []
         if not criminals:
             return BackendResult(
                 source="postgres", data_type="criminals",

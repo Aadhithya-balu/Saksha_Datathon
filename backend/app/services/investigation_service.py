@@ -361,6 +361,38 @@ def get_investigation(db: Session, case_id: uuid.UUID) -> InvestigationData:
     criminal_map: dict[str, InvestigationCriminal] = {}
     all_evidence: list[Evidence] = list(case.evidence) if case.evidence else []
 
+    # ── Batch preload the relationships the assembly below would otherwise
+    # fetch one-query-per-row (N+1): criminals' fir_links and each evidence
+    # item's chain-of-custody trail. ──
+    case_fir_ids = [f.id for f in case.firs]
+    criminal_ids: list[uuid.UUID] = []
+    for fir in case.firs:
+        for link in fir.criminal_links:
+            if link.criminal and link.criminal.id not in criminal_ids:
+                criminal_ids.append(link.criminal.id)
+    evidence_ids = [ev.id for ev in all_evidence]
+
+    fir_links_by_criminal: dict[str, list] = {}
+    if criminal_ids:
+        loaded_criminals = (
+            db.query(Criminal)
+            .options(selectinload(Criminal.fir_links))
+            .filter(Criminal.id.in_(criminal_ids))
+            .all()
+        )
+        fir_links_by_criminal = {str(c.id): list(c.fir_links) for c in loaded_criminals}
+
+    custody_by_evidence: dict[str, list[ChainOfCustody]] = {}
+    if evidence_ids:
+        custody_rows = (
+            db.query(ChainOfCustody)
+            .filter(ChainOfCustody.evidence_id.in_(evidence_ids))
+            .order_by(ChainOfCustody.timestamp.asc())
+            .all()
+        )
+        for row in custody_rows:
+            custody_by_evidence.setdefault(str(row.evidence_id), []).append(row)
+
     for fir in case.firs:
         fir_criminals = []
         fir_victims = []
@@ -375,7 +407,8 @@ def get_investigation(db: Session, case_id: uuid.UUID) -> InvestigationData:
                 })
                 # Accumulate unique criminals for the case-level list
                 if str(c.id) not in criminal_map:
-                    fir_count = len([lk for lk in c.fir_links if lk.fir_id in [f.id for f in case.firs]])
+                    fir_links = fir_links_by_criminal.get(str(c.id), [])
+                    fir_count_in_case = len([lk for lk in fir_links if lk.fir_id in case_fir_ids])
                     criminal_map[str(c.id)] = InvestigationCriminal(
                         id=str(c.id),
                         full_name=c.full_name,
@@ -385,8 +418,8 @@ def get_investigation(db: Session, case_id: uuid.UUID) -> InvestigationData:
                         identifying_marks=c.identifying_marks,
                         mo_summary=c.mo_summary,
                         status=c.status,
-                        risk_score=_calculate_criminal_risk(c, len(c.fir_links)),
-                        linked_fir_count=fir_count,
+                        risk_score=_calculate_criminal_risk(c, len(fir_links)),
+                        linked_fir_count=fir_count_in_case,
                     )
 
         for link in fir.victim_links:
@@ -417,12 +450,7 @@ def get_investigation(db: Session, case_id: uuid.UUID) -> InvestigationData:
     # ── Evidence list ──
     evidence_list = []
     for ev in all_evidence:
-        custody_records = (
-            db.query(ChainOfCustody)
-            .filter(ChainOfCustody.evidence_id == ev.id)
-            .order_by(ChainOfCustody.timestamp.asc())
-            .all()
-        )
+        custody_records = custody_by_evidence.get(str(ev.id), [])
         chain_summary = None
         if custody_records:
             chain_summary = " → ".join(

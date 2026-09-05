@@ -227,7 +227,7 @@ const EvidencePage: React.FC = () => {
 
   const assignEvidence = async (evidenceId: string) => {
     if (!assigneeId.trim()) {
-      setError('Enter the assignee user UUID.');
+      setError('Enter an officer badge number, name, or user UUID.');
       return;
     }
 
@@ -679,7 +679,7 @@ const EvidencePage: React.FC = () => {
                           type="text"
                           value={assigneeId}
                           onChange={(e) => setAssigneeId(e.target.value)}
-                          placeholder="Assignee UUID"
+                          placeholder="Officer badge, name, or user UUID"
                           className="min-w-0 flex-1 bg-[var(--bg-secondary)]/70 border border-[var(--border-primary)] rounded px-2.5 py-1.5 text-[10px] text-[var(--text-primary)] font-mono outline-none focus:border-[#C94A2A] transition-colors"
                         />
                         <button onClick={() => void assignEvidence(evidenceDetail.id)} className="px-3 py-1.5 bg-[#C94A2A]/10 hover:bg-[#C94A2A]/20 border border-[#C94A2A]/20 hover:border-[#C94A2A]/40 text-[#C94A2A] text-[9px] rounded transition-all font-mono uppercase font-bold">Assign</button>

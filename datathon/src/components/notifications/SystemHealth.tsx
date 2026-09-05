@@ -4,7 +4,7 @@ import { useRealtimeStore } from '../../store/realtimeStore';
 
 interface ServiceHealth {
   name: string;
-  status: 'healthy' | 'degraded' | 'down';
+  status: 'healthy' | 'degraded' | 'down' | 'standby';
   icon: React.ReactNode;
   latency: string;
 }
@@ -13,7 +13,7 @@ const BASE_SERVICES: ServiceHealth[] = [
   { name: 'PostgreSQL Database', status: 'healthy', icon: <Database className="w-4 h-4" />, latency: '8ms' },
   { name: 'Neo4j Graph Engine', status: 'healthy', icon: <Server className="w-4 h-4" />, latency: '12ms' },
   { name: 'AI Predictive Inference', status: 'healthy', icon: <Activity className="w-4 h-4" />, latency: '24ms' },
-  { name: 'Realtime SSE Stream', status: 'healthy', icon: <Radio className="w-4 h-4" />, latency: 'Connected' },
+  { name: 'Realtime SSE Stream', status: 'standby', icon: <Radio className="w-4 h-4" />, latency: 'Standby' },
   { name: 'Authentication & RBAC', status: 'healthy', icon: <Shield className="w-4 h-4" />, latency: '6ms' },
 ];
 
@@ -28,6 +28,17 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
   const [lastUpdated, setLastUpdated] = useState(new Date().toISOString());
   const sseStatus = useRealtimeStore((state) => state.status);
 
+  // The SSE stream is request-scoped: it is only open while a subscriber page
+  // (Overview, Crime Cases, Notifications) is mounted. When no page subscribes
+  // it is legitimately idle, so we must render it as "Standby" rather than
+  // "down" — an idle stream is not an outage.
+  const sseService: ServiceHealth =
+    sseStatus === 'connected'
+      ? { name: 'Realtime SSE Stream', status: 'healthy', icon: <Radio className="w-4 h-4" />, latency: 'Active' }
+      : sseStatus === 'connecting'
+      ? { name: 'Realtime SSE Stream', status: 'degraded', icon: <Radio className="w-4 h-4" />, latency: 'Reconnecting' }
+      : { name: 'Realtime SSE Stream', status: 'standby', icon: <Radio className="w-4 h-4" />, latency: 'Standby' };
+
   const refreshHealth = async () => {
     setLoading(true);
     const start = performance.now();
@@ -40,11 +51,11 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
         { name: 'PostgreSQL Database', status: isOk ? 'healthy' : 'degraded', icon: <Database className="w-4 h-4" />, latency: `${elapsed}ms` },
         { name: 'Neo4j Graph Engine', status: isOk ? 'healthy' : 'degraded', icon: <Server className="w-4 h-4" />, latency: `${Math.round(elapsed * 1.2)}ms` },
         { name: 'AI Predictive Inference', status: isOk ? 'healthy' : 'degraded', icon: <Activity className="w-4 h-4" />, latency: `${Math.max(15, elapsed * 2)}ms` },
-        { name: 'Realtime SSE Stream', status: sseStatus === 'connected' ? 'healthy' : sseStatus === 'connecting' ? 'degraded' : 'down', icon: <Radio className="w-4 h-4" />, latency: sseStatus === 'connected' ? 'Active' : sseStatus === 'connecting' ? 'Reconnecting' : 'Standby' },
+        sseService,
         { name: 'Authentication & RBAC', status: isOk ? 'healthy' : 'degraded', icon: <Shield className="w-4 h-4" />, latency: `${Math.max(4, Math.round(elapsed * 0.8))}ms` },
       ]);
     } catch {
-      setServices(prev => prev.map(s => s.name === 'Realtime SSE Stream' ? { ...s, status: sseStatus === 'connected' ? 'healthy' : 'down' } : { ...s, status: 'degraded', latency: 'Unreachable' }));
+      setServices(prev => prev.map(s => s.name === 'Realtime SSE Stream' ? { ...sseService } : { ...s, status: 'degraded', latency: 'Unreachable' }));
     } finally {
       setLoading(false);
       setLastUpdated(new Date().toISOString());
@@ -57,17 +68,18 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
     return () => clearInterval(interval);
   }, [sseStatus]);
 
-  const overallStatus = services.every(s => s.status === 'healthy') 
-    ? 'healthy' 
-    : services.some(s => s.status === 'down') 
+  const overallStatus = services.some(s => s.status === 'down') 
     ? 'critical' 
-    : 'degraded';
+    : services.some(s => s.status === 'degraded') 
+    ? 'degraded' 
+    : 'healthy';
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'healthy': return 'text-[#0E9E78]';
       case 'degraded': return 'text-[#D4820A]';
       case 'down': return 'text-[#C94A2A]';
+      case 'standby': return 'text-[var(--text-muted)]';
       default: return 'text-[var(--text-muted)]';
     }
   };
@@ -77,6 +89,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
       case 'healthy': return 'bg-[#0E9E78]/10 border-[#0E9E78]/20';
       case 'degraded': return 'bg-[#D4820A]/10 border-[#D4820A]/20';
       case 'down': return 'bg-[#C94A2A]/10 border-[#C94A2A]/20';
+      case 'standby': return 'bg-[var(--bg-secondary)] border-[var(--border-primary)]';
       default: return 'bg-[var(--bg-secondary)] border-[var(--border-primary)]';
     }
   };
@@ -86,6 +99,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
       case 'healthy': return <ShieldCheck className="w-4 h-4 text-[#0E9E78]" />;
       case 'degraded': return <ShieldAlert className="w-4 h-4 text-[#D4820A]" />;
       case 'down': return <ShieldAlert className="w-4 h-4 text-[#C94A2A]" />;
+      case 'standby': return <Shield className="w-4 h-4 text-[var(--text-muted)]" />;
       default: return <Shield className="w-4 h-4 text-[var(--text-muted)]" />;
     }
   };
