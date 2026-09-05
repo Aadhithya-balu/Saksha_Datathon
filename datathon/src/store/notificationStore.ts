@@ -10,6 +10,8 @@ import {
   acknowledgeNotification,
   resolveNotification,
   dismissNotification,
+  deleteNotification,
+  deleteAllBroadcasts,
 } from '../services/api';
 import type { NotificationRecord, NotificationCount, NotificationDashboardSummary } from '../services/api';
 
@@ -62,6 +64,8 @@ interface NotificationState {
   acknowledge: (notificationId: string) => Promise<void>;
   resolve: (notificationId: string) => Promise<void>;
   dismiss: (notificationId: string) => Promise<void>;
+  removeNotification: (notificationId: string) => Promise<void>;
+  removeAllBroadcasts: () => Promise<void>;
   setSearch: (q: string) => void;
   setFilter: (key: string, value: string) => void;
   clearFilters: () => void;
@@ -231,6 +235,33 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       await Promise.all([get().fetchCounts(), get().fetchDashboard()]);
     } catch (err: any) {
       set({ error: err?.message || 'Failed to dismiss notification' });
+    }
+  },
+
+  removeNotification: async (notificationId) => {
+    try {
+      await deleteNotification(notificationId);
+      set((state) => ({
+        notifications: state.notifications.filter((n) => n.id !== notificationId),
+        recentNotifications: state.recentNotifications.filter((n) => n.id !== notificationId),
+      }));
+      await Promise.all([get().fetchCounts(), get().fetchDashboard()]);
+    } catch (err: any) {
+      set({ error: err?.message || 'Failed to delete notification' });
+    }
+  },
+
+  removeAllBroadcasts: async () => {
+    try {
+      await deleteAllBroadcasts();
+      await Promise.all([
+        get().fetchNotifications(),
+        get().fetchRecent(),
+        get().fetchCounts(),
+        get().fetchDashboard(),
+      ]);
+    } catch (err: any) {
+      set({ error: err?.message || 'Failed to remove broadcasts' });
     }
   },
 

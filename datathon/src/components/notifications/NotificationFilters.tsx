@@ -25,6 +25,7 @@ const STATUSES = [
   { value: 'read', label: 'Read' },
   { value: 'acknowledged', label: 'Acknowledged' },
   { value: 'resolved', label: 'Resolved' },
+  { value: 'broadcast', label: 'Broadcast' },
 ];
 
 const DEMO_SENDERS = [

@@ -1159,6 +1159,8 @@ export async function updateCriminal(
     status?: string;
     full_name?: string;
     aliases?: string | null;
+    gender?: string | null;
+    date_of_birth?: string | null;
     address?: string | null;
     identifying_marks?: string | null;
     mo_summary?: string | null;
@@ -1886,6 +1888,14 @@ export async function resolveNotification(notificationId: string) {
 
 export async function dismissNotification(notificationId: string) {
   return apiRequest<{ success: boolean; message: string }>(`/notifications/${notificationId}`, { method: 'DELETE' });
+}
+
+export async function deleteNotification(notificationId: string) {
+  return apiRequest<{ success: boolean; message: string }>(`/notifications/${notificationId}/remove`, { method: 'DELETE' });
+}
+
+export async function deleteAllBroadcasts() {
+  return apiRequest<{ success: boolean; message: string }>('/notifications/clear?scope=broadcasts', { method: 'DELETE' });
 }
 
 export async function getActivityFeed(limit = 50, eventType?: string, resourceType?: string) {
@@ -3349,7 +3359,10 @@ export interface IntelligenceReport {
     method: string;
     data_sources: string[];
     limitations: string[];
+    entity_type?: string;
+    entity_id?: string;
   };
+  emerging_intelligence?: UnifiedIntelligenceResult | null;
 }
 
 export async function buildIntelligence(
@@ -3399,6 +3412,150 @@ export async function getIntelligenceHistory(limit = 20): Promise<IntelligenceHi
 export async function deleteIntelligenceHistory(runId: string): Promise<{ deleted: boolean }> {
   return apiRequest<{ deleted: boolean }>(`/intelligence/history/${runId}`, {
     method: 'DELETE',
+  });
+}
+
+// ── Intelligence Fusion & Action Pipeline ─────────────────────────────────
+
+export interface ChangeFromBaseline {
+  baseline_count: number;
+  current_count: number;
+  change_percentage: number;
+  direction: string;
+  baseline_window_days?: number;
+  current_window_days?: number;
+}
+
+export interface SupportingSignal {
+  signal_type: string;
+  description: string;
+  score: number | null;
+  status: string;
+  evidence_details: Record<string, any>;
+}
+
+export interface ForecastResult {
+  predicted_crime_count: number;
+  lower_bound: number | null;
+  upper_bound: number | null;
+  trend: string;
+  prediction_mode: string;
+}
+
+export interface RecommendedActionInput {
+  title: string;
+  action_type: string;
+  description: string;
+  priority: string;
+  suggested_intervention: {
+    district: string;
+    intervention_type: string;
+    title: string;
+    description: string;
+    started_at?: string;
+    status?: string;
+  } | null;
+}
+
+export interface UnifiedIntelligenceResult {
+  intelligence_id: string;
+  pattern_type: string;
+  location: {
+    district: string;
+    stations: string[];
+    latitude: number | null;
+    longitude: number | null;
+  };
+  affected_h3_cells: string[];
+  time_window: string;
+  change_from_baseline: ChangeFromBaseline;
+  risk_score: number;
+  forecast: ForecastResult | null;
+  confidence: number;
+  supporting_signals: SupportingSignal[];
+  related_fir_ids: string[];
+  related_entity_ids: string[];
+  recommended_action_input: RecommendedActionInput;
+  ml_status: string;
+  model_name: string;
+  model_version: string;
+  detection_timestamp: string;
+  explanation: string;
+  contributing_analytics: Record<string, any>;
+  data_provenance: string;
+}
+
+export interface IntelligenceFusionResponse {
+  total: number;
+  generated_at: string;
+  patterns: UnifiedIntelligenceResult[];
+  thresholds_applied: Record<string, any>;
+}
+
+export interface FusionThresholdsInput {
+  min_anomaly_score?: number;
+  min_percentage_change?: number;
+  min_risk_score?: number;
+  min_confidence?: number;
+  min_supporting_signals?: number;
+  min_current_incidents?: number;
+  current_window_days?: number;
+  baseline_window_days?: number;
+}
+
+export interface EmergingPatternsParams {
+  district?: string;
+  category?: string;
+  min_signals?: number;
+  min_risk?: number;
+  min_confidence?: number;
+  time_window_days?: number;
+}
+
+export async function getEmergingPatterns(params?: EmergingPatternsParams): Promise<IntelligenceFusionResponse> {
+  const qs = new URLSearchParams();
+  if (params) {
+    if (params.district) qs.set('district', params.district);
+    if (params.category) qs.set('category', params.category);
+    if (params.min_signals) qs.set('min_signals', String(params.min_signals));
+    if (params.min_risk) qs.set('min_risk', String(params.min_risk));
+    if (params.min_confidence) qs.set('min_confidence', String(params.min_confidence));
+    if (params.time_window_days) qs.set('time_window_days', String(params.time_window_days));
+  }
+  const q = qs.toString();
+  return apiRequest<IntelligenceFusionResponse>(`/intelligence/emerging-patterns${q ? `?${q}` : ''}`);
+}
+
+export async function runIntelligenceFusion(payload?: {
+  district?: string;
+  category?: string;
+  thresholds?: FusionThresholdsInput;
+}): Promise<IntelligenceFusionResponse> {
+  return apiRequest<IntelligenceFusionResponse>('/intelligence/fuse', {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+export async function getEmergingPatternById(intelligenceId: string): Promise<UnifiedIntelligenceResult> {
+  return apiRequest<UnifiedIntelligenceResult>(`/intelligence/emerging-patterns/${intelligenceId}`);
+}
+
+export async function dispatchIntelligenceAction(
+  intelligenceId: string,
+  payload?: { title?: string; description?: string; intervention_type?: string }
+): Promise<{
+  dispatched: boolean;
+  intelligence_id: string;
+  intervention_id: string;
+  district: string;
+  intervention_type: string;
+  title: string;
+  status: string;
+}> {
+  return apiRequest(`/intelligence/emerging-patterns/${intelligenceId}/action`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
   });
 }
 

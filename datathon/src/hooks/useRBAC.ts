@@ -46,6 +46,7 @@ export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
   '/firs':           { allowedRoles: INVESTIGATION_ROLES, moduleName: 'FIR Lifecycle Management' },
   '/criminals':      { allowedRoles: INVESTIGATION_ROLES, moduleName: 'Criminal Registry' },
   '/intelligence-engine': { allowedRoles: ['ADMIN', 'SCRB', 'IO', 'INSPECTOR', 'SP'], moduleName: 'Intelligence Engine' },
+  '/intelligence-fusion': { allowedRoles: INSIGHT_ROLES, moduleName: 'Intelligence Fusion Portal' },
 };
 
 export const useRBAC = () => {

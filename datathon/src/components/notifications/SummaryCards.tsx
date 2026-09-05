@@ -60,7 +60,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ onFilterBy }) => {
       icon: <Radio className="w-4 h-4" />,
       color: '#F472B6',
       filterKey: 'filterStatus',
-      filterValue: 'all',
+      filterValue: 'broadcast',
     },
   ];
 

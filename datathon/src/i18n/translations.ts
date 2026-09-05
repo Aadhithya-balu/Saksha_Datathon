@@ -6,6 +6,7 @@ export interface TranslationSet {
   nav_command_center: string;
   nav_intelligence: string;
   nav_intelligence_engine: string;
+  nav_intelligence_fusion: string;
   nav_fir: string;
   nav_hotspot: string;
   nav_network: string;
@@ -371,6 +372,7 @@ const en: TranslationSet = {
   nav_command_center: 'Command Center',
   nav_intelligence: 'Intelligence',
   nav_intelligence_engine: 'Intelligence Engine',
+  nav_intelligence_fusion: 'Intelligence Fusion',
   nav_fir: 'FIR',
   nav_hotspot: 'Hotspots',
   nav_network: 'Network',
@@ -736,6 +738,7 @@ const kn: TranslationSet = {
   nav_command_center: 'ಆದೇಶ ಕೇಂದ್ರ',
   nav_intelligence: 'ಗುಪ್ತಚರ',
   nav_intelligence_engine: 'ಗುಪ್ತಚರ ಎಂಜಿನ್',
+  nav_intelligence_fusion: 'ಗುಪ್ತಚರ ವಿಲೀನ',
   nav_fir: 'ಎಫ್\u200Cಐಆರ್',
   nav_hotspot: 'ಹಾಟ್\u200Cಸ್\u200Cಪಾಟ್\u200Cಗಳು',
   nav_network: 'ಜಾಲ',
@@ -1101,6 +1104,7 @@ const kn_en: TranslationSet = {
   nav_command_center: 'Aadesha Kendra',
   nav_intelligence: 'Guptachara',
   nav_intelligence_engine: 'Guptachara Engine',
+  nav_intelligence_fusion: 'Guptachara Vilina',
   nav_fir: 'FIR',
   nav_hotspot: 'Hotspotgalu',
   nav_network: 'Jaala',

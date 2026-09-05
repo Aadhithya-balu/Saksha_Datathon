@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   AlertTriangle, AlertCircle, Info, Clock, CheckCircle, Archive, User, Building, FileText,
-  Radio, Eye,
+  Radio, Eye, Trash2,
 } from 'lucide-react';
 import { useNotificationStore } from '../../store/notificationStore';
 import type { NotificationRecord } from '../../services/api';
@@ -43,7 +43,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export const NotificationCard: React.FC<NotificationCardProps> = ({ notification, onSelect }) => {
-  const { markRead, acknowledge, dismiss } = useNotificationStore();
+  const { markRead, acknowledge, dismiss, removeNotification } = useNotificationStore();
   const n = notification;
   const priorityColor = PRIORITY_COLORS[n.priority] || PRIORITY_COLORS.medium;
 
@@ -192,6 +192,13 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ notification
           title="Archive"
         >
           <Archive className="w-3 h-3" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); removeNotification(n.id); }}
+          className="p-1.5 hover:bg-[#C94A2A]/15 rounded-md text-[var(--text-muted)] hover:text-[#C94A2A] cursor-pointer transition-colors"
+          title="Delete permanently"
+        >
+          <Trash2 className="w-3 h-3" />
         </button>
       </div>
     </div>
