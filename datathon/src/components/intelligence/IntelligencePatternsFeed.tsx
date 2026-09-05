@@ -5,6 +5,7 @@ import {
   Cpu,
   FileText,
   Flame,
+  Gavel,
   Info,
   MapPin,
   Radar,
@@ -27,6 +28,7 @@ interface IntelligencePatternsFeedProps {
   running?: boolean;
   error?: string | null;
   onRunFusion?: () => void;
+  onInvestigate?: (pattern: UnifiedIntelligenceResult) => void;
 }
 
 /* ----------------------------- plain-language ----------------------------- */
@@ -129,7 +131,8 @@ const PatternCard: React.FC<{
   dispatching: boolean;
   dispatched: boolean;
   onDispatch: () => void;
-}> = ({ pattern, dispatching, dispatched, onDispatch }) => {
+  onInvestigate?: () => void;
+}> = ({ pattern, dispatching, dispatched, onDispatch, onInvestigate }) => {
   const [open, setOpen] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const insight = buildPlainInsight(pattern);
@@ -197,18 +200,30 @@ const PatternCard: React.FC<{
             <span className="text-[7px] font-mono text-[var(--text-muted)] uppercase">
               {pattern.related_fir_ids?.length ? `Based on ${pattern.related_fir_ids.length} related FIR(s)` : 'No related FIR references'}
             </span>
-            <button
-              onClick={onDispatch}
-              disabled={dispatching || dispatched}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-[7.5px] font-mono font-bold uppercase transition-colors cursor-pointer ${
-                dispatched
-                  ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
-                  : 'border-[#1E6FD9]/40 text-[#1E6FD9] hover:bg-[#1E6FD9]/10'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              <Send className="w-2.5 h-2.5" />
-              {dispatching ? 'Dispatching…' : dispatched ? 'Dispatched' : 'Dispatch Action'}
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {onInvestigate && (
+                <button
+                  onClick={onInvestigate}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#a855f7]/40 text-[#a855f7] hover:bg-[#a855f7]/10 font-mono text-[7.5px] uppercase font-bold transition-colors cursor-pointer"
+                  title="Open provenance-aware investigation view (#250)"
+                >
+                  <Gavel className="w-2.5 h-2.5" />
+                  Investigate
+                </button>
+              )}
+              <button
+                onClick={onDispatch}
+                disabled={dispatching || dispatched}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-[7.5px] font-mono font-bold uppercase transition-colors cursor-pointer ${
+                  dispatched
+                    ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
+                    : 'border-[#1E6FD9]/40 text-[#1E6FD9] hover:bg-[#1E6FD9]/10'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Send className="w-2.5 h-2.5" />
+                {dispatching ? 'Dispatching…' : dispatched ? 'Dispatched' : 'Dispatch Action'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -288,6 +303,7 @@ const IntelligencePatternsFeed: React.FC<IntelligencePatternsFeedProps> = ({
   running = false,
   error = null,
   onRunFusion,
+  onInvestigate,
 }) => {
   const [dispatchingId, setDispatchingId] = useState<string | null>(null);
   const [dispatchedId, setDispatchedId] = useState<string | null>(null);
@@ -363,6 +379,7 @@ const IntelligencePatternsFeed: React.FC<IntelligencePatternsFeedProps> = ({
                 dispatching={dispatchingId === p.intelligence_id}
                 dispatched={dispatchedId === p.intelligence_id}
                 onDispatch={() => dispatch(p)}
+                onInvestigate={onInvestigate ? () => onInvestigate(p) : undefined}
               />
             </div>
           ))}

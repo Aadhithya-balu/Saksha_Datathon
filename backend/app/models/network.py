@@ -53,6 +53,8 @@ class VerificationStatus(str, Enum):
     POTENTIAL = "POTENTIAL"
     UNVERIFIED = "UNVERIFIED"
     DEMO = "DEMO"
+    # Issue #250: sensitive demo-derived records restricted to reviewer roles.
+    RESTRICTED = "RESTRICTED"
 
 
 class RelationshipType(str, Enum):
