@@ -17,6 +17,7 @@ interface IntelligencePatternsFeedProps {
   running?: boolean;
   error?: string | null;
   onRunFusion?: () => void;
+  onInvestigate?: (pattern: UnifiedIntelligenceResult) => void;
 }
 
 const IntelligencePatternsFeed: React.FC<IntelligencePatternsFeedProps> = ({
@@ -26,12 +27,17 @@ const IntelligencePatternsFeed: React.FC<IntelligencePatternsFeedProps> = ({
   running = false,
   error = null,
   onRunFusion,
+  onInvestigate,
 }) => {
   const [selectedPattern, setSelectedPattern] = useState<UnifiedIntelligenceResult | null>(null);
   const [modalTab, setModalTab] = useState<ModalTab>('recommendation');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleInvestigate = (p: UnifiedIntelligenceResult) => {
+    if (onInvestigate) {
+      onInvestigate(p);
+      return;
+    }
     const targetId =
       p.related_fir_ids?.[0] ||
       p.related_entity_ids?.[0] ||
