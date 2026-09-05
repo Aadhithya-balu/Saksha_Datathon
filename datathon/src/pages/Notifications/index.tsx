@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Radio, ListTodo, Clock, RefreshCw, CheckCheck, ChevronLeft, ChevronRight,
+  Radio, ListTodo, Clock, RefreshCw, CheckCheck, ChevronLeft, ChevronRight, RotateCcw,
 } from 'lucide-react';
 import { useNotificationStore } from '../../store/notificationStore';
 import type { NotificationRecord } from '../../services/api';
@@ -22,11 +22,11 @@ const NotificationsPage: React.FC = () => {
   const [detailOpen, setDetailOpen] = useState(false);
 
   const {
-    notifications, total, page, pageSize, loading, error, counts,
+    notifications, total, page, pageSize, loading, error, counts, dashboard,
     fetchNotifications, fetchCounts, fetchDashboard, markAllRead,
     setPage,
     informModalOpen, setInformModalOpen,
-    setFilter,
+    setFilter, clearFilters, removeAllBroadcasts,
   } = useNotificationStore();
 
   useEffect(() => {
@@ -67,6 +67,19 @@ const NotificationsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {(dashboard?.broadcast_messages ?? 0) > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm('Remove ALL broadcast notifications? This cannot be undone.')) {
+                  removeAllBroadcasts();
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#F472B6]/10 text-[#F472B6] rounded-lg text-[9px] font-mono font-bold hover:bg-[#F472B6]/20 transition-colors cursor-pointer"
+            >
+              <Radio className="w-3.5 h-3.5" />
+              Remove All Broadcasts
+            </button>
+          )}
           {counts.unread > 0 && (
             <button
               onClick={markAllRead}
@@ -134,6 +147,13 @@ const NotificationsPage: React.FC = () => {
                   <p className="text-[9px] font-mono text-[var(--text-muted)]/60 mt-1">
                     Adjust filters or send a new notification
                   </p>
+                  <button
+                    onClick={clearFilters}
+                    className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-tertiary)]/50 border border-[var(--border-primary)] rounded-lg text-[9px] font-mono text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    Clear filters
+                  </button>
                 </div>
               ) : (
                 <div className="divide-y divide-[var(--border-secondary)]/50">

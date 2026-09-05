@@ -25,6 +25,9 @@ import {
   Sparkles,
   Camera,
   Brain,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 import { PersonAvatar } from '../../components/ui/PersonAvatar';
@@ -58,6 +61,9 @@ export const Criminals: React.FC = () => {
   const [showIntelligence, setShowIntelligence] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileDraft, setProfileDraft] = useState<Record<string, any>>({});
   const imageInputRef = React.useRef<HTMLInputElement>(null);
 
   // Load criminals on mount or search
@@ -234,6 +240,46 @@ export const Criminals: React.FC = () => {
       alert(err?.message || 'Failed to update criminal status');
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  const startEditProfile = () => {
+    if (!criminalDetails) return;
+    setProfileDraft({
+      aliases: criminalDetails.aliases ?? '',
+      date_of_birth: criminalDetails.date_of_birth ?? '',
+      gender: criminalDetails.gender ?? '',
+      identifying_marks: criminalDetails.identifying_marks ?? '',
+      address: criminalDetails.address ?? '',
+      mo_summary: criminalDetails.mo_summary ?? '',
+      gang_affiliation: criminalDetails.gang_affiliation ?? '',
+    });
+    setEditingProfile(true);
+  };
+
+  const saveProfile = async () => {
+    if (!criminalDetails || !user) return;
+    try {
+      setSavingProfile(true);
+      const p: any = {};
+      const eq = (a: any, b: any) => (a ?? '').trim() === (b ?? '').trim();
+      if (!eq(profileDraft.aliases, criminalDetails.aliases)) p.aliases = profileDraft.aliases.trim() || null;
+      if (profileDraft.date_of_birth !== (criminalDetails.date_of_birth ?? '')) p.date_of_birth = profileDraft.date_of_birth || null;
+      if (profileDraft.gender !== (criminalDetails.gender ?? '')) p.gender = profileDraft.gender || null;
+      if (!eq(profileDraft.identifying_marks, criminalDetails.identifying_marks)) p.identifying_marks = profileDraft.identifying_marks.trim() || null;
+      if (!eq(profileDraft.address, criminalDetails.address)) p.address = profileDraft.address.trim() || null;
+      if (!eq(profileDraft.mo_summary, criminalDetails.mo_summary)) p.mo_summary = profileDraft.mo_summary.trim() || null;
+      if (!eq(profileDraft.gang_affiliation, criminalDetails.gang_affiliation)) p.gang_affiliation = profileDraft.gang_affiliation.trim() || null;
+
+      const res = await updateCriminal(criminalDetails.id, p);
+      setCriminalDetails((prev: any) => ({ ...prev, ...res }));
+      setCriminals((prev) => prev.map((c) => (c.id === criminalDetails.id ? { ...c, ...res } : c)));
+      addLog(user.name, user.badgeId, 'UPDATE', `Updated criminal profile for ${criminalDetails.full_name}`);
+      setEditingProfile(false);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to update criminal profile');
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -583,7 +629,17 @@ export const Criminals: React.FC = () => {
                     <div>
                       <h3 className="text-sm font-extrabold text-[var(--text-primary)] uppercase tracking-wider">{criminalDetails.full_name}</h3>
                       <span className="text-[9.5px] text-[var(--text-secondary)] font-mono block mt-1 uppercase">
-                        Aliases: {criminalDetails.aliases || 'No documented aliases'}
+                        {editingProfile ? (
+                          <input
+                            type="text"
+                            value={profileDraft.aliases || ''}
+                            onChange={(e) => setProfileDraft((d) => ({ ...d, aliases: e.target.value }))}
+                            placeholder="Aliases, comma separated"
+                            className="w-full max-w-xs bg-[var(--bg-tertiary)]/50 border border-border-color rounded px-1.5 py-0.5 text-[var(--text-secondary)] outline-none focus:border-[#1E6FD9] font-mono text-[9px] normal-case"
+                          />
+                        ) : (
+                          <>Aliases: {criminalDetails.aliases || 'No documented aliases'}</>
+                        )}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap justify-center md:justify-end">
@@ -640,21 +696,81 @@ export const Criminals: React.FC = () => {
                           DECEASED
                         </option>
                       </select>
+
+                      {editingProfile ? (
+                        <>
+                          <button
+                            onClick={saveProfile}
+                            disabled={savingProfile}
+                            className="inline-flex items-center gap-1 text-[10px] bg-[#0E9E78]/15 text-[#0E9E78] px-2 py-1 rounded border border-[#0E9E78]/30 hover:bg-[#0E9E78]/30 transition-colors cursor-pointer disabled:opacity-60"
+                          >
+                            {savingProfile ? '…' : <><Check className="w-3 h-3" /> Save Profile</>}
+                          </button>
+                          <button
+                            onClick={() => setEditingProfile(false)}
+                            title="Cancel editing"
+                            className="inline-flex items-center gap-1 text-[10px] bg-[var(--bg-tertiary)] text-[var(--text-secondary)] px-2 py-1 rounded border border-[var(--border-primary)] hover:bg-[var(--bg-elevated)]/30 transition-colors cursor-pointer"
+                          >
+                            <X className="w-3 h-3" /> Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={startEditProfile}
+                          disabled={!canWrite}
+                          title={canWrite ? 'Edit profile details (gender, birth date, aliases, etc.)' : 'Requires Investigator/Admin role'}
+                          className="inline-flex items-center gap-1 text-[10px] bg-[var(--bg-tertiary)] text-[var(--text-secondary)] px-2 py-1 rounded border border-[var(--border-primary)] hover:bg-[var(--bg-elevated)]/30 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <Pencil className="w-3 h-3" /> Edit Profile
+                        </button>
+                      )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mt-4 text-[9.5px] font-mono text-left">
                     <div className="p-2 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] rounded">
                       <span className="text-[var(--text-muted)] uppercase text-[7.5px] block">Birth date</span>
-                      <span className="text-[var(--text-primary)] block mt-0.5">{criminalDetails.date_of_birth || 'UNKNOWN'}</span>
+                      {editingProfile ? (
+                        <input
+                          type="date"
+                          value={profileDraft.date_of_birth || ''}
+                          onChange={(e) => setProfileDraft((d) => ({ ...d, date_of_birth: e.target.value }))}
+                          className="w-full mt-0.5 bg-[var(--bg-tertiary)]/50 border border-border-color rounded px-1 py-0.5 text-[var(--text-primary)] outline-none focus:border-[#1E6FD9] font-mono text-[9px]"
+                        />
+                      ) : (
+                        <span className="text-[var(--text-primary)] block mt-0.5">{criminalDetails.date_of_birth || 'UNKNOWN'}</span>
+                      )}
                     </div>
                     <div className="p-2 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] rounded">
                       <span className="text-[var(--text-muted)] uppercase text-[7.5px] block">Gender</span>
-                      <span className="text-[var(--text-primary)] block mt-0.5 uppercase">{criminalDetails.gender || 'UNKNOWN'}</span>
+                      {editingProfile ? (
+                        <select
+                          value={profileDraft.gender || ''}
+                          onChange={(e) => setProfileDraft((d) => ({ ...d, gender: e.target.value }))}
+                          className="w-full mt-0.5 bg-[var(--bg-tertiary)]/50 border border-border-color rounded px-1 py-0.5 text-[var(--text-primary)] outline-none focus:border-[#1E6FD9] font-mono text-[9px] uppercase cursor-pointer"
+                        >
+                          <option value="">UNKNOWN</option>
+                          <option value="Male">MALE</option>
+                          <option value="Female">FEMALE</option>
+                          <option value="Other">OTHER</option>
+                        </select>
+                      ) : (
+                        <span className="text-[var(--text-primary)] block mt-0.5 uppercase">{criminalDetails.gender || 'UNKNOWN'}</span>
+                      )}
                     </div>
                     <div className="p-2 bg-[var(--bg-secondary)]/60 border border-[var(--border-primary)] rounded col-span-2">
                       <span className="text-[var(--text-muted)] uppercase text-[7.5px] block">identifying marks</span>
-                      <span className="text-[var(--text-primary)] block mt-0.5 truncate">{criminalDetails.identifying_marks || 'NONE RECORDED'}</span>
+                      {editingProfile ? (
+                        <input
+                          type="text"
+                          value={profileDraft.identifying_marks || ''}
+                          onChange={(e) => setProfileDraft((d) => ({ ...d, identifying_marks: e.target.value }))}
+                          placeholder="e.g. Scar on left cheek"
+                          className="w-full mt-0.5 bg-[var(--bg-tertiary)]/50 border border-border-color rounded px-1 py-0.5 text-[var(--text-primary)] outline-none focus:border-[#1E6FD9] font-mono text-[9px]"
+                        />
+                      ) : (
+                        <span className="text-[var(--text-primary)] block mt-0.5 truncate">{criminalDetails.identifying_marks || 'NONE RECORDED'}</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -670,17 +786,37 @@ export const Criminals: React.FC = () => {
                   <span className="text-[#1E6FD9] uppercase font-bold text-[8.5px] tracking-wider flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5" /> Modus Operandi summary
                   </span>
-                  <p className="text-[var(--text-secondary)] leading-relaxed text-[10px] bg-[var(--bg-tertiary)]/10 p-1.5 border border-[var(--border-primary)]/40 rounded">
-                    {criminalDetails.mo_summary || 'No recorded MO summaries for linked incidents.'}
-                  </p>
+                  {editingProfile ? (
+                    <textarea
+                      value={profileDraft.mo_summary || ''}
+                      onChange={(e) => setProfileDraft((d) => ({ ...d, mo_summary: e.target.value }))}
+                      rows={3}
+                      placeholder="Describe known pattern of offending..."
+                      className="bg-[var(--bg-tertiary)]/10 border border-[var(--border-primary)]/40 rounded p-1.5 text-[var(--text-secondary)] leading-relaxed text-[10px] outline-none focus:border-[#1E6FD9] font-mono resize-y"
+                    />
+                  ) : (
+                    <p className="text-[var(--text-secondary)] leading-relaxed text-[10px] bg-[var(--bg-tertiary)]/10 p-1.5 border border-[var(--border-primary)]/40 rounded">
+                      {criminalDetails.mo_summary || 'No recorded MO summaries for linked incidents.'}
+                    </p>
+                  )}
                 </div>
                 <div className="p-3.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded flex flex-col gap-1.5 text-left">
                   <span className="text-[#1E6FD9] uppercase font-bold text-[8.5px] tracking-wider flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5" /> Registered Residence Address
                   </span>
-                  <p className="text-[var(--text-secondary)] leading-relaxed text-[10px] bg-[var(--bg-tertiary)]/10 p-1.5 border border-[var(--border-primary)]/40 rounded">
-                    {criminalDetails.address || 'No registered legal residence address reported.'}
-                  </p>
+                  {editingProfile ? (
+                    <textarea
+                      value={profileDraft.address || ''}
+                      onChange={(e) => setProfileDraft((d) => ({ ...d, address: e.target.value }))}
+                      rows={3}
+                      placeholder="Registered legal residence address..."
+                      className="bg-[var(--bg-tertiary)]/10 border border-[var(--border-primary)]/40 rounded p-1.5 text-[var(--text-secondary)] leading-relaxed text-[10px] outline-none focus:border-[#1E6FD9] font-mono resize-y"
+                    />
+                  ) : (
+                    <p className="text-[var(--text-secondary)] leading-relaxed text-[10px] bg-[var(--bg-tertiary)]/10 p-1.5 border border-[var(--border-primary)]/40 rounded">
+                      {criminalDetails.address || 'No registered legal residence address reported.'}
+                    </p>
+                  )}
                 </div>
               </div>
 

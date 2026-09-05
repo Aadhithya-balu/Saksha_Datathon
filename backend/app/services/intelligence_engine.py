@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy.orm import Session, joinedload
@@ -1587,8 +1587,23 @@ def build_intelligence(db: Session, entity_type: str, entity_id: str) -> dict[st
     normalized_pattern_breaks: list[dict[str, Any]] = []
     for p in pattern_break_list:
         p = dict(p)
-        p["supporting_records"] = _normalize_sources(p.get("supporting_records"))
-        normalized_pattern_breaks.append(p)
+    # 16. Emerging fused intelligence relevant to this entity
+    emerging_intelligence = None
+    try:
+        dist = None
+        cat_name = None
+        if entity_type == "case" and hasattr(entity, "location") and entity.location:
+            dist = entity.location.district
+            cat_name = entity.category.name if entity.category else None
+        elif entity_type == "fir" and entity.crime_case and entity.crime_case.location:
+            dist = entity.crime_case.location.district
+            cat_name = entity.crime_case.category.name if entity.crime_case.category else None
+        if dist:
+            patterns = detect_emerging_patterns(db, district=dist, category=cat_name, min_current=1)
+            if patterns:
+                emerging_intelligence = patterns[0]
+    except Exception:
+        emerging_intelligence = None
 
     return {
         "entity_info": resolved["info"],
@@ -1604,4 +1619,571 @@ def build_intelligence(db: Session, entity_type: str, entity_id: str) -> dict[st
         "pattern_breaks": normalized_pattern_breaks,
         "confidence_summary": confidence_summary,
         "explainability": explainability,
+        "emerging_intelligence": emerging_intelligence,
     }
+
+
+# ---------------------------------------------------------------------------
+# j) SAKSHA Intelligence Fusion & Action Pipeline
+# ---------------------------------------------------------------------------
+
+def _to_utc(dt: datetime | None) -> datetime | None:
+    """Normalize datetime to timezone-aware UTC for safe comparisons across DBs."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _to_h3_cell(lat: float | None, lng: float | None, resolution: int = 7) -> str | None:
+    """Safely convert latitude & longitude to an H3 cell index."""
+    if lat is None or lng is None:
+        return None
+    try:
+        import h3
+        if hasattr(h3, "latlng_to_cell"):
+            return str(h3.latlng_to_cell(lat, lng, resolution))
+        elif hasattr(h3, "geo_to_h3"):
+            return str(h3.geo_to_h3(lat, lng, resolution))
+    except Exception:
+        pass
+    return f"cell_{round(lat, 3)}_{round(lng, 3)}"
+
+
+@dataclass
+class FusionThresholds:
+    """Configurable thresholds for the intelligence fusion pipeline."""
+    min_anomaly_score: float = 0.60
+    min_percentage_change: float = 20.0
+    min_risk_score: float = 0.40
+    min_confidence: float = 0.50
+    min_supporting_signals: int = 2
+    min_current_incidents: int = 2
+    current_window_days: int = 30
+    baseline_window_days: int = 90
+
+
+def detect_emerging_patterns(
+    db: Session,
+    *,
+    district: str | None = None,
+    category: str | None = None,
+    min_signals: int | None = None,
+    min_risk: float | None = None,
+    min_confidence: float | None = None,
+    min_current: int | None = None,
+    current_window_days: int | None = None,
+    baseline_window_days: int | None = None,
+    custom_thresholds: FusionThresholds | None = None,
+) -> list[dict[str, Any]]:
+    """Detect and fuse emerging crime patterns across jurisdictions.
+
+    Combines signals from:
+    1. Temporal trends & historical baseline deviations
+    2. Anomaly detection (ML and rule-based)
+    3. H3 geospatial hotspots & spatial concentration
+    4. Crime forecasting
+    5. Modus operandi similarity patterns
+    6. FIR & entity link graph relationships
+
+    Gracefully degrades when individual analytics components fail or lack data.
+    """
+    thresholds = custom_thresholds or FusionThresholds()
+    if min_signals is not None:
+        thresholds.min_supporting_signals = min_signals
+    if min_risk is not None:
+        thresholds.min_risk_score = min_risk
+    if min_confidence is not None:
+        thresholds.min_confidence = min_confidence
+    if min_current is not None:
+        thresholds.min_current_incidents = min_current
+    if current_window_days is not None:
+        thresholds.current_window_days = current_window_days
+    if baseline_window_days is not None:
+        thresholds.baseline_window_days = baseline_window_days
+
+    now = datetime.now(timezone.utc)
+    cutoff_current = now - timedelta(days=thresholds.current_window_days)
+    cutoff_baseline = now - timedelta(days=thresholds.current_window_days + thresholds.baseline_window_days)
+
+    query = (
+        db.query(CrimeCase)
+        .options(
+            joinedload(CrimeCase.category),
+            joinedload(CrimeCase.location),
+            joinedload(CrimeCase.firs).joinedload(FIR.criminal_links).joinedload(FIRCriminalLink.criminal),
+            joinedload(CrimeCase.firs).joinedload(FIR.victim_links).joinedload(FIRVictimLink.victim),
+        )
+        .filter(CrimeCase.occurred_at.isnot(None))
+    )
+    if district:
+        query = query.join(Location, CrimeCase.location_id == Location.id).filter(Location.district.ilike(f"%{district}%"))
+    if category:
+        query = query.join(CrimeCategory, CrimeCase.category_id == CrimeCategory.id).filter(CrimeCategory.name.ilike(f"%{category}%"))
+
+    cases = query.all()
+
+    # Partition cases into current vs historical baseline per (district, category)
+    current_cases: dict[tuple[str, str], list[CrimeCase]] = defaultdict(list)
+    baseline_cases: dict[tuple[str, str], list[CrimeCase]] = defaultdict(list)
+
+    for case in cases:
+        ts = _to_utc(case.occurred_at)
+        if ts is None or ts < cutoff_baseline:
+            continue
+        dist_name = case.location.district if case.location and case.location.district else "Unknown"
+        cat_name = case.category.name if case.category and case.category.name else "Unclassified"
+        key = (dist_name, cat_name)
+
+        if ts >= cutoff_current:
+            current_cases[key].append(case)
+        else:
+            baseline_cases[key].append(case)
+
+    results: list[dict[str, Any]] = []
+
+    # Evaluate each active cluster
+    for key, cur_list in current_cases.items():
+        if len(cur_list) < thresholds.min_current_incidents:
+            continue
+
+        cluster_district, cluster_category = key
+        base_list = baseline_cases.get(key, [])
+
+        pattern_result = fuse_emerging_intelligence(
+            db,
+            district=cluster_district,
+            category=cluster_category,
+            current_cases=cur_list,
+            baseline_cases=base_list,
+            thresholds=thresholds,
+            now=now,
+        )
+        if pattern_result is not None:
+            results.append(pattern_result)
+
+    # Sort descending by risk score, then by confidence
+    results.sort(key=lambda r: (r["risk_score"], r["confidence"]), reverse=True)
+    return results
+
+
+def fuse_emerging_intelligence(
+    db: Session,
+    *,
+    district: str,
+    category: str,
+    current_cases: list[CrimeCase],
+    baseline_cases: list[CrimeCase],
+    thresholds: FusionThresholds,
+    now: datetime,
+) -> dict[str, Any] | None:
+    """Fuse multi-source evidence for a specific (district, category) cluster into a unified intelligence result."""
+    from app.services import analytics_service, mo_pattern_service
+
+    contributing_analytics: dict[str, Any] = {}
+    supporting_signals: list[dict[str, Any]] = []
+    ml_modes: list[str] = []
+
+    # 1. Temporal trend & Baseline deviation
+    current_count = len(current_cases)
+    raw_baseline = len(baseline_cases)
+    baseline_30d = raw_baseline * (float(thresholds.current_window_days) / float(thresholds.baseline_window_days))
+    denom = max(baseline_30d, 0.5)
+    change_pct = round(((current_count - denom) / denom) * 100.0, 1)
+    if raw_baseline == 0 and current_count >= 2:
+        change_pct = 100.0
+
+    direction = "increasing" if change_pct >= 20.0 else "decreasing" if change_pct <= -20.0 else "stable"
+    contributing_analytics["temporal"] = {
+        "status": "AVAILABLE",
+        "baseline_count": round(baseline_30d, 2),
+        "current_count": current_count,
+        "change_percentage": change_pct,
+        "direction": direction,
+    }
+
+    if change_pct >= thresholds.min_percentage_change or (raw_baseline == 0 and current_count >= thresholds.min_current_incidents):
+        supporting_signals.append({
+            "signal_type": "temporal",
+            "description": f"Increasing temporal trend ({'+' if change_pct >= 0 else ''}{change_pct}% vs baseline)",
+            "score": min(1.0, round(max(0.0, change_pct) / 100.0, 2)),
+            "status": "CONFIRMED",
+            "evidence_details": {
+                "current_count": current_count,
+                "baseline_count": round(baseline_30d, 2),
+                "change_percentage": change_pct,
+                "direction": direction,
+            },
+        })
+
+    # 2. Anomaly Detection (Rule-based & ML)
+    anomaly_max_score = 0.0
+    anomaly_reasons: list[str] = []
+    anomaly_cases: list[str] = []
+    try:
+        anom_res = analytics_service.anomalies(db)
+        cur_case_uuids = {str(c.id) for c in current_cases}
+        cur_fir_numbers = {
+            fir.fir_number
+            for c in current_cases
+            for fir in c.firs
+            if fir.fir_number
+        }
+        for a in anom_res.get("anomalies", []):
+            is_match = (
+                a.get("case_uuid") in cur_case_uuids
+                or a.get("case_id") in cur_fir_numbers
+                or (a.get("district") == district and a.get("category") == category)
+            )
+            if is_match:
+                sc = float(a.get("score", 0.0))
+                if sc > anomaly_max_score:
+                    anomaly_max_score = sc
+                reason = a.get("reason")
+                if reason and reason not in anomaly_reasons:
+                    anomaly_reasons.append(reason)
+                if a.get("case_id"):
+                    anomaly_cases.append(str(a["case_id"]))
+
+        contributing_analytics["anomaly"] = {
+            "status": "AVAILABLE",
+            "max_score": anomaly_max_score,
+            "detected_count": len(anomaly_cases),
+        }
+    except Exception as exc:
+        contributing_analytics["anomaly"] = {"status": "UNAVAILABLE", "reason": str(exc)}
+
+    if anomaly_max_score >= thresholds.min_anomaly_score:
+        supporting_signals.append({
+            "signal_type": "anomaly",
+            "description": f"Strong anomaly detected ({', '.join(anomaly_reasons[:2]) or 'significant divergence from baseline'})",
+            "score": round(anomaly_max_score, 2),
+            "status": "CONFIRMED",
+            "evidence_details": {
+                "score": anomaly_max_score,
+                "reasons": anomaly_reasons,
+                "anomaly_cases": anomaly_cases,
+            },
+        })
+
+    # 3. Spatial Concentration & H3 Cells
+    h3_cells: set[str] = set()
+    stations: set[str] = set()
+    lats: list[float] = []
+    lngs: list[float] = []
+
+    for c in current_cases:
+        if c.location:
+            if c.location.station:
+                stations.add(c.location.station)
+            if c.location.latitude is not None and c.location.longitude is not None:
+                lats.append(c.location.latitude)
+                lngs.append(c.location.longitude)
+                cell = _to_h3_cell(c.location.latitude, c.location.longitude, resolution=7)
+                if cell:
+                    h3_cells.add(cell)
+
+    spatial_score = 0.0
+    hotspot_flag = False
+    try:
+        hotspots_res = analytics_service.hotspots(db, district_id=district)
+        for h in hotspots_res.get("hotspots", []):
+            if h.get("significant") or h.get("kde_percentile", 0) >= 65:
+                spatial_score = max(spatial_score, float(h.get("score", 0)) / 100.0)
+                hotspot_flag = True
+        contributing_analytics["spatial_hotspot"] = {
+            "status": "AVAILABLE",
+            "h3_cells_count": len(h3_cells),
+            "stations": list(stations),
+            "hotspot_detected": hotspot_flag,
+        }
+    except Exception as exc:
+        contributing_analytics["spatial_hotspot"] = {"status": "UNAVAILABLE", "reason": str(exc)}
+
+    if (len(h3_cells) > 0 and len(current_cases) >= 2) or hotspot_flag:
+        top_loc_label = next(iter(stations), district)
+        supporting_signals.append({
+            "signal_type": "spatial_hotspot",
+            "description": f"Spatial concentration detected in {top_loc_label} ({len(h3_cells)} H3 cell(s) affected)",
+            "score": round(max(spatial_score, 0.65), 2),
+            "status": "CONFIRMED",
+            "evidence_details": {
+                "affected_h3_cells": sorted(list(h3_cells)),
+                "stations": sorted(list(stations)),
+                "cluster_size": len(current_cases),
+            },
+        })
+
+    # 4. Forecasting
+    forecast_result: dict[str, Any] | None = None
+    try:
+        from app.ai.inference.risk import predict_forecast
+        raw_recs = [
+            {
+                "occurred_at": c.occurred_at.isoformat() if c.occurred_at else now.isoformat(),
+                "district": district,
+                "category": category,
+            }
+            for c in current_cases + baseline_cases
+        ]
+        if raw_recs:
+            forecasts = predict_forecast(raw_recs)
+            dist_forecast = next((f for f in forecasts if f.get("district") == district), None)
+            if dist_forecast:
+                forecast_result = dist_forecast
+                f_mode = dist_forecast.get("prediction_mode", "FALLBACK")
+                ml_modes.append(f_mode)
+                pred_count = float(dist_forecast.get("predicted_crime_count", 0.0))
+                f_trend = dist_forecast.get("trend", "stable")
+                contributing_analytics["forecast"] = {
+                    "status": "AVAILABLE",
+                    "prediction_mode": f_mode,
+                    "predicted_crime_count": pred_count,
+                    "trend": f_trend,
+                }
+                if f_trend == "increasing" or pred_count >= baseline_30d:
+                    supporting_signals.append({
+                        "signal_type": "forecast",
+                        "description": f"Forecast indicates continued increase ({f_trend}, predicted: {round(pred_count, 1)} incidents)",
+                        "score": min(1.0, round(pred_count / max(baseline_30d, 1.0), 2)),
+                        "status": "CONFIRMED" if f_mode == "ML" else "PROBABLE",
+                        "evidence_details": dist_forecast,
+                    })
+    except Exception as exc:
+        contributing_analytics["forecast"] = {"status": "UNAVAILABLE", "reason": str(exc)}
+
+    # 5. Modus Operandi (MO) Similarities
+    shared_mo_tags: set[str] = set()
+    try:
+        tag_counter: Counter[str] = Counter()
+        for c in current_cases:
+            tags = set()
+            if c.mo_tags:
+                tags.update(t.strip() for t in c.mo_tags.split(",") if t.strip())
+            if c.description:
+                tags.update(mo_pattern_service.tags_for_text(c.description))
+            for t in tags:
+                tag_counter[t] += 1
+        shared_mo_tags = {t for t, cnt in tag_counter.items() if cnt >= 2}
+
+        mo_patterns_data = mo_pattern_service.detect_recurring_mo_patterns(db, min_support=2, max_patterns=10)
+        matching_mo = [
+            p for p in mo_patterns_data.get("patterns", [])
+            if district in p.get("districts", []) or category == p.get("dominant_category")
+        ]
+        contributing_analytics["mo_pattern"] = {
+            "status": "AVAILABLE",
+            "shared_tags": sorted(list(shared_mo_tags)),
+            "recurring_pattern_count": len(matching_mo),
+        }
+        if shared_mo_tags or matching_mo:
+            lead_tags = sorted(list(shared_mo_tags))[:3] if shared_mo_tags else (matching_mo[0].get("shared_tags", [])[:3] if matching_mo else [])
+            tag_label = ", ".join(lead_tags) if lead_tags else "recurring signature"
+            supporting_signals.append({
+                "signal_type": "mo_pattern",
+                "description": f"Similar MO detected ({tag_label})",
+                "score": 0.75 if shared_mo_tags else 0.60,
+                "status": "CONFIRMED",
+                "evidence_details": {
+                    "shared_tags": sorted(list(shared_mo_tags)),
+                    "matching_recurring_patterns": len(matching_mo),
+                },
+            })
+    except Exception as exc:
+        contributing_analytics["mo_pattern"] = {"status": "UNAVAILABLE", "reason": str(exc)}
+
+    # 6. FIR & Entity Relationships
+    related_fir_ids: list[str] = []
+    related_entity_ids: list[str] = []
+    at_large_suspects: list[str] = []
+    all_suspect_names: list[str] = []
+
+    for c in current_cases:
+        for fir in c.firs:
+            fir_label = fir.fir_number or str(fir.id)
+            if fir_label not in related_fir_ids:
+                related_fir_ids.append(fir_label)
+            for lk in fir.criminal_links:
+                if lk.criminal:
+                    cid = str(lk.criminal.id)
+                    if cid not in related_entity_ids:
+                        related_entity_ids.append(cid)
+                    if lk.criminal.full_name not in all_suspect_names:
+                        all_suspect_names.append(lk.criminal.full_name)
+                    if lk.criminal.status == "at_large" and lk.criminal.full_name not in at_large_suspects:
+                        at_large_suspects.append(lk.criminal.full_name)
+            for vl in fir.victim_links:
+                if vl.victim:
+                    vid = str(vl.victim.id)
+                    if vid not in related_entity_ids:
+                        related_entity_ids.append(vid)
+
+    if at_large_suspects:
+        supporting_signals.append({
+            "signal_type": "entity_link",
+            "description": f"Active at-large suspects identified ({', '.join(at_large_suspects[:2])})",
+            "score": 0.85,
+            "status": "CONFIRMED",
+            "evidence_details": {
+                "at_large_suspects": at_large_suspects,
+                "total_entities_linked": len(related_entity_ids),
+            },
+        })
+
+    # Threshold evaluation: require minimum number of supporting signals
+    if len(supporting_signals) < thresholds.min_supporting_signals:
+        return None
+
+    # Calculate Composite Risk Score (0.0 to 1.0)
+    velocity_comp = min(1.0, max(0.0, change_pct / 150.0))
+    anom_comp = anomaly_max_score if anomaly_max_score > 0 else 0.35
+    spatial_comp = 0.80 if any(s["signal_type"] == "spatial_hotspot" for s in supporting_signals) else 0.40
+    entity_comp = 0.90 if at_large_suspects else 0.45
+    raw_risk = (0.35 * velocity_comp) + (0.25 * anom_comp) + (0.20 * spatial_comp) + (0.20 * entity_comp)
+    risk_score = round(max(0.1, min(0.99, raw_risk)), 2)
+
+    # Calculate Overall Confidence (0.0 to 1.0)
+    sig_cnt = len(supporting_signals)
+    if sig_cnt >= 5:
+        base_confidence = 0.93
+    elif sig_cnt == 4:
+        base_confidence = 0.87
+    elif sig_cnt == 3:
+        base_confidence = 0.77
+    elif sig_cnt == 2:
+        base_confidence = 0.65
+    else:
+        base_confidence = 0.45
+
+    if raw_baseline < 3:
+        base_confidence = max(0.35, base_confidence - 0.10)
+
+    confidence = round(min(0.98, max(0.10, base_confidence)), 2)
+
+    # Filter by risk and confidence thresholds
+    if risk_score < thresholds.min_risk_score or confidence < thresholds.min_confidence:
+        return None
+
+    # Determine Pattern Type naming
+    if "Theft" in category or "Burglar" in category:
+        pattern_type = f"Emerging {category} Cluster"
+    elif any(s["signal_type"] == "mo_pattern" for s in supporting_signals):
+        pattern_type = f"Emerging {category} MO Signature"
+    elif any(s["signal_type"] == "spatial_hotspot" for s in supporting_signals):
+        pattern_type = f"Emerging {category} Hotspot Cluster"
+    else:
+        pattern_type = f"Emerging {category} Spike"
+
+    # Action Recommendation Input
+    station_hint = ", ".join(list(stations)[:2]) if stations else district
+    if "night_operation" in shared_mo_tags:
+        action_title = f"Night Patrol Surge: {station_hint}"
+        action_type = "patrol_surge"
+        action_desc = f"Deploy targeted night patrols in {station_hint} focusing on entry corridors to disrupt {category} operations."
+    elif at_large_suspects:
+        action_title = f"Apprehension Alert: {', '.join(at_large_suspects[:2])}"
+        action_type = "surveillance"
+        action_desc = f"Issue targeted surveillance and apprehension bulletin for at-large suspects ({', '.join(at_large_suspects)}) linked to {category} FIRs in {district}."
+    elif forecast_result and forecast_result.get("trend") == "increasing":
+        action_title = f"Tactical Checkpoint Surge: {station_hint}"
+        action_type = "checkpoint"
+        action_desc = f"Establish proactive vehicle checkpoints along transit corridors in {station_hint} to counter anticipated {category} increase."
+    else:
+        action_title = f"Investigate {category} Cluster: {district}"
+        action_type = "investigation"
+        action_desc = f"Investigate the identified cluster and associated FIR/entity relationships across {len(related_fir_ids)} linked cases."
+
+    suggested_intervention = {
+        "district": district,
+        "intervention_type": action_type,
+        "title": action_title,
+        "description": action_desc,
+        "started_at": now.isoformat(),
+        "status": "planned",
+    }
+
+    # Model tracking & ML status
+    from app.services.model_management import current_model_version
+    model_ver = current_model_version() or "v1.2"
+    if any(m == "ML" for m in ml_modes):
+        ml_status = "ML" if all(m == "ML" for m in ml_modes) else "HYBRID"
+    elif any(m == "FALLBACK" for m in ml_modes):
+        ml_status = "FALLBACK"
+    else:
+        ml_status = "RULE_BASED"
+
+    # Provenance
+    provenance = analytics_service.derive_data_provenance(current_cases)
+
+    # Explainability text
+    explanation_lines = [
+        f"Pattern: {pattern_type}",
+        "",
+        f"Baseline: {int(round(baseline_30d))} incidents",
+        f"Current: {current_count} incidents",
+        f"Change: {'+' if change_pct >= 0 else ''}{change_pct}%",
+        "",
+        f"Risk Score: {risk_score}",
+        f"Confidence: {confidence}",
+        "",
+        "Supporting Signals:",
+    ]
+    for s in supporting_signals:
+        explanation_lines.append(f"- {s['description']}")
+    explanation_lines.append("")
+    explanation_lines.append(f"Related FIRs: {sorted(related_fir_ids)}")
+    explanation_lines.append(f"Related Entities: {sorted(all_suspect_names)}")
+    explanation_lines.append("")
+    explanation_lines.append(f"ML Status: {ml_status}")
+    explanation_lines.append(f"Model Version: {model_ver}")
+    explanation_lines.append("")
+    explanation_lines.append("Recommended Action:")
+    explanation_lines.append(action_desc)
+    explanation = "\n".join(explanation_lines)
+
+    mean_lat = round(sum(lats) / len(lats), 5) if lats else None
+    mean_lng = round(sum(lngs) / len(lngs), 5) if lngs else None
+    intel_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"saksha:intel:{district}:{category}:{now.strftime('%Y-%m-%d')}"))
+
+    return {
+        "intelligence_id": intel_uuid,
+        "pattern_type": pattern_type,
+        "location": {
+            "district": district,
+            "stations": sorted(list(stations)),
+            "latitude": mean_lat,
+            "longitude": mean_lng,
+        },
+        "affected_h3_cells": sorted(list(h3_cells)),
+        "time_window": f"last_{thresholds.current_window_days}_days",
+        "change_from_baseline": {
+            "baseline_count": round(baseline_30d, 2),
+            "current_count": current_count,
+            "change_percentage": change_pct,
+            "direction": direction,
+            "baseline_window_days": thresholds.baseline_window_days,
+            "current_window_days": thresholds.current_window_days,
+        },
+        "risk_score": risk_score,
+        "forecast": forecast_result,
+        "confidence": confidence,
+        "supporting_signals": supporting_signals,
+        "related_fir_ids": sorted(related_fir_ids),
+        "related_entity_ids": sorted(related_entity_ids),
+        "recommended_action_input": {
+            "title": action_title,
+            "action_type": action_type,
+            "description": action_desc,
+            "priority": "CRITICAL" if risk_score >= 0.8 else "HIGH" if risk_score >= 0.6 else "MEDIUM",
+            "suggested_intervention": suggested_intervention,
+        },
+        "ml_status": ml_status,
+        "model_name": "SAKSHA Intelligence Fusion",
+        "model_version": model_ver,
+        "detection_timestamp": now.isoformat(),
+        "explanation": explanation,
+        "contributing_analytics": contributing_analytics,
+        "data_provenance": provenance,
+    }
+

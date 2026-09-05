@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   X, User, Building, Clock, AlertTriangle, AlertCircle, Info, Tag,
-  FileText, CheckCircle, Archive, Radio,
+  FileText, CheckCircle, Archive, Radio, Trash2,
 } from 'lucide-react';
 import { useNotificationStore } from '../../store/notificationStore';
 import type { NotificationRecord } from '../../services/api';
@@ -46,7 +46,7 @@ interface NotificationDetailModalProps {
 export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = ({
   notification, open, onClose,
 }) => {
-  const { markRead, acknowledge, dismiss } = useNotificationStore();
+  const { markRead, acknowledge, dismiss, removeNotification } = useNotificationStore();
 
   if (!open || !notification) return null;
   const n = notification;
@@ -171,6 +171,18 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
           >
             <Archive className="w-3 h-3" />
             Archive
+          </button>
+          <button
+            onClick={() => {
+              if (window.confirm('Permanently delete this notification?')) {
+                removeNotification(n.id);
+                onClose();
+              }
+            }}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-tertiary)]/50 text-[#C94A2A] rounded-lg text-[9px] font-mono font-bold border border-[#C94A2A]/20 hover:bg-[#C94A2A]/15 transition-colors cursor-pointer"
+          >
+            <Trash2 className="w-3 h-3" />
+            Delete
           </button>
         </div>
       </div>

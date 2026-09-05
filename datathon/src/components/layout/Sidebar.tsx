@@ -30,6 +30,7 @@ import {
   ShieldCheck,
   Sparkles,
   ScanFace,
+  Radar,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -72,6 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'notifications', label: t.nav_notifications, path: '/notifications', icon: <Bell className="w-[18px] h-[18px]" /> },
         { id: 'anomaly', label: t.nav_anomaly, path: '/anomalies', icon: <AlertTriangle className="w-[18px] h-[18px]" /> },
         { id: 'strategic', label: t.nav_strategic, path: '/strategic', icon: <Shield className="w-[18px] h-[18px]" /> },
+        { id: 'intelligence_fusion', label: t.nav_intelligence_fusion, path: '/intelligence-fusion', icon: <Radar className="w-[18px] h-[18px]" /> },
       ],
     },
 {

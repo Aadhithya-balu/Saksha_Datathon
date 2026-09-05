@@ -80,8 +80,10 @@ const InvestigationIntelligence: React.FC = () => {
     setHistoryLoading(true);
     try {
       const raw = await getIntelligenceHistory(30);
+      // Only entity builds belong on this page; fusion runs live on the Intelligence Fusion portal.
+      const entityRuns = raw.filter((h) => h.entity_type === 'fir' || h.entity_type === 'case' || h.entity_type === 'criminal' || h.entity_type === 'victim');
       const seen = new Map<string, IntelligenceHistoryItem>();
-      for (const h of raw) {
+      for (const h of entityRuns) {
         const key = `${h.entity_type}:${h.entity_id}`;
         const existing = seen.get(key);
         if (!existing || (h.created_at && existing.created_at && new Date(h.created_at) > new Date(existing.created_at))) {
@@ -117,7 +119,6 @@ const InvestigationIntelligence: React.FC = () => {
       return;
     }
     runSearch(debounced, filter);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced, filter]);
 
   // Deep-link support: an incoming navigate-tab event for the Intelligence Engine

@@ -49,11 +49,30 @@ class CriminalCreate(CriminalBase):
 class CriminalUpdate(BaseModel):
     full_name: str | None = None
     aliases: str | None = None
+    date_of_birth: date | None = None
+    gender: str | None = None
     address: str | None = None
     identifying_marks: str | None = None
     mo_summary: str | None = None
     status: str | None = None
     gang_affiliation: str | None = None
+
+    @field_validator("date_of_birth", mode="before")
+    @classmethod
+    def empty_date_to_none(cls, v):
+        """Coerce '' (cleared date input) to None so the record can be unset."""
+        if v in (None, ""):
+            return None
+        return v
+
+    @field_validator("gender", "aliases", "address", "identifying_marks", "mo_summary", "gang_affiliation")
+    @classmethod
+    def blank_to_none(cls, v):
+        """Trim whitespace and store '' as None instead of an empty string."""
+        if v is None:
+            return None
+        cleaned = v.strip()
+        return cleaned or None
 
     @field_validator("status")
     @classmethod

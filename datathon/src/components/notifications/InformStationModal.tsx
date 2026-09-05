@@ -21,7 +21,6 @@ const CATEGORIES = [
   { value: 'intelligence_sharing', label: 'Intelligence Sharing' },
   { value: 'suspicious_activity', label: 'Suspicious Activity' },
   { value: 'emergency_broadcast', label: 'Emergency Broadcast' },
-  { value: 'system_notification', label: 'System Notification' },
   { value: 'administrative', label: 'Administrative' },
 ];
 

@@ -29,6 +29,8 @@ import {
   Gauge,
   KeyRound,
   AlertTriangle,
+  Layers,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { SearchInput } from '../components/ui/SearchInput';
 import { Badge } from '../components/ui/Badge';
@@ -484,18 +486,24 @@ const sections: DocSection[] = [
   },
   {
     id: 'investigation-workflow',
-    title: 'Investigation Workflow',
+    title: 'Investigation Module',
     icon: <Workflow className="w-4 h-4" />,
     category: 'Module Guides',
     content: (
-      <div className="space-y-4">
-        <p className="text-sm text-[var(--text-secondary)]">The end-to-end investigation process in Saksha:</p>
+      <div className="space-y-5">
+        <p className="text-sm text-[var(--text-secondary)]">
+          The Investigation module is a unified, officer-centric dossier for any case. Search the case list,
+          open a dossier, and get the full investigation context alongside an analytical modus-operandi (MO)
+          matching engine — every value derived live from the police database.
+        </p>
+
+        <h4 className="text-sm font-semibold text-[var(--text-primary)]">End-to-end workflow</h4>
         <div className="space-y-0">
           {[
             { step: 'Crime Registration', desc: 'Report filed as FIR, linked to crime case', icon: <FileText className="w-4 h-4" />, color: 'var(--accent-blue)' },
             { step: 'Investigation', desc: 'IO assigned, evidence collected, timeline tracked', icon: <Search className="w-4 h-4" />, color: 'var(--accent-purple)' },
-            { step: 'Evidence Analysis', desc: 'Digital and physical evidence catalogued', icon: <FolderOpen className="w-4 h-4" />, color: 'var(--accent-teal)' },
-            { step: 'AI Analytics', desc: 'Predictions, risk scores, anomaly detection', icon: <Brain className="w-4 h-4" />, color: 'var(--accent-blue)' },
+            { step: 'Evidence Analysis', desc: 'Digital and physical evidence catalogued with chain-of-custody', icon: <FolderOpen className="w-4 h-4" />, color: 'var(--accent-teal)' },
+            { step: 'MO Matching', desc: 'Cases and offenders matched by weighted MO similarity', icon: <Brain className="w-4 h-4" />, color: 'var(--accent-blue)' },
             { step: 'Network Mapping', desc: 'Criminal associations and gang links identified', icon: <Network className="w-4 h-4" />, color: 'var(--accent-purple)' },
             { step: 'Reports & Closure', desc: 'Final report generated, case status updated', icon: <BarChart3 className="w-4 h-4" />, color: 'var(--accent-teal)' },
           ].map((s, i) => (
@@ -512,6 +520,97 @@ const sections: DocSection[] = [
               </div>
             </div>
           ))}
+        </div>
+
+        <h4 className="text-sm font-semibold text-[var(--text-primary)]">Search & dossier</h4>
+        <ul className="space-y-2">
+          {[
+            'Search cases by number or description and filter by status',
+            'Open a dossier: case header with status/priority, progress bar, dates and assigned officer',
+            'Linked FIRs, criminals (with risk scores), evidence and a chronological investigation timeline',
+            'AI recommendations computed from real data — case severity, open FIR counts, evidence forensics, aging alerts and MO-pattern leads',
+            'Ask the AI chat panel about the case, evidence and possible leads',
+          ].map((f, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
+              <ChevronRight className="w-3.5 h-3.5 text-[var(--accent-blue)] shrink-0 mt-1" />
+              {f}
+            </li>
+          ))}
+        </ul>
+
+        <h4 className="text-sm font-semibold text-[var(--text-primary)]">Analytical tabs</h4>
+        <p className="text-sm text-[var(--text-secondary)]">
+          The MO engine is organised into three tabs — <strong className="text-[var(--text-primary)]">Ranked Matches</strong>,
+          <strong className="text-[var(--text-primary)]"> Statewide Clusters</strong> and{' '}
+          <strong className="text-[var(--text-primary)]">Deep Compare</strong>.
+        </p>
+
+        <h5 className="text-sm font-semibold text-[var(--text-primary)] mt-3">Ranked Matches</h5>
+        <ul className="space-y-2">
+          {[
+            'Live-ranked suspects and serial cases for the current case, with a toolbar showing how many cases and offenders were evaluated',
+            'Sort by similarity, confidence or status; filter by minimum match threshold (10 – 75%), confidence (all / medium / high) and free-text search on name or station',
+            'Confirmed FIR accused are flagged separately from analytical leads so evidence-based links stay distinct from intelligence suggestions',
+            'Opening a match reveals an analysis drawer: match percentage, algorithm confidence, Verified Matching Factors, a Comparative Attribute Matrix, divergent factors and attribute-evaluation coverage',
+            'A context menu per result offers Deep Compare, switching the investigation to that case, or viewing its timeline',
+          ].map((f, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
+              <AlertTriangle className="w-3.5 h-3.5 text-[var(--accent-coral)] shrink-0 mt-1" />
+              {f}
+            </li>
+          ))}
+        </ul>
+
+        <h5 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2 mt-4">
+          <Layers className="w-4 h-4 text-[var(--accent-teal)] shrink-0" /> Statewide Clusters
+        </h5>
+        <ul className="space-y-2">
+          {[
+            'Unsupervised tactical mining groups cases and offenders statewide whose MO signatures overlap (Jaccard similarity ≥ 0.34 or ≥ 2 shared canonical tags, connected via union-find)',
+            'Selectable cluster cards list each cluster\'s display name, case-count badge, a cases · suspects · districts summary, a preview chip strip of the key MO tags (expandable), the peak time window and how many members are at large',
+            'Selecting a card opens a detail panel with five stat tiles (Related Cases, Subjects, At-Large, Threat Score, Districts), a dominant-category badge, a threat-score badge, the full Key MO Patterns chip strip, geographic spread, the relevant crime category and time period, and an Associated Entities list',
+            'From the Associated Entities list officers can open a dossier, view a case, or jump to that criminal\'s network graph in one click',
+            'Clusters are ranked by a documented threat heuristic incorporating support, criminal count, at-large members, shared tags and violent indicators',
+          ].map((f, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
+              <Shield className="w-3.5 h-3.5 text-[var(--accent-teal)] shrink-0 mt-1" />
+              {f}
+            </li>
+          ))}
+        </ul>
+
+        <h5 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2 mt-4">
+          <SlidersHorizontal className="w-4 h-4 text-[var(--accent-purple)] shrink-0" /> Deep Compare
+        </h5>
+        <ul className="space-y-2">
+          {[
+            'A dedicated Multi-Feature Side-by-Side view comparing the current subject with any selected record, opened from a result or its context menu',
+            'A score summary banner reports the overall similarity % and match confidence (high ≥ 75%, medium 50 – 74%, low 30 – 49%)',
+            'A fixed-layout comparison matrix walks five dimensions — Crime Category, Operating Time Window, Geographic Jurisdiction, Target Environment and Tactical Methods & MO Tags',
+            'Every row carries a standardised live status — ✓ Match, △ Partial, ✕ Mismatch, ✓ Same District, ✓ Same Station or — No Data — derived from real field comparisons and tag-set overlap rather than stored judgments',
+            'Tactical methods render as compact expandable MO-tag chips; Matching Factors and Divergent Factors panels explain the overall verdict',
+            'The underlying engine scores seven weighted features over real records — MO tags 35%, crime category 20%, weapons 15%, time window 10%, location 10%, target environment 5%, vehicles 5%',
+          ].map((f, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--accent-purple)] shrink-0 mt-1" />
+              {f}
+            </li>
+          ))}
+        </ul>
+
+        <div className="p-3 rounded-lg bg-[var(--accent-amber-subtle)] border border-[var(--accent-amber)]/20">
+          <div className="flex items-start gap-2">
+            <Lightbulb className="w-4 h-4 text-[var(--accent-amber)] shrink-0 mt-0.5" />
+            <div>
+              <div className="text-sm font-medium text-[var(--text-primary)]">Data provenance</div>
+              <div className="text-xs text-[var(--text-secondary)] mt-0.5">
+                Every score, match and cluster is computed live from platform records — cases, FIRs,
+                criminals, locations, evidence and normalized MO tags. Attributes that were never logged
+                are reported as "insufficient data"; the platform never fabricates values, percentages or
+                trends.
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     ),

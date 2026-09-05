@@ -15,6 +15,38 @@ from app.models.audit_log import AuditLog
 from app.models.notification import Notification
 from app.schemas.notification import ActivityEvent, ActivityFeedOut
 
+# The notification centre is a station-to-station / broadcast channel. It must
+# never surface internal backend activity (model retrains, MLOps jobs, drift
+# scans, scheduled system tasks, etc.), so those audit + notification records
+# are filtered out of the unified feed and live timeline below.
+_INTERNAL_ACTION_PREFIXES = (
+    "MODEL_",
+    "MLOPS_",
+    "SYSTEM_",
+    "DRIFT_",
+    "TRAIN_",
+    "SCHEDULED_",
+    "RETRAIN",
+    "JOB_",
+    "DATA_IMPORT_",
+)
+_INTERNAL_RESOURCE_HINTS = ("model", "mlop", "registry", "drift", "prometheus")
+_INTERNAL_NOTIFICATION_CATEGORIES = ("system_notification", "system_health")
+
+
+def _is_internal_audit(log: AuditLog) -> bool:
+    action = (log.action or "").upper()
+    if action.startswith(_INTERNAL_ACTION_PREFIXES):
+        return True
+    resource = (log.resource_type or "").lower()
+    return any(hint in resource for hint in _INTERNAL_RESOURCE_HINTS)
+
+
+def _is_internal_notification(notif: Notification) -> bool:
+    category = (notif.category or "").lower()
+    ntype = (notif.notification_type or "").lower()
+    return category in _INTERNAL_NOTIFICATION_CATEGORIES or ntype in _INTERNAL_NOTIFICATION_CATEGORIES
+
 
 def get_activity_feed(
     db: Session,
@@ -44,6 +76,8 @@ def get_activity_feed(
 
     audit_logs = audit_query.all()
     for log in audit_logs:
+        if _is_internal_audit(log):
+            continue
         event_type_map = {
             "CREATE": "case_created" if log.resource_type == "CrimeCase"
                       else "fir_registered" if log.resource_type == "FIR"
@@ -91,6 +125,8 @@ def get_activity_feed(
 
     notifications = notif_query.all()
     for notif in notifications:
+        if _is_internal_notification(notif):
+            continue
         if event_type and notif.notification_type != event_type:
             continue
         if resource_type and notif.resource_type and notif.resource_type.lower() != resource_type.lower():
@@ -175,6 +211,8 @@ def get_live_event_timeline(
         audit_query = audit_query.filter(AuditLog.resource_id == str(case_id))
 
     for log in audit_query.all():
+        if _is_internal_audit(log):
+            continue
         events.append({
             "id": str(log.id),
             "timestamp": log.timestamp.isoformat() if log.timestamp else "",
@@ -196,6 +234,8 @@ def get_live_event_timeline(
         notif_query = notif_query.filter(Notification.resource_id == str(case_id))
 
     for notif in notif_query.all():
+        if _is_internal_notification(notif):
+            continue
         events.append({
             "id": str(notif.id),
             "timestamp": notif.created_at.isoformat() if notif.created_at else "",

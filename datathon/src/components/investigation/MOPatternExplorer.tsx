@@ -25,6 +25,8 @@ import {
   Search,
   Check,
   Minus,
+  Shield,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   getCaseMOMatches,
@@ -51,6 +53,106 @@ interface SelectedDetail {
   suspect?: MOMatchingSuspect;
   caseItem?: MOMatchingCase;
 }
+
+// ── Readability helpers & compact UI primitives ─────────────────────────────
+
+const humanizeTag = (tag: string): string =>
+  (tag || '')
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .slice(0, 48);
+
+interface TagClusterProps {
+  tags: string[];
+  limit?: number;
+  empty?: string;
+  accent?: string;
+}
+
+/** Compact chip row for MO tags: first `limit` chips + expandable remainder. */
+const TagCluster: React.FC<TagClusterProps> = ({ tags, limit = 6, empty = 'None recorded', accent }) => {
+  const [expanded, setExpanded] = useState(false);
+  const clean = (tags || []).filter(Boolean);
+  if (clean.length === 0) {
+    return <span className="text-[11px] text-[var(--text-muted)] italic">{empty}</span>;
+  }
+  const visible = expanded ? clean : clean.slice(0, limit);
+  const hidden = clean.length - visible.length;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+      {visible.map((tag) => (
+        <span
+          key={tag}
+          title={humanizeTag(tag)}
+          className={`px-2 py-0.5 rounded-md border text-[10px] font-mono font-medium tracking-wide whitespace-nowrap max-w-full overflow-hidden text-ellipsis ${
+            accent || 'bg-[#1E6FD9]/10 border-[#1E6FD9]/25 text-[var(--text-secondary)]'
+          }`}
+        >
+          {humanizeTag(tag)}
+        </span>
+      ))}
+      {hidden > 0 && !expanded && (
+        <span
+          role="button"
+          tabIndex={-1}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setExpanded(true);
+          }}
+          className="px-2 py-0.5 rounded-md border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[10px] font-semibold text-[#1E6FD9] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
+        >
+          +{hidden} more
+        </span>
+      )}
+      {expanded && clean.length > limit && (
+        <span
+          role="button"
+          tabIndex={-1}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setExpanded(false);
+          }}
+          className="px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+        >
+          − collapse
+        </span>
+      )}
+    </div>
+  );
+};
+
+const patternDisplayName = (p: MOPattern, index: number): string => {
+  if (p.dominant_category) return p.dominant_category;
+  const tags = (p.shared_tags || []).filter(Boolean);
+  if (tags.length > 0) return `${tags.slice(0, 2).map(humanizeTag).join(' & ')} Pattern`;
+  return `Cluster ${String(index + 1).padStart(2, '0')}`;
+};
+
+const threatColor = (score: number): string => {
+  if (score >= 70) return 'bg-red-950/40 text-red-400 border-red-800/60';
+  if (score >= 40) return 'bg-amber-950/40 text-amber-400 border-amber-800/60';
+  return 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60';
+};
+
+const compareStatus = (status: 'match' | 'partial' | 'mismatch' | 'same_district' | 'no_data') => {
+  if (status === 'match') {
+    return <span className="text-emerald-400 font-bold">✓ Match</span>;
+  }
+  if (status === 'partial') {
+    return <span className="text-amber-400 font-bold">△ Partial</span>;
+  }
+  if (status === 'mismatch') {
+    return <span className="text-red-400/80 font-medium">✕ Mismatch</span>;
+  }
+  if (status === 'same_district') {
+    return <span className="text-emerald-400 font-bold">✓ Same District</span>;
+  }
+  return <span className="text-slate-500">— No Data</span>;
+};
 
 export const MOPatternExplorer: React.FC<MOPatternExplorerProps> = ({
   currentCaseId,
@@ -860,8 +962,8 @@ export const MOPatternExplorer: React.FC<MOPatternExplorerProps> = ({
             </div>
           </div>
         ) : activeTab === 'recurring_clusters' ? (
-          /* 4. Statewide MO Pattern Clusters */
-          <div className="space-y-4">
+          /* 4. Statewide MO Pattern Clusters (structured intelligence cards) */
+          <div className="space-y-4 min-w-0">
             <div className="flex items-center justify-between border-b border-[var(--border-primary)] pb-2.5">
               <span className="text-xs font-bold uppercase tracking-wider text-[#1E6FD9] flex items-center gap-2 font-mono">
                 <Layers className="w-4 h-4" /> Statewide MO Patterns & Syndicate Clusters
@@ -869,96 +971,226 @@ export const MOPatternExplorer: React.FC<MOPatternExplorerProps> = ({
               <span className="text-[10px] text-[var(--text-muted)] font-mono">UNSUPERVISED TACTICAL MINING</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
-                {patterns.map((p) => (
-                  <button
-                    key={p.pattern_id}
-                    onClick={() => setSelectedPattern(p)}
-                    className={`w-full p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                      selectedPattern?.pattern_id === p.pattern_id
-                        ? 'bg-[#1E6FD9]/15 border-[#1E6FD9] shadow-xs'
-                        : 'bg-[var(--bg-tertiary)]/40 hover:bg-[var(--bg-tertiary)]/80 border-[var(--border-primary)]'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <span className="text-xs font-bold text-[var(--text-primary)] capitalize">
-                        {(p.shared_tags || []).join(', ') || p.dominant_category || 'Pattern Cluster'}
-                      </span>
-                      <span className="text-[10px] px-2 py-0.5 bg-[#1E6FD9]/20 text-[#1E6FD9] font-bold rounded-md">
-                        {p.criminal_count || p.members?.length || 0} Members
-                      </span>
-                    </div>
-                    <p className="text-xs text-[var(--text-secondary)] mt-1.5 line-clamp-2">
-                      {p.example_narrative || `${p.case_count} linked cases across ${p.districts?.length || 1} district(s)`}
-                    </p>
-                    <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] mt-2.5 pt-1.5 border-t border-[var(--border-primary)]/40">
-                      <span>{p.districts?.join(', ') || 'Multi-district'}</span>
-                      <span className="text-red-400 font-bold">{p.at_large_members || 0} at-large</span>
-                    </div>
-                  </button>
-                ))}
+            {loading && patterns.length === 0 ? (
+              <div className="p-10 text-center text-xs text-[var(--text-muted)] space-y-2.5">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#1E6FD9]" />
+                <p className="font-medium">Mining statewide MO patterns...</p>
               </div>
-
-              {selectedPattern && (
-                <div className="md:col-span-2 p-5 bg-[var(--bg-tertiary)]/30 border border-[var(--border-primary)] rounded-xl space-y-4">
-                  <div className="flex justify-between items-start border-b border-[var(--border-primary)] pb-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-[var(--text-primary)] capitalize flex items-center gap-2">
-                        {(selectedPattern.shared_tags || []).join(' · ') || selectedPattern.dominant_category || 'Syndicate Pattern'}
-                      </h4>
-                      <p className="text-xs text-[var(--text-secondary)] mt-1">
-                        {selectedPattern.example_narrative || `${selectedPattern.case_count} cases and ${selectedPattern.criminal_count} criminals identified.`}
+            ) : patterns.length === 0 ? (
+              <div className="p-10 text-center text-xs text-[var(--text-muted)] border border-dashed border-[var(--border-primary)] rounded-xl">
+                No recurring MO patterns detected yet. Patterns require at least two entities sharing
+                overlapping modus-operandi signatures.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                {/* Left: selectable cluster cards */}
+                <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1 min-w-0">
+                  {patterns.map((p, idx) => (
+                    <button
+                      key={p.pattern_id}
+                      onClick={() => setSelectedPattern(p)}
+                      className={`w-full max-w-full p-3.5 rounded-xl border text-left transition-all cursor-pointer min-w-0 ${
+                        selectedPattern?.pattern_id === p.pattern_id
+                          ? 'bg-[#1E6FD9]/15 border-[#1E6FD9] shadow-xs'
+                          : 'bg-[var(--bg-tertiary)]/40 hover:bg-[var(--bg-tertiary)]/80 border-[var(--border-primary)]'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center gap-2 min-w-0">
+                        <span className="text-xs font-bold text-[var(--text-primary)] capitalize truncate">
+                          {patternDisplayName(p, idx)}
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 bg-[#1E6FD9]/20 text-[#1E6FD9] font-bold rounded-md shrink-0">
+                          {p.case_count || 0} cases
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[var(--text-muted)] mt-1 min-w-0 truncate">
+                        {p.case_count || 0} case{p.case_count === 1 ? '' : 's'} · {p.criminal_count || 0} suspect{p.criminal_count === 1 ? '' : 's'}
+                        {p.districts && p.districts.length > 0
+                          ? ` · ${p.districts.slice(0, 2).join(', ')}${p.districts.length > 2 ? '…' : ''}`
+                          : ''}
                       </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className="text-xs font-bold px-2.5 py-1 bg-red-950/40 text-red-400 border border-red-800/60 rounded-md">
-                        {selectedPattern.at_large_members || 0} Active At-Large
-                      </span>
-                    </div>
-                  </div>
+                      <div className="mt-2 min-w-0">
+                        <TagCluster tags={p.shared_tags || []} limit={3} />
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--text-muted)] mt-2.5 pt-2 border-t border-[var(--border-primary)]/40 min-w-0">
+                        <span className="truncate">{p.peak_time_window || 'Time not recorded'}</span>
+                        <span className={`shrink-0 font-bold ${p.at_large_members ? 'text-red-400' : 'text-emerald-400'}`}>
+                          {p.at_large_members || 0} at-large
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
 
-                  <div>
-                    <h5 className="text-xs font-bold uppercase text-[var(--text-muted)] mb-2.5 font-mono">
-                      Associated Syndicate Entities ({selectedPattern.members?.length || 0})
-                    </h5>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {(selectedPattern.members || []).map((m) => (
-                        <div
-                          key={m.id}
-                          className="p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg flex justify-between items-center"
-                        >
-                          <div>
-                            <span className="text-xs font-bold text-[var(--text-primary)] block">
-                              {m.label}
+                {/* Right: selected cluster detail */}
+                {selectedPattern && (
+                  <div className="md:col-span-2 p-5 bg-[var(--bg-tertiary)]/30 border border-[var(--border-primary)] rounded-xl space-y-5 min-w-0 overflow-hidden">
+                    {/* Cluster header */}
+                    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-primary)] pb-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-sm font-bold text-[var(--text-primary)] capitalize">
+                            {patternDisplayName(selectedPattern, 0)}
+                          </h4>
+                          {selectedPattern.dominant_category && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-950/40 text-indigo-300 border border-indigo-800/50 font-mono uppercase tracking-wide">
+                              {selectedPattern.dominant_category}
                             </span>
-                            <span className="text-[11px] text-[var(--text-muted)]">
-                              {m.kind === 'criminal' ? 'Suspect' : 'Case'} · <strong className="text-[var(--text-secondary)]">{m.status || 'Active'}</strong> · {m.district || 'Karnataka'}
-                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1 min-w-0 break-words">
+                          {selectedPattern.example_narrative
+                            ? selectedPattern.example_narrative
+                            : `${selectedPattern.case_count} cases and ${selectedPattern.criminal_count} suspects identified statewide.`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                        {selectedPattern.threat_score > 0 && (
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${threatColor(selectedPattern.threat_score)}`}>
+                            Threat {selectedPattern.threat_score}
+                          </span>
+                        )}
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${
+                          selectedPattern.at_large_members
+                            ? 'bg-red-950/40 text-red-400 border-red-800/60'
+                            : 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60'
+                        }`}>
+                          {selectedPattern.at_large_members || 0} Active At-Large
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Stat tiles */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                      {[
+                        { label: 'Related Cases', value: selectedPattern.case_count || 0, icon: <FileText className="w-3.5 h-3.5" /> },
+                        { label: 'Subjects', value: selectedPattern.criminal_count || 0, icon: <Users className="w-3.5 h-3.5" /> },
+                        { label: 'At-Large', value: selectedPattern.at_large_members || 0, icon: <AlertTriangle className="w-3.5 h-3.5" /> },
+                        { label: 'Threat Score', value: selectedPattern.threat_score || 0, icon: <Shield className="w-3.5 h-3.5" /> },
+                        { label: 'Districts', value: selectedPattern.districts?.length || 0, icon: <MapPin className="w-3.5 h-3.5" /> },
+                      ].map((s) => (
+                        <div key={s.label} className="p-2.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg min-w-0">
+                          <div className="flex items-center gap-1.5 text-[var(--text-muted)]">
+                            {s.icon}
+                            <span className="text-[9px] uppercase tracking-wider font-mono truncate">{s.label}</span>
                           </div>
-                          {m.kind === 'criminal' && onSelectCriminal && (
-                            <button
-                              onClick={() => onSelectCriminal(m.id)}
-                              className="px-2.5 py-1 bg-[#1E6FD9]/10 hover:bg-[#1E6FD9]/20 text-[#1E6FD9] text-xs font-bold rounded border border-[#1E6FD9]/30 transition-all cursor-pointer"
-                            >
-                              Dossier
-                            </button>
-                          )}
-                          {m.kind === 'case' && onSelectCase && (
-                            <button
-                              onClick={() => onSelectCase(m.id)}
-                              className="px-2.5 py-1 bg-[#1E6FD9]/10 hover:bg-[#1E6FD9]/20 text-[#1E6FD9] text-xs font-bold rounded border border-[#1E6FD9]/30 transition-all cursor-pointer"
-                            >
-                              Case
-                            </button>
-                          )}
+                          <div className="text-base font-bold text-[var(--text-primary)] font-mono mt-1">{s.value}</div>
                         </div>
                       ))}
                     </div>
+
+                    {/* Key MO patterns */}
+                    <div className="min-w-0">
+                      <h5 className="text-xs font-bold uppercase text-[var(--text-muted)] mb-2 font-mono">
+                        Key MO Patterns
+                      </h5>
+                      <TagCluster tags={selectedPattern.shared_tags || []} limit={8} />
+                    </div>
+
+                    {/* Geographic spread */}
+                    <div className="min-w-0">
+                      <h5 className="text-xs font-bold uppercase text-[var(--text-muted)] mb-2 font-mono">
+                        Geographic Spread
+                      </h5>
+                      {selectedPattern.districts && selectedPattern.districts.length > 0 ? (
+                        <TagCluster tags={selectedPattern.districts} limit={8} empty="Statewide / unspecified" />
+                      ) : (
+                        <span className="text-[11px] text-[var(--text-muted)] italic">Statewide / unspecified</span>
+                      )}
+                    </div>
+
+                    {/* Related crime category + time pattern */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
+                      <div>
+                        <h5 className="text-xs font-bold uppercase text-[var(--text-muted)] mb-2 font-mono">
+                          Related Crime Category
+                        </h5>
+                        {selectedPattern.dominant_category ? (
+                          <span className="inline-flex px-2.5 py-1 rounded-md bg-indigo-950/40 text-indigo-300 border border-indigo-800/50 text-[11px] font-mono uppercase tracking-wide max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                            {selectedPattern.dominant_category}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-[var(--text-muted)] italic">No category recorded</span>
+                        )}
+                      </div>
+                      <div>
+                        <h5 className="text-xs font-bold uppercase text-[var(--text-muted)] mb-2 font-mono">
+                          Relevant Time Pattern
+                        </h5>
+                        {selectedPattern.peak_time_window ? (
+                          <div className="text-[11px] text-[var(--text-secondary)] min-w-0">
+                            <span className="font-semibold text-[var(--text-primary)]">{selectedPattern.peak_time_window}</span>
+                            {(selectedPattern.first_occurred || selectedPattern.last_occurred) && (
+                              <span className="block text-[var(--text-muted)] mt-0.5">
+                                {selectedPattern.first_occurred
+                                  ? new Date(selectedPattern.first_occurred).toLocaleDateString()
+                                  : ''}
+                                {selectedPattern.last_occurred
+                                  ? ` – ${new Date(selectedPattern.last_occurred).toLocaleDateString()}`
+                                  : ''}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-[var(--text-muted)] italic">No time data recorded</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Associated entities */}
+                    <div className="min-w-0">
+                      <h5 className="text-xs font-bold uppercase text-[var(--text-muted)] mb-2.5 font-mono">
+                        Associated Entities ({selectedPattern.members?.length || 0})
+                      </h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[360px] overflow-y-auto pr-1">
+                        {(selectedPattern.members || []).map((m) => (
+                          <div
+                            key={m.id}
+                            className="p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg flex justify-between items-center gap-2 min-w-0"
+                          >
+                            <div className="min-w-0">
+                              <span className="text-xs font-bold text-[var(--text-primary)] block truncate">
+                                {m.label}
+                              </span>
+                              <span className="text-[11px] text-[var(--text-muted)] block truncate">
+                                {m.kind === 'criminal' ? 'Suspect' : 'Case'} · <strong className="text-[var(--text-secondary)]">{m.status || 'Active'}</strong> · {m.district || 'Karnataka'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {m.kind === 'criminal' && (
+                                <button
+                                  onClick={() => handleNavigateNetwork(m.id)}
+                                  title="View in Network"
+                                  className="hidden sm:inline-flex px-2 py-1 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] text-xs font-bold rounded border border-[var(--border-primary)] transition-all cursor-pointer"
+                                >
+                                  Network
+                                </button>
+                              )}
+                              {m.kind === 'criminal' && onSelectCriminal && (
+                                <button
+                                  onClick={() => onSelectCriminal(m.id)}
+                                  className="px-2.5 py-1 bg-[#1E6FD9]/10 hover:bg-[#1E6FD9]/20 text-[#1E6FD9] text-xs font-bold rounded border border-[#1E6FD9]/30 transition-all cursor-pointer"
+                                >
+                                  Dossier
+                                </button>
+                              )}
+                              {m.kind === 'case' && onSelectCase && (
+                                <button
+                                  onClick={() => onSelectCase(m.id)}
+                                  className="px-2.5 py-1 bg-[#1E6FD9]/10 hover:bg-[#1E6FD9]/20 text-[#1E6FD9] text-xs font-bold rounded border border-[#1E6FD9]/30 transition-all cursor-pointer"
+                                >
+                                  Case
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           /* 5. Dedicated Side-by-Side Deep Compare View */
@@ -1005,87 +1237,108 @@ export const MOPatternExplorer: React.FC<MOPatternExplorerProps> = ({
                 </div>
 
                 {/* Structured Comparison Matrix Table */}
-                <div className="overflow-x-auto border border-[var(--border-primary)] rounded-xl">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-[var(--bg-tertiary)] text-[var(--text-muted)] font-mono text-xs uppercase border-b border-[var(--border-primary)]">
-                      <tr>
-                        <th className="p-3 w-1/4">MO Dimension</th>
-                        <th className="p-3 w-1/3">Target Case</th>
-                        <th className="p-3 w-1/3">Compared Record</th>
-                        <th className="p-3 text-center">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border-primary)]/60 text-xs">
-                      <tr>
-                        <td className="p-3 font-semibold text-[var(--text-secondary)]">Crime Category</td>
-                        <td className="p-3 text-[var(--text-primary)]">{compareData.entity_a.category || '—'}</td>
-                        <td className="p-3 text-[var(--text-primary)]">{compareData.entity_b.category || '—'}</td>
-                        <td className="p-3 text-center">
-                          {compareData.entity_a.category && compareData.entity_a.category === compareData.entity_b.category ? (
-                            <span className="text-emerald-400 font-bold">✓ Match</span>
-                          ) : (
-                            <span className="text-amber-400 font-medium">✕ Diff</span>
-                          )}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-3 font-semibold text-[var(--text-secondary)]">Operating Time Window</td>
-                        <td className="p-3 text-[var(--text-primary)]">{compareData.entity_a.time_window || '—'}</td>
-                        <td className="p-3 text-[var(--text-primary)]">{compareData.entity_b.time_window || '—'}</td>
-                        <td className="p-3 text-center">
-                          {compareData.entity_a.time_window && compareData.entity_a.time_window === compareData.entity_b.time_window ? (
-                            <span className="text-emerald-400 font-bold">✓ Match</span>
-                          ) : (
-                            <span className="text-slate-400">△ Distinct</span>
-                          )}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-3 font-semibold text-[var(--text-secondary)]">Geographic Jurisdiction</td>
-                        <td className="p-3 text-[var(--text-primary)]">
-                          {compareData.entity_a.station || compareData.entity_a.district || '—'}
-                        </td>
-                        <td className="p-3 text-[var(--text-primary)]">
-                          {compareData.entity_b.station || compareData.entity_b.district || '—'}
-                        </td>
-                        <td className="p-3 text-center">
-                          {compareData.entity_a.district === compareData.entity_b.district ? (
-                            <span className="text-emerald-400 font-bold">✓ Same District</span>
-                          ) : (
-                            <span className="text-slate-400">✕ Other District</span>
-                          )}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-3 font-semibold text-[var(--text-secondary)]">Target Environment</td>
-                        <td className="p-3 text-[var(--text-primary)]">{compareData.entity_a.target_type || '—'}</td>
-                        <td className="p-3 text-[var(--text-primary)]">{compareData.entity_b.target_type || '—'}</td>
-                        <td className="p-3 text-center">
-                          {compareData.entity_a.target_type && compareData.entity_a.target_type === compareData.entity_b.target_type ? (
-                            <span className="text-emerald-400 font-bold">✓ Match</span>
-                          ) : (
-                            <span className="text-slate-400">—</span>
-                          )}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-3 font-semibold text-[var(--text-secondary)]">Tactical Methods & MO Tags</td>
-                        <td className="p-3 text-[var(--text-primary)]">
-                          {(compareData.entity_a.mo_tags || []).join(', ') || 'No tags recorded'}
-                        </td>
-                        <td className="p-3 text-[var(--text-primary)]">
-                          {(compareData.entity_b.mo_tags || []).join(', ') || 'No tags recorded'}
-                        </td>
-                        <td className="p-3 text-center">
-                          {compareData.dimension_scores?.methods && compareData.dimension_scores.methods > 0.4 ? (
-                            <span className="text-emerald-400 font-bold">✓ Strong Overlap</span>
-                          ) : (
-                            <span className="text-slate-400">△ Partial</span>
-                          )}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div className="border border-[var(--border-primary)] rounded-xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full table-fixed text-xs text-left">
+                      <thead className="bg-[var(--bg-tertiary)] text-[var(--text-muted)] font-mono text-xs uppercase border-b border-[var(--border-primary)]">
+                        <tr>
+                          <th className="p-3 w-[22%] align-top">MO Dimension</th>
+                          <th className="p-3 w-[30%] align-top">Target Case</th>
+                          <th className="p-3 w-[30%] align-top">Compared Record</th>
+                          <th className="p-3 w-[18%] text-center align-top">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--border-primary)]/60 text-xs align-top">
+                        {/* Crime Category */}
+                        <tr>
+                          <td className="p-3 font-semibold text-[var(--text-secondary)] font-mono text-[10px] uppercase tracking-wide">Crime Category</td>
+                          <td className="p-3 text-[var(--text-primary)] break-words">
+                            {compareData.entity_a.category || <span className="text-[var(--text-muted)]">No data</span>}
+                          </td>
+                          <td className="p-3 text-[var(--text-primary)] break-words">
+                            {compareData.entity_b.category || <span className="text-[var(--text-muted)]">No data</span>}
+                          </td>
+                          <td className="p-3 text-center">
+                            {compareData.entity_a.category && compareData.entity_b.category
+                              ? (compareData.entity_a.category === compareData.entity_b.category ? compareStatus('match') : compareStatus('mismatch'))
+                              : compareStatus('no_data')}
+                          </td>
+                        </tr>
+                        {/* Operating Time Window */}
+                        <tr>
+                          <td className="p-3 font-semibold text-[var(--text-secondary)] font-mono text-[10px] uppercase tracking-wide">Operating Time Window</td>
+                          <td className="p-3 text-[var(--text-primary)] break-words">
+                            {compareData.entity_a.time_window || <span className="text-[var(--text-muted)]">No data</span>}
+                          </td>
+                          <td className="p-3 text-[var(--text-primary)] break-words">
+                            {compareData.entity_b.time_window || <span className="text-[var(--text-muted)]">No data</span>}
+                          </td>
+                          <td className="p-3 text-center">
+                            {compareData.entity_a.time_window && compareData.entity_b.time_window
+                              ? (compareData.entity_a.time_window === compareData.entity_b.time_window ? compareStatus('match') : compareStatus('mismatch'))
+                              : compareStatus('no_data')}
+                          </td>
+                        </tr>
+                        {/* Geographic Jurisdiction */}
+                        <tr>
+                          <td className="p-3 font-semibold text-[var(--text-secondary)] font-mono text-[10px] uppercase tracking-wide">Geographic Jurisdiction</td>
+                          <td className="p-3 text-[var(--text-primary)] break-words">
+                            {compareData.entity_a.station || compareData.entity_a.district || <span className="text-[var(--text-muted)]">No data</span>}
+                          </td>
+                          <td className="p-3 text-[var(--text-primary)] break-words">
+                            {compareData.entity_b.station || compareData.entity_b.district || <span className="text-[var(--text-muted)]">No data</span>}
+                          </td>
+                          <td className="p-3 text-center">
+                            {(() => {
+                              const sa = compareData.entity_a.station;
+                              const sb = compareData.entity_b.station;
+                              const da = compareData.entity_a.district;
+                              const db = compareData.entity_b.district;
+                              if (!da || !db) return compareStatus('no_data');
+                              if (sa && sb && sa === sb) return <span className="text-emerald-400 font-bold">✓ Same Station</span>;
+                              if (da === db) return compareStatus('same_district');
+                              return compareStatus('mismatch');
+                            })()}
+                          </td>
+                        </tr>
+                        {/* Target Environment */}
+                        <tr>
+                          <td className="p-3 font-semibold text-[var(--text-secondary)] font-mono text-[10px] uppercase tracking-wide">Target Environment</td>
+                          <td className="p-3 text-[var(--text-primary)] break-words">
+                            {compareData.entity_a.target_type || <span className="text-[var(--text-muted)]">No data</span>}
+                          </td>
+                          <td className="p-3 text-[var(--text-primary)] break-words">
+                            {compareData.entity_b.target_type || <span className="text-[var(--text-muted)]">No data</span>}
+                          </td>
+                          <td className="p-3 text-center">
+                            {compareData.entity_a.target_type && compareData.entity_b.target_type
+                              ? (compareData.entity_a.target_type === compareData.entity_b.target_type ? compareStatus('match') : compareStatus('mismatch'))
+                              : compareStatus('no_data')}
+                          </td>
+                        </tr>
+                        {/* Tactical Methods & MO Tags */}
+                        <tr>
+                          <td className="p-3 font-semibold text-[var(--text-secondary)] font-mono text-[10px] uppercase tracking-wide align-top">Tactical Methods & MO Tags</td>
+                          <td className="p-3 min-w-0 align-top">
+                            <TagCluster tags={compareData.entity_a.mo_tags || []} limit={6} empty="No tags recorded" />
+                          </td>
+                          <td className="p-3 min-w-0 align-top">
+                            <TagCluster tags={compareData.entity_b.mo_tags || []} limit={6} empty="No tags recorded" />
+                          </td>
+                          <td className="p-3 text-center align-top">
+                            {(() => {
+                              const a: string[] = compareData.entity_a.mo_tags || [];
+                              const b: string[] = compareData.entity_b.mo_tags || [];
+                              if (a.length === 0 || b.length === 0) return compareStatus('no_data');
+                              const shared = a.filter((t) => b.includes(t)).length;
+                              if (shared === 0) return compareStatus('mismatch');
+                              return new Set([...a, ...b]).size === shared ? compareStatus('match') : compareStatus('partial');
+                            })()}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* Explainability Breakdown */}

@@ -97,6 +97,7 @@ def category_ranking(
 def red_zones(
     min_current: int = Query(default=3, ge=1),
     ratio_threshold: float = Query(default=1.5, gt=0),
+    include_intelligence: bool = Query(default=False, description="Cross-reference active fused intelligence patterns"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -106,7 +107,21 @@ def red_zones(
     policy version, and human-readable explanation.
     """
     del current_user
-    return detect_red_zones(db, min_current=min_current, ratio_threshold=ratio_threshold)
+    result = detect_red_zones(db, min_current=min_current, ratio_threshold=ratio_threshold)
+    if include_intelligence:
+        try:
+            from app.services import intelligence_engine
+            patterns = intelligence_engine.detect_emerging_patterns(db, min_signals=1, min_risk=0.2, min_confidence=0.2)
+            pattern_map = {(p["location"]["district"]): p for p in patterns}
+            for z in result.get("red_zones", []):
+                dist = z.get("district")
+                matching = pattern_map.get(dist)
+                if matching:
+                    z["fused_intelligence_id"] = matching["intelligence_id"]
+                    z["fused_pattern_type"] = matching["pattern_type"]
+        except Exception:
+            pass
+    return result
 
 
 # ---------------------------------------------------------------------------

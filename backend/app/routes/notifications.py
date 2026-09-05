@@ -12,6 +12,8 @@ Provides:
 - PUT /notifications/{id}/acknowledge — acknowledge a notification
 - PUT /notifications/{id}/resolve — resolve a notification
 - DELETE /notifications/{id} — dismiss a notification
+- DELETE /notifications/{id}/remove — permanently delete a notification
+- DELETE /notifications/clear — bulk remove all broadcasts
 - GET /notifications/activity-feed — unified activity feed
 - GET /notifications/live-timeline — live event timeline
 """
@@ -114,13 +116,21 @@ def create_notification(
     payload.sender_id = current_user.id
 
     if payload.is_broadcast:
-        notifications = notification_service.create_broadcast_notification(
-            db, payload, exclude_user_id=current_user.id
-        )
+        # Store a copy for the sender too so the broadcast is never lost when
+        # no other stations are active.
+        notifications = notification_service.create_broadcast_notification(db, payload)
         if notifications:
             enriched = notification_service._enrich_notification(notifications[0], db)
             return NotificationOut.model_validate(enriched)
     else:
+        # Direct messages need an addressable recipient — never persist a row
+        # that no user's message list could retrieve.
+        resolved = notification_service._resolve_recipient_id(payload.recipient_id, db)
+        if resolved is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Recipient not found — enter a valid station/officer badge",
+            )
         notification = notification_service.create_notification(db, payload)
         enriched = notification_service._enrich_notification(notification, db)
         return NotificationOut.model_validate(enriched)
@@ -153,6 +163,23 @@ def mark_all_notifications_read(
     return NotificationActionOut(
         success=True,
         message=f"{count} notification(s) marked as read",
+    )
+
+
+@router.delete("/clear", response_model=NotificationActionOut)
+def clear_notifications(
+    scope: str = Query("broadcasts", description="broadcasts only"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Bulk-remove notifications (currently removes all broadcasts)."""
+    if scope not in ("broadcasts",):
+        raise HTTPException(status_code=400, detail=f"Unsupported clear scope: {scope}")
+    count = notification_service.clear_broadcast_notifications(db)
+    db.commit()
+    return NotificationActionOut(
+        success=True,
+        message=f"{count} broadcast notification(s) removed",
     )
 
 
@@ -199,6 +226,25 @@ def dismiss_notification(
     if not result:
         raise HTTPException(status_code=404, detail="Notification not found")
     return NotificationActionOut(success=True, message="Notification dismissed")
+
+
+@router.delete("/{notification_id}/remove", response_model=NotificationActionOut)
+def remove_notification(
+    notification_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Permanently delete a notification (and all broadcast copies)."""
+    count = notification_service.delete_notification(
+        db, notification_id, current_user.id
+    )
+    db.commit()
+    if count == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return NotificationActionOut(
+        success=True,
+        message=f"{count} notification record(s) removed",
+    )
 
 
 @router.get("/activity-feed", response_model=ActivityFeedOut)

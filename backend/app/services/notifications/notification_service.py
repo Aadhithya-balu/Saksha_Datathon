@@ -73,12 +73,17 @@ def _dedupe_notifications(rows: list[Notification]) -> list[Notification]:
 
 
 def _resolve_recipient_id(recipient_id, db: Session):
-    """Resolve a recipient_id that may be a UUID or a username string to a UUID."""
+    """Resolve a recipient_id that may be a UUID, a UUID string, or a username."""
     if recipient_id is None:
         return None
     if isinstance(recipient_id, uuid.UUID):
         return recipient_id
-    user = db.query(User).filter(User.username == str(recipient_id)).first()
+    raw = str(recipient_id)
+    try:
+        return uuid.UUID(raw)
+    except (ValueError, AttributeError):
+        pass
+    user = db.query(User).filter(User.username == raw).first()
     return user.id if user else None
 
 
@@ -182,6 +187,9 @@ def create_broadcast_notification(
             parent_id=payload.parent_id,
             attachment_url=payload.attachment_url,
         )
+        # Every fan-out copy shares one timestamp so the dedupe key
+        # (notification_type, subject, title, created_at) stays stable.
+        notification.created_at = now
         db.add(notification)
         notifications.append(notification)
 
@@ -214,7 +222,8 @@ def get_notifications(
             or_(
                 Notification.user_id == user_id,
                 Notification.is_broadcast == True,
-            )
+            ),
+            Notification.is_dismissed == False,
         )
         .all()
     )
@@ -241,6 +250,8 @@ def get_notifications(
             rows = [r for r in rows if r.status == "resolved"]
         elif status == "dismissed":
             rows = [r for r in rows if r.is_dismissed]
+        elif status == "broadcast":
+            rows = [r for r in rows if r.is_broadcast]
     if sender_id:
         try:
             sid = uuid.UUID(sender_id)
@@ -460,6 +471,61 @@ def dismiss_notification(
         db.flush()
 
     return notification
+
+
+def delete_notification(
+    db: Session,
+    notification_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> int:
+    """Hard-delete a notification visible to the current user.
+
+    Broadcasts fan out one row per active recipient; deleting one copy alone
+    would let the alert resurface through another recipient's row, so every
+    copy of the same broadcast (dedupe key: notification_type + subject +
+    title + created_at) is removed together.
+    """
+    notification = (
+        db.query(Notification)
+        .filter(
+            Notification.id == notification_id,
+            or_(
+                Notification.user_id == user_id,
+                Notification.is_broadcast == True,
+            ),
+        )
+        .first()
+    )
+    if notification is None:
+        return 0
+
+    if notification.is_broadcast:
+        deleted = (
+            db.query(Notification)
+            .filter(
+                Notification.is_broadcast == True,
+                Notification.notification_type == notification.notification_type,
+                Notification.subject == notification.subject,
+                Notification.title == notification.title,
+                Notification.created_at == notification.created_at,
+            )
+            .delete(synchronize_session=False)
+        )
+    else:
+        db.delete(notification)
+        deleted = 1
+
+    db.flush()
+    return deleted
+
+
+def clear_broadcast_notifications(db: Session) -> int:
+    """Hard-delete every broadcast notification across all recipients."""
+    deleted = db.query(Notification).filter(
+        Notification.is_broadcast == True
+    ).delete(synchronize_session=False)
+    db.flush()
+    return deleted
 
 
 def get_recent_notifications(

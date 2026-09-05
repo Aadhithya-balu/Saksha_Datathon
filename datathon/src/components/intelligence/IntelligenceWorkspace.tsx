@@ -3,9 +3,14 @@ import {
   Brain, ArrowLeft, ChevronDown, Link2, FileText,
   Clock, AlertTriangle, Shield, ShieldCheck, ShieldAlert,
   Fingerprint, Target, GitBranch, Activity, ExternalLink, Sparkles,
-  Network, BarChart3, Crosshair, Info,
+  Network, BarChart3, Crosshair, Info, Radar, Send,
 } from 'lucide-react';
-import { buildIntelligence, type IntelligenceReport } from '../../services/api';
+import {
+  buildIntelligence,
+  type IntelligenceReport,
+  type SupportingSignal,
+  type UnifiedIntelligenceResult,
+} from '../../services/api';
 import { CardSkeleton } from '../ui/Skeleton';
 
 interface IntelligenceWorkspaceProps {
@@ -239,21 +244,188 @@ const NetworkSnapshot: React.FC<{ snapshot: IntelligenceReport['network_snapshot
   );
 };
 
+const signalStatusStyle: Record<string, string> = {
+  CONFIRMED: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40',
+  PROBABLE: 'bg-amber-500/10 text-amber-400 border-amber-500/40',
+  POSSIBLE: 'bg-blue-500/10 text-[#1E6FD9] border-[#1E6FD9]/40',
+  UNAVAILABLE: 'bg-gray-500/10 text-gray-400 border-gray-500/40',
+};
+
+const EmergingIntelligenceSection: React.FC<{ intel: UnifiedIntelligenceResult | null | undefined }> = ({ intel }) => {
+  if (!intel) return null;
+  const change = intel.change_from_baseline;
+  const mlCls: Record<string, string> = {
+    ML: 'text-emerald-400 border-emerald-500/40',
+    HYBRID: 'text-[#D4820A] border-[#D4820A]/40',
+    FALLBACK: 'text-amber-400 border-amber-500/40',
+    RULE_BASED: 'text-[#1E6FD9] border-[#1E6FD9]/40',
+  };
+  const priorityCls: Record<string, string> = {
+    CRITICAL: 'text-[#C94A2A] border-[#C94A2A]/40',
+    HIGH: 'text-amber-400 border-amber-500/40',
+    MEDIUM: 'text-[#D4820A] border-[#D4820A]/40',
+    LOW: 'text-[var(--text-muted)] border-[var(--border-primary)]',
+  };
+
+  return (
+    <div className="rounded-xl border border-[#C94A2A]/30 bg-[#C94A2A]/5 overflow-hidden">
+      <div className="px-3 py-2.5 border-b border-[var(--border-primary)] flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase tracking-wider text-[#C94A2A]">
+          <Radar className="w-3.5 h-3.5" /> Fused Emerging Intelligence
+        </span>
+        <span className="flex items-center gap-1 text-[7.5px] text-[var(--text-muted)] uppercase shrink-0">
+          <span className={`px-1.5 py-0.5 rounded border font-mono font-bold ${mlCls[intel.ml_status] || mlCls.RULE_BASED}`}>
+            {intel.ml_status}
+          </span>
+        </span>
+      </div>
+
+      <div className="px-3.5 py-3 space-y-2.5">
+        {/* Pattern + location */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[10px] font-mono font-bold text-[var(--text-primary)] uppercase">
+            {intel.pattern_type}
+          </span>
+          <div className="flex items-center gap-1.5 font-mono">
+            <span className="text-[8px] px-1.5 py-0.5 rounded border text-[#C94A2A] border-[#C94A2A]/40">
+              RISK {(intel.risk_score * 100).toFixed(0)}%
+            </span>
+            <span className="text-[8px] px-1.5 py-0.5 rounded border text-[#0E9E78] border-[#0E9E78]/40">
+              CONF {(intel.confidence * 100).toFixed(0)}%
+            </span>
+          </div>
+        </div>
+        <p className="text-[8.5px] font-mono text-[var(--text-secondary)]">
+          {intel.location?.district} • {intel.location?.stations?.join(', ') || '—'} • {intel.time_window}
+        </p>
+
+        {/* Baseline change */}
+        <div className="grid grid-cols-3 gap-2 text-center font-mono">
+          <div className="p-1.5 rounded border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/40">
+            <span className="block text-[10px] font-bold text-[var(--text-primary)]">{change.current_count ?? '-'}</span>
+            <span className="text-[7px] uppercase text-[var(--text-muted)]">current</span>
+          </div>
+          <div className="p-1.5 rounded border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/40">
+            <span className="block text-[10px] font-bold text-[var(--text-primary)]">{(change.baseline_count ?? 0).toFixed(1)}</span>
+            <span className="text-[7px] uppercase text-[var(--text-muted)]">baseline</span>
+          </div>
+          <div className="p-1.5 rounded border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/40">
+            <span className={`block text-[10px] font-bold ${Number(change.change_percentage) >= 0 ? 'text-[#C94A2A]' : 'text-[#0E9E78]'}`}>
+              {Number(change.change_percentage) >= 0 ? '+' : ''}{change.change_percentage ?? 0}%
+            </span>
+            <span className="text-[7px] uppercase text-[var(--text-muted)]">{change.direction || 'change'}</span>
+          </div>
+        </div>
+
+        {/* Metric chips */}
+        <div className="flex flex-wrap gap-1.5 text-[7.5px] font-mono uppercase">
+          <span className="px-1.5 py-0.5 rounded border border-[var(--border-primary)] text-[var(--text-muted)]">
+            {intel.supporting_signals?.length || 0} signals
+          </span>
+          <span className="px-1.5 py-0.5 rounded border border-[var(--border-primary)] text-[var(--text-muted)]">
+            {intel.related_fir_ids?.length || 0} FIRs
+          </span>
+          <span className="px-1.5 py-0.5 rounded border border-[var(--border-primary)] text-[var(--text-muted)]">
+            {intel.related_entity_ids?.length || 0} entities
+          </span>
+          <span className="px-1.5 py-0.5 rounded border border-[var(--border-primary)] text-[var(--text-muted)]">
+            {intel.affected_h3_cells?.length || 0} H3 cells
+          </span>
+          <span className="px-1.5 py-0.5 rounded border border-[var(--border-primary)] text-[var(--text-muted)]">
+            v{intel.model_version}
+          </span>
+        </div>
+
+        {/* Supporting signals */}
+        {intel.supporting_signals && intel.supporting_signals.length > 0 && (
+          <div className="space-y-1">
+            {intel.supporting_signals.slice(0, 6).map((s: SupportingSignal, i: number) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className={`mt-0.5 shrink-0 px-1 py-0.5 rounded border text-[6.5px] font-mono uppercase font-bold ${signalStatusStyle[s.status] || signalStatusStyle.POSSIBLE}`}>
+                  {s.status}
+                </span>
+                <div className="min-w-0">
+                  <span className="text-[8.5px] text-[var(--text-secondary)]">{s.description}</span>
+                  {s.score != null && (
+                    <span className="text-[7px] text-[var(--text-muted)] font-mono ml-1">({Math.round(s.score * 100)}%)</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Forecast */}
+        {intel.forecast && (
+          <div className="flex items-center gap-2 p-1.5 rounded border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/40 text-[8.5px] font-mono">
+            <BarChart3 className="w-3 h-3 text-[#D4820A] shrink-0" />
+            <span className="text-[var(--text-muted)] uppercase text-[7.5px]">Forecast</span>
+            <span className="text-[var(--text-primary)]">~{intel.forecast.predicted_crime_count}</span>
+            <span className="text-[var(--text-muted)]">{intel.forecast.trend}</span>
+            <span className={`ml-auto text-[7px] uppercase ${intel.forecast.prediction_mode === 'ML' ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {intel.forecast.prediction_mode}
+            </span>
+          </div>
+        )}
+
+        {/* Recommended action */}
+        {intel.recommended_action_input && (
+          <div className="p-2 rounded border border-[#1E6FD9]/30 bg-[#1E6FD9]/5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-[8.5px] font-mono font-bold text-[#1E6FD9] uppercase">
+                <Send className="w-3 h-3" /> {intel.recommended_action_input.title}
+              </span>
+              <span className={`text-[7px] font-mono uppercase font-bold px-1.5 py-0.5 rounded border ${priorityCls[intel.recommended_action_input.priority] || priorityCls.HIGH}`}>
+                {intel.recommended_action_input.priority}
+              </span>
+            </div>
+            <p className="text-[8.5px] text-[var(--text-secondary)] mt-1">
+              {intel.recommended_action_input.description}
+            </p>
+          </div>
+        )}
+
+        {/* Provenance */}
+        <p className="text-[7px] font-mono text-[var(--text-muted)] uppercase">
+          id {intel.intelligence_id} • provenance {intel.data_provenance} • {intel.detection_timestamp ? new Date(intel.detection_timestamp).toLocaleString() : '—'}
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const IntelligenceWorkspace: React.FC<IntelligenceWorkspaceProps> = ({ entityType, entityId, entityLabel, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<IntelligenceReport | null>(null);
 
+  // Guard against redundant in-flight builds (React StrictMode double-mounts
+  // effects in dev, which previously fired two POST /intelligence/build calls
+  // and produced duplicate history rows).
+  const loadKey = React.useRef('');
+  const loadInFlight = React.useRef<Promise<void> | null>(null);
+
   const load = async () => {
+    const key = `${entityType}:${entityId}`;
+    if (loadInFlight.current && loadKey.current === key) return loadInFlight.current;
     setLoading(true);
     setError(null);
+    const run = (async () => {
+      try {
+        const data = await buildIntelligence(entityType, entityId);
+        setReport(data);
+      } catch (e: any) {
+        setError(e?.message || 'Failed to build intelligence report');
+      } finally {
+        setLoading(false);
+      }
+    })();
+    loadKey.current = key;
+    loadInFlight.current = run;
     try {
-      const data = await buildIntelligence(entityType, entityId);
-      setReport(data);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to build intelligence report');
+      await run;
     } finally {
-      setLoading(false);
+      if (loadKey.current === key) loadInFlight.current = null;
     }
   };
 
@@ -268,7 +440,8 @@ const IntelligenceWorkspace: React.FC<IntelligenceWorkspaceProps> = ({ entityTyp
     (report.investigation_leads && report.investigation_leads.length > 0) ||
     (report.timeline && report.timeline.length > 0) ||
     (report.network_snapshot && report.network_snapshot.nodes && report.network_snapshot.nodes.length > 0) ||
-    (report.pattern_breaks && report.pattern_breaks.length > 0)
+    (report.pattern_breaks && report.pattern_breaks.length > 0) ||
+    !!report.emerging_intelligence
   );
 
   const reportTitle = report?.entity_info?.entity_name?.trim() || entityLabel || `${entityType} ${entityId.slice(0, 8)}`;
@@ -338,6 +511,11 @@ const IntelligenceWorkspace: React.FC<IntelligenceWorkspaceProps> = ({ entityTyp
                 {report.summary}
               </p>
             </div>
+          )}
+
+          {/* Fused Emerging Intelligence */}
+          {report.emerging_intelligence && (
+            <EmergingIntelligenceSection intel={report.emerging_intelligence} />
           )}
 
           {/* Key Connections */}

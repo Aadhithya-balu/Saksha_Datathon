@@ -341,7 +341,17 @@ def create_criminal(payload: CriminalCreate, db: Session = Depends(get_db), curr
 
 @router.put("/{criminal_id}", response_model=CriminalOut, dependencies=[Depends(require_roles(ROLE_ADMIN, ROLE_INVESTIGATOR))])
 def update_criminal(criminal_id: uuid.UUID, payload: CriminalUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    criminal = criminal_crud.update(db, criminal_id, payload.model_dump(exclude_unset=True))
+    data = payload.model_dump(exclude_unset=True)
+    # base_service.update skips None values, so explicit nulls are applied
+    # directly to allow clearing optional fields (gender, date_of_birth, etc.).
+    null_fields = [k for k, v in data.items() if v is None]
+    if null_fields:
+        criminal = criminal_crud.get(db, criminal_id)
+        for field in null_fields:
+            setattr(criminal, field, None)
+        db.add(criminal)
+        db.flush()
+    criminal = criminal_crud.update(db, criminal_id, data)
     audit_service.log_action(db, current_user, "UPDATE", "Criminal", str(criminal_id))
     mark_data_changed("criminal", db=db)
     return criminal
