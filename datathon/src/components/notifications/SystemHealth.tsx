@@ -64,7 +64,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ compact = false }) =
 
   useEffect(() => {
     refreshHealth();
-    const interval = setInterval(refreshHealth, 30000);
+    const interval = setInterval(refreshHealth, 120000);
     return () => clearInterval(interval);
   }, [sseStatus]);
 

@@ -31,6 +31,7 @@ from app.services.case_status import (
 )
 from app.services.crime_service import apply_status_transition, crime_crud
 from app.services.realtime.bus import realtime_bus
+from app.services.ttl_cache import ttl_cached
 
 router = APIRouter(prefix="/crime-cases", tags=["Crime Case Management"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
@@ -253,8 +254,13 @@ def list_crime_categories(
     current_user: User = Depends(get_current_user),
 ):
     """Return list of all categories."""
-    categories = db.query(CrimeCategory).all()
-    return [CrimeCategoryOut.model_validate(c) for c in categories]
+    return ttl_cached(
+        "crime_cases:categories",
+        (),
+        120,
+        lambda: [CrimeCategoryOut.model_validate(c) for c in db.query(CrimeCategory).all()],
+        scope=db.get_bind(),
+    )
 
 
 @router.get("/locations", response_model=list[LocationSimpleOut])
@@ -263,8 +269,13 @@ def list_locations(
     current_user: User = Depends(get_current_user),
 ):
     """Return list of all locations."""
-    locations = db.query(Location).all()
-    return [LocationSimpleOut.model_validate(loc) for loc in locations]
+    return ttl_cached(
+        "crime_cases:locations",
+        (),
+        120,
+        lambda: [LocationSimpleOut.model_validate(loc) for loc in db.query(Location).all()],
+        scope=db.get_bind(),
+    )
 
 
 @router.get("/insights", response_model=CrimeCaseInsightsOut)

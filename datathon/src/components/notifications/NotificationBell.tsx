@@ -24,7 +24,7 @@ export const NotificationBell: React.FC = () => {
   useEffect(() => {
     fetchCounts();
     fetchRecent();
-    startPolling(15000);
+    startPolling(45000);
     return () => stopPolling();
   }, []);
 

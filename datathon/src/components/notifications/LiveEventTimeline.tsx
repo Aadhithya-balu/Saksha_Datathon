@@ -49,7 +49,7 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({
     loadEvents();
     let interval: ReturnType<typeof setInterval> | null = null;
     if (autoRefresh) {
-      interval = setInterval(loadEvents, 10000);
+      interval = setInterval(loadEvents, 60000);
     }
     return () => {
       if (interval) clearInterval(interval);

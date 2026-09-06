@@ -7,6 +7,7 @@ from app.auth.rbac import ALL_ROLES, require_roles
 from app.database.postgres import get_db
 from app.models.user import User
 from app.services import sociological_service
+from app.services.ttl_cache import ttl_cached
 
 router = APIRouter(prefix="/sociological", tags=["Sociological Insights"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
@@ -75,7 +76,13 @@ def get_temporal_demographics(
     current_user=Depends(get_current_user),
 ):
     """Crime by hour of day, day of week, and monthly patterns."""
-    return sociological_service.get_temporal_demographic_analysis(db)
+    return ttl_cached(
+        "sociological:temporal-demographics",
+        (),
+        60,
+        lambda: sociological_service.get_temporal_demographic_analysis(db),
+        scope=db.get_bind(),
+    )
 
 
 @router.get("/temporal-matrix")
@@ -90,7 +97,13 @@ def get_temporal_matrix(
     Closes issue #143 gap 131.3: true observed cross-tabulation (no synthetic
     baseline) with statistically flagged peak cells for patrol planning.
     """
-    return sociological_service.get_temporal_hotspot_matrix(db, district=district, location_id=location_id)
+    return ttl_cached(
+        "sociological:temporal-matrix",
+        (district, location_id),
+        90,
+        lambda: sociological_service.get_temporal_hotspot_matrix(db, district=district, location_id=location_id),
+        scope=db.get_bind(),
+    )
 
 
 @router.get("/offender-demographics")

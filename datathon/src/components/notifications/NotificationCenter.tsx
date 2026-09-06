@@ -42,7 +42,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose 
 
   useEffect(() => {
     fetchNotifications(1, pageSize, unreadOnly, typeFilter || undefined, severityFilter || undefined);
-    startPolling(15000);
+    startPolling(45000);
     return () => stopPolling();
   }, [typeFilter, severityFilter, unreadOnly]);
 

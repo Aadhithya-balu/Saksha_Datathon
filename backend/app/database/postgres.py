@@ -51,8 +51,12 @@ def _engine_options(url, *, worker: bool = False) -> dict:
             max_overflow = min(max_overflow, 2)
             pool_timeout = max(pool_timeout, 300)
         else:
-            pool_size = min(pool_size, 4)
-            max_overflow = min(max_overflow, 4)
+            # 3+3 per instance → two AppSail instances use ≤12 of the pooler's
+            # 15-connection cap, so even a forgotten DB_POOL_SIZE env var can
+            # never overflow the pooler (4+4 × 2 instances = 16 > 15 caused the
+            # refusals seen as "postgresql: down").
+            pool_size = min(pool_size, 3)
+            max_overflow = min(max_overflow, 3)
             # Fail fast when the pool is saturated: requests that wait longer
             # than this get a clean 503 (+frontend auto-retry) instead of
             # hanging until AppSail's own execution-timeout kills them.
