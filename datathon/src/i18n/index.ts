@@ -13,7 +13,9 @@ function getStoredLanguage(): Language {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === 'en' || stored === 'kn' || stored === 'kn-en') return stored;
-  } catch {}
+  } catch {
+    return 'en';
+  }
   return 'en';
 }
 

@@ -530,7 +530,6 @@ function renderSearch(search: IdentitySearchResponse) {
                 <span className="font-semibold text-[var(--text-primary)]">{item.name}</span>
                 <span className="text-[11px] font-mono text-[var(--text-muted)] uppercase">{item.entity_type}</span>
                 {item.aliases?.length > 0 && <span className="text-[11px] text-[var(--text-muted)]">aliases: {item.aliases.join(', ')}</span>}
-                {/* eslint-disable-next-line no-constant-condition */}
                 {typeof item.match_type === 'string' && <span className="text-[11px] text-[var(--text-muted)]">({item.match_type})</span>}
               </div>
             ))}
