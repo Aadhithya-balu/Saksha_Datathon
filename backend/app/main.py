@@ -588,12 +588,13 @@ def readiness():
         pg_ok = False
 
     neo4j_ok = verify_neo4j_connectivity()
+    neo4j_label = "up" if neo4j_ok else ("disabled" if not (settings.NEO4J_URI or "").strip() else "degraded")
 
     status_ok = pg_ok  # Neo4j is optional (SQL fallback exists), PG is not
     return {
         "status": "ok" if status_ok else "degraded",
         "postgresql": "up" if pg_ok else "down",
-        "neo4j": "up" if neo4j_ok else "degraded",
+        "neo4j": neo4j_label,
     }
 
 

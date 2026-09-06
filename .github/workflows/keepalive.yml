@@ -1,0 +1,14 @@
+name: keepalive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Saksha health endpoint
+        run: |
+          curl -sf --max-time 20 -A "keepalive" https://saksha.development.catalystappsail.in/health

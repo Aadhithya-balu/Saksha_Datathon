@@ -40,6 +40,21 @@ def _engine_options(url, *, worker: bool = False) -> dict:
         max_overflow = settings.DB_MAX_OVERFLOW
         pool_timeout = settings.DB_POOL_TIMEOUT
 
+    # Supabase transaction pooler (port 6543) has a hard connection cap
+    # (default 15). Cap ALL pools below that so multiple AppSail instances plus
+    # AI worker pools can never collectively overflow it — connection refusals
+    # there surface as "postgresql: down" (and 503 storms) on a healthy DB.
+    is_pooled = "pooler.supabase.com" in (url.host or "") or url.port == 6543
+    if is_pooled:
+        if worker:
+            pool_size = min(pool_size, 2)
+            max_overflow = min(max_overflow, 2)
+            pool_timeout = max(pool_timeout, 300)
+        else:
+            pool_size = min(pool_size, 4)
+            max_overflow = min(max_overflow, 4)
+            pool_timeout = max(pool_timeout, 45)
+
     return {
         "pool_size": pool_size,
         "max_overflow": max_overflow,

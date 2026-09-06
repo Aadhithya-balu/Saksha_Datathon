@@ -684,22 +684,34 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, inc
     throw new Error('Session expired. Please log in again.');
   }
 
-  // DB connection-pool exhaustion is transient: notify the UI so the operator
-  // knows to wait and (for safe reads) automatically retry once the pool frees.
+  // Transient infrastructure pressure (DB pool exhaustion, cold start, DB
+  // warm-up) is not a hard failure: notify the UI so the operator knows to wait,
+  // and automatically retry once safe reads AND auth requests so login keeps
+  // working through a blip.
   if (response.status === 503) {
     let code = '';
+    let detail = '';
     try {
       const payload = await response.clone().json();
       code = payload?.error?.code ?? payload?.detail?.code ?? '';
+      detail = payload?.error?.message ?? payload?.detail?.message ?? '';
     } catch {
-      // ignore non-JSON 503 bodies
+      // non-JSON 503 body (e.g. nginx boot-window response)
     }
-    if (code === 'DB_POOL_EXHAUSTED') {
-      const message = 'Infrastructure under load — database pool temporarily exhausted. Please wait and retry.';
+    const TRANSIENT_CODES = new Set(['DB_POOL_EXHAUSTED', 'SERVICE_UNAVAILABLE', 'STARTING', 'BACKEND_BOOTING']);
+    if (TRANSIENT_CODES.has(code) || code === '') {
+      const message = detail
+        ? `${detail} We'll retry automatically in a few seconds.`
+        : 'The system is temporarily under load or still warming up. Please wait a moment and try again.';
       window.dispatchEvent(new CustomEvent('system:backend-busy', { detail: { message } }));
-      const isSafeRead = (options.method ?? 'GET').toUpperCase() === 'GET';
-      const retryKey = `DB_POOL_EXHAUSTED:${isSafeRead ? 'GET' : 'OTHER'}:${path}`;
-      if (!busyRetryKeys.has(retryKey) && isSafeRead) {
+      // GETs are retry-safe; auth login/refresh is retried once so users can
+      // log in even through a transient blip (POSTs elsewhere are NOT retried).
+      const method = (options.method ?? 'GET').toUpperCase();
+      const isAuthRetryable = path.startsWith('/auth/login') || path.startsWith('/auth/refresh');
+      const isSafeRead = method === 'GET';
+      const isRetryable = isSafeRead || isAuthRetryable;
+      const retryKey = `DB_POOL_EXHAUSTED:${method}:${path}`;
+      if (!busyRetryKeys.has(retryKey) && isRetryable) {
         busyRetryKeys.add(retryKey);
         try {
           const retryAfter = Math.min(Math.max(Number(response.headers.get('Retry-After')) || 5, 3), 15);
