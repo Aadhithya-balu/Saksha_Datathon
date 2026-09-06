@@ -1,0 +1,20 @@
+services:
+  saksha:
+    image: aadhi0511/saksha:v2.1
+    container_name: saksha
+    ports:
+      - "80:80"
+    env_file:
+      - ./.env
+    volumes:
+      - saksha_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)\""]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  saksha_uploads:
