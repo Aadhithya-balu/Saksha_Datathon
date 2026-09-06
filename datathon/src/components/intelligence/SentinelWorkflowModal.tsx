@@ -55,7 +55,6 @@ export const SentinelWorkflowModal: React.FC<SentinelWorkflowModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<ModalTab>(initialTab);
   const [existingIntervention, setExistingIntervention] = useState<InterventionRecord | null>(null);
-  const [, setLoadingRecord] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -66,7 +65,6 @@ export const SentinelWorkflowModal: React.FC<SentinelWorkflowModalProps> = ({
   const [recArea, setRecArea] = useState('');
   const [recTimePeriod, setRecTimePeriod] = useState('');
   const [recReason, setRecReason] = useState('');
-  const [, setRecCoverage] = useState(82);
   const [recAssumptions, setRecAssumptions] = useState('');
 
   // Simulation parameters for Plan & Compare
@@ -112,13 +110,11 @@ export const SentinelWorkflowModal: React.FC<SentinelWorkflowModalProps> = ({
       pattern.explanation ||
         `Detected ${pattern.pattern_type} in ${district} with ${pct >= 0 ? '+' : ''}${pct}% deviation from the 90-day baseline average.`
     );
-    setRecCoverage(82);
     setRecAssumptions(
       'Deployment assumes 2-3 sector patrol vehicles active during peak hours, uninterrupted officer availability, and consistent baseline FIR reporting.'
     );
 
     // Look up if an intervention is already created for this intelligence_id
-    setLoadingRecord(true);
     listInterventions({ intelligence_id: pattern.intelligence_id })
       .then((res) => {
         const found = res.results?.[0] || res.interventions?.[0];
@@ -128,7 +124,6 @@ export const SentinelWorkflowModal: React.FC<SentinelWorkflowModalProps> = ({
           if (found.reason) setRecReason(found.reason);
           if (found.relevant_time_period) setRecTimePeriod(found.relevant_time_period);
           if (found.assumptions) setRecAssumptions(found.assumptions);
-          if (found.estimated_coverage) setRecCoverage(found.estimated_coverage);
           if (found.subsequent_crime_count !== undefined && found.subsequent_crime_count !== null) {
             setPostCrimeCount(found.subsequent_crime_count);
           }
@@ -141,8 +136,7 @@ export const SentinelWorkflowModal: React.FC<SentinelWorkflowModalProps> = ({
       })
       .catch(() => {
         setExistingIntervention(null);
-      })
-      .finally(() => setLoadingRecord(false));
+      });
   }, [pattern]);
 
   if (!isOpen || !pattern) return null;

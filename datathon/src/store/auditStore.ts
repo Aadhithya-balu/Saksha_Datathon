@@ -11,7 +11,8 @@ export type AuditActionType =
   | 'UPDATE'
   | 'DELETE'
   | 'UPLOAD'
-  | 'DOWNLOAD';
+  | 'DOWNLOAD'
+  | 'NAVIGATE';
 
 export interface AuditLogEntry {
   id: string;

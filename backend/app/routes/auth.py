@@ -76,6 +76,15 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
         return TokenResponse(**tokens, expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
     except AppException:
         raise
+    except SQLAlchemyError as exc:
+        # DB outage must NOT be mistaken for a credential failure: report a
+        # controlled 503 so operators can distinguish availability from auth.
+        logger.error("Login unavailable: database error (%s)", exc.__class__.__name__)
+        raise AppException(
+            "Authentication service is temporarily unavailable. Please try again later.",
+            code="SERVICE_UNAVAILABLE",
+            status_code=503,
+        ) from exc
     except Exception as exc:
         import traceback
         traceback.print_exc()

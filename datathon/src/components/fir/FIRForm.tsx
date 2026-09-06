@@ -239,8 +239,9 @@ export const FIRForm: React.FC<FIRFormProps> = ({ fir, onSubmit, onCancel }) => 
               }
               if (!e.target.checked && validationErrors.investigating_officer_id) {
                 setValidationErrors(prev => {
-                  const { investigating_officer_id, ...rest } = prev;
-                  return rest;
+                  const next = { ...prev };
+                  delete next.investigating_officer_id;
+                  return next;
                 });
               }
             }}
@@ -292,8 +293,9 @@ export const FIRForm: React.FC<FIRFormProps> = ({ fir, onSubmit, onCancel }) => 
               setOfficerId(e.target.value);
               if (e.target.value && validationErrors.investigating_officer_id) {
                 setValidationErrors(prev => {
-                  const { investigating_officer_id, ...rest } = prev;
-                  return rest;
+                  const next = { ...prev };
+                  delete next.investigating_officer_id;
+                  return next;
                 });
               }
             }}

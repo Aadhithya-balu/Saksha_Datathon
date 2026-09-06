@@ -3514,6 +3514,7 @@ export interface ForecastResult {
   upper_bound: number | null;
   trend: string;
   prediction_mode: string;
+  period: string;
 }
 
 export interface RecommendedActionInput {

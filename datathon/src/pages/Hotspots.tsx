@@ -218,7 +218,6 @@ export const Hotspots: React.FC = () => {
     return () => {
       isMounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isProduction]);
 
   // Filtered hotspots by category if specified

@@ -60,7 +60,8 @@ function NotFound() {
 
   const navigate = (tab: string, _path: string) => {
     // The navigate-tab CustomEvent listener in App.tsx handles both
-    // setActiveTab + URL sync, so we only dispatch the event here.
+    // setActiveTab + URL sync, so _path is intentionally ignored.
+    void _path;
     window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab } }));
   };
 

@@ -62,6 +62,9 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
+  PenLine,
+  Download,
+  X,
 } from 'lucide-react';
 import { PageSkeleton } from '../components/ui/Skeleton';
 
@@ -469,7 +472,33 @@ export const Overview: React.FC = () => {
     }, `CONFIDENTIAL-REPORT-${badgeId}`, format);
   };
 
-  const handleQuickAction = (actionName: string) => {
+  const QUICK_ACTION_TARGETS: Record<string, string> = {
+    'Register FIR': 'fir',
+    'Add Missing Person': 'crime_cases',
+    'Create Alert': 'notifications',
+    'Assign Case': 'crime_cases',
+    'Generate Report': 'reports',
+    'Resource Allocation': 'strategic',
+  };
+
+  const [openAction, setOpenAction] = useState<string | null>(null);
+
+  const handleQuickActionNavigate = (actionName: string) => {
+    const officerName = user?.name || 'Inspector System';
+    const badgeId = user?.badgeId || 'SCRB-7740';
+    const targetTab = QUICK_ACTION_TARGETS[actionName];
+    if (!targetTab) return;
+
+    addLog(
+      officerName,
+      badgeId,
+      'NAVIGATE',
+      `Redirected from Quick Action: ${actionName} to ${targetTab}`
+    );
+    window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: targetTab } }));
+  };
+
+  const handleQuickActionDownload = (actionName: string) => {
     const officerName = user?.name || 'Inspector System';
     const badgeId = user?.badgeId || 'SCRB-7740';
 
@@ -893,25 +922,46 @@ export const Overview: React.FC = () => {
           <h4 className="sk-panel-title mb-3">Quick Actions</h4>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-2 gap-2.5 flex-1 content-start">
-            <button onClick={() => handleQuickAction('Register FIR')} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-coral)] w-full">
+            <button onClick={() => setOpenAction(openAction === 'Register FIR' ? null : 'Register FIR')} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-coral)] w-full">
               <PlusCircle className="w-4 h-4" /> Register FIR
             </button>
-            <button onClick={() => handleQuickAction('Add Missing Person')} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary w-full">
+            <button onClick={() => setOpenAction(openAction === 'Add Missing Person' ? null : 'Add Missing Person')} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary w-full">
               <Users className="w-4 h-4" /> Add Missing
             </button>
-            <button onClick={() => handleQuickAction('Create Alert')} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-amber)] w-full">
+            <button onClick={() => setOpenAction(openAction === 'Create Alert' ? null : 'Create Alert')} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-amber)] w-full">
               <AlertCircle className="w-4 h-4" /> Create Alert
             </button>
-            <button onClick={() => handleQuickAction('Assign Case')} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-purple)] w-full">
+            <button onClick={() => setOpenAction(openAction === 'Assign Case' ? null : 'Assign Case')} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-purple)] w-full">
               <Bookmark className="w-4 h-4" /> Assign Case
             </button>
-            <button onClick={() => handleQuickAction('Generate Report')} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-teal)] w-full">
+            <button onClick={() => setOpenAction(openAction === 'Generate Report' ? null : 'Generate Report')} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-teal)] w-full">
               <FileText className="w-4 h-4" /> Generate Report
             </button>
-            <button onClick={() => handleQuickAction('Resource Allocation')} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary w-full">
+            <button onClick={() => setOpenAction(openAction === 'Resource Allocation' ? null : 'Resource Allocation')} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary w-full">
               <Settings className="w-4 h-4" /> Allocation
             </button>
           </div>
+
+          {openAction && (
+            <div className="mt-3 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/40 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--text-muted)]">
+                  Quick Action &middot; {openAction}
+                </span>
+                <button onClick={() => setOpenAction(null)} className="sk-btn sk-btn-secondary sk-btn-icon !h-6 !w-6" title="Close">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button onClick={() => { handleQuickActionNavigate(openAction); setOpenAction(null); }} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-blue)] w-full">
+                  <PenLine className="w-4 h-4" /> Fill Details Manually
+                </button>
+                <button onClick={() => { handleQuickActionDownload(openAction); setOpenAction(null); }} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-teal)] w-full">
+                  <Download className="w-4 h-4" /> Download PDF
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,4 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
 
 // jsdom lacks ResizeObserver
 class ResizeObserverStub {

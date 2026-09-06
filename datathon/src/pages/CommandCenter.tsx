@@ -113,7 +113,6 @@ export const CommandCenter: React.FC = () => {
   useEffect(() => {
     if (!debounced) { setResults(null); setView('home'); return; }
     runSearch(debounced);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced, retryKey]);
 
   // Load home data
