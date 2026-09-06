@@ -613,7 +613,7 @@ const en: TranslationSet = {
   login_face_auth: 'Face Authentication',
 
   // Footer
-  footer_version: 'v1.0.0',
+  footer_version: 'v2.3.2',
   footer_stamp: 'CLASSIFIED TELEMETRY DATABASES LOCK',
 
   // Hotspots page
@@ -979,7 +979,7 @@ const kn: TranslationSet = {
   login_face_auth: 'ಮುಖ ದೃಢೀಕರಣ',
 
   // Footer
-  footer_version: 'v1.0.0',
+  footer_version: 'v2.3.2',
   footer_stamp: 'ವರ್ಗೀಕೃತ ಟೆಲಿಮೆಟ್ರಿ ಡೇಟಾಬೇಸ್\u200Cಗಳ ಲಾಕ್',
 
   // Hotspots page
@@ -1345,7 +1345,7 @@ const kn_en: TranslationSet = {
   login_face_auth: 'Mukha Drudheekarana',
 
   // Footer
-  footer_version: 'v1.0.0',
+  footer_version: 'v2.3.2',
   footer_stamp: 'Vargeekruta Telemetry Databasegalu Lock',
 
   // Hotspots page

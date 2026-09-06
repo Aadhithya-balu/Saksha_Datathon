@@ -26,9 +26,18 @@ _PII_REDACTED = "[REDACTED - insufficient role clearance]"
 
 
 def user_may_view_pii(user: Any) -> bool:
-    """True when the authenticated user's role permits unredacted PII."""
-    role = getattr(getattr(user, "role", None), "name", None)
-    return role in PII_PRIVILEGED_ROLES
+    """True when the authenticated user's role permits unredacted PII.
+
+    Fail-safe: if the role cannot be read without a lazy DB load (e.g. the
+    auth session is already closed by the time the streaming body runs), we
+    default to False so PII is redacted instead of crashing the chat stream.
+    """
+    try:
+        role = getattr(user, "role", None)
+        role_name = getattr(role, "name", None)
+    except Exception:
+        return False
+    return role_name in PII_PRIVILEGED_ROLES
 
 
 @dataclass
@@ -52,10 +61,10 @@ class BackendFetcher:
         return self._execute_sequential(plan, db)
 
     def _execute_parallel(self, plan: QueryPlan, db: Session) -> list[BackendResult]:
-        from app.database.postgres import SessionLocal
+        from app.database.postgres import get_worker_session
         results: list[BackendResult] = []
         def _thread_worker(call: BackendCall) -> BackendResult:
-            thread_db = SessionLocal()
+            thread_db = get_worker_session()
             try:
                 return self._execute_call(call, thread_db)
             finally:
@@ -432,8 +441,11 @@ class BackendFetcher:
         parts = []
         for node in graph.nodes[:15]:
             parts.append(f"Node: {node.name} (Type: {node.category.value}, Risk: {node.riskScore})")
+        id_to_name = {n.id: n.name for n in graph.nodes}
         for edge in graph.edges[:15]:
-            parts.append(f"Link: {edge.source} --[{edge.relationship}]--> {edge.target}")
+            source_name = id_to_name.get(edge.source) or edge.source
+            target_name = id_to_name.get(edge.target) or edge.target
+            parts.append(f"Link: {source_name} --[{edge.relationship}]--> {target_name}")
         return BackendResult(
             source="neo4j", data_type="network",
             content="\n".join(parts),
@@ -477,11 +489,19 @@ class BackendFetcher:
         if method == "get_person_network":
             from app.services.analytics_service import network_person
             name = params.get("name", "")
-            result = network_person(db, person_name=name)
-            if not result:
+            if not name:
                 return BackendResult(source="postgres", data_type="network_fallback", content="No network data.")
-            parts = [f"{r.get('source_name', '')} --[{r.get('relationship', '')}]--> {r.get('target_name', '')}" for r in result[:20]]
-            return BackendResult(source="postgres", data_type="network_fallback", content="\n".join(parts))
+            result = network_person(db, name)
+            nodes = result.get("nodes") or []
+            if not nodes:
+                return BackendResult(source="postgres", data_type="network_fallback", content="No network data.")
+            id_to_name = {n.get("id"): n.get("name") or "Unknown" for n in nodes}
+            parts = [
+                f"{id_to_name.get(e.get('source'), 'Unknown')} --[{e.get('relationship', '')}]--> {id_to_name.get(e.get('target'), 'Unknown')}"
+                for e in (result.get("edges") or [])[:20]
+            ]
+            content = "\n".join(parts) or "No network linkages found."
+            return BackendResult(source="postgres", data_type="network_fallback", content=content)
         if method == "get_full_network":
             from app.services.network.network_service import get_full_network_graph
             graph = get_full_network_graph(db)

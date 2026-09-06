@@ -80,6 +80,21 @@ class Settings(BaseSettings):
     # let clients rotate their own budget).
     RATE_LIMIT_TRUST_XFF: bool = True
 
+    # --- Connection pooling (systemic concurrency robustness) ---
+    # Request-path pool: used by get_db / auth / all quick ORM reads. Worker
+    # pool: a SEPARATE pool for long-running background jobs (model training,
+    # retrain, parallel AI worker threads) so heavy jobs can never starve the
+    # request path (previously surfaced as QueuePool TimeoutError in auth when
+    # many simultaneous heavy operations were in flight). Tune via env vars;
+    # the Supabase PostgreSQL side typically allows hundreds of connections, so
+    # these totals stay well within budget.
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+    DB_WORKER_POOL_SIZE: int = 3
+    DB_WORKER_MAX_OVERFLOW: int = 12
+    DB_WORKER_POOL_TIMEOUT: int = 300
+
     # --- Notification broadcast deduplication ---
     # An identical broadcast (same notification_type + category + subject +
     # title) created within this many hours is treated as a duplicate and is

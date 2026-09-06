@@ -268,6 +268,12 @@ export const NetworkPageWorkspace: React.FC = () => {
   const focusIsSelected = !!focusedNodeId && focusedNodeId === selectedNode?.id;
 
   const handleExportMatrix = () => {
+    const nodeId = (ref: string | any): string => {
+      if (typeof ref === 'string') return ref;
+      if (ref && typeof ref === 'object') return ref.id ?? ref.name ?? '';
+      return String(ref ?? '');
+    };
+
     const matrixData = {
       relationType: 'Criminal Link Association Matrix',
       totalNodes: graphData?.nodes.length ?? 0,
@@ -276,8 +282,8 @@ export const NetworkPageWorkspace: React.FC = () => {
       activeSuspects: graphData?.nodes.filter((node) => node.category === 'suspect').map((node) => node.name) ?? [],
       relationEdges:
         graphData?.links.map((link) => ({
-          from: link.source,
-          to: link.target,
+          from: nodeId(link.source),
+          to: nodeId(link.target),
           relation: link.relationship,
         })) ?? [],
     };

@@ -244,10 +244,10 @@ def _run_domain_retrain_job(
     reason: str | None,
 ) -> None:
     """Execute the retrain -> evaluate -> accept/reject cycle for a model domain."""
-    from app.database.postgres import SessionLocal
+    from app.database.postgres import get_worker_session
     from app.services.model_management import _domain_next_version
 
-    session = SessionLocal()
+    session = get_worker_session()
     try:
         job = session.query(ModelUpdateJob).filter(ModelUpdateJob.id == job_id).first()
         if not job:
@@ -361,8 +361,8 @@ def _train_domain(domain: str) -> dict[str, Any]:
         sig = inspect.signature(run_training)
         kwargs: dict[str, Any] = {}
         if "db_session" in sig.parameters:
-            from app.database.postgres import SessionLocal
-            db = SessionLocal()
+            from app.database.postgres import get_worker_session
+            db = get_worker_session()
             try:
                 kwargs["db_session"] = db
             finally:

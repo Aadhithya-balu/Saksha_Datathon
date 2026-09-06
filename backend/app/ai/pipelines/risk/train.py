@@ -53,12 +53,12 @@ JOIN crime_categories cat ON cc.category_id = cat.id
 
 def load_data() -> pd.DataFrame:
     """Load real crime records from DB session or fallback DB URLs."""
-    from app.database.postgres import SessionLocal
+    from app.database.postgres import get_worker_session
     from app.models.crime import CrimeCase
     from app.models.location import Location
     from app.models.crime_category import CrimeCategory
 
-    db = SessionLocal()
+    db = get_worker_session()
     try:
         rows = (
             db.query(
