@@ -6,7 +6,7 @@ consistent error responses: {"error": {"code": ..., "message": ..., "status": ..
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
+from sqlalchemy.exc import OperationalError, TimeoutError as SQLAlchemyTimeoutError
 
 
 class AppException(Exception):
@@ -80,10 +80,31 @@ async def pool_timeout_exception_handler(request: Request, exc: SQLAlchemyTimeou
     )
 
 
+async def db_unreachable_exception_handler(request: Request, exc: OperationalError) -> JSONResponse:
+    """DB connection/execution failures during transient cold start.
+
+    Serverless hosts (Zoho Catalyst AppSail) spin instances up/down, so the
+    first requests on a cold instance can hit a still-warming DB connection
+    (TLS + pool warm-up). Treat those as a recoverable 503 carrying the same
+    ``DB_POOL_EXHAUSTED`` code the frontend already auto-retries, instead of a
+    hard 500.
+    """
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content=_error_body(
+            "DB_POOL_EXHAUSTED",
+            "Database is temporarily unreachable. Please wait a moment and retry.",
+            503,
+        ),
+        headers={"Retry-After": "5"},
+    )
+
+
 def register_exception_handlers(app) -> None:
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     # More specific than the generic Exception handler, so QueuePool timeouts
     # surface as a machine-readable 503 instead of a raw 500 traceback.
     app.add_exception_handler(SQLAlchemyTimeoutError, pool_timeout_exception_handler)
+    app.add_exception_handler(OperationalError, db_unreachable_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
