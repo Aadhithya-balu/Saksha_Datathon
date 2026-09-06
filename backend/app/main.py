@@ -23,7 +23,7 @@ from app.core.logging_config import configure_logging, logger
 from app.core.rate_limit import RateLimitMiddleware
 from app.core.security_headers import RequestSizeLimitMiddleware, SecurityHeadersMiddleware
 from app.database.neo4j import close_neo4j_driver, verify_neo4j_connectivity
-from app.database.postgres import Base, engine
+from app.database.postgres import Base, engine, engine_kind
 import app.models  # ensure models are registered
 
 
@@ -590,10 +590,12 @@ def readiness():
     neo4j_ok = verify_neo4j_connectivity()
     neo4j_label = "up" if neo4j_ok else ("disabled" if not (settings.NEO4J_URI or "").strip() else "degraded")
 
-    status_ok = pg_ok  # Neo4j is optional (SQL fallback exists), PG is not
+    on_demo_sqlite = engine_kind == "sqlite"
+    status_ok = True if on_demo_sqlite else pg_ok  # demo fallback still serves
     return {
         "status": "ok" if status_ok else "degraded",
-        "postgresql": "up" if pg_ok else "down",
+        "postgresql": "up" if (pg_ok and not on_demo_sqlite) else ("off" if on_demo_sqlite else "down"),
+        "data_source": "sqlite-demo" if on_demo_sqlite else "postgresql",
         "neo4j": neo4j_label,
     }
 

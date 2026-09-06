@@ -84,12 +84,17 @@ def _try_connect(eng) -> bool:
 
 
 engine = _create_engine()
+engine_kind: str = "sqlite" if settings.DATABASE_URL.startswith("sqlite") else "postgresql"
 
 if not settings.DATABASE_URL.startswith("sqlite") and not _try_connect(engine):
-    logger.warning("PostgreSQL unreachable — falling back to local SQLite database")
+    logger.warning(
+        "PostgreSQL unreachable — falling back to local SQLite demo database. "
+        "Real-time data will be unavailable until the DB is reachable."
+    )
     engine.dispose()
     settings.DATABASE_URL = "sqlite:///./saksha.db"
     engine = _create_engine("sqlite:///./saksha.db")
+    engine_kind = "sqlite"
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
