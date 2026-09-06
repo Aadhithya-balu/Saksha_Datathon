@@ -41,6 +41,7 @@ from app.services.notifications import (
     activity_service,
     notification_service,
 )
+from app.services.ttl_cache import ttl_cached
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"], dependencies=[Depends(require_roles(*ALL_ROLES))])
 
@@ -83,7 +84,13 @@ def get_notification_count(
     current_user: User = Depends(get_current_user),
 ):
     """Get unread notification counts for the bell indicator."""
-    return notification_service.get_unread_count(db, current_user.id)
+    return ttl_cached(
+        "notifications:count",
+        (current_user.id,),
+        15,
+        lambda: notification_service.get_unread_count(db, current_user.id),
+        scope=db.get_bind(),
+    )
 
 
 @router.get("/recent", response_model=list[NotificationOut])
@@ -93,8 +100,17 @@ def get_recent_notifications(
     current_user: User = Depends(get_current_user),
 ):
     """Get recent notifications for the bell dropdown."""
-    data = notification_service.get_recent_notifications(db, current_user.id, limit)
-    return [NotificationOut.model_validate(d) for d in data]
+    def _load():
+        data = notification_service.get_recent_notifications(db, current_user.id, limit)
+        return [NotificationOut.model_validate(d).model_dump(mode="json") for d in data]
+
+    return ttl_cached(
+        "notifications:recent",
+        (current_user.id, limit),
+        15,
+        _load,
+        scope=db.get_bind(),
+    )
 
 
 @router.get("/dashboard", response_model=NotificationDashboardSummary)
@@ -103,7 +119,13 @@ def get_dashboard_summary(
     current_user: User = Depends(get_current_user),
 ):
     """Get dashboard summary cards for the communication center."""
-    return notification_service.get_dashboard_summary(db, current_user.id)
+    return ttl_cached(
+        "notifications:dashboard",
+        (current_user.id,),
+        30,
+        lambda: notification_service.get_dashboard_summary(db, current_user.id),
+        scope=db.get_bind(),
+    )
 
 
 @router.post("", response_model=NotificationOut)

@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react';
  * spinner). The interval is paused when the document is not visible
  * (tab hidden) to avoid unnecessary network traffic.
  */
-export function usePolling(callback: () => void | Promise<void>, intervalMs = 30000) {
+export function usePolling(callback: () => void | Promise<void>, intervalMs = 60000) {
   const savedCallback = useRef(callback);
   savedCallback.current = callback;
 

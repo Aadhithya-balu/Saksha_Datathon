@@ -660,6 +660,17 @@ const readErrorMessage = async (response: Response) => {
 // transient DB pool exhaustion, so they retry at most once per path.
 const busyRetryKeys = new Set<string>();
 
+// Tracks an ongoing degraded period so the UI can show a persistent "DB lost"
+// alert once failures last >1 min, and clear it when traffic recovers.
+let backendBusy = false;
+
+const markBackendHealthy = () => {
+  if (backendBusy) {
+    backendBusy = false;
+    window.dispatchEvent(new CustomEvent('system:backend-ok'));
+  }
+};
+
 export async function apiRequest<T>(path: string, options: RequestInit = {}, includeAuth = true): Promise<T> {
   const { accessToken } = getStoredTokens();
 
@@ -673,10 +684,21 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, inc
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch (err) {
+    backendBusy = true;
+    window.dispatchEvent(new CustomEvent('system:backend-busy', {
+      detail: {
+        message: 'Connection to the backend was lost. The database may be temporarily throttled. Please wait a moment.',
+      },
+    }));
+    throw err;
+  }
 
   if (response.status === 401 && !path.startsWith('/auth/')) {
     clearStoredTokens();
@@ -700,6 +722,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, inc
     }
     const TRANSIENT_CODES = new Set(['DB_POOL_EXHAUSTED', 'SERVICE_UNAVAILABLE', 'STARTING', 'BACKEND_BOOTING']);
     if (TRANSIENT_CODES.has(code) || code === '') {
+      backendBusy = true;
       const message = detail
         ? `${detail} We'll retry automatically in a few seconds.`
         : 'The system is temporarily under load or still warming up. Please wait a moment and try again.';
@@ -730,9 +753,11 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, inc
   }
 
   if (response.status === 204) {
+    markBackendHealthy();
     return undefined as T;
   }
 
+  markBackendHealthy();
   return response.json() as Promise<T>;
 }
 
