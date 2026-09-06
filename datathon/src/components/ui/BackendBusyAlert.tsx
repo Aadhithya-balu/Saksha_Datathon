@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { LoaderCircle, X } from 'lucide-react';
+import { Loader, X } from 'lucide-react';
 
 interface BusyState {
   message: string;
@@ -38,7 +38,7 @@ export const BackendBusyAlert: React.FC = () => {
       className="fixed top-4 left-1/2 -translate-x-1/2 z-[300] max-w-[92vw] w-auto"
     >
       <div className="flex items-start gap-3 rounded-xl border border-[var(--accent-amber)]/40 bg-[var(--bg-tertiary)]/95 backdrop-blur px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.45)] font-mono">
-        <LoaderCircle className="w-4 h-4 text-[var(--accent-amber)] animate-spin mt-0.5 shrink-0" />
+        <Loader className="w-4 h-4 text-[var(--accent-amber)] animate-spin mt-0.5 shrink-0" />
         <div className="min-w-0">
           <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent-amber)]">
             Systems under load
