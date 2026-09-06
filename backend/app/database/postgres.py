@@ -53,7 +53,10 @@ def _engine_options(url, *, worker: bool = False) -> dict:
         else:
             pool_size = min(pool_size, 4)
             max_overflow = min(max_overflow, 4)
-            pool_timeout = max(pool_timeout, 45)
+            # Fail fast when the pool is saturated: requests that wait longer
+            # than this get a clean 503 (+frontend auto-retry) instead of
+            # hanging until AppSail's own execution-timeout kills them.
+            pool_timeout = min(pool_timeout, 10)
 
     return {
         "pool_size": pool_size,

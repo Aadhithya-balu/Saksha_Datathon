@@ -79,7 +79,7 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
     except SQLAlchemyError as exc:
         # DB outage must NOT be mistaken for a credential failure: report a
         # controlled 503 so operators can distinguish availability from auth.
-        logger.error("Login unavailable: database error (%s)", exc.__class__.__name__)
+        logger.error("Login unavailable: database error {}", exc, exc_info=True)
         raise AppException(
             "Authentication service is temporarily unavailable. Please try again later.",
             code="SERVICE_UNAVAILABLE",
