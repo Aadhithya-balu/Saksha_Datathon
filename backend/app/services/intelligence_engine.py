@@ -28,6 +28,17 @@ from app.models.crime_category import CrimeCategory
 from app.models.location import Location
 from app.models.officer import Officer
 from app.models.evidence import Evidence
+
+
+def _normalize_forecast_trend(trend: str) -> str:
+    """Map forecast model vocabulary ('up'/'down') to the fused-result contract.
+
+    The forecast model emits ``up``/``down``/``stable`` while the documented
+    ``ForecastResult`` schema and fusion signal logic use
+    ``increasing``/``decreasing``/``stable``. Normalize at the engine boundary
+    so forecast signals and action selection are not silently skipped in ML mode.
+    """
+    return {"up": "increasing", "down": "decreasing"}.get(trend, trend or "stable")
 from app.models.investigation_note import InvestigationNote
 from app.services.base_service import BaseCRUDService
 
@@ -1953,7 +1964,10 @@ def fuse_emerging_intelligence(
                 f_mode = dist_forecast.get("prediction_mode", "FALLBACK")
                 ml_modes.append(f_mode)
                 pred_count = float(dist_forecast.get("predicted_crime_count", 0.0))
-                f_trend = dist_forecast.get("trend", "stable")
+                # Normalize model vocabulary to the fused-result contract so the
+                # signal/action branches below match the documented schema.
+                f_trend = _normalize_forecast_trend(dist_forecast.get("trend", "stable"))
+                dist_forecast["trend"] = f_trend
                 contributing_analytics["forecast"] = {
                     "status": "AVAILABLE",
                     "prediction_mode": f_mode,

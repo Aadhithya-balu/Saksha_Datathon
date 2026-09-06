@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  AlertTriangle,
   ArrowUpRight,
   ChevronDown,
   Clock,
@@ -8,7 +7,6 @@ import {
   FileSearch,
   HelpCircle,
   Hexagon,
-  Layers,
   MapPin,
   ShieldAlert,
   Sparkles,
