@@ -16,11 +16,13 @@ import { ArrowLeft, Save, AlertTriangle, ShieldCheck, UserPlus } from 'lucide-re
 interface CreateCrimeCaseProps {
   onCancel: () => void;
   onSuccess: () => void;
+  intent?: 'assign' | 'missing';
 }
 
 const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
   onCancel,
-  onSuccess
+  onSuccess,
+  intent,
 }) => {
   const [categories, setCategories] = useState<CrimeCategoryRecord[]>([]);
   const [locations, setLocations] = useState<LocationSimpleRecord[]>([]);
@@ -31,10 +33,10 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
   const [categoryId, setCategoryId] = useState('');
   const [locationId, setLocationId] = useState('');
   const [occurredAt, setOccurredAt] = useState('');
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(intent === 'missing' ? 'Missing person report recorded via dashboard quick action.' : '');
   const [moTags, setMoTags] = useState('');
   const [status, setStatus] = useState('active');
-  const [foundByPolice, setFoundByPolice] = useState(false);
+  const [foundByPolice, setFoundByPolice] = useState(intent === 'assign');
   const [assignedOfficerId, setAssignedOfficerId] = useState('');
 
   // Optional accused / criminal linkage fields
@@ -64,7 +66,14 @@ const CreateCrimeCase: React.FC<CreateCrimeCaseProps> = ({
         setCategories(cats);
         setLocations(locs);
         setOfficers(offs || []);
-        if (cats.length > 0) setCategoryId(cats[0].id);
+        if (cats.length > 0) {
+          if (intent === 'missing') {
+            const missingCat = cats.find(c => c.name.toLowerCase().includes('missing'));
+            setCategoryId(missingCat?.id ?? cats[0].id);
+          } else {
+            setCategoryId(cats[0].id);
+          }
+        }
         if (locs.length > 0) setLocationId(locs[0].id);
       })
       .catch((err) => {

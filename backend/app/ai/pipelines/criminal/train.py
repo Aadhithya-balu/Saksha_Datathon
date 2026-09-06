@@ -35,10 +35,10 @@ def _fallback_matrix(n_features: int) -> tuple[np.ndarray, list[str]]:
 def run_training(db_session=None) -> dict[str, Any]:
     """Train all criminal models.  Accepts an optional SQLAlchemy session for
     testing; if None, opens its own session from the shared factory."""
-    from app.database.postgres import SessionLocal
+    from app.database.postgres import get_worker_session
 
     own_session = db_session is None
-    db = SessionLocal() if own_session else db_session
+    db = get_worker_session() if own_session else db_session
     try:
         vectors = extract_all(db)
     finally:

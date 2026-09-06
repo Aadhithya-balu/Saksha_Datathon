@@ -184,11 +184,11 @@ def hotspot_model_versions(current_user: User = Depends(get_current_user)):
 
 
 def _run_retrain_job(job_id: str, user_id: str | None, reason: str | None) -> None:
-    from app.database.postgres import SessionLocal
+    from app.database.postgres import get_worker_session
     from app.ai.pipelines.hotspot.train import run_training
     from app.ai.inference.hotspot import invalidate_caches
 
-    session = SessionLocal()
+    session = get_worker_session()
     try:
         job = session.query(ModelUpdateJob).filter(ModelUpdateJob.id == job_id).first()
         if not job:

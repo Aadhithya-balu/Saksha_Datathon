@@ -6,13 +6,14 @@ complete without pretending an ML model is already trained.
 from __future__ import annotations
 
 import math
+import uuid
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
 import numpy as np
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.crime import CrimeCase
@@ -20,6 +21,7 @@ from app.models.crime_category import CrimeCategory
 from app.models.criminal import Criminal
 from app.models.fir import FIR, FIRCriminalLink, FIRVictimLink
 from app.models.location import Location
+from app.models.victim import Victim
 
 SEVERITY_WEIGHT = {"low": 0.8, "medium": 1.0, "high": 1.25, None: 1.0}
 
@@ -621,66 +623,211 @@ def offender_dossiers(db: Session) -> list[dict[str, Any]]:
     return sorted(rows, key=lambda row: row["riskScore"], reverse=True)
 
 
-def network_person(db: Session, person_id: str, depth: int = 1) -> dict[str, Any]:
-    del depth
-    firs = (
-        db.query(FIR)
-        .options(
-            joinedload(FIR.crime_case).joinedload(CrimeCase.location),
-            joinedload(FIR.criminal_links).joinedload(FIRCriminalLink.criminal),
-            joinedload(FIR.victim_links).joinedload(FIRVictimLink.victim),
-        )
-        .order_by(FIR.filed_at.desc())
-        .limit(25)
+def _resolve_network_center(
+    db: Session, person_id: str
+) -> tuple[str | None, uuid.UUID | None]:
+    """Resolve ``person_id`` ('criminal-<uuid>' / 'victim-<uuid>' or a name)."""
+    pid = (person_id or "").strip()
+    if not pid:
+        return None, None
+    lowered = pid.lower()
+    if lowered.startswith("criminal-") or lowered.startswith("victim-"):
+        kind, raw = lowered.split("-", 1)
+        try:
+            return kind, uuid.UUID(raw)
+        except ValueError:
+            return None, None
+    criminal = (
+        db.query(Criminal)
+        .filter(or_(Criminal.full_name.ilike(f"%{pid}%"), Criminal.aliases.ilike(f"%{pid}%")))
+        .order_by(Criminal.created_at.desc())
+        .first()
+    )
+    if criminal is not None:
+        return "criminal", criminal.id
+    victim = (
+        db.query(Victim)
+        .filter(Victim.full_name.ilike(f"%{pid}%"))
+        .order_by(Victim.created_at.desc())
+        .first()
+    )
+    if victim is not None:
+        return "victim", victim.id
+    return None, None
+
+
+def _filed_at_ts(fir: Any) -> float:
+    ts = getattr(fir, "filed_at", None)
+    if ts is None:
+        return 0.0
+    try:
+        return ts.timestamp()
+    except Exception:
+        return 0.0
+
+
+def _add_graph_edge(edges: list[dict[str, str]], seen: set, source: str, target: str, rel: str) -> None:
+    key = (source, target, rel)
+    if key not in seen:
+        seen.add(key)
+        edges.append({"source": source, "target": target, "relationship": rel})
+
+
+def _column_id_counts(db: Session, model: Any, column: str, ids: set) -> dict[str, int]:
+    if not ids:
+        return {}
+    entity_col = getattr(model, column)
+    rows = (
+        db.query(entity_col, func.count(model.id))
+        .filter(entity_col.in_(ids))
+        .group_by(entity_col)
         .all()
     )
+    return {str(row[0]): int(row[1]) for row in rows}
+
+
+def network_person(db: Session, person_id: str, depth: int = 1) -> dict[str, Any]:
+    """Build a graph strictly centered on one person (criminal or victim).
+
+    Only the target's own linked FIRs are included: the target node, its
+    co-accused criminals, its victims, and each FIR's case location. Edges are
+    added only where a real FIR join exists, so unrelated recent-FIR records
+    no longer leak into the view.
+    """
+    del depth
+    kind, entity_id = _resolve_network_center(db, person_id)
+    if entity_id is None:
+        return {"nodes": [], "edges": []}
+
+    if kind == "victim":
+        target = (
+            db.query(Victim)
+            .options(
+                joinedload(Victim.fir_links).joinedload(FIRVictimLink.fir)
+                .joinedload(FIR.crime_case).joinedload(CrimeCase.location),
+                joinedload(Victim.fir_links).joinedload(FIRVictimLink.fir)
+                .joinedload(FIR.criminal_links).joinedload(FIRCriminalLink.criminal),
+                joinedload(Victim.fir_links).joinedload(FIRVictimLink.fir)
+                .joinedload(FIR.victim_links).joinedload(FIRVictimLink.victim),
+            )
+            .filter(Victim.id == entity_id)
+            .first()
+        )
+    else:
+        target = (
+            db.query(Criminal)
+            .options(
+                joinedload(Criminal.fir_links).joinedload(FIRCriminalLink.fir)
+                .joinedload(FIR.crime_case).joinedload(CrimeCase.location),
+                joinedload(Criminal.fir_links).joinedload(FIRCriminalLink.fir)
+                .joinedload(FIR.criminal_links).joinedload(FIRCriminalLink.criminal),
+                joinedload(Criminal.fir_links).joinedload(FIRCriminalLink.fir)
+                .joinedload(FIR.victim_links).joinedload(FIRVictimLink.victim),
+            )
+            .filter(Criminal.id == entity_id)
+            .first()
+        )
+
+    if target is None:
+        return {"nodes": [], "edges": []}
+
+    firs = [link.fir for link in target.fir_links if link.fir is not None]
+    firs.sort(key=_filed_at_ts, reverse=True)
+    firs = firs[:15]
 
     nodes: dict[str, dict[str, Any]] = {}
     edges: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
 
-    def add_node(node_id: str, **payload):
+    def add_node(node_id: str, **payload) -> None:
         if node_id not in nodes:
             nodes[node_id] = {"id": node_id, **payload}
 
+    center_id = f"{kind}-{str(target.id)}"
+    if kind == "criminal":
+        add_node(
+            center_id,
+            name=target.full_name,
+            category="suspect" if target.status == "at_large" else "offender",
+            riskScore=min(100, 45 + len(target.fir_links) * 12),
+            details=target.mo_summary or target.identifying_marks or "Linked through FIR records",
+            casesCount=len(target.fir_links),
+        )
+    else:
+        add_node(
+            center_id,
+            name=target.full_name,
+            category="victim",
+            riskScore=10,
+            details=target.statement or "Victim/complainant in FIR record",
+            casesCount=len(target.fir_links),
+        )
+
+    co_ids = {
+        link.criminal_id
+        for fir in firs
+        for link in fir.criminal_links
+        if link.criminal_id is not None and str(link.criminal_id) != str(target.id)
+    }
+    victim_ids = {
+        link.victim_id
+        for fir in firs
+        for link in fir.victim_links
+        if link.victim_id is not None and str(link.victim_id) != str(target.id)
+    }
+    loc_ids = {
+        fir.crime_case.location_id
+        for fir in firs
+        if fir.crime_case is not None and fir.crime_case.location_id is not None
+    }
+
+    co_counts = _column_id_counts(db, FIRCriminalLink, "criminal_id", co_ids)
+    victim_counts = _column_id_counts(db, FIRVictimLink, "victim_id", victim_ids)
+    loc_counts = _column_id_counts(db, CrimeCase, "location_id", loc_ids)
+
     for fir in firs:
         case = fir.crime_case
-        location_id = f"location-{case.location_id}" if case else None
-        if case and case.location:
+        if case is not None and case.location is not None:
+            loc_id = f"location-{str(case.location_id)}"
             add_node(
-                location_id,
+                loc_id,
                 name=case.location.station or case.location.district,
                 category="location",
                 riskScore=65,
                 details=f"{case.location.district} jurisdiction linked to {fir.fir_number}",
-                casesCount=len(case.location.crimes),
+                casesCount=loc_counts.get(str(case.location_id), len(case.location.crimes)),
             )
+            _add_graph_edge(edges, seen, center_id, loc_id, "Linked crime location")
 
         for link in fir.criminal_links:
-            criminal = link.criminal
-            node_id = f"criminal-{criminal.id}"
+            co = link.criminal
+            if co is None or str(co.id) == str(target.id):
+                continue
+            co_id = f"criminal-{str(co.id)}"
             add_node(
-                node_id,
-                name=criminal.full_name,
-                category="suspect" if criminal.status == "at_large" else "offender",
-                riskScore=min(100, 45 + len(criminal.fir_links) * 12),
-                details=criminal.mo_summary or criminal.identifying_marks or "Linked through FIR records",
-                casesCount=len(criminal.fir_links),
+                co_id,
+                name=co.full_name,
+                category="suspect" if co.status == "at_large" else "offender",
+                riskScore=min(100, 45 + co_counts.get(str(co.id), len(co.fir_links)) * 12),
+                details=co.mo_summary or co.identifying_marks or "Named in same FIR",
+                casesCount=co_counts.get(str(co.id), len(co.fir_links)),
             )
-            if location_id:
-                edges.append({"source": node_id, "target": location_id, "relationship": "Linked crime location"})
+            _add_graph_edge(edges, seen, center_id, co_id, "Named in same FIR")
 
-            for victim_link in fir.victim_links:
-                victim = victim_link.victim
-                victim_id = f"victim-{victim.id}"
-                add_node(
-                    victim_id,
-                    name=victim.full_name,
-                    category="victim",
-                    riskScore=10,
-                    details=victim.statement or "Victim/complainant in FIR record",
-                    casesCount=len(victim.fir_links),
-                )
-                edges.append({"source": node_id, "target": victim_id, "relationship": "Named in same FIR"})
+        for link in fir.victim_links:
+            vict = link.victim
+            if vict is None or str(vict.id) == str(target.id):
+                continue
+            vict_id = f"victim-{str(vict.id)}"
+            add_node(
+                vict_id,
+                name=vict.full_name,
+                category="victim",
+                riskScore=10,
+                details=vict.statement or "Victim/complainant in FIR record",
+                casesCount=victim_counts.get(str(vict.id), len(vict.fir_links)),
+            )
+            _add_graph_edge(edges, seen, center_id, vict_id, "Named in same FIR")
 
     return {"nodes": list(nodes.values()), "edges": edges}
 

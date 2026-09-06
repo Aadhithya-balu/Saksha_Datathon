@@ -51,7 +51,12 @@ respect when working in this repo.
 - Multi-worker endpoints that open their own sessions (criminal AI workers,
   face network, MO matching) must NOT share the request session. Use
   `SessionLocal()` in a worker / `ThreadPoolExecutor`.
-- DB pool: `pool_size=5, max_overflow=5, pool_pre_ping=True, pool_recycle=120`.
+- DB pool: request path `pool_size=10, max_overflow=10, pool_timeout=30`
+  (env-tunable via `DB_POOL_SIZE`/`DB_MAX_OVERFLOW`/`DB_POOL_TIMEOUT`,
+  `pool_pre_ping=True, pool_recycle=120`). Background/worker code MUST use a
+  session from `app.database.postgres.get_worker_session()` (separate engine,
+  `DB_WORKER_*` envs, defaults 3/12/300s) — never `SessionLocal()` — so long
+  training/parallel AI jobs can't starve the request path (QueuePool timeout).
   Release pooled sessions (`db.close()`) before heavy CPU/network work.
 - Heavy analytics that is expensive to recompute may use `ttl_cached`
   (`backend/app/services/ttl_cache.py`). Invalidate targeted prefix keys via

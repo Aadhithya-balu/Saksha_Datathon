@@ -91,10 +91,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { id: 'hotspot', label: t.nav_hotspot, path: '/hotspots', icon: <Map className="w-[18px] h-[18px]" /> },
         { id: 'network', label: t.nav_network, path: '/network', icon: <Network className="w-[18px] h-[18px]" /> },
-        { id: 'identity', label: t.nav_identity, path: '/identity-resolution', icon: <FileWarning className="w-[18px] h-[18px]" /> },
         { id: 'predictive', label: t.nav_predictive, path: '/predictions', icon: <Brain className="w-[18px] h-[18px]" /> },
         { id: 'sociological', label: t.nav_sociological, path: '/sociological', icon: <Globe2 className="w-[18px] h-[18px]" /> },
         { id: 'reports', label: t.nav_reports, path: '/reports', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
+        { id: 'identity', label: t.nav_identity, path: '/identity-resolution', icon: <FileWarning className="w-[18px] h-[18px]" /> },
       ],
     },
     {

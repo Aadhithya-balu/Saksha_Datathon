@@ -656,6 +656,10 @@ const readErrorMessage = async (response: Response) => {
   }
 };
 
+// Tracks in-flight resilient retries of safe (GET) requests that hit a
+// transient DB pool exhaustion, so they retry at most once per path.
+const busyRetryKeys = new Set<string>();
+
 export async function apiRequest<T>(path: string, options: RequestInit = {}, includeAuth = true): Promise<T> {
   const { accessToken } = getStoredTokens();
 
@@ -678,6 +682,35 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, inc
     clearStoredTokens();
     window.dispatchEvent(new CustomEvent('auth:session-expired'));
     throw new Error('Session expired. Please log in again.');
+  }
+
+  // DB connection-pool exhaustion is transient: notify the UI so the operator
+  // knows to wait and (for safe reads) automatically retry once the pool frees.
+  if (response.status === 503) {
+    let code = '';
+    try {
+      const payload = await response.clone().json();
+      code = payload?.error?.code ?? payload?.detail?.code ?? '';
+    } catch {
+      // ignore non-JSON 503 bodies
+    }
+    if (code === 'DB_POOL_EXHAUSTED') {
+      const message = 'Infrastructure under load — database pool temporarily exhausted. Please wait and retry.';
+      window.dispatchEvent(new CustomEvent('system:backend-busy', { detail: { message } }));
+      const isSafeRead = (options.method ?? 'GET').toUpperCase() === 'GET';
+      const retryKey = `DB_POOL_EXHAUSTED:${isSafeRead ? 'GET' : 'OTHER'}:${path}`;
+      if (!busyRetryKeys.has(retryKey) && isSafeRead) {
+        busyRetryKeys.add(retryKey);
+        try {
+          const retryAfter = Math.min(Math.max(Number(response.headers.get('Retry-After')) || 5, 3), 15);
+          await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+          return await apiRequest<T>(path, options, includeAuth);
+        } finally {
+          busyRetryKeys.delete(retryKey);
+        }
+      }
+      throw new Error(message);
+    }
   }
 
   if (!response.ok) {

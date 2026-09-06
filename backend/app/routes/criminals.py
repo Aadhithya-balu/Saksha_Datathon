@@ -91,12 +91,12 @@ def _load_criminal_network(criminal_id: str) -> dict:
     from app.services.ttl_cache import ttl_cached
 
     def compute():
-        from app.database.postgres import SessionLocal
+        from app.database.postgres import get_worker_session
         from app.services.analytics_service import network_person
 
         net: dict = {"nodes": [], "edges": []}
         try:
-            db = SessionLocal()
+            db = get_worker_session()
             try:
                 net = network_person(db, f"criminal-{criminal_id}")
             finally:
@@ -117,11 +117,11 @@ def _load_criminal_network(criminal_id: str) -> dict:
 
 
 def _criminal_risk_worker(criminal_id: str, fir_count: int) -> dict:
-    from app.database.postgres import SessionLocal
+    from app.database.postgres import get_worker_session
     from app.ai.inference.criminal import score_criminal_risk
 
     try:
-        db = SessionLocal()
+        db = get_worker_session()
         try:
             res = score_criminal_risk(db, criminal_id)
             if "error" in res:
@@ -144,11 +144,11 @@ def _criminal_risk_worker(criminal_id: str, fir_count: int) -> dict:
 
 
 def _repeat_offender_worker(criminal_id: str, fir_count: int) -> dict:
-    from app.database.postgres import SessionLocal
+    from app.database.postgres import get_worker_session
     from app.ai.inference.criminal import predict_repeat_offender
 
     try:
-        db = SessionLocal()
+        db = get_worker_session()
         try:
             res = predict_repeat_offender(db, criminal_id)
             if "error" in res:
@@ -169,12 +169,12 @@ def _repeat_offender_worker(criminal_id: str, fir_count: int) -> dict:
 
 
 def _similar_offenders_worker(criminal_id: str) -> dict:
-    from app.database.postgres import SessionLocal
+    from app.database.postgres import get_worker_session
     from app.services.mo_matching_service import match_criminal_against_db
 
     similar = {"similar": []}
     try:
-        db = SessionLocal()
+        db = get_worker_session()
         try:
             from app.models.criminal import Criminal
             target = db.query(Criminal).filter(Criminal.id == criminal_id).first()
@@ -209,7 +209,7 @@ def _similar_offenders_worker(criminal_id: str) -> dict:
 
 
 def _recommendations_worker(criminal_id: str) -> list:
-    from app.database.postgres import SessionLocal
+    from app.database.postgres import get_worker_session
     from app.ai.inference.criminal import get_investigation_recommendations
 
     fallback = [
@@ -217,7 +217,7 @@ def _recommendations_worker(criminal_id: str) -> list:
         "Review linked case diaries.",
     ]
     try:
-        db = SessionLocal()
+        db = get_worker_session()
         try:
             res = get_investigation_recommendations(db, criminal_id)
             if "error" in res:

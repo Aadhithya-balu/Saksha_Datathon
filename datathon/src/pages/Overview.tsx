@@ -478,7 +478,6 @@ export const Overview: React.FC = () => {
     'Create Alert': 'notifications',
     'Assign Case': 'crime_cases',
     'Generate Report': 'reports',
-    'Resource Allocation': 'strategic',
   };
 
   const [openAction, setOpenAction] = useState<string | null>(null);
@@ -495,6 +494,11 @@ export const Overview: React.FC = () => {
       'NAVIGATE',
       `Redirected from Quick Action: ${actionName} to ${targetTab}`
     );
+
+    // Auto-open the matching creation form when the target page mounts.
+    if (actionName === 'Register FIR' || actionName === 'Add Missing Person' || actionName === 'Assign Case') {
+      sessionStorage.setItem('quick_action_intent', actionName);
+    }
     window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: targetTab } }));
   };
 
@@ -953,12 +957,29 @@ export const Overview: React.FC = () => {
                 </button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button onClick={() => { handleQuickActionNavigate(openAction); setOpenAction(null); }} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-blue)] w-full">
-                  <PenLine className="w-4 h-4" /> Fill Details Manually
-                </button>
-                <button onClick={() => { handleQuickActionDownload(openAction); setOpenAction(null); }} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-teal)] w-full">
-                  <Download className="w-4 h-4" /> Download PDF
-                </button>
+                {openAction === 'Generate Report' ? (
+                  <>
+                    <button onClick={() => { handleQuickActionNavigate(openAction); setOpenAction(null); }} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-blue)] w-full">
+                      <PenLine className="w-4 h-4" /> Specific Report
+                    </button>
+                    <button onClick={() => { handleQuickActionDownload(openAction); setOpenAction(null); }} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-teal)] w-full">
+                      <Download className="w-4 h-4" /> Full Report PDF
+                    </button>
+                  </>
+                ) : QUICK_ACTION_TARGETS[openAction] ? (
+                  <button onClick={() => { handleQuickActionNavigate(openAction); setOpenAction(null); }} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-blue)] w-full">
+                    <PenLine className="w-4 h-4" /> Fill Details Manually
+                  </button>
+                ) : (
+                  <div className="flex items-center justify-center gap-2 rounded-md border border-dashed border-[var(--border-secondary)] px-3 py-2.5 text-xs text-[var(--text-muted)]">
+                    No online form available &middot; fill the PDF template manually
+                  </div>
+                )}
+                {openAction !== 'Generate Report' && (
+                  <button onClick={() => { handleQuickActionDownload(openAction); setOpenAction(null); }} className="inline-flex items-center justify-center gap-2 sk-btn sk-btn-secondary !text-[var(--accent-teal)] w-full">
+                    <Download className="w-4 h-4" /> Download PDF
+                  </button>
+                )}
               </div>
             </div>
           )}

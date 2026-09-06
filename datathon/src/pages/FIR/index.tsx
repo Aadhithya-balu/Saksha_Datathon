@@ -119,6 +119,16 @@ export const FIRPage: React.FC = () => {
     void loadFIRList();
   }, [searchQuery, statusFilter, districtFilter]);
 
+  // Auto-open the enrolment form when reached from a dashboard Quick Action
+  useEffect(() => {
+    const quickIntent = sessionStorage.getItem('quick_action_intent');
+    if (quickIntent === 'Register FIR') {
+      sessionStorage.removeItem('quick_action_intent');
+      setIsEditing(false);
+      setShowForm(true);
+    }
+  }, []);
+
   // Background polling: silently refresh FIR list every 30s
   usePolling(async () => {
     try {

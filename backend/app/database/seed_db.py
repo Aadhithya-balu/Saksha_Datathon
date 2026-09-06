@@ -121,6 +121,7 @@ CATEGORIES = [
     ("Illegal Mining Violations", "MMDR Act", "high"),
     ("Domestic Violence", "DV Act", "medium"),
     ("Property Disputes", "IPC 447/506", "low"),
+    ("Missing Person Case", "KSP MPR", "medium"),
 ]
 
 # ---------------------------------------------------------------------------

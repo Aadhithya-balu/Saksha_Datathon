@@ -364,7 +364,7 @@ def _prewarm_mo_profiles():
 
     def _warm():
         try:
-            from app.database.postgres import SessionLocal
+            from app.database.postgres import get_worker_session
             from sqlalchemy.orm import joinedload
 
             from app.models.crime import CrimeCase
@@ -374,7 +374,7 @@ def _prewarm_mo_profiles():
                 extract_criminal_mo_profile,
             )
 
-            db = SessionLocal()
+            db = get_worker_session()
             try:
                 cases = (
                     db.query(CrimeCase)
@@ -422,9 +422,9 @@ def _start_background_refresh() -> None:
         while not _bg_refresh_stop:
             try:
                 from app.ai.inference.refresh import check_external_updates, maybe_refresh_async
-                from app.database.postgres import SessionLocal
+                from app.database.postgres import get_worker_session
                 check_external_updates()
-                db = SessionLocal()
+                db = get_worker_session()
                 try:
                     maybe_refresh_async(db=db, reason="background-scheduler")
                 finally:

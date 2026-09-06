@@ -499,9 +499,9 @@ def _should_schedule(key: str, db, reason: str) -> bool:
 
 
 def _worker(key: str, reason: str) -> None:
-    from app.database.postgres import SessionLocal
+    from app.database.postgres import get_worker_session
 
-    session = SessionLocal()
+    session = get_worker_session()
     try:
         summary = refresh_model(session, key, reason=reason)
     finally:

@@ -9,6 +9,7 @@ type ViewMode = 'list' | 'create' | 'details' | 'edit';
 const CrimeCases: React.FC = () => {
   const [view, setView] = useState<ViewMode>('list');
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+  const [intent, setIntent] = useState<'assign' | 'missing' | undefined>(undefined);
 
   useEffect(() => {
     const redirectId = sessionStorage.getItem('selected_entity_id');
@@ -18,6 +19,13 @@ const CrimeCases: React.FC = () => {
         setSelectedCaseId(redirectId);
         setView('details');
       }
+    }
+
+    const quickIntent = sessionStorage.getItem('quick_action_intent');
+    if (quickIntent === 'Add Missing Person' || quickIntent === 'Assign Case') {
+      sessionStorage.removeItem('quick_action_intent');
+      setIntent(quickIntent === 'Assign Case' ? 'assign' : 'missing');
+      setView('create');
     }
   }, []);
 
@@ -43,6 +51,7 @@ const CrimeCases: React.FC = () => {
 
       {view === 'create' && (
         <CreateCrimeCase
+          intent={intent}
           onCancel={() => setView('list')}
           onSuccess={() => setView('list')}
         />

@@ -6,6 +6,7 @@ consistent error responses: {"error": {"code": ..., "message": ..., "status": ..
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 
 
 class AppException(Exception):
@@ -60,7 +61,29 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     )
 
 
+async def pool_timeout_exception_handler(request: Request, exc: SQLAlchemyTimeoutError) -> JSONResponse:
+    """QueuePool exhaustion (all DB connections busy).
+
+    Returned as a recoverable 503 with a short Retry-After so clients know the
+    infrastructure is temporarily saturated and can wait instead of treating it
+    as a hard failure. The frontend listens for ``DB_POOL_EXHAUSTED`` and shows
+    a "please wait" alert (and auto-retries safe GET requests).
+    """
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content=_error_body(
+            "DB_POOL_EXHAUSTED",
+            "Database connection pool is temporarily exhausted. Please wait a moment and retry.",
+            503,
+        ),
+        headers={"Retry-After": "5"},
+    )
+
+
 def register_exception_handlers(app) -> None:
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+    # More specific than the generic Exception handler, so QueuePool timeouts
+    # surface as a machine-readable 503 instead of a raw 500 traceback.
+    app.add_exception_handler(SQLAlchemyTimeoutError, pool_timeout_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
