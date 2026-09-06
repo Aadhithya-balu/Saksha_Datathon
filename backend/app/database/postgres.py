@@ -23,7 +23,13 @@ def _engine_options(url, *, worker: bool = False) -> dict:
     connect_args = {}
     if url.drivername.startswith("postgresql"):
         connect_args["connect_timeout"] = 8
-        connect_args["options"] = "-c statement_timeout=30000"
+        # The Supabase transaction pooler (port 6543) does not accept
+        # session-level startup options (`options=-c ...`); sending them can
+        # break pooled connections. Only set statement_timeout for direct
+        # (non-pooled) connections.
+        is_pooled = "pooler.supabase.com" in (url.host or "") or url.port == 6543
+        if not is_pooled:
+            connect_args["options"] = "-c statement_timeout=30000"
 
     if worker:
         pool_size = settings.DB_WORKER_POOL_SIZE
