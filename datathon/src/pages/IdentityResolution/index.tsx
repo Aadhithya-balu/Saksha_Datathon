@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Fingerprint,
   FileWarning,
@@ -14,6 +15,8 @@ import {
   X,
   Flag,
   Info,
+  AlertCircle,
+  CheckCircle2,
 } from 'lucide-react';
 import { PageSkeleton } from '../../components/ui/Skeleton';
 import { useRBAC } from '../../hooks/useRBAC';
@@ -38,6 +41,7 @@ import {
 } from '../../services/api';
 
 type Tab = 'review' | 'proxy' | 'alerts' | 'graph' | 'search';
+type ReviewStatusFilter = 'pending' | 'resolved' | 'all';
 
 const ASSESSMENT_META: Record<string, { label: string; cls: string }> = {
   PROBABLE_IDENTITY_MATCH: { label: 'Probable Duplicate', cls: 'text-[var(--accent-coral)] border-[var(--accent-coral)]/40 bg-[var(--accent-coral)]/10' },
@@ -45,6 +49,25 @@ const ASSESSMENT_META: Record<string, { label: string; cls: string }> = {
   POSSIBLE_ASSOCIATED: { label: 'Association', cls: 'text-[var(--text-secondary)] border-[var(--border-secondary)] bg-[var(--bg-tertiary)]' },
   POSSIBLE_PROXY: { label: 'Proxy Pattern', cls: 'text-[var(--accent-purple)] border-[var(--accent-purple)]/40 bg-[var(--accent-purple)]/10' },
 };
+
+const REL_STATUS_META: Record<string, { label: string; cls: string }> = {
+  open: { label: 'Pending Review', cls: 'text-[var(--accent-amber)] border-[var(--accent-amber)]/40 bg-[var(--accent-amber)]/10' },
+  in_review: { label: 'In Review', cls: 'text-[var(--accent-blue)] border-[var(--accent-blue)]/40 bg-[var(--accent-blue)]/10' },
+  confirmed_same: { label: 'Confirmed Duplicate', cls: 'text-[var(--accent-coral)] border-[var(--accent-coral)]/40 bg-[var(--accent-coral)]/10' },
+  confirmed_association: { label: 'Confirmed Association', cls: 'text-[var(--accent-teal)] border-[var(--accent-teal)]/40 bg-[var(--accent-teal)]/10' },
+  marked_proxy: { label: 'Marked Proxy', cls: 'text-[var(--accent-purple)] border-[var(--accent-purple)]/40 bg-[var(--accent-purple)]/10' },
+  marked_alias: { label: 'Marked Alias', cls: 'text-[var(--accent-purple)] border-[var(--accent-purple)]/40 bg-[var(--accent-purple)]/10' },
+  marked_data_error: { label: 'Data Error', cls: 'text-[var(--accent-blue)] border-[var(--accent-blue)]/40 bg-[var(--accent-blue)]/10' },
+  rejected: { label: 'Rejected', cls: 'text-[var(--text-muted)] border-[var(--border-secondary)] bg-[var(--bg-tertiary)]' },
+  dismissed: { label: 'Dismissed', cls: 'text-[var(--text-muted)] border-[var(--border-secondary)] bg-[var(--bg-tertiary)]' },
+};
+
+const PENDING_STATUSES = ['open', 'in_review'];
+const RESOLVED_STATUSES = ['confirmed_same', 'confirmed_association', 'marked_proxy', 'marked_alias', 'marked_data_error', 'rejected', 'dismissed'];
+
+function relationshipStatusBadge(status: string) {
+  return <Badge text={REL_STATUS_META[status]?.label ?? status} cls={REL_STATUS_META[status]?.cls ?? SEVERITY_CLS.low} />;
+}
 
 const SEVERITY_CLS: Record<string, string> = {
   critical: 'text-[var(--accent-coral)] border-[var(--accent-coral)]/40 bg-[var(--accent-coral)]/10',
@@ -82,6 +105,22 @@ function Badge({ text, cls }: { text: string; cls: string }) {
   );
 }
 
+type ToastKind = 'success' | 'error';
+
+function Toast({ kind, msg }: { kind: ToastKind; msg: string }) {
+  return createPortal(
+    <div className={`fixed top-4 right-4 z-[500] flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-lg border text-[12px] font-medium shadow-lg bg-[var(--bg-primary)]/95 backdrop-blur ${
+      kind === 'success'
+        ? 'border-[var(--accent-teal)]/40 text-[var(--accent-teal)]'
+        : 'border-red-900/40 text-red-400'
+    }`}>
+      {kind === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+      {msg}
+    </div>,
+    document.body,
+  );
+}
+
 export const IdentityResolution: React.FC = () => {
   const [tab, setTab] = useState<Tab>('review');
   const [dash, setDash] = useState<IdentityDashboardResponse | null>(null);
@@ -94,14 +133,24 @@ export const IdentityResolution: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [audibleMsg, setAudibleMsg] = useState<string | null>(null);
+  const [reviewingIds, setReviewingIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [toast, setToast] = useState<{ kind: ToastKind; msg: string } | null>(null);
+  const toastTimer = useRef<number | null>(null);
   const { isAdmin, isSCRB, isIO, isInspector } = useRBAC();
 
   const canReview = isAdmin || isSCRB || isIO || isInspector;
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
+  const flash = useCallback((kind: ToastKind, msg: string) => {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    setToast({ kind, msg });
+    toastTimer.current = window.setTimeout(() => setToast(null), 4200);
+  }, []);
+
+  const fetchAll = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setLoadError(null);
+    }
     try {
       const results = await Promise.all([
         getIdentityDashboard(),
@@ -129,55 +178,55 @@ export const IdentityResolution: React.FC = () => {
 
   const doRun = async () => {
     setBusy(true);
-    setAudibleMsg(null);
     try {
       const summary = await runIdentityResolution();
-      setAudibleMsg(`Resolution complete: ${summary.relationships_proposed} proposed, ${summary.proxy_patterns_detected} proxy pattern(s), ${summary.identifier_reuse_alerts} reuse alert(s).`);
+      flash('success', `Resolution complete: ${summary.relationships_proposed} proposed, ${summary.proxy_patterns_detected} proxy pattern(s), ${summary.identifier_reuse_alerts} reuse alert(s).`);
     } catch (error) {
-      setAudibleMsg(error instanceof Error ? error.message : 'Resolution run failed');
+      flash('error', error instanceof Error ? error.message : 'Resolution run failed');
     } finally {
       setBusy(false);
-      void fetchAll();
+      void fetchAll(true);
     }
   };
 
   const doRunProxy = async () => {
     setBusy(true);
-    setAudibleMsg(null);
     try {
       const result = await runProxyDetection();
-      setAudibleMsg(`Proxy scan complete: ${result.patterns_detected} pattern(s) detected.`);
+      flash('success', `Proxy scan complete: ${result.patterns_detected} pattern(s) detected.`);
     } catch (error) {
-      setAudibleMsg(error instanceof Error ? error.message : 'Proxy scan failed');
+      flash('error', error instanceof Error ? error.message : 'Proxy scan failed');
     } finally {
       setBusy(false);
-      void fetchAll();
+      void fetchAll(true);
     }
   };
 
-  const doReview = async (fn: () => Promise<unknown>, msg: string) => {
-    setBusy(true);
-    setAudibleMsg(null);
+  const doReview = async (subjectId: string, successLabel: string, fn: () => Promise<unknown>) => {
+    setReviewingIds((prev) => new Set(prev).add(subjectId));
     try {
       await fn();
-      setAudibleMsg(msg);
+      flash('success', successLabel);
     } catch (error) {
-      setAudibleMsg(error instanceof Error ? error.message : 'Review failed');
+      flash('error', error instanceof Error ? error.message : 'Review failed');
     } finally {
-      setBusy(false);
-      void fetchAll();
+      setReviewingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(subjectId);
+        return next;
+      });
+      void fetchAll(true);
     }
   };
 
   const doSearch = async () => {
     if (!query.trim()) return;
     setBusy(true);
-    setAudibleMsg(null);
     try {
       const result = await searchIdentity(query.trim());
       setSearch(result);
     } catch (error) {
-      setAudibleMsg(error instanceof Error ? error.message : 'Search failed');
+      flash('error', error instanceof Error ? error.message : 'Search failed');
     } finally {
       setBusy(false);
     }
@@ -187,10 +236,38 @@ export const IdentityResolution: React.FC = () => {
     () => relationships.filter((r) => r.assessment === 'POSSIBLE_ASSOCIATED'),
     [relationships],
   );
-  const identityLeads = useMemo(
-    () => relationships.filter((r) => r.assessment === 'PROBABLE_IDENTITY_MATCH' || r.assessment === 'POSSIBLE_IDENTITY_MATCH'),
+  const identityRelationships = useMemo(
+    () =>
+      relationships.filter(
+        (r) => r.assessment === 'PROBABLE_IDENTITY_MATCH' || r.assessment === 'POSSIBLE_IDENTITY_MATCH',
+      ),
     [relationships],
   );
+  const identityLeads = useMemo(
+    () => identityRelationships.filter((r) => PENDING_STATUSES.includes(r.status)),
+    [identityRelationships],
+  );
+  const resolvedLeads = useMemo(
+    () => identityRelationships.filter((r) => RESOLVED_STATUSES.includes(r.status)),
+    [identityRelationships],
+  );
+  const identityLeadsAll = useMemo(
+    () => identityRelationships.filter((r) => !PENDING_STATUSES.includes(r.status) && !RESOLVED_STATUSES.includes(r.status)),
+    [identityRelationships],
+  );
+  const [reviewStatusFilter, setReviewStatusFilter] = useState<ReviewStatusFilter>('pending');
+
+  const shownLeads = useMemo(() => {
+    if (reviewStatusFilter === 'pending') return identityLeads;
+    if (reviewStatusFilter === 'resolved') return resolvedLeads;
+    return [...identityLeads, ...resolvedLeads, ...identityLeadsAll];
+  }, [reviewStatusFilter, identityLeads, resolvedLeads, identityLeadsAll]);
+
+  const reviewFilterTabs: { id: ReviewStatusFilter; label: string; count: number }[] = [
+    { id: 'pending', label: 'Pending Review', count: identityLeads.length },
+    { id: 'resolved', label: 'Resolved', count: resolvedLeads.length },
+    { id: 'all', label: `All (${identityRelationships.length})`, count: identityRelationships.length },
+  ];
 
   const tabs: { id: Tab; label: string; badge?: number }[] = [
     { id: 'review', label: 'Review Center', badge: identityLeads.length },
@@ -239,12 +316,7 @@ export const IdentityResolution: React.FC = () => {
         </div>
       </div>
 
-      {audibleMsg && (
-        <div className="sk-card px-4 py-3 border-l-4 border-[var(--accent-purple)] text-[13px] text-[var(--text-secondary)] flex items-center gap-2">
-          <Info className="w-4 h-4 text-[var(--accent-purple)] shrink-0" />
-          {audibleMsg}
-        </div>
-      )}
+      {toast && <Toast kind={toast.kind} msg={toast.msg} />}
 
       {loadError && (
         <div className="sk-card px-4 py-3 border-l-4 border-[var(--accent-coral)] text-[13px] text-[var(--accent-coral)] flex items-center gap-2">
@@ -332,7 +404,43 @@ export const IdentityResolution: React.FC = () => {
           {identityLeads.length === 0 && (
             <p className="text-[12px] text-[var(--text-muted)] py-4 text-center">No duplicate-identity leads currently pending review. Associations below are surfacing context only.</p>
           )}
-          {canReview && reviewsTable(identityLeads, (id, decision, note) => doReview(() => reviewIdentityRelationship(id, decision, note), `Relationship ${decision} recorded.`))}
+          <div className="flex items-center gap-1.5 border border-[var(--border-primary)] rounded-lg p-1 w-fit bg-[var(--bg-tertiary)]/60">
+            {reviewFilterTabs.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setReviewStatusFilter(f.id)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
+                  reviewStatusFilter === f.id
+                    ? 'bg-[var(--accent-blue)]/15 text-[var(--accent-blue)] border border-[var(--accent-blue)]/30'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] border border-transparent'
+                }`}
+              >
+                {f.label}
+                <span className="text-[10px] font-mono px-1 py-0.5 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-muted)]">
+                  {f.count}
+                </span>
+              </button>
+            ))}
+          </div>
+          {shownLeads.length === 0 && reviewStatusFilter !== 'pending' && (
+            <p className="text-[12px] text-[var(--text-muted)] py-3 text-center">
+              {reviewStatusFilter === 'resolved' ? 'No reviewed duplicate-identity proposals in this view yet.' : 'No duplicate-identity relationships found.'}
+            </p>
+          )}
+          {shownLeads.length > 0 && reviewsTable(
+            shownLeads,
+            (id, decision, note) => {
+              const pair = relationships.find((x) => x.id === id);
+              const label = `${pair?.source_name ?? 'Record A'} ↔ ${pair?.target_name ?? 'Record B'}`;
+              void doReview(
+                id,
+                `${label} — ${decision.replace(/_/g, ' ')} decision saved.`,
+                () => reviewIdentityRelationship(id, decision, note),
+              );
+            },
+            (r) => !canReview || !PENDING_STATUSES.includes(r.status),
+            reviewingIds,
+          )}
           <details className="sk-card p-3">
             <summary className="text-[12px] font-semibold text-[var(--text-secondary)] cursor-pointer">
               Co-occurrence / Association pairs ({topAssociations.length}) — display-only context, not a match finding
@@ -381,11 +489,23 @@ export const IdentityResolution: React.FC = () => {
                       {(['confirm', 'proxy', 'same_person', 'dismiss', 'investigate'] as const).map((d) => (
                         <button
                           key={d}
-                          disabled={busy}
-                          onClick={() => doReview(() => reviewProxyPattern(p.id, d), `Proxy pattern marked ${d}.`)}
+                          disabled={busy || reviewingIds.has(p.id)}
+                          onClick={() => void doReview(
+                            p.id,
+                            `Proxy pattern ${p.rule_id} marked ${d.replace('_', ' ')}.`,
+                            () => reviewProxyPattern(p.id, d),
+                          )}
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-[var(--border-primary)] text-[10px] font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-blue)]/40 transition-colors cursor-pointer disabled:opacity-50"
                         >
-                          {d === 'confirm' || d === 'proxy' ? <Check className="w-3 h-3" /> : d === 'dismiss' ? <X className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                          {reviewingIds.has(p.id) ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : d === 'confirm' || d === 'proxy' ? (
+                            <Check className="w-3 h-3" />
+                          ) : d === 'dismiss' ? (
+                            <X className="w-3 h-3" />
+                          ) : (
+                            <Eye className="w-3 h-3" />
+                          )}
                           {d.replace('_', ' ')}
                         </button>
                       ))}
@@ -422,11 +542,23 @@ export const IdentityResolution: React.FC = () => {
                     {(['confirm', 'dismiss', 'investigate'] as const).map((d) => (
                       <button
                         key={d}
-                        disabled={busy}
-                        onClick={() => doReview(() => reviewIdentityAlert(a.id, d), `Alert marked ${d}.`)}
+                        disabled={busy || reviewingIds.has(a.id)}
+                        onClick={() => void doReview(
+                          a.id,
+                          `Alert ${a.alert_type.replace(/_/g, ' ')} marked ${d}.`,
+                          () => reviewIdentityAlert(a.id, d),
+                        )}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-[var(--border-primary)] text-[10px] font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-blue)]/40 transition-colors cursor-pointer disabled:opacity-50"
                       >
-                        {d === 'confirm' ? <Check className="w-3 h-3" /> : d === 'dismiss' ? <X className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        {reviewingIds.has(a.id) ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : d === 'confirm' ? (
+                          <Check className="w-3 h-3" />
+                        ) : d === 'dismiss' ? (
+                          <X className="w-3 h-3" />
+                        ) : (
+                          <Eye className="w-3 h-3" />
+                        )}
                         {d}
                       </button>
                     ))}
@@ -544,6 +676,8 @@ function renderSearch(search: IdentitySearchResponse) {
 function reviewsTable(
   leads: IdentityRelationship[],
   onReview: (id: string, decision: string, note?: string) => void,
+  isReadOnly: (r: IdentityRelationship) => boolean = () => false,
+  reviewing: ReadonlySet<string> = new Set(),
 ) {
   if (leads.length === 0) {
     return (
@@ -561,6 +695,7 @@ function reviewsTable(
             <th className="p-2.5">Record A</th>
             <th className="p-2.5">Record B</th>
             <th className="p-2.5">Assessment</th>
+            <th className="p-2.5">Review Status</th>
             <th className="p-2.5 text-right">Confidence</th>
             <th className="p-2.5">Evidence</th>
             <th className="p-2.5">Review</th>
@@ -568,26 +703,38 @@ function reviewsTable(
         </thead>
         <tbody className="divide-y divide-[var(--border-primary)]">
           {leads.map((r) => (
-            <tr key={r.id} className="hover:bg-[var(--bg-tertiary)]/40">
+            <tr key={r.id} className={`hover:bg-[var(--bg-tertiary)]/40 ${reviewing.has(r.id) ? 'bg-[var(--accent-blue)]/5' : ''}`}>
               <td className="p-2.5 font-semibold text-[var(--text-primary)]">{r.source_name ?? 'Unknown'}</td>
               <td className="p-2.5 font-semibold text-[var(--text-primary)]">{r.target_name ?? 'Unknown'}</td>
               <td className="p-2.5">
                 <Badge text={ASSESSMENT_META[r.assessment]?.label ?? r.assessment} cls={ASSESSMENT_META[r.assessment]?.cls ?? SEVERITY_CLS.low} />
               </td>
+              <td className="p-2.5">{relationshipStatusBadge(r.status)}</td>
               <td className="p-2.5 text-right font-mono text-[var(--text-secondary)]">{r.confidence.toFixed(0)}%</td>
               <td className="p-2.5 text-[var(--text-muted)]">{r.evidence_summary?.supporting_count ?? 0} signal(s)</td>
               <td className="p-2.5">
-                <div className="flex gap-1.5">
-                  {[{ d: 'confirm_same', l: 'Confirm' }, { d: 'reject', l: 'Reject' }, { d: 'investigate', l: 'Investigate' }].map(({ d, l }) => (
-                    <button
-                      key={d}
-                      onClick={() => onReview(r.id, d)}
-                      className="px-2 py-1 rounded-md border border-[var(--border-primary)] text-[10px] font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-blue)]/40 transition-colors cursor-pointer"
-                    >
-                      {l}
-                    </button>
-                  ))}
-                </div>
+                {isReadOnly(r) ? (
+                  <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider">
+                    {r.review_decision?.replace(/_/g, ' ') ?? 'resolved'}
+                  </span>
+                ) : reviewing.has(r.id) ? (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-[var(--accent-blue)] uppercase tracking-wider">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Saving…
+                  </span>
+                ) : (
+                  <div className="flex gap-1.5">
+                    {[{ d: 'confirm_same', l: 'Confirm' }, { d: 'reject', l: 'Reject' }, { d: 'investigate', l: 'Investigate' }].map(({ d, l }) => (
+                      <button
+                        key={d}
+                        onClick={() => onReview(r.id, d)}
+                        className="px-2 py-1 rounded-md border border-[var(--border-primary)] text-[10px] font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-blue)]/40 transition-colors cursor-pointer"
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </td>
             </tr>
           ))}

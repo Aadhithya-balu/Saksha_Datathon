@@ -16,6 +16,7 @@ keeps raw facial images out of logs and out of the database.
 from __future__ import annotations
 
 import io
+from functools import lru_cache
 
 import numpy as np
 from fastapi import UploadFile
@@ -166,11 +167,20 @@ def recognize_bytes(data: bytes) -> dict:
     return _build_result(count, query_embedding, analysis, analysis_source)
 
 
+@lru_cache(maxsize=1)
+def _cached_references() -> list:
+    """Reference embeddings computed once per process from the on-disk DEMO
+    dataset (DB-independent).  The dataset is static during a run, so caching
+    avoids re-decoding every sample image on each recognition request —
+    keeping request durations short and the DB pool pressure low."""
+    return repository.reference_embeddings_from_disk() or []
+
+
 def _build_result(count: int, query_embedding, analysis: dict, analysis_source: str, references=None) -> dict:
     if references is None:
         # Reference set resolved from disk (no DB dependency for pure matching);
         # the repository uses the seeded identity rows for metadata fallback.
-        references = repository.reference_embeddings_from_disk() or []
+        references = _cached_references()
 
     if query_embedding is None or not references:
         # Recognizer can't match (no reference set) — honest no-match.

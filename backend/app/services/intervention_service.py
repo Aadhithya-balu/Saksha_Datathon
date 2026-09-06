@@ -36,9 +36,16 @@ def compute_effectiveness(
         started = started.astimezone(timezone.utc).replace(tzinfo=None)
     now = datetime.utcnow()
 
-    window_end = min(intervention.ended_at, now) if intervention.ended_at else now
-    if window_end.tzinfo is not None:
-        window_end = window_end.astimezone(timezone.utc).replace(tzinfo=None)
+    # ended_at is stored timezone-aware (DateTime(timezone=True)); normalize it
+    # before comparing with the naive 'now' to avoid
+    # "can't compare offset-naive and offset-aware datetimes".
+    ended_at = intervention.ended_at
+    if ended_at is not None:
+        if ended_at.tzinfo is not None:
+            ended_at = ended_at.astimezone(timezone.utc).replace(tzinfo=None)
+        window_end = min(ended_at, now)
+    else:
+        window_end = now
     post_days = max((window_end - started).days, 1)
     compare_days = max(1, int(window_days))
 

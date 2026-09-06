@@ -12,6 +12,7 @@ import InformStationModal from '../../components/notifications/InformStationModa
 import NotificationDetailModal from '../../components/notifications/NotificationDetailModal';
 import ActivityFeed from '../../components/notifications/ActivityFeed';
 import SystemHealth from '../../components/notifications/SystemHealth';
+import { useRealtimeStore } from '../../store/realtimeStore';
 import { TableSkeleton } from '../../components/ui/Skeleton';
 
 type TabView = 'messages' | 'timeline' | 'activity' | 'health';
@@ -33,6 +34,15 @@ const NotificationsPage: React.FC = () => {
     fetchNotifications(1);
     fetchCounts();
     fetchDashboard();
+  }, []);
+
+  // Subscribe to the realtime SSE stream while this control center is open, so
+  // the Health tab reports the stream as active and live case events flow in.
+  // The store is reference-counted: if Overview/Crime Cases are also mounted
+  // the stream stays open, and it is fully torn down on unmount via disconnect.
+  useEffect(() => {
+    useRealtimeStore.getState().connect();
+    return () => useRealtimeStore.getState().disconnect();
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));

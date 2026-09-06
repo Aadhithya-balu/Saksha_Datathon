@@ -67,3 +67,15 @@ def invalidate_ttl_caches() -> None:
     """Drop every cached entry (call after bulk imports/updates)."""
     with _LOCK:
         _ENTRIES.clear()
+
+
+def invalidate_ttl_cache_prefix(func_key: str) -> None:
+    """Drop cached entries for a single decorated computation key.
+
+    Used after entity edits so derived (e.g. per-criminal network) results are
+    recomputed on the next request instead of serving a stale TTL snapshot.
+    """
+    prefix = f"{func_key}:"
+    with _LOCK:
+        for key in [k for k in _ENTRIES if k.startswith(prefix)]:
+            _ENTRIES.pop(key, None)
