@@ -143,6 +143,10 @@ _NAME_NOISE = {
     "many", "much", "number", "count", "total", "compare", "comparison",
     "saksha", "crimecases", "northregion", "regarding", "called", "named",
     "about", "involving", "against",
+    # generic attributive adjectives/nouns — common in "…and key details?"
+    # style prompts; must never be captured as a person's name
+    "key", "such", "various", "important", "certain", "specific", "relevant",
+    "particular", "related", "other", "your", "any", "a", "an", "or",
 }
 
 # Words that strongly hint the preceding word is a person's name: "X crime
@@ -565,6 +569,29 @@ class LLMGenerator:
         # question asked, not merely which context lines match (issue #203).
         intent = self._classify_question(message)
 
+        # When the user pins an exact case/FIR number ("Tell me about case
+        # CR-2026-BLR-3954 …"), only that exact record satisfies them. If the
+        # retrieved context lacks it, say so instead of dumping whichever
+        # keyword-similar case cropped up in retrieval. This leafs out the
+        # "could not find any records for **key**" bug: the personal-name
+        # honesty gate is skipped for numbered lookups (see
+        # _named_person_not_in_context) and the straight missing-number answer
+        # is emitted here.
+        explicit_id = self._explicit_record_id(message)
+        if explicit_id and not self._sections_have_record(sections, focus_kind or "", explicit_id):
+            noun = {
+                "fir": "FIR", "case": "case", "criminal": "criminal",
+                "officer": "officer", "victim": "victim",
+            }.get(focus_kind or "", "record")
+            article = "an" if focus_kind == "officer" else "a"
+            full_response = "\n".join([
+                f"I could not find {article} {noun} record matching **{explicit_id}** in the Saksha database.",
+                f"Double-check the number and I'll take another look.\n\n{_FOOTER_MESSAGE}",
+            ]).strip()
+            for chunk in self._stream_text(full_response):
+                yield chunk
+            return
+
         positive = [item for item in scored if item[0] > 0]
 
         if not positive:
@@ -620,6 +647,17 @@ class LLMGenerator:
             for chunk in self._stream_text(count_answer):
                 yield chunk
             return
+
+        # Profile-style prompts ("Tell me about case CR-… + status, priority,
+        # key details") must surface the FULL dossier, not just the first
+        # field the classifier happens to spot. Ask for a dossier (or name two
+        # fields at once) → try the profile before a single-field answer.
+        if self._wants_full_profile(message):
+            full_answer = self._entity_profile_answer(message, kept, temporal, focus_kind)
+            if full_answer:
+                for chunk in self._stream_text(full_answer):
+                    yield chunk
+                return
 
         field_answer = self._field_answer(message, kept, temporal, focus_kind)
         if field_answer:
@@ -940,6 +978,22 @@ class LLMGenerator:
         return "\n".join(lines)
 
     @staticmethod
+    def _wants_full_profile(message: str) -> bool:
+        """True when the question asks for a dossier rather than one field:
+        an explicit 'tell me about' / 'details' / 'profile' opener, or a single
+        sentence naming two or more record fields (e.g. "What is the status,
+        priority, and key details?"). Such multi-field prompts must not
+        collapse into a lone field answer."""
+        lower = message.lower()
+        if any(phrase in lower for phrase in ("tell me about", "details", "profile", "info on", "info about", "show me", "describe")):
+            return True
+        fields = [w for w in (
+            "status", "priority", "progress", "category", "location",
+            "when", "where", "who", "date", "officer", "sections",
+        ) if w in lower]
+        return len(fields) >= 2
+
+    @staticmethod
     def _is_specific_entity_request(message: str) -> bool:
         """True when the question targets ONE specific entity (an id, a named
         person, or 'tell me about X') rather than a collection/list of records.
@@ -1234,6 +1288,11 @@ class LLMGenerator:
         have that information' instead of dumping partially-matching aggregate
         statistics (issue #203) — a personal name is a strong relevance signal
         that a generic summary cannot satisfy."""
+        if cls._has_explicit_record_id(message):
+            # A numbered case/FIR is identified by its ID, not a personal name.
+            # Stray generic words in prompts like "…and key details?" must never
+            # be mistaken for a person and hijack the lookup (case-page Ask AI).
+            return None
         names = cls._extract_person_names(message)
         if not names:
             return None
@@ -1245,6 +1304,58 @@ class LLMGenerator:
             if name.lower() in haystack:
                 return None  # this person exists in context — let the normal path answer
         return names[0]
+
+    @staticmethod
+    def _has_explicit_record_id(message: str) -> bool:
+        """True when the question pins an exact FIR or case number (e.g.
+        'CR-2026-MYS-001' or 'FIR 2026/104'). Mirrors the ID patterns used by
+        _query_target_kind so the two decisions always agree."""
+        return LLMGenerator._explicit_record_id(message) is not None
+
+    @staticmethod
+    def _explicit_record_id(message: str) -> str | None:
+        """Returns the normalized exact case/FIR id a question pins (uppercase),
+        or None. The honesty-gate skip and the ID-miss guard both use this, so
+        the two decisions can never disagree."""
+        fir = re.search(r"\bFIR[-\s]?\d{2,4}[\w/\-]*", message, re.IGNORECASE)
+        if fir:
+            return fir.group(0).upper()
+        case = re.search(r"\bCR[-\s]?\d{4}[\w/\-]*", message, re.IGNORECASE)
+        if case:
+            return case.group(0).upper()
+        return None
+
+    @classmethod
+    def _sections_have_record(cls, sections: list[tuple[str, list[str]]], focus_kind: str, explicit_id: str) -> bool:
+        """Exact check that the retrieved context contains a record of the
+        focus kind whose number equals the pinned case/FIR id. Keyword scoring
+        is intentionally bypassed — if the user names the number, only that
+        exact record satisfies them.
+
+        Two matching rules, both confined to records of the right kind:
+        1. normalized substring (strips '-', '/', ' ' so CR-2026-BLR-002 and
+           'CR2026BLR002' agree), then
+        2. digit-sequence substring (covers schema-style FIRs rendered as
+           'FIR Number: 2026/104' where the 'FIR' prefix lives in the column
+           name, not the value). A min-length guard avoids prefix collisions.
+        """
+        wanted = explicit_id.translate(str.maketrans("", "", "-/ "))
+        wanted_digits = "".join(ch for ch in wanted if ch.isdigit())
+        for _header, lines in sections:
+            for line in lines:
+                rec = cls._parse_record(line)
+                if cls._record_kind(rec) != focus_kind:
+                    continue
+                values = [str(rec.get("_id") or "")]
+                values += [str(v) for v in rec.values() if v is not None]
+                blob = " ".join(values).upper().translate(str.maketrans("", "", "-/ "))
+                if wanted in blob:
+                    return True
+                if len(wanted_digits) >= 5:
+                    blob_digits = "".join(ch for ch in blob if ch.isdigit())
+                    if wanted_digits in blob_digits:
+                        return True
+        return False
 
     @staticmethod
     def _classify_question(message: str) -> str:

@@ -13,6 +13,7 @@ import {
   X,
   Camera,
   ShieldAlert,
+  Shield,
   ChevronRight,
   Fingerprint,
   Bookmark,
@@ -42,8 +43,9 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { PersonAvatar } from '../components/ui/PersonAvatar';
 import { CardSkeleton } from '../components/ui/Skeleton';
 
-const GROUPS: { key: keyof Pick<InvestigationGroupedSearchResponse, 'persons' | 'cases' | 'firs' | 'stations' | 'locations' | 'mo_matches'>; label: string; icon: React.ReactNode }[] = [
+const GROUPS: { key: keyof Pick<InvestigationGroupedSearchResponse, 'persons' | 'victims' | 'cases' | 'firs' | 'stations' | 'locations' | 'mo_matches'>; label: string; icon: React.ReactNode }[] = [
   { key: 'persons', label: 'PERSONS', icon: <Users className="w-3.5 h-3.5" /> },
+  { key: 'victims', label: 'VICTIMS / WITNESSES', icon: <Shield className="w-3.5 h-3.5" /> },
   { key: 'cases', label: 'CASES', icon: <Briefcase className="w-3.5 h-3.5" /> },
   { key: 'firs', label: 'FIRs', icon: <FileText className="w-3.5 h-3.5" /> },
   { key: 'stations', label: 'POLICE STATIONS', icon: <Landmark className="w-3.5 h-3.5" /> },
@@ -52,7 +54,7 @@ const GROUPS: { key: keyof Pick<InvestigationGroupedSearchResponse, 'persons' | 
 ];
 
 const ACCENT: Record<string, string> = {
-  person: '#1E6FD9', case: '#7c5cff', fir: '#14b8a6', station: '#f59e0b',
+  person: '#1E6FD9', victim: '#22c55e', case: '#7c5cff', fir: '#14b8a6', station: '#f59e0b',
   location: '#22c55e', mo: '#a855f7',
 };
 
@@ -194,6 +196,10 @@ export const CommandCenter: React.FC = () => {
       const id = item.meta?.criminal_id || item.id.replace('criminal-', '');
       trackRecent({ type: 'person', id, label: item.name, detail: item.subtitle || undefined, ts: Date.now() });
       goTo('criminals', id);
+    } else if (item.type === 'victim') {
+      const id = item.meta?.victim_id || item.id.replace('victim-', '');
+      trackRecent({ type: 'search', id, label: item.name, detail: item.subtitle, ts: Date.now() });
+      goTo('victims', id);
     } else if (item.type === 'case') {
       const id = item.meta?.case_id || item.id.replace('case-', '');
       trackRecent({ type: 'case', id, label: item.name, detail: item.subtitle || undefined, ts: Date.now() });

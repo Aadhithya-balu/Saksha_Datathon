@@ -66,6 +66,8 @@ _INTENT_RULES: dict[Intent, dict] = {
             re.compile(r"\bfir\s*\d{4}/\d+", re.I),
             re.compile(r"\bfir\s+number", re.I),
             re.compile(r"\d{4}/\d{3,}", re.I),
+            re.compile(r"\d{1,4}/[A-Z]{1,20}/\d{4}", re.I),
+            re.compile(r"\bFIR-[A-Z]{1,6}-\d{1,6}/\d{4}", re.I),
         ],
     },
     Intent.CASE_DETAILS: {
@@ -227,7 +229,14 @@ class IntentRouter:
         scores: dict[Intent, float] = {}
 
         has_case_id = bool(re.search(r"CR-\d{4}-[A-Z]{2,4}-\d+", message, re.I))
-        has_fir_number = bool(re.search(r"FIR[-\s]*\d{3,4}/[A-Z]{0,4}/?\d{3,4}", message, re.I))
+        has_fir_number = bool(re.search(
+            r"FIR[-\s]*:?\s*("
+            r"\d{1,4}/[A-Z]{1,20}/\d{4}"
+            r"|[A-Z]{1,16}-?\d{1,6}[A-Z0-9-]*/\d{4}"
+            r"|\d{1,4}/\d{4}"
+            r")",
+            message, re.I,
+        ))
 
         for intent, rules in _INTENT_RULES.items():
             score = 0.0

@@ -2,19 +2,25 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useAuditStore } from '../../store/auditStore';
 import { usePolling } from '../../hooks/usePolling';
-import { 
-  listVictims, 
-  getVictim 
+import {
+  listVictims,
+  getVictim,
+  updateVictim,
 } from '../../services/api';
-import { 
-  Search, 
+import type { VictimRecord } from '../../services/api';
+import {
+  Search,
   Heart,
-  Activity, 
-  MapPin, 
-  FileText, 
+  Activity,
+  MapPin,
+  FileText,
   Phone,
   ExternalLink,
-  BarChart3
+  BarChart3,
+  Pencil,
+  Save,
+  X,
+  Loader2,
 } from 'lucide-react';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 import { VictimologyPanel } from './VictimologyPanel';
@@ -41,6 +47,56 @@ export const Victims: React.FC = () => {
   const [victimDetails, setVictimDetails] = useState<any>(null);
   const [hoveredNode, setHoveredNode] = useState<any>(null);
   const [showVictimology, setShowVictimology] = useState<boolean>(false);
+
+  // Edit modal state
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<VictimRecord>>({});
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editNotice, setEditNotice] = useState<string | null>(null);
+  const canEditVictim = user?.role === 'ADMIN' || user?.role === 'IO';
+
+  const startEdit = () => {
+    if (!victimDetails) return;
+    setEditForm({
+      full_name: victimDetails.full_name,
+      contact_number: victimDetails.contact_number,
+      address: victimDetails.address,
+      gender: victimDetails.gender,
+      age: victimDetails.age,
+      statement: victimDetails.statement,
+      image_url: victimDetails.image_url,
+    });
+    setEditError(null);
+    setEditNotice(null);
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!victimDetails || !editForm.full_name?.trim()) {
+      setEditError('Full name is required.');
+      return;
+    }
+    setSavingEdit(true);
+    setEditError(null);
+    setEditNotice(null);
+    try {
+      await updateVictim(victimDetails.id, editForm);
+      setEditNotice('Victim dossier updated.');
+      setEditing(false);
+      const refreshed = await getVictim(victimDetails.id);
+      setVictimDetails(refreshed);
+      const res = await listVictims(searchQuery);
+      setVictims(res.results || []);
+      if (user) {
+        addLog(user.name, user.badgeId, 'UPDATE', `Updated victim dossier for: ${editForm.full_name} (${victimDetails.id})`);
+      }
+    } catch (err: any) {
+      setEditError(err?.message || 'Failed to update victim dossier.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   // Load victims on mount or search
   useEffect(() => {
@@ -401,6 +457,14 @@ export const Victims: React.FC = () => {
                         VICTIM REGISTRY ID: {victimDetails.id}
                       </span>
                     </div>
+                    {canEditVictim && (
+                      <button
+                        onClick={startEdit}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-[var(--border-primary)] text-[9px] font-mono uppercase font-bold text-[#0E9E78] hover:bg-[#0E9E78]/10 cursor-pointer transition-colors"
+                      >
+                        <Pencil className="w-3 h-3" /> Edit Dossier
+                      </button>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mt-4 text-[9.5px]">
@@ -524,8 +588,110 @@ export const Victims: React.FC = () => {
 
       </div>
 
+      {/* ── Edit Dossier Modal ── */}
+      {editing && (
+        <div className="fixed inset-0 z-[400] flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !savingEdit && setEditing(false)} />
+          <div className="relative w-full sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                <Pencil className="w-3.5 h-3.5 inline mr-1.5 text-[#0E9E78]" /> Edit Victim Dossier
+              </span>
+              <button onClick={() => setEditing(false)} disabled={savingEdit} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer" aria-label="Close">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <Field label="Full Name">
+                <input
+                  type="text"
+                  value={editForm.full_name || ''}
+                  onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] text-xs outline-none focus:border-[#0E9E78]"
+                />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Age">
+                  <input
+                    type="number"
+                    min={0}
+                    value={editForm.age ?? ''}
+                    onChange={(e) => setEditForm({ ...editForm, age: e.target.value === '' ? null : Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] text-xs outline-none focus:border-[#0E9E78]"
+                  />
+                </Field>
+                <Field label="Gender">
+                  <select
+                    value={editForm.gender || ''}
+                    onChange={(e) => setEditForm({ ...editForm, gender: e.target.value || null })}
+                    className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] text-xs outline-none focus:border-[#0E9E78] cursor-pointer"
+                  >
+                    <option value="">Unknown</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </Field>
+              </div>
+              <Field label="Contact Number">
+                <input
+                  type="text"
+                  value={editForm.contact_number || ''}
+                  onChange={(e) => setEditForm({ ...editForm, contact_number: e.target.value || null })}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] text-xs outline-none focus:border-[#0E9E78]"
+                />
+              </Field>
+              <Field label="Residence Address">
+                <input
+                  type="text"
+                  value={editForm.address || ''}
+                  onChange={(e) => setEditForm({ ...editForm, address: e.target.value || null })}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] text-xs outline-none focus:border-[#0E9E78]"
+                />
+              </Field>
+              <Field label="Statement">
+                <textarea
+                  rows={4}
+                  value={editForm.statement || ''}
+                  onChange={(e) => setEditForm({ ...editForm, statement: e.target.value || null })}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] text-xs outline-none focus:border-[#0E9E78] resize-none"
+                />
+              </Field>
+              <Field label="Photo URL">
+                <input
+                  type="text"
+                  value={editForm.image_url || ''}
+                  onChange={(e) => setEditForm({ ...editForm, image_url: e.target.value || null })}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] text-xs outline-none focus:border-[#0E9E78]"
+                />
+              </Field>
+            </div>
+
+            {editError && <p className="text-[10px] font-mono text-amber-400 mt-3">{editError}</p>}
+            {editNotice && <p className="text-[10px] font-mono text-[#0E9E78] mt-3">{editNotice}</p>}
+
+            <button
+              onClick={saveEdit}
+              disabled={savingEdit}
+              className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#0E9E78] text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 cursor-pointer"
+            >
+              {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {savingEdit ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
+
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div>
+    <span className="block text-[8.5px] font-mono uppercase tracking-wider text-[var(--text-muted)] mb-1">{label}</span>
+    {children}
+  </div>
+);
 
 export default Victims;
