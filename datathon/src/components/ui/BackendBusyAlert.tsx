@@ -121,7 +121,9 @@ export const BackendBusyAlert: React.FC = () => {
               </div>
               <div className="text-xs text-[var(--text-secondary)] mt-0.5">
                 The database connection has been unavailable for over a minute. This is likely due
-                to throttling on the free-tier (Supabase) plan. Our developers will rectify this
+                to throttling on the free-tier (Supabase) plan.Contact: 9894165334 or aadhithyabalu05@gmail.com
+                Please understand the situation we will explain to you, We worked for 3 months for this project
+                 Our developers will rectify this
                 shortly — please check back later.
               </div>
               <div className="text-[10px] text-[var(--text-muted)] mt-1">
