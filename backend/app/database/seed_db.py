@@ -722,9 +722,9 @@ DEMO_NOTIFICATIONS = [
 ]
 
 
-def seed() -> None:
+def seed(bind_engine=None, session=None) -> None:
     from app.database.postgres import Base, engine
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=bind_engine or engine)
     try:
         from app.main import _migrate_user_lockout_columns, _migrate_notifications_table, _migrate_criminals_table, _migrate_provenance_columns
         _migrate_user_lockout_columns()
@@ -733,7 +733,7 @@ def seed() -> None:
         _migrate_provenance_columns()
     except Exception:
         pass
-    db = SessionLocal()
+    db = session if session is not None else SessionLocal()
     try:
         role_objs = _seed_roles(db)
         user_objs = _seed_users(db, role_objs)

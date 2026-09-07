@@ -5,11 +5,15 @@ pg.UUID = UUID
 pg.JSONB = JSON
 
 from collections.abc import Generator
+import threading
+import time
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine, make_url
+from sqlalchemy.exc import OperationalError, TimeoutError as SA_TimeoutError
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
+from app.core import data_mode
 from app.core.config import settings
 from app.core.logging_config import configure_logging, logger
 
@@ -101,6 +105,86 @@ if not settings.DATABASE_URL.startswith("sqlite") and not _try_connect(engine):
     engine_kind = "sqlite"
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# --- Runtime demo fallback (circuit breaker) ------------------------------
+# The startup fallback above only covers a DB that is unreachable AT BOOT.
+# A live-but-throttled Supabase saturates the pool mid-run: every checkout
+# waits `pool_timeout` then raises QueuePool TimeoutError → the 503 storms.
+# In demo mode we instead trip a circuit and serve requests from a seeded
+# local SQLite demo database until the primary answers again.
+#
+# Production/test mode never do this (honesty rules: no synthetic data).
+_DEMO_FALLBACK_DB = "sqlite:///./saksha.db"
+_circuit_lock = threading.Lock()
+_circuit_engaged = False
+_fallback_engine: Engine | None = None
+_PROBE_INTERVAL = 15.0
+
+
+def trip_demo_fallback() -> None:
+    """Engage the runtime demo fallback (called from 503 paths, e.g. login).
+
+    The current request still returns its controlled 503; the NEXT request is
+    served from the local SQLite demo DB, which stops the 503 storm without
+    each failing request paying a 10s pool wait first.
+    """
+    if not data_mode.allows_demo_fallback():
+        return
+    with _circuit_lock:
+        global _circuit_engaged
+        if not _circuit_engaged:
+            _circuit_engaged = True
+            logger.error(
+                "[DB] Request-path pool exhausted — switching to SQLite demo "
+                "fallback until the primary database answers again."
+            )
+        engine.dispose()
+
+
+def _fallback_session() -> Session:
+    global _fallback_engine
+    if _fallback_engine is None:
+        _fallback_engine = _create_engine(_DEMO_FALLBACK_DB)
+        try:
+            Base.metadata.create_all(bind=_fallback_engine)
+            fb = sessionmaker(autocommit=False, autoflush=False, bind=_fallback_engine)
+            with fb() as _db:
+                from app.models.user import User
+                empty = _db.query(User).count() == 0
+            if empty:
+                logger.warning("[DB] Seeding demo data into fallback database...")
+                seed_session = fb()
+                try:
+                    from app.database.seed_db import seed
+                    seed(bind_engine=_fallback_engine, session=seed_session)
+                    seed_session.commit()
+                    logger.info("[DB] Demo fallback database seeded")
+                except Exception as exc:
+                    logger.error("[DB] Demo fallback seeding failed: %s", exc)
+                finally:
+                    seed_session.close()
+        except Exception:
+            logger.exception("[DB] Failed to initialise demo fallback database")
+    return sessionmaker(autocommit=False, autoflush=False, bind=_fallback_engine)()
+
+
+def _probe_primary() -> None:
+    while True:
+        time.sleep(_PROBE_INTERVAL)
+        if not _circuit_engaged:
+            continue
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+        except Exception:
+            continue
+        with _circuit_lock:
+            _circuit_engaged = False
+            logger.info("[DB] Primary database reachable again — demo fallback released.")
+
+
+if not settings.DATABASE_URL.startswith("sqlite"):
+    threading.Thread(target=_probe_primary, name="db-probe", daemon=True).start()
 
 # Dedicated worker pool for long-running background jobs (model training /
 # retrain, parallel AI worker threads). Kept on a SEPARATE engine so heavy
