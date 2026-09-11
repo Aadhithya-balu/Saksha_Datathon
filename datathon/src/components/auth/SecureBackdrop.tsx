@@ -6,7 +6,7 @@ import React, { useEffect, useRef } from 'react';
  * Layered, extremely low-contrast intelligence ambience:
  *   1. Radial lighting focused on the content area
  *   2. A very fine technical grid
- *   3. Abstract topographic contour lines (no specific location)
+ *   3. Faint coordinate reference marks (no specific location)
  *   4. A slow constellation of connected nodes (canvas)
  *
  * All layers are theme-aware (they resolve --lp-* tokens) and
@@ -74,7 +74,7 @@ const SecureBackdrop: React.FC = () => {
         vx: (Math.random() - 0.5) * 0.16,
         vy: (Math.random() - 0.5) * 0.16,
         r: 1 + Math.random() * 1.3,
-        a: 0.25 + Math.random() * 0.35,
+        a: 0.2 + Math.random() * 0.28,
       }));
       pulses = [];
     };
@@ -94,7 +94,7 @@ const SecureBackdrop: React.FC = () => {
             ctx.beginPath();
             ctx.moveTo(n1.x, n1.y);
             ctx.lineTo(n2.x, n2.y);
-            ctx.strokeStyle = `rgba(${accentRgb[0]},${accentRgb[1]},${accentRgb[2]},${((1 - dist / 132) * 0.13).toFixed(3)})`;
+            ctx.strokeStyle = `rgba(${accentRgb[0]},${accentRgb[1]},${accentRgb[2]},${((1 - dist / 132) * 0.1).toFixed(3)})`;
             ctx.lineWidth = 1;
             ctx.stroke();
           }
@@ -187,36 +187,24 @@ const SecureBackdrop: React.FC = () => {
       <div className="absolute inset-0 lp-glow-a" />
       {/* Very fine technical grid */}
       <div className="absolute inset-0 lp-grid-layer" />
-      {/* Abstract topographic contours — large screens only */}
+      {/* Faint coordinate reference marks — large screens only, subtle */}
       <svg
-        viewBox="0 0 600 500"
-        className="hidden lg:block absolute right-[3%] top-1/2 -translate-y-1/2 h-[68vh] w-auto"
+        viewBox="0 0 1000 700"
+        className="hidden lg:block absolute inset-0 h-full w-full"
         fill="none"
         role="presentation"
-        style={{ color: 'var(--lp-accent)', opacity: 0.06 }}
+        style={{ color: 'var(--lp-accent)', opacity: 0.05 }}
       >
-        {/* Organic contour rings — abstract, no geographic identity */}
-        <ellipse cx="300" cy="250" rx="260" ry="210" stroke="currentColor" strokeWidth="1.2" />
-        <ellipse cx="300" cy="250" rx="210" ry="170" stroke="currentColor" strokeWidth="1" />
-        <ellipse cx="300" cy="250" rx="165" ry="135" stroke="currentColor" strokeWidth="0.9" />
-        <ellipse cx="300" cy="250" rx="120" ry="100" stroke="currentColor" strokeWidth="0.8" />
-        <ellipse cx="300" cy="250" rx="80" ry="65" stroke="currentColor" strokeWidth="0.7" />
-        <ellipse cx="300" cy="250" rx="45" ry="35" stroke="currentColor" strokeWidth="0.6" />
-        {/* Offset inner contours for depth */}
-        <ellipse cx="280" cy="240" rx="140" ry="115" stroke="currentColor" strokeWidth="0.6" opacity="0.7" />
-        <ellipse cx="320" cy="260" rx="100" ry="80" stroke="currentColor" strokeWidth="0.5" opacity="0.5" />
-        {/* Radial measurement lines */}
-        <line x1="300" y1="40" x2="300" y2="460" stroke="currentColor" strokeWidth="0.3" opacity="0.4" />
-        <line x1="40" y1="250" x2="560" y2="250" stroke="currentColor" strokeWidth="0.3" opacity="0.4" />
-        <line x1="120" y1="90" x2="480" y2="410" stroke="currentColor" strokeWidth="0.25" opacity="0.3" />
-        <line x1="480" y1="90" x2="120" y2="410" stroke="currentColor" strokeWidth="0.25" opacity="0.3" />
-        {/* Scatter reference points */}
-        <circle cx="180" cy="140" r="2" fill="currentColor" opacity="0.5" />
-        <circle cx="420" cy="180" r="1.5" fill="currentColor" opacity="0.4" />
-        <circle cx="200" cy="360" r="1.5" fill="currentColor" opacity="0.4" />
-        <circle cx="400" cy="320" r="2" fill="currentColor" opacity="0.5" />
-        <circle cx="130" cy="260" r="1.2" fill="currentColor" opacity="0.35" />
-        <circle cx="470" cy="260" r="1.2" fill="currentColor" opacity="0.35" />
+        {/* Edge measurement ticks */}
+        <path d="M0 40H40 M0 140H24 M0 220H34 M0 320H22 M0 420H36 M0 520H26 M956 660H1000 M856 660H1000 M736 660H1000 M600 660H1000 M440 660H1000 M280 660H1000" stroke="currentColor" strokeWidth="1" />
+        <path d="M40 0V40 M140 0V24 M220 0V34 M320 0V22 M420 0V36 M520 0V26 M956 0V40 M976 40H1000 M960 120H980 M968 200H990 M944 280H1000 M958 360H982 M966 440H988 M950 540H1000 M960 620H984" stroke="currentColor" strokeWidth="1" />
+        {/* Sparse scatter reference points */}
+        <circle cx="248" cy="180" r="2" fill="currentColor" />
+        <circle cx="742" cy="210" r="1.5" fill="currentColor" />
+        <circle cx="180" cy="520" r="1.5" fill="currentColor" />
+        <circle cx="820" cy="470" r="2" fill="currentColor" />
+        <circle cx="390" cy="86" r="1.5" fill="currentColor" />
+        <circle cx="610" cy="612" r="1.5" fill="currentColor" />
       </svg>
       {/* Slow intelligence-node constellation */}
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
