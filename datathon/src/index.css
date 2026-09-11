@@ -1296,36 +1296,159 @@ input[type="week"] {
   color-scheme: dark;
 }
 
-/* ---- Light identity — designed for daylight, never inverted ---- */
+/* ---- Light identity — premium daylight enterprise palette ---- */
 [data-theme="light"] .login-root,
 [data-theme="light"] .landing-root {
-  --lp-bg: #edf1f7;
-  --lp-bg-soft: #ffffff;
-  --lp-surface: rgba(255, 255, 255, 0.93);
-  --lp-surface-2: rgba(240, 244, 251, 0.88);
-  --lp-surface-3: rgba(255, 255, 255, 0.78);
-  --lp-card: rgba(255, 255, 255, 0.94);
-  --lp-field: rgba(13, 34, 66, 0.04);
-  --lp-field-focus: rgba(22, 96, 196, 0.09);
-  --lp-border: rgba(23, 62, 130, 0.17);
-  --lp-border-strong: rgba(23, 62, 130, 0.34);
-  --lp-text: #14213a;
-  --lp-text-2: #45566f;
-  --lp-text-3: #7d8ba1;
-  --lp-accent: #1660c4;
-  --lp-accent-hi: #2f7fe0;
-  --lp-accent-soft: rgba(22, 96, 196, 0.09);
-  --lp-teal: #0d8f76;
-  --lp-green: #12915f;
-  --lp-red: #c2453a;
-  --lp-red-soft: rgba(194, 69, 58, 0.1);
-  --lp-green-soft: rgba(18, 145, 95, 0.09);
-  --lp-amber: #b0781c;
-  --lp-amber-soft: rgba(176, 120, 28, 0.1);
-  --lp-grid-line: rgba(23, 62, 130, 0.08);
-  --lp-card-shadow: 0 20px 60px rgba(28, 48, 84, 0.16), 0 2px 6px rgba(28, 48, 84, 0.08);
-  --lp-inner-hi: rgba(255, 255, 255, 0.9);
+  --lp-bg: #F4F6F9;
+  --lp-bg-soft: #FFFFFF;
+  --lp-surface: rgba(255, 255, 255, 0.94);
+  --lp-surface-2: rgba(240, 244, 249, 0.9);
+  --lp-surface-3: rgba(255, 255, 255, 0.82);
+  --lp-card: rgba(255, 255, 255, 0.95);
+  --lp-field: rgba(15, 23, 42, 0.035);
+  --lp-field-focus: rgba(30, 111, 217, 0.08);
+  --lp-border: rgba(15, 23, 42, 0.08);
+  --lp-border-strong: rgba(15, 23, 42, 0.16);
+  --lp-text: #0F172A;
+  --lp-text-2: #334155;
+  --lp-text-3: #64748B;
+  --lp-accent: #1E6FD9;
+  --lp-accent-hi: #2563EB;
+  --lp-accent-soft: rgba(30, 111, 217, 0.07);
+  --lp-teal: #065F46;
+  --lp-green: #059669;
+  --lp-red: #B91C1C;
+  --lp-red-soft: rgba(185, 28, 28, 0.06);
+  --lp-green-soft: rgba(5, 150, 105, 0.06);
+  --lp-amber: #D97706;
+  --lp-amber-soft: rgba(217, 119, 6, 0.07);
+  --lp-grid-line: rgba(15, 23, 42, 0.04);
+  --lp-card-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+  --lp-inner-hi: rgba(255, 255, 255, 0.95);
 
+  color-scheme: light;
+}
+
+/* ============================================================
+   LANDING PAGE — --ls-* Semantic Tokens
+   Auto-adapts when data-theme changes. No hardcoded hex in TSX.
+   ============================================================ */
+
+.landing-root {
+  /* ---- Dark mode (default, inherited from :root above) ---- */
+  --ls-bg: #090D16;
+  --ls-bg-scrolled: rgba(9, 13, 22, 0.92);
+  --ls-header-bg: rgba(9, 13, 22, 0.92);
+  --ls-header-bg-glass: rgba(9, 13, 22, 0.7);
+  --ls-bg-mobile-menu: rgba(9, 13, 22, 0.98);
+  background: var(--ls-bg);
+  --ls-surface-card: rgba(255, 255, 255, 0.035);
+  --ls-border: rgba(148, 163, 184, 0.1);
+  --ls-border-subtle: rgba(148, 163, 184, 0.06);
+  --ls-text-hero: #F8FAFC;
+  --ls-text-hero-accent: #34D399;
+  --ls-text-body: #94A3B8;
+  --ls-text-nav: rgba(148, 163, 184, 0.8);
+  --ls-text-muted: #64748B;
+  --ls-text-muted-faint: #475569;
+  --ls-text-security-red: #F87171;
+  --ls-text-security-red-bg: rgba(239, 68, 68, 0.08);
+  --ls-text-security-red-border: rgba(239, 68, 68, 0.22);
+  --ls-text-secure-green: #34D399;
+  --ls-cta-primary-bg: linear-gradient(180deg, #3B82F6 0%, #2563EB 100%);
+  --ls-cta-primary-border: #3B82F6;
+  --ls-cta-primary-shadow: 0 4px 16px rgba(59, 130, 246, 0.28), 0 1px 3px rgba(59, 130, 246, 0.12);
+  --ls-cta-secondary-bg: rgba(255, 255, 255, 0.04);
+  --ls-cta-secondary-border: rgba(148, 163, 184, 0.18);
+  --ls-cta-secondary-text: #E2E8F0;
+  --ls-cta-secondary-icon: #94A3B8;
+  --ls-card-bg: rgba(255, 255, 255, 0.03);
+  --ls-card-border: rgba(148, 163, 184, 0.08);
+  --ls-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  --ls-card-title: #F1F5F9;
+  --ls-card-subtitle: #34D399;
+  --ls-card-desc: #94A3B8;
+  --ls-card-icon-bg: rgba(59, 130, 246, 0.08);
+  --ls-card-icon-border: rgba(59, 130, 246, 0.16);
+  --ls-card-icon-color: #60A5FA;
+  --ls-footer-border: rgba(148, 163, 184, 0.08);
+  --ls-footer-icon: #64748B;
+  --ls-footer-title: #CBD5E1;
+  --ls-footer-sub: #475569;
+  --ls-footer-copyright: #334155;
+  --ls-hamburger-border: rgba(148, 163, 184, 0.12);
+  --ls-hamburger-color: #94A3B8;
+  --ls-brand-accent-bg: rgba(59, 130, 246, 0.1);
+  --ls-brand-accent-border: rgba(59, 130, 246, 0.2);
+  --ls-signin-color: #60A5FA;
+  --ls-signin-bg: rgba(59, 130, 246, 0.08);
+  --ls-signin-border: rgba(59, 130, 246, 0.24);
+  --ls-svg-stroke-contour: #475569;
+  --ls-svg-stroke-grid: #334155;
+  --ls-svg-stroke-line-blue: #3B82F6;
+  --ls-svg-stroke-line-teal: #10B981;
+  --ls-svg-stroke-dash: #475569;
+  --ls-svg-fill-primary: #3B82F6;
+  --ls-svg-fill-teal: #10B981;
+  --ls-svg-fill-micro: #64748B;
+  color-scheme: dark;
+}
+
+[data-theme="light"] .landing-root {
+  --ls-bg: #F4F6F9;
+  --ls-bg-scrolled: rgba(244, 246, 249, 0.92);
+  --ls-header-bg: rgba(244, 246, 249, 0.92);
+  --ls-header-bg-glass: rgba(244, 246, 249, 0.7);
+  --ls-bg-mobile-menu: rgba(244, 246, 249, 0.98);
+  --ls-surface-card: rgba(255, 255, 255, 0.7);
+  --ls-border: rgba(15, 23, 42, 0.07);
+  --ls-border-subtle: rgba(15, 23, 42, 0.05);
+  --ls-text-hero: #0F172A;
+  --ls-text-hero-accent: #065F46;
+  --ls-text-body: #334155;
+  --ls-text-nav: rgba(71, 85, 105, 0.8);
+  --ls-text-muted: #64748B;
+  --ls-text-muted-faint: #94A3B8;
+  --ls-text-security-red: #B91C1C;
+  --ls-text-security-red-bg: rgba(220, 38, 38, 0.05);
+  --ls-text-security-red-border: rgba(220, 38, 38, 0.18);
+  --ls-text-secure-green: #059669;
+  --ls-cta-primary-bg: linear-gradient(180deg, #2563EB 0%, #1D4ED8 100%);
+  --ls-cta-primary-border: #1E6FD9;
+  --ls-cta-primary-shadow: 0 4px 16px rgba(30, 111, 217, 0.28), 0 1px 3px rgba(30, 111, 217, 0.12);
+  --ls-cta-secondary-bg: rgba(255, 255, 255, 0.8);
+  --ls-cta-secondary-border: rgba(15, 23, 42, 0.18);
+  --ls-cta-secondary-text: #0F172A;
+  --ls-cta-secondary-icon: #475569;
+  --ls-card-bg: rgba(255, 255, 255, 0.7);
+  --ls-card-border: rgba(15, 23, 42, 0.07);
+  --ls-card-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+  --ls-card-title: #0F172A;
+  --ls-card-subtitle: #065F46;
+  --ls-card-desc: #475569;
+  --ls-card-icon-bg: rgba(30, 111, 217, 0.06);
+  --ls-card-icon-border: rgba(30, 111, 217, 0.14);
+  --ls-card-icon-color: #1E6FD9;
+  --ls-footer-border: rgba(15, 23, 42, 0.06);
+  --ls-footer-icon: #64748B;
+  --ls-footer-title: #334155;
+  --ls-footer-sub: #94A3B8;
+  --ls-footer-copyright: #CBD5E1;
+  --ls-hamburger-border: rgba(15, 23, 42, 0.1);
+  --ls-hamburger-color: #334155;
+  --ls-brand-accent-bg: rgba(30, 111, 217, 0.08);
+  --ls-brand-accent-border: rgba(30, 111, 217, 0.18);
+  --ls-signin-color: #1E6FD9;
+  --ls-signin-bg: rgba(30, 111, 217, 0.06);
+  --ls-signin-border: rgba(30, 111, 217, 0.22);
+  --ls-svg-stroke-contour: #CBD5E1;
+  --ls-svg-stroke-grid: #E2E8F0;
+  --ls-svg-stroke-line-blue: #1E6FD9;
+  --ls-svg-stroke-line-teal: #0E9E78;
+  --ls-svg-stroke-dash: #CBD5E1;
+  --ls-svg-fill-primary: #1E6FD9;
+  --ls-svg-fill-teal: #0E9E78;
+  --ls-svg-fill-micro: #94A3B8;
   color-scheme: light;
 }
 
@@ -1348,21 +1471,26 @@ input[type="week"] {
 }
 
 .lp-vignette {
-  background: radial-gradient(ellipse at center, transparent 52%, rgba(1, 3, 8, 0.5) 100%);
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(1, 3, 8, 0.28) 100%);
 }
 [data-theme="light"] .lp-vignette {
-  background: radial-gradient(ellipse at center, transparent 55%, rgba(35, 54, 88, 0.14) 100%);
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(15, 23, 42, 0.06) 100%);
 }
 
-/* Stylized Karnataka landmass silhouette */
-.lp-karnataka {
+/* Abstract topographic contours — generic intelligence watermark */
+.lp-topo {
   color: var(--lp-accent);
-  opacity: 0.07;
+  opacity: 0.06;
 }
-.lp-karnataka path {
+.lp-topo ellipse {
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.4;
+}
+.lp-topo line {
+  stroke: currentColor;
+}
+.lp-topo circle {
+  fill: currentColor;
 }
 
 /* Entrance choreography */
@@ -1439,7 +1567,8 @@ input[type="week"] {
 .login-root .rounded-btn { border-radius: 10px; }
 
 /* Visible keyboard focus across the portal */
-.login-root :focus-visible {
+.login-root :focus-visible,
+.landing-root :focus-visible {
   outline: 2px solid var(--lp-accent-hi);
   outline-offset: 2px;
   border-radius: 6px;
@@ -1560,13 +1689,13 @@ input[type="week"] {
   animation: lp-fade-in-soft 0.25s ease-out both;
 }
 [data-theme="light"] .lp-entry-root {
-  --lp-text: #14213a;
-  --lp-text-3: #7d8ba1;
-  --lp-border: rgba(23, 62, 130, 0.18);
-  --lp-accent-hi: #2f7fe0;
-  --lp-green: #12915f;
+  --lp-text: #0F172A;
+  --lp-text-3: #64748B;
+  --lp-border: rgba(15, 23, 42, 0.12);
+  --lp-accent-hi: #2563EB;
+  --lp-green: #059669;
   --lp-surface: rgba(255, 255, 255, 0.97);
-  background: radial-gradient(ellipse 60% 55% at 50% 42%, rgba(22, 96, 196, 0.08), transparent 70%), rgba(238, 242, 248, 0.95);
+  background: radial-gradient(ellipse 60% 55% at 50% 42%, rgba(30, 111, 217, 0.06), transparent 70%), rgba(244, 246, 249, 0.95);
 }
 .lp-entry-root.lp-entry-leave {
   opacity: 0;

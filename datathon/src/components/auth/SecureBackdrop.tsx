@@ -1,12 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 
 /**
- * SecureBackdrop — the SAKSHA login environment.
+ * SecureBackdrop — the SAKSHA login/landing environment.
  *
  * Layered, extremely low-contrast intelligence ambience:
- *   1. Radial lighting focused on the authentication area
+ *   1. Radial lighting focused on the content area
  *   2. A very fine technical grid
- *   3. A stylized Karnataka landmass silhouette
+ *   3. Abstract topographic contour lines (no specific location)
  *   4. A slow constellation of connected nodes (canvas)
  *
  * All layers are theme-aware (they resolve --lp-* tokens) and
@@ -27,19 +27,6 @@ interface Pulse {
   y: number;
   r: number;
 }
-
-/* Stylized Karnataka silhouette (abstract, recognizable intent) */
-const KARNATAKA_PATH =
-  'M132 4 L148 18 L154 44 L144 66 L152 92 L146 116 L158 140 L152 168 L136 192 ' +
-  'L112 208 L84 214 L60 204 L38 186 L26 160 L20 132 L14 104 L10 76 L22 52 L44 40 L74 34 L100 20 Z';
-
-const DISTRICT_MARKS: Array<[number, number]> = [
-  [48, 62],
-  [128, 178],
-  [34, 186],
-  [138, 84],
-  [96, 214],
-];
 
 const hexToRgb = (hex: string): [number, number, number] => {
   const h = hex.trim().replace('#', '');
@@ -196,24 +183,44 @@ const SecureBackdrop: React.FC = () => {
 
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
-      {/* Radial lighting around the authentication area */}
+      {/* Radial lighting around the content area */}
       <div className="absolute inset-0 lp-glow-a" />
       {/* Very fine technical grid */}
       <div className="absolute inset-0 lp-grid-layer" />
-      {/* Karnataka landmass — large screens only */}
+      {/* Abstract topographic contours — large screens only */}
       <svg
-        viewBox="0 0 200 230"
-        className="lp-karnataka hidden lg:block absolute right-[5%] top-1/2 -translate-y-1/2 h-[72vh] w-auto"
+        viewBox="0 0 600 500"
+        className="hidden lg:block absolute right-[3%] top-1/2 -translate-y-1/2 h-[68vh] w-auto"
+        fill="none"
         role="presentation"
+        style={{ color: 'var(--lp-accent)', opacity: 0.06 }}
       >
-        <path d={KARNATAKA_PATH} />
-        {DISTRICT_MARKS.map(([cx, cy]) => (
-          <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="1.6" fill="currentColor" stroke="none" opacity="0.9" />
-        ))}
+        {/* Organic contour rings — abstract, no geographic identity */}
+        <ellipse cx="300" cy="250" rx="260" ry="210" stroke="currentColor" strokeWidth="1.2" />
+        <ellipse cx="300" cy="250" rx="210" ry="170" stroke="currentColor" strokeWidth="1" />
+        <ellipse cx="300" cy="250" rx="165" ry="135" stroke="currentColor" strokeWidth="0.9" />
+        <ellipse cx="300" cy="250" rx="120" ry="100" stroke="currentColor" strokeWidth="0.8" />
+        <ellipse cx="300" cy="250" rx="80" ry="65" stroke="currentColor" strokeWidth="0.7" />
+        <ellipse cx="300" cy="250" rx="45" ry="35" stroke="currentColor" strokeWidth="0.6" />
+        {/* Offset inner contours for depth */}
+        <ellipse cx="280" cy="240" rx="140" ry="115" stroke="currentColor" strokeWidth="0.6" opacity="0.7" />
+        <ellipse cx="320" cy="260" rx="100" ry="80" stroke="currentColor" strokeWidth="0.5" opacity="0.5" />
+        {/* Radial measurement lines */}
+        <line x1="300" y1="40" x2="300" y2="460" stroke="currentColor" strokeWidth="0.3" opacity="0.4" />
+        <line x1="40" y1="250" x2="560" y2="250" stroke="currentColor" strokeWidth="0.3" opacity="0.4" />
+        <line x1="120" y1="90" x2="480" y2="410" stroke="currentColor" strokeWidth="0.25" opacity="0.3" />
+        <line x1="480" y1="90" x2="120" y2="410" stroke="currentColor" strokeWidth="0.25" opacity="0.3" />
+        {/* Scatter reference points */}
+        <circle cx="180" cy="140" r="2" fill="currentColor" opacity="0.5" />
+        <circle cx="420" cy="180" r="1.5" fill="currentColor" opacity="0.4" />
+        <circle cx="200" cy="360" r="1.5" fill="currentColor" opacity="0.4" />
+        <circle cx="400" cy="320" r="2" fill="currentColor" opacity="0.5" />
+        <circle cx="130" cy="260" r="1.2" fill="currentColor" opacity="0.35" />
+        <circle cx="470" cy="260" r="1.2" fill="currentColor" opacity="0.35" />
       </svg>
       {/* Slow intelligence-node constellation */}
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-      {/* Vignette keeps focus on the auth module */}
+      {/* Vignette keeps focus on the content */}
       <div className="absolute inset-0 lp-vignette" />
     </div>
   );
